@@ -113,6 +113,18 @@ func EscapeBackslashes(path string) string {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// CheckTruth check string true or not
+func CheckTruth(vals ...string) bool {
+	for _, val := range vals {
+		if val != "" && !strings.EqualFold(val, "false") {
+			return true
+		}
+	}
+	return false
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // DiffSliceOfStructsByKey takes in two slices of type T (left and right) and a key (string) as
 // arguments. The key defines the which key to use when comparing.
 //
@@ -302,4 +314,25 @@ func Map[T, V any](ts []T, fn func(T) V) []V {
 		result[i] = fn(t)
 	}
 	return result
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// snakeCase converts a string to snake_case
+func SnakeCase(s string) string {
+	var b strings.Builder
+	b.Grow(len(s) + 5)
+
+	for i, r := range s {
+		// Check if the current rune is uppercase
+		if i > 0 && 'A' <= r && r <= 'Z' {
+			// Add underscore if previous rune is lowercase (or non-uppercase letter)
+			if 'a' <= rune(s[i-1]) && rune(s[i-1]) <= 'z' {
+				b.WriteByte('_')
+			}
+		}
+		b.WriteRune(r)
+	}
+
+	return strings.ToLower(b.String())
 }

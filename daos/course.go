@@ -15,8 +15,7 @@ import (
 
 // CourseDao is the data access object for courses
 type CourseDao struct {
-	db    database.Database
-	table string
+	BaseDao
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -24,47 +23,43 @@ type CourseDao struct {
 // NewCourseDao returns a new CourseDao
 func NewCourseDao(db database.Database) *CourseDao {
 	return &CourseDao{
-		db:    db,
-		table: "courses",
+		BaseDao: BaseDao{
+			db:    db,
+			table: "courses",
+		},
 	}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Table returns the table name
-func (dao *CourseDao) Table() string {
-	return dao.table
+// Count counts the courses
+func (dao *CourseDao) Count(dbParams *database.DatabaseParams, tx *database.Tx) (int, error) {
+	return genericCount(dao, dbParams, tx)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Count returns the number of courses
-func (dao *CourseDao) Count(params *database.DatabaseParams) (int, error) {
-	generic := NewGenericDao(dao.db, dao)
-	return generic.Count(params, nil)
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// Create inserts a new course and courses_progress row within a transaction
+// Create creates a course and courses progress
+//
+// # A new transaction is created if `tx` is nil
 //
 // NOTE: There is currently no support for users, but when there is, the default courses_progress
 // should be inserted for the admin user
-func (dao *CourseDao) Create(c *models.Course) error {
-	if c.ID == "" {
-		c.RefreshId()
-	}
+func (dao *CourseDao) Create(c *models.Course, tx *database.Tx) error {
+	createFn := func(tx *database.Tx) error {
+		if c.ID == "" {
+			c.RefreshId()
+		}
 
-	c.RefreshCreatedAt()
-	c.RefreshUpdatedAt()
+		c.RefreshCreatedAt()
+		c.RefreshUpdatedAt()
 
-	query, args, _ := squirrel.
-		StatementBuilder.
-		Insert(dao.Table()).
-		SetMap(dao.data(c)).
-		ToSql()
+		query, args, _ := squirrel.
+			StatementBuilder.
+			Insert(dao.Table()).
+			SetMap(modelToMapOrPanic(c)).
+			ToSql()
 
-	return dao.db.RunInTransaction(func(tx *database.Tx) error {
 		// Create the course
 		if _, err := tx.Exec(query, args...); err != nil {
 			return err
@@ -77,84 +72,55 @@ func (dao *CourseDao) Create(c *models.Course) error {
 
 		cpDao := NewCourseProgressDao(dao.db)
 		return cpDao.Create(cp, tx)
-	})
+	}
+
+	if tx == nil {
+		return dao.db.RunInTransaction(func(tx *database.Tx) error {
+			return createFn(tx)
+		})
+	} else {
+		return createFn(tx)
+	}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Get selects a course with the given ID
-//
-// `tx` allows for the function to be run within a transaction
-func (dao *CourseDao) Get(id string, dbParams *database.DatabaseParams, tx *database.Tx) (*models.Course, error) {
-	generic := NewGenericDao(dao.db, dao)
+// Get gets a course with the given ID
+func (dao *CourseDao) Get(id string, tx *database.Tx) (*models.Course, error) {
+	selectColumns, _ := tableColumnsOrPanic(models.Course{}, dao.Table())
 
 	courseDbParams := &database.DatabaseParams{
-		Columns: dao.columns(),
+		Columns: selectColumns,
 		Where:   squirrel.Eq{dao.Table() + ".id": id},
 	}
 
-	row, err := generic.Get(courseDbParams, tx)
-	if err != nil {
-		return nil, err
-	}
-
-	course, err := dao.scanRow(row)
-	if err != nil {
-		return nil, err
-	}
-
-	return course, nil
+	return genericGet(dao, courseDbParams, dao.scanRow, tx)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// List selects courses
-//
-// `tx` allows for the function to be run within a transaction
+// List lists courses
 func (dao *CourseDao) List(dbParams *database.DatabaseParams, tx *database.Tx) ([]*models.Course, error) {
-	generic := NewGenericDao(dao.db, dao)
-
 	if dbParams == nil {
 		dbParams = &database.DatabaseParams{}
 	}
 
-	// Process the order by clauses
-	dbParams.OrderBy = dao.ProcessOrderBy(dbParams.OrderBy)
+	selectColumns, orderByColumns := tableColumnsOrPanic(models.Course{}, dao.Table())
 
-	// Default the columns if not specified
-	if len(dbParams.Columns) == 0 {
-		dbParams.Columns = dao.columns()
-	}
+	dbParams.Columns = selectColumns
 
-	rows, err := generic.List(dbParams, tx)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+	// Remove invalid orderBy columns
+	dbParams.OrderBy = dao.ProcessOrderBy(dbParams.OrderBy, orderByColumns)
 
-	var courses []*models.Course
-
-	for rows.Next() {
-		c, err := dao.scanRow(rows)
-		if err != nil {
-			return nil, err
-		}
-
-		courses = append(courses, c)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return courses, nil
+	return genericList(dao, dbParams, dao.scanRow, tx)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Update updates a course
+// Update updates selected columns of a course
 //
-// Note: Only `card_path` and `available` can be updated
+//   - card_path
+//   - available
 func (dao *CourseDao) Update(course *models.Course, tx *database.Tx) error {
 	if course.ID == "" {
 		return ErrEmptyId
@@ -162,13 +128,16 @@ func (dao *CourseDao) Update(course *models.Course, tx *database.Tx) error {
 
 	course.RefreshUpdatedAt()
 
+	// Convert to a map so we have the rendered values
+	data := modelToMapOrPanic(course)
+
 	query, args, _ := squirrel.
 		StatementBuilder.
 		Update(dao.Table()).
-		Set("card_path", NilStr(course.CardPath)).
-		Set("available", course.Available).
-		Set("updated_at", FormatTime(course.UpdatedAt)).
-		Where("id = ?", course.ID).
+		Set("card_path", data["card_path"]).
+		Set("available", data["available"]).
+		Set("updated_at", data["updated_at"]).
+		Where("id = ?", data["id"]).
 		ToSql()
 
 	execFn := dao.db.Exec
@@ -182,16 +151,9 @@ func (dao *CourseDao) Update(course *models.Course, tx *database.Tx) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Delete deletes a course based upon the where clause
-//
-// `tx` allows for the function to be run within a transaction
+// Delete deletes courses based upon the where clause
 func (dao *CourseDao) Delete(dbParams *database.DatabaseParams, tx *database.Tx) error {
-	if dbParams == nil || dbParams.Where == nil {
-		return ErrMissingWhere
-	}
-
-	generic := NewGenericDao(dao.db, dao)
-	return generic.Delete(dbParams, tx)
+	return genericDelete(dao, dbParams, tx)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -284,22 +246,25 @@ func (dao *CourseDao) ClassifyPaths(paths []string) (map[string]types.PathClassi
 //   - NULL values are treated as the lowest value (sorted first in ASC, last in DESC)
 //   - 'waiting' status is treated as the second value
 //   - 'processing' status is treated as the third value
-func (dao *CourseDao) ProcessOrderBy(orderBy []string) []string {
+func (dao *CourseDao) ProcessOrderBy(orderBy []string, validOrderByColumns []string) []string {
 	if len(orderBy) == 0 {
 		return orderBy
 	}
 
-	validTableColumns := dao.columns()
 	var processedOrderBy []string
 
-	scanDao := NewScanDao(dao.db)
-
 	for _, ob := range orderBy {
-		table, column := extractTableColumn(ob)
+		t, c := extractTableAndColumn(ob)
 
-		if isValidOrderBy(table, column, validTableColumns) {
+		// Prefix the table with the dao's table if not found
+		if t == "" {
+			t = dao.Table()
+			ob = t + "." + ob
+		}
+
+		if isValidOrderBy(t, c, validOrderByColumns) {
 			// When the column is 'scan_status', apply the custom sorting logic
-			if column == "scan_status" || table+"."+column == scanDao.Table()+".status" {
+			if c == "scan_status" {
 				// Determine the sort direction, defaulting to ASC if not specified
 				parts := strings.Fields(ob)
 				sortDirection := "ASC"
@@ -328,15 +293,18 @@ func (dao *CourseDao) ProcessOrderBy(orderBy []string) []string {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // countSelect returns the default select builder for counting
+//
+// It performs 2 left joins
+//   - scans table to get `scan_status`
+//   - courses progress table to get `started`, `started_at`, `percent`, and `completed_at`
+//
+// Note: The columns are removed, so you must specify the columns with `.Columns(...)` when using
+// this select builder
 func (dao *CourseDao) countSelect() squirrel.SelectBuilder {
 	sDao := NewScanDao(dao.db)
 	cpDao := NewCourseProgressDao(dao.db)
 
-	return squirrel.
-		StatementBuilder.
-		PlaceholderFormat(squirrel.Question).
-		Select("").
-		From(dao.Table()).
+	return dao.BaseDao.countSelect().
 		LeftJoin(sDao.Table() + " ON " + dao.Table() + ".id = " + sDao.Table() + ".course_id").
 		LeftJoin(cpDao.Table() + " ON " + dao.Table() + ".id = " + cpDao.Table() + ".course_id").
 		RemoveColumns()
@@ -345,48 +313,8 @@ func (dao *CourseDao) countSelect() squirrel.SelectBuilder {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // baseSelect returns the default select builder
-//
-// It performs 2 left joins
-//   - scans table to get `scan_status`
-//   - courses progress table to get `started`, `started_at`, `percent`, and `completed_at`
-//
-// Note: The columns are removed, so you must specify the columns with `.Columns(...)` when using
-// this select builder
 func (dao *CourseDao) baseSelect() squirrel.SelectBuilder {
 	return dao.countSelect()
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// columns returns the columns to select
-func (dao *CourseDao) columns() []string {
-	sDao := NewScanDao(dao.db)
-	cpDao := NewCourseProgressDao(dao.db)
-
-	return []string{
-		dao.Table() + ".*",
-		sDao.Table() + ".status as scan_status",
-		cpDao.Table() + ".started",
-		cpDao.Table() + ".started_at",
-		cpDao.Table() + ".percent",
-		cpDao.Table() + ".completed_at",
-		cpDao.Table() + ".updated_at as progress_updated_at",
-	}
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// data generates a map of key/values for a course
-func (dao *CourseDao) data(c *models.Course) map[string]any {
-	return map[string]any{
-		"id":         c.ID,
-		"title":      NilStr(c.Title),
-		"path":       NilStr(c.Path),
-		"card_path":  NilStr(c.CardPath),
-		"available":  c.Available,
-		"created_at": FormatTime(c.CreatedAt),
-		"updated_at": FormatTime(c.UpdatedAt),
-	}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -398,29 +326,25 @@ func (dao *CourseDao) scanRow(scannable Scannable) (*models.Course, error) {
 	// Nullable fields
 	var cardPath sql.NullString
 	var scanStatus sql.NullString
-	var createdAt string
-	var updatedAt string
-	var startedAt sql.NullString
-	var completedAt sql.NullString
-	var progressUpdatedAt sql.NullString
 
 	err := scannable.Scan(
-		// Course
 		&c.ID,
+		&c.CreatedAt,
+		&c.UpdatedAt,
 		&c.Title,
 		&c.Path,
 		&cardPath,
 		&c.Available,
-		&createdAt,
-		&updatedAt,
+
 		// Scan
 		&scanStatus,
+
 		// Course progress
 		&c.Started,
-		&startedAt,
+		&c.StartedAt,
 		&c.Percent,
-		&completedAt,
-		&progressUpdatedAt,
+		&c.CompletedAt,
+		&c.ProgressUpdatedAt,
 	)
 
 	if err != nil {
@@ -433,26 +357,6 @@ func (dao *CourseDao) scanRow(scannable Scannable) (*models.Course, error) {
 
 	if scanStatus.Valid {
 		c.ScanStatus = scanStatus.String
-	}
-
-	if c.CreatedAt, err = ParseTime(createdAt); err != nil {
-		return nil, err
-	}
-
-	if c.UpdatedAt, err = ParseTime(updatedAt); err != nil {
-		return nil, err
-	}
-
-	if c.StartedAt, err = ParseTimeNull(startedAt); err != nil {
-		return nil, err
-	}
-
-	if c.CompletedAt, err = ParseTimeNull(completedAt); err != nil {
-		return nil, err
-	}
-
-	if c.ProgressUpdatedAt, err = ParseTime(progressUpdatedAt.String); err != nil {
-		return nil, err
 	}
 
 	return &c, nil

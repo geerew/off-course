@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/daos"
@@ -17,6 +16,7 @@ import (
 	"github.com/geerew/off-course/utils/appFs"
 	"github.com/geerew/off-course/utils/jobs"
 	"github.com/geerew/off-course/utils/pagination"
+	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/spf13/afero"
@@ -41,23 +41,23 @@ type courses struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type courseResponse struct {
-	ID        string    `json:"id"`
-	Title     string    `json:"title"`
-	Path      string    `json:"path"`
-	HasCard   bool      `json:"hasCard"`
-	Available bool      `json:"available"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ID        string         `json:"id"`
+	Title     string         `json:"title"`
+	Path      string         `json:"path"`
+	HasCard   bool           `json:"hasCard"`
+	Available bool           `json:"available"`
+	CreatedAt types.DateTime `json:"createdAt"`
+	UpdatedAt types.DateTime `json:"updatedAt"`
 
 	// Scan status
 	ScanStatus string `json:"scanStatus"`
 
 	// Progress
-	Started           bool      `json:"started"`
-	StartedAt         time.Time `json:"startedAt"`
-	Percent           int       `json:"percent"`
-	CompletedAt       time.Time `json:"completedAt"`
-	ProgressUpdatedAt time.Time `json:"progressUpdatedAt"`
+	Started           bool           `json:"started"`
+	StartedAt         types.DateTime `json:"startedAt"`
+	Percent           int            `json:"percent"`
+	CompletedAt       types.DateTime `json:"completedAt"`
+	ProgressUpdatedAt types.DateTime `json:"progressUpdatedAt"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -116,7 +116,7 @@ func (api *courses) getCourses(c *fiber.Ctx) error {
 			return errorResponse(c, fiber.StatusBadRequest, "Invalid tags parameter", err)
 		}
 
-		courseIds, err := api.courseTagDao.ListCourseIdsByTags(filtered, nil)
+		courseIds, err := api.courseTagDao.ListCourseIdsByTags(filtered, nil, nil)
 		if err != nil {
 			return errorResponse(c, fiber.StatusInternalServerError, "Error looking up courses by tags", err)
 		}
@@ -169,7 +169,7 @@ func (api *courses) getCourses(c *fiber.Ctx) error {
 func (api *courses) getCourse(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	course, err := api.courseDao.Get(id, nil, nil)
+	course, err := api.courseDao.Get(id, nil)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -209,7 +209,7 @@ func (api *courses) createCourse(c *fiber.Ctx) error {
 	// Set the course to available
 	course.Available = true
 
-	if err := api.courseDao.Create(course); err != nil {
+	if err := api.courseDao.Create(course, nil); err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return errorResponse(c, fiber.StatusBadRequest, "A course with this path already exists", err)
 		}
@@ -245,7 +245,7 @@ func (api *courses) deleteCourse(c *fiber.Ctx) error {
 func (api *courses) getCard(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	course, err := api.courseDao.Get(id, nil, nil)
+	course, err := api.courseDao.Get(id, nil)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -277,7 +277,7 @@ func (api *courses) getAssets(c *fiber.Ctx) error {
 	expand := c.QueryBool("expand", false)
 
 	// Get the course
-	_, err := api.courseDao.Get(id, nil, nil)
+	_, err := api.courseDao.Get(id, nil)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Course not found", nil)
@@ -316,7 +316,7 @@ func (api *courses) getAsset(c *fiber.Ctx) error {
 	assetId := c.Params("asset")
 	expand := c.QueryBool("expand", false)
 
-	_, err := api.courseDao.Get(id, nil, nil)
+	_, err := api.courseDao.Get(id, nil)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Course not found", nil)
@@ -356,7 +356,7 @@ func (api *courses) getAssetAttachments(c *fiber.Ctx) error {
 	orderBy := c.Query("orderBy", "title asc")
 
 	// Get the course
-	_, err := api.courseDao.Get(id, nil, nil)
+	_, err := api.courseDao.Get(id, nil)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Course not found", nil)
@@ -406,7 +406,7 @@ func (api *courses) getAssetAttachment(c *fiber.Ctx) error {
 	attachmentId := c.Params("attachment")
 
 	// Get the course
-	_, err := api.courseDao.Get(id, nil, nil)
+	_, err := api.courseDao.Get(id, nil)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Course not found", nil)
@@ -452,7 +452,7 @@ func (api *courses) getTags(c *fiber.Ctx) error {
 	id := c.Params("id")
 
 	// Get the course
-	_, err := api.courseDao.Get(id, nil, nil)
+	_, err := api.courseDao.Get(id, nil)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Course not found", nil)

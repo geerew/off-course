@@ -1,30 +1,29 @@
 package models
 
-import "time"
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+import "github.com/geerew/off-course/utils/types"
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Course defines the model for a course  (table: courses)
 type Course struct {
-	BaseModel
-	Title     string
-	Path      string
-	CardPath  string
-	Available bool
+	BaseModel `db:":nested"`
+
+	Title     string `db:"title:required"`
+	Path      string `db:"path:required"`
+	CardPath  string `db:"card_path"`
+	Available bool   `db:"available"`
 
 	// --------------------------------
-	// Not in this table, but added via join
+	// Added via join
 	// --------------------------------
 
 	// Scan status
-	ScanStatus string
+	ScanStatus string `db_join:"scans:status:scan_status"`
 
 	// Course Progress
-	Started           bool
-	StartedAt         time.Time
-	Percent           int
-	CompletedAt       time.Time
-	ProgressUpdatedAt time.Time
+	Started           bool           `db_join:"courses_progress:started"`
+	StartedAt         types.DateTime `db_join:"courses_progress:started_at"`
+	Percent           int            `db_join:"courses_progress:percent"`
+	CompletedAt       types.DateTime `db_join:"courses_progress:completed_at"`
+	ProgressUpdatedAt types.DateTime `db_join:"courses_progress:updated_at:progress_updated_at"`
 }

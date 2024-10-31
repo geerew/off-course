@@ -4,7 +4,6 @@ package models
 
 import (
 	"database/sql"
-	"time"
 
 	"github.com/geerew/off-course/utils/types"
 )
@@ -13,25 +12,27 @@ import (
 
 // Asset defines the model for an asset (table: assets)
 type Asset struct {
-	BaseModel
+	BaseModel `db:":nested"`
 
-	CourseID string
-	Title    string
-	Prefix   sql.NullInt16
-	Chapter  string
-	Type     types.Asset
-	Path     string
-	Hash     string
+	CourseID string        `db:"course_id:required"`
+	Title    string        `db:"title:required"`
+	Prefix   sql.NullInt16 `db:"prefix"`
+	Chapter  string        `db:"chapter:required"`
+	Type     types.Asset   `db:"type:required"`
+	Path     string        `db:"path:required"`
+	Hash     string        `db:"hash:required"`
 
 	// --------------------------------
-	// Not in this table, but added via a join
+	// Added via a join
 	// --------------------------------
 
 	// Asset Progress
-	VideoPos    int
-	Completed   bool
-	CompletedAt time.Time
+	VideoPos    int            `db_join:"assets_progress:video_pos"`
+	Completed   bool           `db_join:"assets_progress:completed"`
+	CompletedAt types.DateTime `db_join:"assets_progress:completed_at"`
 
-	// Attachments
+	// --------------------------------
+	// Manually added
+	// --------------------------------
 	Attachments []*Attachment
 }

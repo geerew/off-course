@@ -4,15 +4,18 @@ package models
 
 // Tag defines the model for a tag (table: tags)
 type Tag struct {
-	BaseModel
+	BaseModel `db:":nested"`
 
-	Tag string
+	Tag string `db:"tag:required"`
 
 	// --------------------------------
-	// Not in this table, but added via a join
+	// Added via a join
 	// --------------------------------
 
-	// Courses
-	CourseCount int
-	CourseTags  []*CourseTag
+	CourseCount int `db_join:"courses_tags:id:course_count:COALESCE(COUNT(courses_tags.id), 0)"`
+
+	// --------------------------------
+	// Manually added
+	// --------------------------------
+	CourseTags []*CourseTag
 }

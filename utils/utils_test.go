@@ -5,6 +5,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -67,6 +68,29 @@ func Test_EncodeString(t *testing.T) {
 		res := EncodeString("/test/data")
 		require.Equal(t, "JTJGdGVzdCUyRmRhdGE=", res)
 	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func Test_CheckTruth(t *testing.T) {
+	checkTruthTests := []struct {
+		v   string
+		out bool
+	}{
+		{"123", true},
+		{"true", true},
+		{"", false},
+		{"false", false},
+		{"False", false},
+		{"FALSE", false},
+		{"\u0046alse", false},
+	}
+
+	for _, test := range checkTruthTests {
+		t.Run(test.v, func(t *testing.T) {
+			assert.Equal(t, test.out, CheckTruth(test.v))
+		})
+	}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -377,5 +401,33 @@ func Test_EscapeBackslashes(t *testing.T) {
 	for _, test := range tests {
 		result := EscapeBackslashes(test.input)
 		require.Equal(t, test.expected, result)
+	}
+}
+
+// -------------------------------------------------------
+
+func Test_SnakeCase(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"camelCase", "camel_case"},
+		{"PascalCase", "pascal_case"},
+		{"snake_case", "snake_case"},
+		{"Already_Snake_Case", "already_snake_case"},
+		{"UpperCase", "upper_case"},
+		{"lowercase", "lowercase"},
+		{"SimpleTest", "simple_test"},
+		{"TestID", "test_id"},
+		{"AnotherTestCase", "another_test_case"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			actual := SnakeCase(tt.input)
+			if actual != tt.expected {
+				t.Errorf("snakeCase(%q) = %q; want %q", tt.input, actual, tt.expected)
+			}
+		})
 	}
 }

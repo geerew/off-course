@@ -4,15 +4,15 @@ package models
 
 // CourseTag defines the model for a course tag  (table: courses_tags)
 type CourseTag struct {
-	BaseModel
+	BaseModel `db:":nested"`
 
-	TagId    string
-	CourseId string
+	TagId    string `db:"tag_id:required"`
+	CourseId string `db:"course_id:required"`
 
 	// --------------------------------
-	// Not in this table, but added via join
+	// Added via join
 	// --------------------------------
 
-	Course string
-	Tag    string
+	Course string `db_join:"courses:title"`
+	Tag    string `db_join:"tags:tag"`
 }

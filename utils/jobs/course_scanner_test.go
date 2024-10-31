@@ -318,7 +318,7 @@ func TestCourseScanner_CourseProcessor(t *testing.T) {
 		err := CourseProcessor(scanner, testData[0].Scan)
 		require.Nil(t, err)
 
-		c, err := scanner.courseDao.Get(testData[0].ID, nil, nil)
+		c, err := scanner.courseDao.Get(testData[0].ID, nil)
 		require.Nil(t, err)
 		require.Equal(t, filepath.Join(testData[0].Path, "card.jpg"), c.CardPath)
 
@@ -334,7 +334,7 @@ func TestCourseScanner_CourseProcessor(t *testing.T) {
 		err = CourseProcessor(scanner, testData[0].Scan)
 		require.Nil(t, err)
 
-		c, err = scanner.courseDao.Get(testData[0].ID, nil, nil)
+		c, err = scanner.courseDao.Get(testData[0].ID, nil)
 		require.Nil(t, err)
 		require.Empty(t, c.CardPath)
 		require.Empty(t, testData[0].CardPath)
@@ -352,7 +352,7 @@ func TestCourseScanner_CourseProcessor(t *testing.T) {
 		err = CourseProcessor(scanner, testData[0].Scan)
 		require.Nil(t, err)
 
-		c, err = scanner.courseDao.Get(testData[0].ID, nil, nil)
+		c, err = scanner.courseDao.Get(testData[0].ID, nil)
 		require.Nil(t, err)
 		require.Equal(t, filepath.Join(testData[0].Path, "card.jpg"), c.CardPath)
 	})
@@ -372,7 +372,7 @@ func TestCourseScanner_CourseProcessor(t *testing.T) {
 		require.Nil(t, err)
 
 		err = CourseProcessor(scanner, testData[0].Scan)
-		require.ErrorContains(t, err, "no such column: card_path")
+		require.ErrorContains(t, err, "no such column: "+courseDao.Table()+".card_path")
 	})
 
 	t.Run("ignore files", func(t *testing.T) {
@@ -735,7 +735,7 @@ func TestCourseScanner_CourseProcessor(t *testing.T) {
 		err := CourseProcessor(scanner, testData[0].Scan)
 		require.Nil(t, err)
 
-		updatedCourse, err := scanner.courseDao.Get(testData[0].ID, nil, nil)
+		updatedCourse, err := scanner.courseDao.Get(testData[0].ID, nil)
 		require.Nil(t, err)
 		require.NotEqual(t, testData[0].UpdatedAt, updatedCourse.UpdatedAt)
 	})

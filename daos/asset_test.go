@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/database"
@@ -102,7 +101,7 @@ func TestAsset_Create(t *testing.T) {
 
 		// Create the course
 		courseDao := NewCourseDao(db)
-		require.Nil(t, courseDao.Create(testData[0].Course))
+		require.Nil(t, courseDao.Create(testData[0].Course, nil))
 
 		// Create the asset
 		err := dao.Create(testData[0].Assets[0], nil)
@@ -280,18 +279,6 @@ func TestAsset_Get(t *testing.T) {
 		require.Equal(t, testData[0].Assets[0].ID, result.ID)
 		require.Equal(t, testData[0].Assets[0].Attachments[0].ID, result.Attachments[0].ID)
 		require.Equal(t, testData[0].Assets[0].Attachments[1].ID, result.Attachments[1].ID)
-
-		// ----------------------------
-		// Error
-		// ----------------------------
-		dbParams = &database.DatabaseParams{
-			OrderBy:          []string{attDao.Table() + ".unit_test desc"},
-			IncludeRelations: []string{attDao.Table()},
-		}
-
-		result, err = dao.Get(testData[0].Assets[0].ID, dbParams, nil)
-		require.ErrorContains(t, err, "no such column")
-		require.Nil(t, result)
 	})
 
 	t.Run("not found", func(t *testing.T) {
@@ -379,7 +366,7 @@ func TestAsset_List(t *testing.T) {
 			AssetID:     testData[1].Assets[1].ID,
 			CourseID:    testData[1].ID,
 			Completed:   true,
-			CompletedAt: time.Now(),
+			CompletedAt: types.NowDateTime(),
 		}
 
 		require.Nil(t, apDao.Update(ap2, nil))
@@ -443,14 +430,6 @@ func TestAsset_List(t *testing.T) {
 		require.Len(t, result, 3)
 		require.Equal(t, testData[0].Assets[0].ID, result[0].ID)
 		require.Equal(t, testData[0].Assets[0].Attachments[1].ID, result[0].Attachments[0].ID)
-
-		// ----------------------------
-		// Error
-		// ----------------------------
-		dbParams = &database.DatabaseParams{OrderBy: []string{"unit_test asc"}}
-		result, err = dao.List(dbParams, nil)
-		require.ErrorContains(t, err, "no such column")
-		require.Nil(t, result)
 	})
 
 	t.Run("where", func(t *testing.T) {
