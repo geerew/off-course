@@ -3,6 +3,8 @@
 	import '@fontsource/source-sans-pro/700.css';
 	import '../app.css';
 
+	import { dev } from '$app/environment';
+	import { TailwindIndicator } from '$lib/components';
 	import { Toaster } from 'svelte-sonner';
 
 	let { children } = $props();
@@ -12,4 +14,8 @@
 
 <main>
 	{@render children()}
+
+	{#if dev}
+		<TailwindIndicator />
+	{/if}
 </main>
