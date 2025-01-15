@@ -36,19 +36,15 @@
 	}
 }
 
-@base {
-	*,
-	::after,
-	::before,
-	::backdrop,
-	::file-selector-button {
-		border-color: var(--color-gray-200, currentColor);
-	}
-}
-
 @layer components {
 	:is(a, button, input, textarea, summary) {
 		@apply outline-none;
 		@apply focus-visible:ring-1 focus-visible:ring-blue-400;
+	}
+}
+
+@layer utilities {
+	.container-px {
+		@apply px-6 lg:px-8;
 	}
 }

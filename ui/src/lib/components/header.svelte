@@ -19,8 +19,8 @@
 	}
 </script>
 
-<header>
-	<div class="flex items-center justify-between py-6" aria-label="Global">
+<header class="border-background-alt-3 border-b">
+	<div class="container-px flex items-center justify-between py-6">
 		<!-- Logo -->
 		<div class="flex flex-1">
 			<a href="/" class="-m-1.5 p-1.5">
@@ -31,7 +31,7 @@
 		<!-- Menu -->
 		<nav class="flex gap-x-12">
 			{#each menu as item}
-				<a
+				<Button.Root
 					href={item.href}
 					class={cn(
 						'text-foreground-alt-1 hover:text-foreground relative rounded-lg px-2.5 py-1.5 leading-6 font-semibold duration-200',
@@ -41,7 +41,7 @@
 					aria-current={page.url.pathname === item.matcher}
 				>
 					{item.label}
-				</a>
+				</Button.Root>
 			{/each}
 		</nav>
 
