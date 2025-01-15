@@ -11,7 +11,5 @@
 <Toaster theme="dark" richColors />
 
 <main>
-	<div class="h-screen w-screen px-5">
-		{@render children()}
-	</div>
+	{@render children()}
 </main>
