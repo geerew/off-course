@@ -117,7 +117,7 @@
 </script>
 
 {#if auth.user !== null}
-	<div class="py-4">
+	<div class="py-8">
 		<div class="mx-auto flex max-w-2xl flex-col place-content-center items-start gap-5">
 			<!-- Username -->
 			<div class="flex flex-col gap-3">
