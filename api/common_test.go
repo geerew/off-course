@@ -13,13 +13,14 @@ import (
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/pagination"
+	"github.com/geerew/off-course/utils/types"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func setup(t *testing.T) (*Router, context.Context) {
+func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Context) {
 	t.Helper()
 
 	// Logger
@@ -54,10 +55,9 @@ func setup(t *testing.T) (*Router, context.Context) {
 		AppFs:      appFs,
 		CourseScan: courseScan,
 		Logger:     logger,
-		SkipAuth:   true,
 	}
 
-	router := NewRouter(config)
+	router := devRouter(config, id, role)
 
 	return router, context.Background()
 }
@@ -67,7 +67,7 @@ func setup(t *testing.T) (*Router, context.Context) {
 func requestHelper(t *testing.T, router *Router, req *http.Request) (int, []byte, error) {
 	t.Helper()
 
-	resp, err := router.Router.Test(req)
+	resp, err := router.App.Test(req)
 	if err != nil {
 		return -1, nil, err
 	}

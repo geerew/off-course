@@ -146,7 +146,6 @@ func (api *tagsAPI) createTag(c *fiber.Ctx) error {
 	tag.ID = ""
 	err := api.dao.CreateTag(c.UserContext(), tag)
 	if err != nil {
-		fmt.Println(err)
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return errorResponse(c, fiber.StatusBadRequest, "Tag already exists", err)
 		}

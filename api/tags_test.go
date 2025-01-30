@@ -12,6 +12,7 @@ import (
 
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/pagination"
+	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/require"
 )
@@ -20,7 +21,7 @@ import (
 
 func TestTags_GetTags(t *testing.T) {
 	t.Run("200 (empty)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/", nil))
 		require.NoError(t, err)
@@ -32,7 +33,7 @@ func TestTags_GetTags(t *testing.T) {
 	})
 
 	t.Run("200 (found)", func(t *testing.T) {
-		router, ctx := setup(t)
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.Nil(t, router.dao.CreateCourse(ctx, course))
@@ -56,7 +57,7 @@ func TestTags_GetTags(t *testing.T) {
 	})
 
 	t.Run("200 (orderBy)", func(t *testing.T) {
-		router, ctx := setup(t)
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		course1 := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.Nil(t, router.dao.CreateCourse(ctx, course1))
@@ -112,7 +113,7 @@ func TestTags_GetTags(t *testing.T) {
 	})
 
 	t.Run("200 (filter)", func(t *testing.T) {
-		router, ctx := setup(t)
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		tag_keys := []string{"slightly", "light", "lighter", "highlight", "ghoul", "lightning", "delight"}
 
@@ -187,7 +188,7 @@ func TestTags_GetTags(t *testing.T) {
 	})
 
 	t.Run("200 (pagination)", func(t *testing.T) {
-		router, ctx := setup(t)
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		tags := []*models.Tag{}
 		for i := range 17 {
@@ -231,7 +232,7 @@ func TestTags_GetTags(t *testing.T) {
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		// Drop the courses table
 		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
@@ -247,7 +248,7 @@ func TestTags_GetTags(t *testing.T) {
 
 func TestTags_GetTag(t *testing.T) {
 	t.Run("200 (found)", func(t *testing.T) {
-		router, ctx := setup(t)
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		tag1 := &models.Tag{Tag: "Go"}
 		require.Nil(t, router.dao.CreateTag(ctx, tag1))
@@ -297,7 +298,7 @@ func TestTags_GetTag(t *testing.T) {
 	})
 
 	t.Run("404 (not found)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/test", nil))
 		require.NoError(t, err)
@@ -306,7 +307,7 @@ func TestTags_GetTag(t *testing.T) {
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
 		require.NoError(t, err)
@@ -321,7 +322,7 @@ func TestTags_GetTag(t *testing.T) {
 
 func TestTags_CreateTag(t *testing.T) {
 	t.Run("201 (created)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/tags/", strings.NewReader(`{"tag": "test"}`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -338,7 +339,7 @@ func TestTags_CreateTag(t *testing.T) {
 	})
 
 	t.Run("400 (bind error)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/tags/", strings.NewReader(`{`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -350,7 +351,7 @@ func TestTags_CreateTag(t *testing.T) {
 	})
 
 	t.Run("400 (invalid data)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/tags/", strings.NewReader(`{"tag": ""}`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -362,7 +363,7 @@ func TestTags_CreateTag(t *testing.T) {
 	})
 
 	t.Run("400 (existing tag)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/tags/", strings.NewReader(`{"tag": "test"}`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -379,7 +380,7 @@ func TestTags_CreateTag(t *testing.T) {
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
 		require.NoError(t, err)
@@ -398,7 +399,7 @@ func TestTags_CreateTag(t *testing.T) {
 
 func TestTags_UpdateTag(t *testing.T) {
 	t.Run("200 (found)", func(t *testing.T) {
-		router, ctx := setup(t)
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		tag1 := &models.Tag{Tag: "Go"}
 		require.Nil(t, router.dao.CreateTag(ctx, tag1))
@@ -432,7 +433,7 @@ func TestTags_UpdateTag(t *testing.T) {
 	})
 
 	t.Run("400 (invalid data)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		req := httptest.NewRequest(http.MethodPut, "/api/tags/test", strings.NewReader(`'`))
 		req.Header.Set("Content-Type", "application/json")
@@ -444,7 +445,7 @@ func TestTags_UpdateTag(t *testing.T) {
 	})
 
 	t.Run("404 (not found)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		req := httptest.NewRequest(http.MethodPut, "/api/tags/invalid", strings.NewReader(`{"tag":"go"}`))
 		req.Header.Set("Content-Type", "application/json")
@@ -456,7 +457,7 @@ func TestTags_UpdateTag(t *testing.T) {
 	})
 
 	t.Run("400 (duplicate)", func(t *testing.T) {
-		router, ctx := setup(t)
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		tag1 := &models.Tag{Tag: "Go"}
 		require.Nil(t, router.dao.CreateTag(ctx, tag1))
@@ -485,7 +486,7 @@ func TestTags_UpdateTag(t *testing.T) {
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
 		require.NoError(t, err)
@@ -503,7 +504,7 @@ func TestTags_UpdateTag(t *testing.T) {
 
 func TestTags_DeleteTag(t *testing.T) {
 	t.Run("204 (deleted)", func(t *testing.T) {
-		router, ctx := setup(t)
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		tag1 := &models.Tag{Tag: "Go"}
 		require.Nil(t, router.dao.CreateTag(ctx, tag1))
@@ -522,7 +523,7 @@ func TestTags_DeleteTag(t *testing.T) {
 	})
 
 	t.Run("204 (not found)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/tags/test", nil))
 		require.NoError(t, err)
@@ -530,7 +531,7 @@ func TestTags_DeleteTag(t *testing.T) {
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
 		require.NoError(t, err)

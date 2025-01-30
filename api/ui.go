@@ -14,11 +14,11 @@ import (
 
 func (r *Router) bindUi() {
 	if r.config.IsProduction {
-		r.Router.Use(filesystem.New(filesystem.Config{
+		r.App.Use(filesystem.New(filesystem.Config{
 			Root: http.FS(ui.Assets()),
 		}))
 	} else {
-		r.Router.Use(func(c *fiber.Ctx) error {
+		r.App.Use(func(c *fiber.Ctx) error {
 			if strings.HasPrefix(c.OriginalURL(), "/api") {
 				return c.Next()
 			}

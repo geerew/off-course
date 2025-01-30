@@ -9,8 +9,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// TODO - Add unit tests for the auth routes
-
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type userAPI struct {
@@ -25,7 +23,7 @@ func (r *Router) initUserRoutes() {
 
 	userGroup := r.api.Group("/users")
 
-	userGroup.Get("", userAPI.getUsers)
+	userGroup.Get("", protectedRoute, userAPI.getUsers)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

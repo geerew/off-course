@@ -19,7 +19,7 @@ import (
 
 func TestAuth_Register(t *testing.T) {
 	t.Run("201 (created)", func(t *testing.T) {
-		router, ctx := setup(t)
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(`{"username": "test", "password": "abcd1234" }`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -36,7 +36,7 @@ func TestAuth_Register(t *testing.T) {
 	})
 
 	t.Run("400 (bind error)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(`{`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -48,7 +48,7 @@ func TestAuth_Register(t *testing.T) {
 	})
 
 	t.Run("400 (invalid data)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		// Missing both
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(`{}`))
@@ -88,7 +88,7 @@ func TestAuth_Register(t *testing.T) {
 	})
 
 	t.Run("400 (existing user)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(`{"username": "test", "password": "abcd1234" }`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -116,7 +116,7 @@ func TestAuth_Register(t *testing.T) {
 
 func TestAuth_Bootstrap(t *testing.T) {
 	t.Run("201 (created)", func(t *testing.T) {
-		router, ctx := setup(t)
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		// Create user
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/bootstrap", strings.NewReader(`{"username": "test", "password": "abcd1234" }`))
@@ -139,7 +139,7 @@ func TestAuth_Bootstrap(t *testing.T) {
 
 func TestAuth_Login(t *testing.T) {
 	t.Run("200 (success)", func(t *testing.T) {
-		router, ctx := setup(t)
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		user := &models.User{
 			Username:     "test",
@@ -161,7 +161,7 @@ func TestAuth_Login(t *testing.T) {
 	})
 
 	t.Run("400 (bind error)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -173,7 +173,7 @@ func TestAuth_Login(t *testing.T) {
 	})
 
 	t.Run("400 (invalid data)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		// Missing both
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{}`))
@@ -213,7 +213,7 @@ func TestAuth_Login(t *testing.T) {
 	})
 
 	t.Run("401 (invalid user)", func(t *testing.T) {
-		router, ctx := setup(t)
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		user := &models.User{
 			Username:     "test",
@@ -233,7 +233,7 @@ func TestAuth_Login(t *testing.T) {
 	})
 
 	t.Run("401 (invalid password)", func(t *testing.T) {
-		router, ctx := setup(t)
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		user := &models.User{
 			Username:     "test",

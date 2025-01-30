@@ -26,7 +26,7 @@ import (
 
 // Router defines a router
 type Router struct {
-	Router       *fiber.App
+	App          *fiber.App
 	api          fiber.Router
 	config       *RouterConfig
 	dao          *dao.DAO
@@ -45,7 +45,6 @@ type RouterConfig struct {
 	CourseScan   *coursescan.CourseScan
 	HttpAddr     string
 	IsProduction bool
-	SkipAuth     bool
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -58,16 +57,37 @@ func NewRouter(config *RouterConfig) *Router {
 		logDao: dao.NewDAO(config.DbManager.LogsDb),
 	}
 
-	sessionStorage := storage.NewSqlite(config.DbManager.DataDb.DB(), "sessions")
+	r.createSessionStore()
 
-	r.sessionStore = session.New(session.Config{
-		Storage:        sessionStorage,
-		KeyLookup:      "cookie:session",
-		Expiration:     7 * (24 * time.Hour),
-		CookieHTTPOnly: true,
+	r.App = fiber.New(fiber.Config{
+		DisableStartupMessage: true,
 	})
 
-	r.initRouter()
+	r.initMiddleware()
+	r.initRoutes()
+
+	return r
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// devRouter creates a new router for use in development. The main difference is the lack of
+// middleware and the use of a predefined user id and role
+func devRouter(config *RouterConfig, id string, role types.UserRole) *Router {
+	r := &Router{
+		config: config,
+		dao:    dao.NewDAO(config.DbManager.DataDb),
+		logDao: dao.NewDAO(config.DbManager.LogsDb),
+	}
+
+	r.createSessionStore()
+
+	r.App = fiber.New(fiber.Config{
+		DisableStartupMessage: true,
+	})
+
+	r.App.Use(devAuthMiddleware(id, role))
+	r.initRoutes()
 
 	return r
 }
@@ -88,32 +108,32 @@ func (r *Router) Serve() error {
 		"Server started at", color.CyanString("http://%s\n", r.config.HttpAddr),
 	)
 
-	return r.Router.Listener(ln)
+	return r.App.Listener(ln)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Private
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// initRouter initializes the router (API and UI)
-func (r *Router) initRouter() {
-	r.Router = fiber.New(fiber.Config{
-		DisableStartupMessage: true,
-	})
-
+// initMiddleware initializes the middleware
+func (r *Router) initMiddleware() {
 	// Middleware
-	r.Router.Use(loggerMiddleware(r.config))
-	r.Router.Use(corsMiddleWare())
-	if !r.config.SkipAuth {
-		r.Router.Use(bootstrapMiddleware(r))
-		r.Router.Use(authMiddleware(r))
-	}
+	r.App.Use(loggerMiddleware(r.config))
+	r.App.Use(corsMiddleWare())
+	r.App.Use(bootstrapMiddleware(r))
+	r.App.Use(authMiddleware(r))
 
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// initRoutes initializes the routes
+func (r *Router) initRoutes() {
 	// UI
 	r.bindUi()
 
 	// API
-	r.api = r.Router.Group("/api")
+	r.api = r.App.Group("/api")
 	r.initAuthRoutes()
 	r.initFsRoutes()
 	r.initCourseRoutes()
@@ -121,6 +141,20 @@ func (r *Router) initRouter() {
 	r.initTagRoutes()
 	r.initUserRoutes()
 	r.initLogRoutes()
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// createSessionStore creates the session store
+func (r *Router) createSessionStore() {
+	sessionStorage := storage.NewSqlite(r.config.DbManager.DataDb.DB(), "sessions")
+
+	r.sessionStore = session.New(session.Config{
+		Storage:        sessionStorage,
+		KeyLookup:      "cookie:session",
+		Expiration:     7 * (24 * time.Hour),
+		CookieHTTPOnly: true,
+	})
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -19,7 +19,7 @@ import (
 
 func TestUsers_GetUsers(t *testing.T) {
 	t.Run("200 (empty)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/", nil))
 		require.NoError(t, err)
@@ -31,7 +31,7 @@ func TestUsers_GetUsers(t *testing.T) {
 	})
 
 	t.Run("200 (found)", func(t *testing.T) {
-		router, ctx := setup(t)
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		for i := range 5 {
 			users := &models.User{
@@ -53,7 +53,7 @@ func TestUsers_GetUsers(t *testing.T) {
 	})
 
 	t.Run("200 (orderBy)", func(t *testing.T) {
-		router, ctx := setup(t)
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		users := []*models.User{}
 		for i := range 5 {
@@ -90,7 +90,7 @@ func TestUsers_GetUsers(t *testing.T) {
 	})
 
 	t.Run("200 (pagination)", func(t *testing.T) {
-		router, ctx := setup(t)
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		users := []*models.User{}
 		for i := range 17 {
@@ -138,8 +138,17 @@ func TestUsers_GetUsers(t *testing.T) {
 		require.Equal(t, users[16].ID, userResp[6].ID)
 	})
 
+	t.Run("403 (not admin)", func(t *testing.T) {
+		router, _ := setup(t, "user", types.UserRoleUser)
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusForbidden, status)
+		require.Equal(t, `{"message":"User is not an admin"}`, string(body))
+	})
+
 	t.Run("500 (internal error)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		// Drop the users table
 		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.USER_TABLE)
@@ -149,4 +158,5 @@ func TestUsers_GetUsers(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusInternalServerError, status)
 	})
+
 }

@@ -199,6 +199,17 @@ func authMiddleware(r *Router) fiber.Handler {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// devAuthMiddleware sets the id, role (for use in development only)
+func devAuthMiddleware(id string, role types.UserRole) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		c.Locals("user.id", id)
+		c.Locals("user.role", role.String())
+		return c.Next()
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // isDevUIPath checks if the request is for a dev UI path when NOT running in
 // production
 func (r *Router) isDevUIPath(c *fiber.Ctx) bool {

@@ -11,6 +11,7 @@ import (
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/appFs"
+	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/spf13/afero"
@@ -140,4 +141,24 @@ func handleHtml(c *fiber.Ctx, appFs *appFs.AppFs, asset *models.Asset) error {
 
 	c.Set(fiber.HeaderContentType, "text/html")
 	return c.Status(fiber.StatusOK).Send(content)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// protectedRoute protects a route
+//
+// Ex: myGroup.Get("/my-protected-route", protectedRoute, myHandler)
+func protectedRoute(c *fiber.Ctx) error {
+	userRole, ok := c.Locals("user.role").(string)
+	if !ok {
+		return errorResponse(c, fiber.StatusUnauthorized, "Invalid user", nil)
+	}
+
+	if userRole != types.UserRoleAdmin.String() {
+		return errorResponse(c, fiber.StatusForbidden, "User is not an admin", nil)
+	}
+
+	c.Next()
+
+	return nil
 }
