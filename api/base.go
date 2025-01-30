@@ -119,6 +119,7 @@ func (r *Router) initRouter() {
 	r.initCourseRoutes()
 	r.initScanRoutes()
 	r.initTagRoutes()
+	r.initUserRoutes()
 	r.initLogRoutes()
 }
 

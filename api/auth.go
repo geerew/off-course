@@ -40,7 +40,7 @@ func (r *Router) initAuthRoutes() {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api authAPI) register(c *fiber.Ctx) error {
-	userReq := &UserRequest{}
+	userReq := &userRequest{}
 
 	if err := c.BodyParser(userReq); err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
@@ -112,7 +112,7 @@ func (api authAPI) bootstrap(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api authAPI) login(c *fiber.Ctx) error {
-	userReq := &UserRequest{}
+	userReq := &userRequest{}
 
 	if err := c.BodyParser(userReq); err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
@@ -187,7 +187,7 @@ func (api authAPI) getMe(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error getting user information", err)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(&UserResponse{
+	return c.Status(fiber.StatusOK).JSON(&userResponse{
 		ID:          user.ID,
 		Username:    user.Username,
 		DisplayName: user.DisplayName,
@@ -209,7 +209,7 @@ func (api authAPI) updateMe(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error getting user information", err)
 	}
 
-	userReq := &UserRequest{}
+	userReq := &userRequest{}
 	if err := c.BodyParser(userReq); err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
 	}
@@ -235,7 +235,7 @@ func (api authAPI) updateMe(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error updating user", err)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(&UserResponse{
+	return c.Status(fiber.StatusOK).JSON(&userResponse{
 		ID:          user.ID,
 		Username:    user.Username,
 		DisplayName: user.DisplayName,
@@ -257,7 +257,7 @@ func (api authAPI) deleteMe(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error getting user information", err)
 	}
 
-	userReq := &UserRequest{}
+	userReq := &userRequest{}
 	if err := c.BodyParser(userReq); err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
 	}

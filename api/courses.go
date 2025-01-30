@@ -72,11 +72,6 @@ func (r *Router) initCourseRoutes() {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-const bufferSize = 1024 * 8                 // 8KB per chunk, adjust as needed
-const maxInitialChunkSize = 1024 * 1024 * 5 // 5MB, adjust as needed
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 func (api coursesAPI) getCourses(c *fiber.Ctx) error {
 	orderBy := c.Query("orderBy", models.COURSE_TABLE+".created_at desc")
 	titles := c.Query("titles", "")

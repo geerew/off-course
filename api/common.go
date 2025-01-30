@@ -44,6 +44,11 @@ func filter(s string) ([]string, error) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+const bufferSize = 1024 * 8                 // 8KB per chunk, adjust as needed
+const maxInitialChunkSize = 1024 * 1024 * 5 // 5MB, adjust as needed
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // handleVideo handles the video streaming logic
 func handleVideo(c *fiber.Ctx, appFs *appFs.AppFs, asset *models.Asset) error {
 	// Open the video

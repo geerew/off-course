@@ -1,0 +1,152 @@
+package api
+
+import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"testing"
+	"time"
+
+	"github.com/geerew/off-course/models"
+	"github.com/geerew/off-course/utils/pagination"
+	"github.com/geerew/off-course/utils/security"
+	"github.com/geerew/off-course/utils/types"
+	"github.com/stretchr/testify/require"
+)
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestUsers_GetUsers(t *testing.T) {
+	t.Run("200 (empty)", func(t *testing.T) {
+		router, _ := setup(t)
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, _ := unmarshalHelper[userResponse](t, body)
+		require.Zero(t, int(paginationResp.TotalItems))
+		require.Zero(t, len(paginationResp.Items))
+	})
+
+	t.Run("200 (found)", func(t *testing.T) {
+		router, ctx := setup(t)
+
+		for i := range 5 {
+			users := &models.User{
+				Username:     fmt.Sprintf("user %d", i),
+				DisplayName:  fmt.Sprintf("User %d", i),
+				PasswordHash: security.RandomString(10),
+				Role:         types.UserRoleUser,
+			}
+			require.NoError(t, router.dao.CreateUser(ctx, users))
+		}
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, userResp := unmarshalHelper[userResponse](t, body)
+		require.Equal(t, 5, int(paginationResp.TotalItems))
+		require.Len(t, userResp, 5)
+	})
+
+	t.Run("200 (orderBy)", func(t *testing.T) {
+		router, ctx := setup(t)
+
+		users := []*models.User{}
+		for i := range 5 {
+			user := &models.User{
+				Username:     fmt.Sprintf("user %d", i),
+				DisplayName:  fmt.Sprintf("User %d", i),
+				PasswordHash: security.RandomString(10),
+				Role:         types.UserRoleUser,
+			}
+			require.NoError(t, router.dao.CreateUser(ctx, user))
+			users = append(users, user)
+			time.Sleep(1 * time.Millisecond)
+		}
+
+		// CREATED_AT ASC
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/?orderBy="+models.USER_TABLE+".created_at%20asc", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, userResp := unmarshalHelper[userResponse](t, body)
+		require.Equal(t, 5, int(paginationResp.TotalItems))
+		require.Len(t, userResp, 5)
+		require.Equal(t, users[0].ID, userResp[0].ID)
+
+		// CREATED_AT DESC
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/?orderBy="+models.USER_TABLE+".created_at%20desc", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, userResp = unmarshalHelper[userResponse](t, body)
+		require.Equal(t, 5, int(paginationResp.TotalItems))
+		require.Len(t, userResp, 5)
+		require.Equal(t, users[4].ID, userResp[0].ID)
+	})
+
+	t.Run("200 (pagination)", func(t *testing.T) {
+		router, ctx := setup(t)
+
+		users := []*models.User{}
+		for i := range 17 {
+			user := &models.User{
+				Username:     fmt.Sprintf("user %d", i),
+				DisplayName:  fmt.Sprintf("User %d", i),
+				PasswordHash: security.RandomString(10),
+				Role:         types.UserRoleUser,
+			}
+			require.NoError(t, router.dao.CreateUser(ctx, user))
+			users = append(users, user)
+		}
+
+		// Get the first page (10 users)
+		params := url.Values{
+			"orderBy":                    {models.USER_TABLE + ".created_at asc"},
+			pagination.PageQueryParam:    {"1"},
+			pagination.PerPageQueryParam: {"10"},
+		}
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/?"+params.Encode(), nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, userResp := unmarshalHelper[userResponse](t, body)
+		require.Equal(t, 17, int(paginationResp.TotalItems))
+		require.Len(t, paginationResp.Items, 10)
+		require.Equal(t, users[0].ID, userResp[0].ID)
+		require.Equal(t, users[9].ID, userResp[9].ID)
+
+		// Get the second page (7 users)
+		params = url.Values{
+			"orderBy":                    {models.USER_TABLE + ".created_at asc"},
+			pagination.PageQueryParam:    {"2"},
+			pagination.PerPageQueryParam: {"10"},
+		}
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/?"+params.Encode(), nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, userResp = unmarshalHelper[userResponse](t, body)
+		require.Equal(t, 17, int(paginationResp.TotalItems))
+		require.Len(t, paginationResp.Items, 7)
+		require.Equal(t, users[10].ID, userResp[0].ID)
+		require.Equal(t, users[16].ID, userResp[6].ID)
+	})
+
+	t.Run("500 (internal error)", func(t *testing.T) {
+		router, _ := setup(t)
+
+		// Drop the users table
+		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.USER_TABLE)
+		require.NoError(t, err)
+
+		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusInternalServerError, status)
+	})
+}
