@@ -34,6 +34,7 @@ func errorResponse(c *fiber.Ctx, status int, message string, err error) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// filter is a helper method to split a string by commas and trim the spaces
 func filter(s string) ([]string, error) {
 	unescaped, err := url.QueryUnescape(s)
 	if err != nil {
@@ -147,7 +148,9 @@ func handleHtml(c *fiber.Ctx, appFs *appFs.AppFs, asset *models.Asset) error {
 
 // protectedRoute protects a route
 //
-// Ex: myGroup.Get("/my-protected-route", protectedRoute, myHandler)
+// Example:
+//
+//	group.Get("/my-route", protectedRoute, myHandler)
 func protectedRoute(c *fiber.Ctx) error {
 	userRole, ok := c.Locals("user.role").(string)
 	if !ok {
@@ -158,7 +161,5 @@ func protectedRoute(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusForbidden, "User is not an admin", nil)
 	}
 
-	c.Next()
-
-	return nil
+	return c.Next()
 }

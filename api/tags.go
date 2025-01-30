@@ -35,9 +35,9 @@ func (r *Router) initTagRoutes() {
 	tagGroup := r.api.Group("/tags")
 	tagGroup.Get("", tagsAPI.getTags)
 	tagGroup.Get("/:name", tagsAPI.getTag)
-	tagGroup.Post("", tagsAPI.createTag)
-	tagGroup.Put("/:id", tagsAPI.updateTag)
-	tagGroup.Delete("/:id", tagsAPI.deleteTag)
+	tagGroup.Post("", protectedRoute, tagsAPI.createTag)
+	tagGroup.Put("/:id", protectedRoute, tagsAPI.updateTag)
+	tagGroup.Delete("/:id", protectedRoute, tagsAPI.deleteTag)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

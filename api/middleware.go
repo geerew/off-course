@@ -92,6 +92,9 @@ func corsMiddleWare() fiber.Handler {
 
 // bootstrapMiddleware checks if the app is bootstrapped. If not, it redirects
 // to /auth/bootstrap
+//
+// Bootstrapping is the process of setting up the app for the first time. It involves
+// the creation of 1 admin user, which the /auth/bootstrap endpoint handles
 func bootstrapMiddleware(r *Router) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		// If not bootstrapped, for everything through /auth/bootstrap or
@@ -150,6 +153,7 @@ func authMiddleware(r *Router) fiber.Handler {
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
+		// The session is fresh, force the user to login or register
 		if session.Fresh() {
 			// API - Only allow login and register
 			if strings.HasPrefix(c.OriginalURL(), "/api") {
@@ -186,7 +190,7 @@ func authMiddleware(r *Router) fiber.Handler {
 			return c.SendStatus(fiber.StatusUnauthorized)
 		}
 
-		if userRole != "admin" && r.isAdminSection(c) {
+		if userRole != "admin" && r.isProtectedUIPage(c) {
 			return c.Redirect("/")
 		}
 
@@ -226,8 +230,8 @@ func (r *Router) isDevUIPath(c *fiber.Ctx) bool {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// isAdminSection checks if the request is intended for an admin section
-func (r *Router) isAdminSection(c *fiber.Ctx) bool {
+// isProtectedUIPage checks if the request is intended for a protected UI page
+func (r *Router) isProtectedUIPage(c *fiber.Ctx) bool {
 	return strings.HasPrefix(c.OriginalURL(), "/admin")
 }
 

@@ -36,8 +36,8 @@ func (r *Router) initScanRoutes() {
 	}
 
 	scanGroup := r.api.Group("/scans")
-	scanGroup.Get("/:courseId", scansAPI.getScan)
-	scanGroup.Post("", scansAPI.createScan)
+	scanGroup.Get("/:courseId", protectedRoute, scansAPI.getScan)
+	scanGroup.Post("", protectedRoute, scansAPI.createScan)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

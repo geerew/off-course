@@ -30,8 +30,8 @@ func (r *Router) initLogRoutes() {
 	}
 
 	logGroup := r.api.Group("/logs")
-	logGroup.Get("/", logsAPI.getLogs)
-	logGroup.Get("/types", logsAPI.getLogTypes)
+	logGroup.Get("/", protectedRoute, logsAPI.getLogs)
+	logGroup.Get("/types", protectedRoute, logsAPI.getLogTypes)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

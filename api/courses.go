@@ -46,8 +46,8 @@ func (r *Router) initCourseRoutes() {
 	// Course
 	courseGroup.Get("", coursesAPI.getCourses)
 	courseGroup.Get("/:id", coursesAPI.getCourse)
-	courseGroup.Post("", coursesAPI.createCourse)
-	courseGroup.Delete("/:id", coursesAPI.deleteCourse)
+	courseGroup.Post("", protectedRoute, coursesAPI.createCourse)
+	courseGroup.Delete("/:id", protectedRoute, coursesAPI.deleteCourse)
 
 	// Course card
 	courseGroup.Head("/:id/card", coursesAPI.getCard)
@@ -57,7 +57,7 @@ func (r *Router) initCourseRoutes() {
 	courseGroup.Get("/:id/assets", coursesAPI.getAssets)
 	courseGroup.Get("/:id/assets/:asset", coursesAPI.getAsset)
 	courseGroup.Get("/:id/assets/:asset/serve", coursesAPI.serveAsset)
-	courseGroup.Put("/:id/assets/:asset/progress", coursesAPI.updateAssetProgress)
+	courseGroup.Put("/:id/assets/:asset/progress", protectedRoute, coursesAPI.updateAssetProgress)
 
 	// Course asset attachments
 	courseGroup.Get("/:id/assets/:asset/attachments", coursesAPI.getAttachments)
@@ -66,8 +66,8 @@ func (r *Router) initCourseRoutes() {
 
 	// Course tags
 	courseGroup.Get("/:id/tags", coursesAPI.getTags)
-	courseGroup.Post("/:id/tags", coursesAPI.createTag)
-	courseGroup.Delete("/:id/tags/:tagId", coursesAPI.deleteTag)
+	courseGroup.Post("/:id/tags", protectedRoute, coursesAPI.createTag)
+	courseGroup.Delete("/:id/tags/:tagId", protectedRoute, coursesAPI.deleteTag)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

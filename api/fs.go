@@ -30,8 +30,8 @@ func (r *Router) initFsRoutes() {
 
 	fsGroup := r.api.Group("/fileSystem")
 
-	fsGroup.Get("", fsAPI.fileSystem)
-	fsGroup.Get("/:path", fsAPI.path)
+	fsGroup.Get("", protectedRoute, fsAPI.fileSystem)
+	fsGroup.Get("/:path", protectedRoute, fsAPI.path)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
