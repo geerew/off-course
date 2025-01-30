@@ -4,7 +4,7 @@
 	import { Button } from 'bits-ui';
 </script>
 
-<div class="flex h-screen min-h-110 flex-col items-center justify-center gap-8">
+<div class="flex h-dvh min-h-110 flex-col items-center justify-center gap-8">
 	<Logo />
 
 	<div class="flex min-w-sm flex-col gap-5">

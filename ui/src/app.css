@@ -21,6 +21,8 @@
 	--color-foreground-alt-3: hsl(240, 2%, 21%);
 	--color-foreground-error: hsl(5, 100%, 30%);
 
+	--height-header: 4.5rem;
+
 	--animate-flash: flash 1.5s infinite ease-in-out;
 
 	@keyframes flash {
@@ -46,5 +48,13 @@
 @layer utilities {
 	.container-px {
 		@apply px-6 lg:px-8;
+	}
+
+	.container-pl {
+		@apply pl-6 lg:pl-8;
+	}
+
+	.container-pr {
+		@apply pr-6 lg:pr-8;
 	}
 }
