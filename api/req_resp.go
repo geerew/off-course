@@ -286,6 +286,7 @@ type userRequest struct {
 	DisplayName     string `json:"display_name"`
 	CurrentPassword string `json:"current_password"`
 	Password        string `json:"password"`
+	Role            string `json:"role"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
