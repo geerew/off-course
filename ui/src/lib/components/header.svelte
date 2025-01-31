@@ -4,7 +4,7 @@
 	import { cn } from '$lib/utils';
 	import { Button, DropdownMenu, Separator } from 'bits-ui';
 	import { Logo } from '.';
-	import { RightChevron } from './icons';
+	import { RightChevronIcon } from './icons';
 
 	const menu = [
 		{
@@ -19,7 +19,7 @@
 	}
 </script>
 
-<header class="border-background-alt-3 bg-background fixed top-0 w-full border-b">
+<header class="border-background-alt-3 bg-background fixed top-0 z-1 w-full border-b">
 	<div class="container-px h-header flex items-center justify-between py-6">
 		<!-- Logo -->
 		<div class="flex flex-1">
@@ -102,7 +102,7 @@
 												<span>Profile</span>
 											</div>
 
-											<RightChevron class="size-4" />
+											<RightChevronIcon class="size-4" />
 										</Button.Root>
 									</DropdownMenu.Item>
 
@@ -132,7 +132,7 @@
 													<span>Admin</span>
 												</div>
 
-												<RightChevron class="size-4" />
+												<RightChevronIcon class="size-4" />
 											</Button.Root>
 										</DropdownMenu.Item>
 									{/if}
@@ -162,7 +162,7 @@
 												<span>Logout</span>
 											</div>
 
-											<RightChevron class="size-4" />
+											<RightChevronIcon class="size-4" />
 										</Button.Root>
 									</DropdownMenu.Item>
 								</div>

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { Spinner } from '$lib/components';
-	import { RightArrow } from '$lib/components/icons';
+	import { RightArrowIcon } from '$lib/components/icons';
 	import { toast } from 'svelte-sonner';
-	import { Input, InputPassword, SubmitButton } from '.';
+	import { FormInput, FormInputPassword, FormSubmitButton } from '.';
 
 	let { endpoint }: { endpoint: string } = $props();
 
@@ -36,19 +36,17 @@
 </script>
 
 <form onsubmit={submitForm} class="flex flex-col gap-5">
-	<Input bind:value={username} name="username" type="text" placeholder="Username" />
-	<InputPassword bind:value={password} placeholder="password" />
-	<SubmitButton disabled={!username || !password || posting}>
-		<SubmitButton disabled={!username || !password || posting}>
-			{#if !posting}
-				Create account
-			{:else}
-				<Spinner class="bg-foreground-alt-3 size-4" />
-			{/if}
-		</SubmitButton>
+	<FormInput bind:value={username} name="username" type="text" placeholder="Username" />
+	<FormInputPassword bind:value={password} placeholder="password" />
+	<FormSubmitButton disabled={!username || !password || posting}>
+		{#if !posting}
+			Create account
+		{:else}
+			<Spinner class="bg-foreground-alt-3 size-4" />
+		{/if}
 
-		<RightArrow
+		<RightArrowIcon
 			class="relative left-0 size-5 transition-all duration-200 ease-in-out group-enabled:group-hover:left-1.5"
 		/>
-	</SubmitButton>
+	</FormSubmitButton>
 </form>

@@ -21,6 +21,20 @@ const (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// NewUserRole creates a new UserRole. Defaults to UserRoleUser if the role provided is invalid
+func NewUserRole(role string) UserRole {
+	switch role {
+	case "admin":
+		return UserRoleAdmin
+	case "user":
+		return UserRoleUser
+	default:
+		return UserRoleUser
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // IsValid checks if the role is valid
 func (r UserRole) IsValid() bool {
 	switch r {

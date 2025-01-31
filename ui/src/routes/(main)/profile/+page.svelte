@@ -3,7 +3,7 @@
 	import { Spinner } from '$lib/components';
 	import { Input, SubmitButton } from '$lib/components/form';
 	import InputPassword from '$lib/components/form/input-password.svelte';
-	import { Edit } from '$lib/components/icons';
+	import { EditIcon } from '$lib/components/icons';
 	import { AlertDialog, Dialog, Separator } from 'bits-ui';
 	import { toast } from 'svelte-sonner';
 
@@ -142,7 +142,7 @@
 						<Dialog.Trigger
 							class="text-foreground-alt-2 hover:text-foreground-alt-1 mb-0.5 cursor-pointer duration-200"
 						>
-							<Edit class="size-4.5 stroke-2" />
+							<EditIcon class="size-4.5 stroke-2" />
 						</Dialog.Trigger>
 
 						<Dialog.Portal>

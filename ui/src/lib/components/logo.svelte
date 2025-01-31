@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { cn } from '$lib/utils';
-	import { Logo } from './icons';
+	import { LogoIcon } from './icons';
 
 	interface Props {
 		size?: 'small' | 'medium' | 'large';
@@ -11,7 +11,7 @@
 
 <div class="flex flex-row items-center gap-3">
 	<div class="bg-foreground rounded-md p-1.5">
-		<Logo
+		<LogoIcon
 			class={cn(
 				'fill-background',
 				{ 'w-10': size === 'small' },
@@ -22,7 +22,7 @@
 	</div>
 	<div
 		class={cn(
-			'font-logo flex font-normal tracking-wide',
+			'font-logo hidden font-normal tracking-wide md:flex',
 			{ 'text-3xl': size === 'small' },
 			{ 'text-4xl': size === 'medium' },
 			{ 'text-5xl': size === 'large' }

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Button } from 'bits-ui';
 	import type { HTMLInputAttributes } from 'svelte/elements';
-	import { Input } from '.';
+	import { FormInput } from '.';
 
 	type Props = HTMLInputAttributes & { ref?: HTMLInputElement };
 
@@ -28,10 +28,14 @@
 		passwordEyeOpenEl.classList.toggle('hidden');
 		passwordEyeClosedEl.classList.toggle('hidden');
 	}
+
+	$effect(() => {
+		if (ref) passwordEl = ref;
+	});
 </script>
 
 <div class="relative w-full overflow-hidden rounded-md">
-	<Input bind:ref bind:value name="password" type="password" class="pe-10" {...restProps} />
+	<FormInput bind:ref bind:value name="password" type="password" class="pe-10" {...restProps} />
 
 	<Button.Root
 		type="button"

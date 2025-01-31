@@ -18,3 +18,17 @@ export function cn(...inputs: ClassValue[]) {
 export function capitalizeFirstLetter(str: string) {
 	return String(str).charAt(0).toUpperCase() + String(str).slice(1);
 }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+export function buildQueryString(params: Record<string, string | number | undefined>): string {
+	const searchParams = new URLSearchParams();
+
+	Object.entries(params).forEach(([key, value]) => {
+		if (value !== undefined) {
+			searchParams.append(key, value.toString());
+		}
+	});
+
+	return searchParams.toString();
+}

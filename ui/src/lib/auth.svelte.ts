@@ -1,8 +1,8 @@
 import { safeParse } from 'valibot';
-import { UserSchema, type User } from './models';
+import { UserSchema, type UserModel } from './models/user';
 
 class Auth {
-	#user = $state<User | null>(null);
+	#user = $state<UserModel | null>(null);
 	#userLetter = $state<string | null>(null);
 	#isAdmin = $state<boolean>(false);
 	#error = $state<string | null>(null);

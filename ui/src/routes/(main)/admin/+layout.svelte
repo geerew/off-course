@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { Course, Tag, User } from '$lib/components/icons';
+	import { CourseIcon, TagIcon, UserIcon } from '$lib/components/icons';
 	import { cn } from '$lib/utils';
 	import { Button } from 'bits-ui';
 
@@ -9,28 +9,26 @@
 			label: 'Users',
 			href: '/admin/users',
 			matcher: '/admin/users/',
-			icon: User
+			icon: UserIcon
 		},
 		{
 			label: 'Courses',
 			href: '/admin/courses',
 			matcher: '/admin/courses/',
-			icon: Course
+			icon: CourseIcon
 		},
 		{
 			label: 'Tags',
 			href: '/admin/tags',
 			matcher: '/admin/tags/',
-			icon: Tag
+			icon: TagIcon
 		}
 	];
 
 	let { children } = $props();
 </script>
 
-<div
-	class="grid min-h-dvh grid-cols-[16rem_1fr] grid-rows-1 gap-4 pt-[calc(var(--height-header)+1))]"
->
+<div class="grid grid-cols-[16rem_1fr] grid-rows-1 gap-6 pt-[calc(var(--height-header)+1))]">
 	<div class="relative row-span-full">
 		<div class="absolute inset-0">
 			<nav
@@ -41,7 +39,7 @@
 						href={item.href}
 						class={cn(
 							'text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-1 relative flex flex-row gap-3 px-2.5 py-3 leading-6 font-semibold duration-200',
-							page.url.pathname === item.matcher &&
+							page.url.pathname.startsWith(item.matcher) &&
 								'bg-background-alt-1 after:bg-background-primary after:absolute after:top-0 after:right-0 after:h-full after:w-1'
 						)}
 						aria-current={page.url.pathname === item.matcher}
@@ -54,7 +52,7 @@
 		</div>
 	</div>
 
-	<main class="flex w-full py-8">
+	<main class="container-pr flex w-full py-8">
 		{@render children()}
 	</main>
 </div>
