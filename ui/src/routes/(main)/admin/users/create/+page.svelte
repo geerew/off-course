@@ -121,7 +121,7 @@
 					items={roles}
 					bind:value={roleValue}
 					placeholder="Select a role"
-					contentProps={{ loop: true }}
+					contentProps={{ sideOffset: 8, loop: true }}
 				/>
 			</div>
 		</div>
