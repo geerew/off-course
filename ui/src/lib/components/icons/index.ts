@@ -7,5 +7,6 @@ export { default as PlusIcon } from './plus.svelte';
 export { default as RightArrowIcon } from './right-arrow.svelte';
 export { default as RightChevronIcon } from './right-chevron.svelte';
 export { default as TagIcon } from './tag.svelte';
+export { default as TickIcon } from './tick.svelte';
 export { default as UserIcon } from './user.svelte';
 export { default as WarningIcon } from './warning.svelte';

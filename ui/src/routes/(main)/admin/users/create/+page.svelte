@@ -2,8 +2,9 @@
 	import { goto } from '$app/navigation';
 	import { CreateUser } from '$lib/api/users';
 	import { Spinner } from '$lib/components';
-	import { FormInput, FormInputPassword, FormSubmitButton } from '$lib/components/form';
 	import { BackArrowIcon } from '$lib/components/icons';
+	import { Input, InputPassword, Select, SubmitButton } from '$lib/components/ui';
+	import type { UserRole } from '$lib/models/user';
 	import { cn } from '$lib/utils';
 	import { Button, Separator } from 'bits-ui';
 	import { toast } from 'svelte-sonner';
@@ -16,13 +17,25 @@
 	let displayNameInputEl = $state<HTMLInputElement>();
 	let displayNameValue = $state<string>('');
 
+	// Roles
+	let roles = [
+		{ value: 'user', label: 'User' },
+		{ value: 'admin', label: 'Admin' }
+	];
+	let roleValue: UserRole | '' = $state('');
+
 	// Password
 	let passwordValue = $state('');
 	let confirmPasswordValue = $state('');
 
 	// False when any of the password fields are empty
 	let submitDisabled = $derived.by(() => {
-		return usernameValue === '' || passwordValue === '' || confirmPasswordValue === '';
+		return (
+			usernameValue === '' ||
+			roleValue === '' ||
+			passwordValue === '' ||
+			confirmPasswordValue === ''
+		);
 	});
 
 	// True when a request is being made
@@ -47,10 +60,10 @@
 				username: usernameValue,
 				displayName: displayNameValue,
 				password: passwordValue,
-				role: 'user'
+				role: roleValue === '' ? 'user' : roleValue
 			});
 
-			toast.success('User created successfully');
+			toast.success(`${roleValue === 'admin' ? 'Admin' : 'Basic'} user created`);
 			goto('/admin/users');
 		} catch (error) {
 			if (error instanceof Error) {
@@ -77,12 +90,7 @@
 		<div class="flex place-content-center">
 			<div class="flex w-xs flex-col gap-3">
 				<div class="text-foreground-alt-2 text-[15px] uppercase">Username</div>
-				<FormInput
-					bind:ref={usernameInputEl}
-					bind:value={usernameValue}
-					name="username"
-					type="text"
-				/>
+				<Input bind:ref={usernameInputEl} bind:value={usernameValue} name="username" type="text" />
 			</div>
 		</div>
 
@@ -92,7 +100,7 @@
 		<div class="flex place-content-center">
 			<div class="flex w-xs flex-col gap-3">
 				<div class="text-foreground-alt-2 text-[15px] uppercase">Display Name</div>
-				<FormInput
+				<Input
 					bind:ref={displayNameInputEl}
 					bind:value={displayNameValue}
 					name="display name"
@@ -104,18 +112,34 @@
 
 		<Separator.Root class="bg-background-alt-3 my-2 h-px w-full shrink-0" />
 
+		<!-- Role -->
+		<div class="flex place-content-center">
+			<div class="flex w-xs flex-col gap-3">
+				<div class="text-foreground-alt-2 text-[15px] uppercase">Role</div>
+				<Select
+					type="single"
+					items={roles}
+					bind:value={roleValue}
+					placeholder="Select a role"
+					contentProps={{ loop: true }}
+				/>
+			</div>
+		</div>
+
+		<Separator.Root class="bg-background-alt-3 my-2 h-px w-full shrink-0" />
+
 		<!-- Password -->
 		<div class="flex place-content-center">
 			<div class="flex w-xs flex-col gap-3">
 				<div class="text-foreground-alt-2 text-[15px] uppercase">Password</div>
-				<FormInputPassword bind:value={passwordValue} name="new password" />
+				<InputPassword bind:value={passwordValue} name="new password" />
 			</div>
 		</div>
 
 		<div class="flex place-content-center">
 			<div class="flex w-xs flex-col gap-3">
 				<div class="text-foreground-alt-2 text-[15px] uppercase">Confirm Password</div>
-				<FormInputPassword bind:value={confirmPasswordValue} name="confirm password" />
+				<InputPassword bind:value={confirmPasswordValue} name="confirm password" />
 			</div>
 		</div>
 
@@ -140,13 +164,13 @@
 					Back
 				</Button.Root>
 
-				<FormSubmitButton type="submit" disabled={submitDisabled || isPosting} class="h-10 py-2">
+				<SubmitButton type="submit" disabled={submitDisabled || isPosting} class="h-10 py-2">
 					{#if !isPosting}
 						Create
 					{:else}
 						<Spinner class="bg-foreground-alt-3 size-2" />
 					{/if}
-				</FormSubmitButton>
+				</SubmitButton>
 			</div>
 		</div>
 	</form>

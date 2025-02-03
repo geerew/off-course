@@ -1,9 +1,8 @@
 <script lang="ts">
 	import { auth } from '$lib/auth.svelte';
 	import { Spinner } from '$lib/components';
-	import { Input, SubmitButton } from '$lib/components/form';
-	import InputPassword from '$lib/components/form/input-password.svelte';
 	import { EditIcon } from '$lib/components/icons';
+	import { Input, InputPassword, SubmitButton } from '$lib/components/ui';
 	import { AlertDialog, Dialog, Separator } from 'bits-ui';
 	import { toast } from 'svelte-sonner';
 
@@ -199,6 +198,14 @@
 					</Dialog.Root>
 				</div>
 				<span class="text-background-primary text-2xl">{auth.user.displayName}</span>
+			</div>
+
+			<Separator.Root class="bg-background-alt-3 my-2 h-px w-full shrink-0" />
+
+			<!-- Role -->
+			<div class="flex flex-col gap-3">
+				<div class="text-foreground-alt-2 text-[15px] uppercase">Role</div>
+				<span class="text-background-primary text-2xl">{auth.isAdmin ? 'Admin' : 'User'}</span>
 			</div>
 
 			<Separator.Root class="bg-background-alt-3 my-2 h-px w-full shrink-0" />
