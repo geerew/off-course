@@ -27,6 +27,8 @@ func (r *Router) initUserRoutes() {
 
 	userGroup.Get("", protectedRoute, userAPI.getUsers)
 	userGroup.Post("", protectedRoute, userAPI.createUser)
+	userGroup.Delete("/:id", protectedRoute, userAPI.deleteUser)
+
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -92,4 +94,18 @@ func (api userAPI) createUser(c *fiber.Ctx) error {
 	}
 
 	return c.SendStatus(fiber.StatusCreated)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func (api userAPI) deleteUser(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	user := &models.User{Base: models.Base{ID: id}}
+	err := api.r.dao.Delete(c.UserContext(), user, nil)
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user", err)
+	}
+
+	return c.Status(fiber.StatusNoContent).Send(nil)
 }

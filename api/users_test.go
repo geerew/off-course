@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -249,5 +250,61 @@ func TestUsers_CreateUser(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusInternalServerError, status)
 		require.Contains(t, string(body), "Error creating user")
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestUsers_DeleteUser(t *testing.T) {
+	t.Run("204 (deleted)", func(t *testing.T) {
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+
+		users := []*models.User{}
+		for i := range 5 {
+			u := &models.User{
+				Username:     fmt.Sprintf("user %d", i),
+				DisplayName:  fmt.Sprintf("User %d", i),
+				PasswordHash: security.RandomString(10),
+				Role:         types.UserRoleUser,
+			}
+			require.NoError(t, router.dao.CreateUser(ctx, u))
+			users = append(users, u)
+		}
+
+		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/users/"+users[1].ID, nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNoContent, status)
+
+		user := &models.User{Base: models.Base{ID: users[1].ID}}
+		err = router.dao.GetById(ctx, user)
+		require.ErrorIs(t, err, sql.ErrNoRows)
+	})
+
+	t.Run("204 (not found)", func(t *testing.T) {
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
+
+		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/users/invalid", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNoContent, status)
+	})
+
+	t.Run("403 (not admin)", func(t *testing.T) {
+		router, _ := setup(t, "user", types.UserRoleUser)
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/users/test", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusForbidden, status)
+		require.Equal(t, `{"message":"User is not an admin"}`, string(body))
+	})
+
+	t.Run("500 (internal error)", func(t *testing.T) {
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
+
+		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.USER_TABLE)
+		require.NoError(t, err)
+
+		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/users/invalid", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusInternalServerError, status)
 	})
 }
