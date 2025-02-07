@@ -4,25 +4,19 @@
 	import { TickIcon } from '../icons';
 	import RightChevron from '../icons/right-chevron.svelte';
 
-	type Props = Omit<
-		WithoutChildren<
-			Select.RootProps & {
-				placeholder?: string;
-				items: { value: string; label: string; disabled?: boolean }[];
-				triggerClass?: string;
-				contentProps?: Omit<WithoutChildren<Select.ContentProps>, 'class'>;
-				contentClass?: string;
-				itemClass?: string;
-				value?: string;
-				onValueChange?: (value: string) => void;
-				type: string;
-			}
-		>,
-		'type'
+	type Props = WithoutChildren<
+		Select.RootProps & {
+			placeholder?: string;
+			items: { value: string; label: string; disabled?: boolean }[];
+			triggerClass?: string;
+			contentProps?: Omit<WithoutChildren<Select.ContentProps>, 'class'>;
+			contentClass?: string;
+			itemClass?: string;
+		}
 	>;
 
 	let {
-		value = $bindable(''),
+		value = $bindable(),
 		placeholder,
 		items,
 		triggerClass,
@@ -35,7 +29,7 @@
 	const selectedLabel = $derived(items.find((item) => item.value === value)?.label);
 </script>
 
-<Select.Root type="single" bind:value {...restProps}>
+<Select.Root bind:value={value as never} {...restProps}>
 	<Select.Trigger
 		class={cn(
 			'border-background-alt-4 data-[state=open]:border-foreground-alt-2 hover:border-foreground-alt-2 data-placeholder:text-foreground-alt-2 inline-flex h-11.5 items-center justify-between rounded-md border px-2.5 text-sm duration-200 select-none hover:cursor-pointer [&[data-state=open]>svg]:rotate-90',
