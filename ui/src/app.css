@@ -10,6 +10,7 @@
 	--color-background-alt-3: hsl(254, 17%, 25%);
 	--color-background-alt-4: hsl(254, 17%, 30%);
 	--color-background-alt-5: hsl(254, 17%, 33%);
+	--color-background-alt-6: hsl(254, 17%, 37%);
 	--color-background-primary: hsl(67, 60%, 50%);
 	--color-background-primary-alt-1: hsl(67, 45%, 45%);
 	--color-background-error: hsl(5, 100%, 21%);
@@ -19,7 +20,8 @@
 	--color-foreground-alt-1: hsl(360, 0%, 80%);
 	--color-foreground-alt-2: hsl(249, 6%, 52%);
 	--color-foreground-alt-3: hsl(240, 2%, 21%);
-	--color-foreground-error: hsl(5, 100%, 30%);
+	--color-foreground-error: hsl(5, 100%, 45%);
+	--color-foreground-error-alt-1: hsl(5, 100%, 35%);
 
 	--height-header: 4.5rem;
 

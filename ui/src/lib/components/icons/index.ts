@@ -1,11 +1,15 @@
 export { default as BackArrowIcon } from './back-arrow.svelte';
 export { default as CourseIcon } from './course.svelte';
+export { default as DeleteIcon } from './delete.svelte';
 export { default as DotsIcon } from './dots.svelte';
 export { default as EditIcon } from './edit.svelte';
+export { default as FlagIcon } from './flag.svelte';
 export { default as LogoIcon } from './logo.svelte';
+export { default as MinusIcon } from './minus.svelte';
 export { default as PlusIcon } from './plus.svelte';
 export { default as RightArrowIcon } from './right-arrow.svelte';
 export { default as RightChevronIcon } from './right-chevron.svelte';
+export { default as SecureIcon } from './secure.svelte';
 export { default as TagIcon } from './tag.svelte';
 export { default as TickIcon } from './tick.svelte';
 export { default as UserIcon } from './user.svelte';

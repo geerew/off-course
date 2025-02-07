@@ -3,10 +3,10 @@
 	import { CreateUser } from '$lib/api/users';
 	import { Spinner } from '$lib/components';
 	import { BackArrowIcon } from '$lib/components/icons';
-	import { Input, InputPassword, Select, SubmitButton } from '$lib/components/ui';
+	import { Button, Input, InputPassword, Select } from '$lib/components/ui';
 	import type { UserRole } from '$lib/models/user';
 	import { cn } from '$lib/utils';
-	import { Button, Separator } from 'bits-ui';
+	import { Separator } from 'bits-ui';
 	import { toast } from 'svelte-sonner';
 
 	// Username
@@ -148,12 +148,12 @@
 		<!-- Back / submit buttons  -->
 		<div class="flex place-content-center">
 			<div class="flex w-xs justify-end gap-6">
-				<Button.Root
+				<Button
 					href="/admin/users"
 					class={cn(
-						'bg-background-alt-4 hover:bg-background-alt-5 inline-flex h-10 flex-row items-center gap-2.5 rounded-md px-5 hover:cursor-pointer',
+						'border-background-alt-4 text-foreground-alt-1 hover:bg-background-alt-4 hover:text-foreground border bg-transparent px-5 disabled:bg-red-200',
 						isPosting &&
-							'bg-background-alt-3 hover:bg-background-alt-3 text-foreground-alt-2 hover:cursor-not-allowed'
+							'hover:text-foreground-alt-2 text-foreground-alt-2 hover:order-background-alt-4 cursor-not-allowed hover:bg-transparent'
 					)}
 					aria-label="Toggle password visibility"
 					onclick={(e) => {
@@ -162,15 +162,15 @@
 				>
 					<BackArrowIcon class="size-5 stroke-[1.5]" />
 					Back
-				</Button.Root>
+				</Button>
 
-				<SubmitButton type="submit" disabled={submitDisabled || isPosting} class="h-10 py-2">
+				<Button type="submit" disabled={submitDisabled || isPosting} class="h-10 py-2">
 					{#if !isPosting}
 						Create
 					{:else}
 						<Spinner class="bg-foreground-alt-3 size-2" />
 					{/if}
-				</SubmitButton>
+				</Button>
 			</div>
 		</div>
 	</form>

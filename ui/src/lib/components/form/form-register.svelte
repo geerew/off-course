@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Spinner } from '$lib/components';
 	import { RightArrowIcon } from '$lib/components/icons';
-	import { Input, InputPassword, SubmitButton } from '$lib/components/ui';
+	import { Button, Input, InputPassword } from '$lib/components/ui';
 	import { toast } from 'svelte-sonner';
 
 	let { endpoint }: { endpoint: string } = $props();
@@ -38,7 +38,7 @@
 <form onsubmit={submitForm} class="flex flex-col gap-5">
 	<Input bind:value={username} name="username" type="text" placeholder="Username" />
 	<InputPassword bind:value={password} placeholder="password" />
-	<SubmitButton disabled={!username || !password || posting}>
+	<Button disabled={!username || !password || posting}>
 		{#if !posting}
 			Create account
 		{:else}
@@ -48,5 +48,5 @@
 		<RightArrowIcon
 			class="relative left-0 size-5 transition-all duration-200 ease-in-out group-enabled:group-hover:left-1.5"
 		/>
-	</SubmitButton>
+	</Button>
 </form>
