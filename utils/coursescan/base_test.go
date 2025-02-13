@@ -620,7 +620,7 @@ func TestScanner_Processor(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func TestScanner_parseFilename(t *testing.T) {
+func TestScanner_ParseFilename(t *testing.T) {
 	t.Run("invalid", func(t *testing.T) {
 		var tests = []string{
 			// No prefix

@@ -1143,7 +1143,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func TestCourses_updateAssetProgress(t *testing.T) {
+func TestCourses_UpdateAssetProgress(t *testing.T) {
 	t.Run("200 (found)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
