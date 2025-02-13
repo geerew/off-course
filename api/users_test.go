@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/geerew/off-course/models"
+	"github.com/geerew/off-course/utils/auth"
 	"github.com/geerew/off-course/utils/pagination"
 	"github.com/geerew/off-course/utils/security"
 	"github.com/geerew/off-course/utils/types"
@@ -250,6 +251,97 @@ func TestUsers_CreateUser(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusInternalServerError, status)
 		require.Contains(t, string(body), "Error creating user")
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestUsers_UpdateUser(t *testing.T) {
+	t.Run("200 (found)", func(t *testing.T) {
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+
+		user := &models.User{
+			Username:     "test",
+			DisplayName:  "Test",
+			PasswordHash: security.RandomString(10),
+			Role:         types.UserRoleUser,
+		}
+		require.NoError(t, router.dao.CreateUser(ctx, user))
+
+		// Update display name
+		req := httptest.NewRequest(http.MethodPut, "/api/users/"+user.ID, strings.NewReader(`{"display_name": "Bob"}`))
+		req.Header.Set("Content-Type", "application/json")
+
+		status, _, err := requestHelper(t, router, req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		userResult := &models.User{Base: models.Base{ID: user.ID}}
+		require.NoError(t, router.dao.GetById(ctx, userResult))
+		require.Equal(t, "Bob", userResult.DisplayName)
+
+		// Update password
+		req = httptest.NewRequest(http.MethodPut, "/api/users/"+user.ID, strings.NewReader(`{"password": "1234"}`))
+		req.Header.Set("Content-Type", "application/json")
+
+		status, _, err = requestHelper(t, router, req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		require.NoError(t, router.dao.GetById(ctx, userResult))
+		require.Equal(t, "Bob", userResult.DisplayName)
+		require.True(t, auth.ComparePassword(userResult.PasswordHash, "1234"))
+	})
+
+	t.Run("400 (invalid data)", func(t *testing.T) {
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
+
+		req := httptest.NewRequest(http.MethodPut, "/api/users/invalid", strings.NewReader(`invalid`))
+		req.Header.Set("Content-Type", "application/json")
+
+		status, body, err := requestHelper(t, router, req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, status)
+		require.Contains(t, string(body), "Error parsing data")
+	})
+
+	t.Run("400 (nothing to update)", func(t *testing.T) {
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
+
+		req := httptest.NewRequest(http.MethodPut, "/api/users/invalid", strings.NewReader(`{"invalid": "invalid"}`))
+		req.Header.Set("Content-Type", "application/json")
+
+		status, body, err := requestHelper(t, router, req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, status)
+		require.Contains(t, string(body), "No data to update")
+	})
+
+	t.Run("404 (user not found)", func(t *testing.T) {
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
+
+		req := httptest.NewRequest(http.MethodPut, "/api/users/invalid", strings.NewReader(`{"display_name": "Admin"}`))
+		req.Header.Set("Content-Type", "application/json")
+
+		status, body, err := requestHelper(t, router, req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNotFound, status)
+		require.Contains(t, string(body), "User not found")
+	})
+
+	t.Run("500 (internal error)", func(t *testing.T) {
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
+
+		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.USER_TABLE)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodPut, "/api/users/invalid", strings.NewReader(`{"username": "admin", "password": "1234"}`))
+		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+
+		status, body, err := requestHelper(t, router, req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusInternalServerError, status)
+		require.Contains(t, string(body), "Error looking up user")
 	})
 }
 
