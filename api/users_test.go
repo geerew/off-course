@@ -291,6 +291,19 @@ func TestUsers_UpdateUser(t *testing.T) {
 		require.NoError(t, router.dao.GetById(ctx, userResult))
 		require.Equal(t, "Bob", userResult.DisplayName)
 		require.True(t, auth.ComparePassword(userResult.PasswordHash, "1234"))
+
+		// Update role
+		req = httptest.NewRequest(http.MethodPut, "/api/users/"+user.ID, strings.NewReader(`{"role": "admin"}`))
+		req.Header.Set("Content-Type", "application/json")
+
+		status, _, err = requestHelper(t, router, req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		require.NoError(t, router.dao.GetById(ctx, userResult))
+		require.Equal(t, "Bob", userResult.DisplayName)
+		require.True(t, auth.ComparePassword(userResult.PasswordHash, "1234"))
+		require.Equal(t, types.UserRoleAdmin, userResult.Role)
 	})
 
 	t.Run("400 (invalid data)", func(t *testing.T) {

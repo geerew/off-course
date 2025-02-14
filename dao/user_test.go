@@ -49,10 +49,10 @@ func Test_UpdateUser(t *testing.T) {
 		require.NoError(t, dao.GetById(ctx, userResult))
 		require.Equal(t, OriginalUser.ID, userResult.ID)                     // No change
 		require.Equal(t, OriginalUser.Username, userResult.Username)         // No change
-		require.Equal(t, OriginalUser.Role, userResult.Role)                 // No change
 		require.True(t, userResult.CreatedAt.Equal(OriginalUser.CreatedAt))  // No change
 		require.Equal(t, newUser.DisplayName, userResult.DisplayName)        // Changed
 		require.Equal(t, newUser.PasswordHash, userResult.PasswordHash)      // Changed
+		require.Equal(t, newUser.Role, userResult.Role)                      // Changed
 		require.False(t, userResult.UpdatedAt.Equal(OriginalUser.UpdatedAt)) // Changed
 	})
 

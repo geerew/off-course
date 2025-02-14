@@ -107,7 +107,7 @@ func (api userAPI) updateUser(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
 	}
 
-	if userReq.DisplayName == "" && userReq.Password == "" {
+	if userReq.DisplayName == "" && userReq.Password == "" && userReq.Role == "" {
 		return errorResponse(c, fiber.StatusBadRequest, "No data to update", nil)
 	}
 
@@ -127,6 +127,10 @@ func (api userAPI) updateUser(c *fiber.Ctx) error {
 
 	if userReq.Password != "" {
 		user.PasswordHash = auth.GeneratePassword(userReq.Password)
+	}
+
+	if userReq.Role != "" {
+		user.Role = types.NewUserRole(userReq.Role)
 	}
 
 	err = api.r.dao.UpdateUser(c.UserContext(), user)
