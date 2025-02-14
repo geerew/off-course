@@ -62,7 +62,7 @@
 			<!-- Delete account -->
 			<div class="flex flex-col gap-3">
 				<div class="text-foreground-alt-2 text-[15px] uppercase">Delete Account</div>
-				<DeleteUserDialog user={auth.user} me={true}>
+				<DeleteUserDialog value={auth.user} me={true}>
 					{#snippet trigger()}
 						Delete Account
 					{/snippet}

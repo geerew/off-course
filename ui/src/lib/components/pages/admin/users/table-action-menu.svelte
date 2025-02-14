@@ -1,34 +1,37 @@
 <script lang="ts">
-	import {
-		DeleteUserDialog,
-		EditUserPasswordDialog,
-		EditUserRoleDialog
-	} from '$lib/components/dialogs';
-	import { DeleteIcon, DotsIcon, FlagIcon, SecureIcon } from '$lib/components/icons';
+	import { DeleteUserDialog } from '$lib/components/dialogs';
+	import { ActionIcon, DeleteIcon, DeselectIcon } from '$lib/components/icons';
+	import RightChevron from '$lib/components/icons/right-chevron.svelte';
 	import type { UserModel } from '$lib/models/user';
 	import { DropdownMenu } from 'bits-ui';
 
+	// TODO: Support updating role
 	// TODO: Support removing session
 
 	type Props = {
-		user: UserModel;
+		users: Record<string, UserModel>;
 		onUpdate: () => void;
 		onDelete: () => void;
 	};
 
-	let { user, onUpdate, onDelete }: Props = $props();
+	let { users = $bindable(), onUpdate, onDelete }: Props = $props();
 
 	let roleDialogOpen = $state(false);
-	let passwordDialogOpen = $state(false);
 	let deleteDialogOpen = $state(false);
 </script>
 
 <DropdownMenu.Root>
 	<DropdownMenu.Trigger
-		class="hover:bg-background-alt-3 data-[state=open]:bg-background-alt-3 flex h-8 w-8 place-items-center items-center justify-center rounded-lg hover:cursor-pointer"
+		disabled={Object.keys(users).length === 0}
+		class="border-background-alt-4 data-[state=open]:border-foreground-alt-2 hover:border-foreground-alt-2 disabled:text-foreground-alt-2 disabled:hover:border-background-alt-4 inline-flex h-10 w-32 items-center justify-between rounded-md border px-2.5 text-sm duration-200 select-none hover:cursor-pointer disabled:cursor-not-allowed [&[data-state=open]>svg]:rotate-90"
 	>
-		<DotsIcon class="size-5 stroke-[1.5]" />
+		<div class="flex items-center gap-1.5">
+			<ActionIcon class="size-4 stroke-[1.5]" />
+			<span>Actions</span>
+		</div>
+		<RightChevron class="stroke-foreground-alt-2 size-4.5 duration-200" />
 	</DropdownMenu.Trigger>
+
 	<DropdownMenu.Content
 		align="end"
 		sideOffset={2}
@@ -37,22 +40,22 @@
 		<DropdownMenu.Item
 			class="text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-2 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none"
 			onclick={() => {
+				users = {};
+			}}
+		>
+			<DeselectIcon class="size-4 stroke-[1.5]" />
+			<span>Deselect all</span>
+		</DropdownMenu.Item>
+
+		<!-- <DropdownMenu.Item
+			class="text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-2 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none"
+			onclick={() => {
 				roleDialogOpen = true;
 			}}
 		>
 			<FlagIcon class="size-4 stroke-[1.5]" />
 			<span>Set Role</span>
-		</DropdownMenu.Item>
-
-		<DropdownMenu.Item
-			class="text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-2 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none"
-			onclick={() => {
-				passwordDialogOpen = true;
-			}}
-		>
-			<SecureIcon class="size-4 stroke-[1.5]" />
-			<span>Set Password</span>
-		</DropdownMenu.Item>
+		</DropdownMenu.Item> -->
 
 		<DropdownMenu.Separator class="bg-background-alt-3 h-px w-full" />
 
@@ -68,6 +71,10 @@
 	</DropdownMenu.Content>
 </DropdownMenu.Root>
 
-<EditUserRoleDialog bind:open={roleDialogOpen} {user} successFn={onUpdate} />
-<EditUserPasswordDialog bind:open={passwordDialogOpen} {user} me={false} />
-<DeleteUserDialog bind:open={deleteDialogOpen} value={user} me={false} successFn={onDelete} />
+<!-- <EditUserRoleDialog bind:open={roleDialogOpen} {user} successFn={onUpdate} /> -->
+<DeleteUserDialog
+	bind:open={deleteDialogOpen}
+	value={Object.values(users)}
+	me={false}
+	successFn={onDelete}
+/>

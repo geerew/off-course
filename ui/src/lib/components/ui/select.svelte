@@ -32,7 +32,7 @@
 <Select.Root bind:value={value as never} {...restProps}>
 	<Select.Trigger
 		class={cn(
-			'border-background-alt-4 data-[state=open]:border-foreground-alt-2 hover:border-foreground-alt-2 data-placeholder:text-foreground-alt-2 inline-flex h-11.5 items-center justify-between rounded-md border px-2.5 text-sm duration-200 select-none hover:cursor-pointer [&[data-state=open]>svg]:rotate-90',
+			'border-background-alt-4 data-[state=open]:border-foreground-alt-2 hover:border-foreground-alt-2 data-placeholder:text-foreground-alt-2 inline-flex h-10 items-center justify-between rounded-md border px-2.5 text-sm duration-200 select-none hover:cursor-pointer [&[data-state=open]>svg]:rotate-90',
 			triggerClass
 		)}
 	>

@@ -4,17 +4,20 @@
 	import { Pagination } from '$lib/components';
 	import { PlusIcon, WarningIcon } from '$lib/components/icons';
 	import RowActionMenu from '$lib/components/pages/admin/users/row-action-menu.svelte';
+	import TableActionMenu from '$lib/components/pages/admin/users/table-action-menu.svelte';
 	import Spinner from '$lib/components/spinner.svelte';
 	import * as Table from '$lib/components/table';
 	import { Button, Checkbox } from '$lib/components/ui';
 	import type { UserModel, UsersModel } from '$lib/models/user';
 	import { capitalizeFirstLetter } from '$lib/utils';
+	import { toast } from 'svelte-sonner';
 
 	let users: UsersModel = $state([]);
 
 	// Object of selected users and the count of selected users
 	let selectedUsers: Record<string, UserModel> = $state({});
 	let selectedUserCount = $derived(Object.keys(selectedUsers).length);
+	let hasEverSelected = $state(false);
 
 	let paginationPage = $state(1);
 	let paginationPerPage = $state(10);
@@ -29,15 +32,27 @@
 		selectedUserCount !== 0 && selectedUserCount === paginationTotalMinusSelf
 	);
 
-	// True when all users on the current page are selected. This will need to use the users variables
-	// to determine if all users on the current page are in the selectedUsers object. It needs to take
-	// into account the current page may have the current user on it, so it should not be counted.
-	// This is a derived store.
-	let allSelectedOnPage = $derived.by(() => {
-		return;
+	let loadPromise = $state(fetchUsers());
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Set hasEverSelected to true when the user selects a user
+	$effect(() => {
+		if (selectedUserCount > 0) {
+			hasEverSelected = true;
+		}
 	});
 
-	let loadPromise = $state(fetchUsers());
+	// Show a toast message as the user selects/deselects users
+	$effect(() => {
+		if (!hasEverSelected) return;
+
+		if (selectedUserCount === 0) {
+			toast.success('No users selected');
+		} else {
+			toast.success(`${selectedUserCount} user${selectedUserCount > 1 ? 's' : ''} selected`);
+		}
+	});
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -103,7 +118,7 @@
 
 <div class="flex w-full place-content-center">
 	<div class="flex w-full max-w-4xl min-w-2xl flex-col gap-6 pt-1">
-		<div>
+		<div class="flex flex-row items-center justify-between">
 			<Button
 				href="/admin/users/add"
 				class="bg-background-alt-4 hover:bg-background-alt-5 text-foreground-alt-1 inline-flex h-10 w-auto flex-row items-center gap-2 rounded-md px-5 hover:cursor-pointer"
@@ -112,6 +127,10 @@
 				<PlusIcon class="size-5 stroke-[1.5]" />
 				Add User
 			</Button>
+
+			<div class="flex h-10 items-center gap-3 rounded-lg">
+				<TableActionMenu bind:users={selectedUsers} onUpdate={onRowUpdate} onDelete={onRowDelete} />
+			</div>
 		</div>
 
 		<div class="flex w-full place-content-center">
@@ -137,6 +156,7 @@
 								<Table.Th class="w-[1%]" />
 							</Table.Tr>
 						</Table.Thead>
+
 						<Table.Tbody>
 							{#each users as user}
 								<Table.Tr class="hover:bg-background-alt-1 items-center duration-200">

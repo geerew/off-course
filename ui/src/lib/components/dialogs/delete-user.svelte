@@ -2,21 +2,21 @@
 	import { auth } from '$lib/auth.svelte';
 	import { Spinner } from '$lib/components';
 	import { AlertDialog, Badge, Button, InputPassword } from '$lib/components/ui';
-	import type { UserModel } from '$lib/models/user';
+	import type { UserModel, UsersModel } from '$lib/models/user';
 	import { Separator } from 'bits-ui';
 	import type { Snippet } from 'svelte';
 	import { toast } from 'svelte-sonner';
 
 	type Props = {
 		open?: boolean;
-		user: UserModel;
+		value: UserModel | UsersModel;
 		me: boolean;
 		trigger?: Snippet;
 		triggerClass?: string;
 		successFn?: () => void;
 	};
 
-	let { open = $bindable(false), user, me, trigger, triggerClass, successFn }: Props = $props();
+	let { open = $bindable(false), value, me, trigger, triggerClass, successFn }: Props = $props();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -26,9 +26,34 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	async function deleteUser() {
+	async function deleteUsers(): Promise<void> {
 		isPosting = true;
 
+		const multipleUsers = Array.isArray(value);
+
+		if (multipleUsers) {
+			const promises = Object.values(value).map((u) => deleteUser(u));
+
+			await Promise.all(promises);
+		} else {
+			await deleteUser(value);
+		}
+
+		if (multipleUsers) {
+			toast.success('Users deleted');
+		} else {
+			toast.success('User deleted');
+		}
+
+		successFn?.();
+
+		isPosting = false;
+		open = false;
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	async function deleteUser(user: UserModel): Promise<void> {
 		let api = `/api/users/${user.id}`;
 		let body = JSON.stringify('');
 
@@ -51,18 +76,11 @@
 			if (me) {
 				auth.empty();
 				window.location.href = '/auth/login';
-			} else {
-				toast.success('User deleted');
 			}
-
-			successFn?.();
 		} else {
 			const data = await response.json();
 			toast.error(`${data.message}`);
 		}
-
-		isPosting = false;
-		open = false;
 	}
 </script>
 
@@ -89,11 +107,16 @@
 		<div class="text-foreground-alt-1 flex flex-col gap-2 text-center">
 			{#if me}
 				<span class="text-lg">Are you sure you want to delete your account?</span>
+			{:else if Array.isArray(value) && value.length > 1}
+				<span class="text-lg"
+					>Are you sure you want to continue deleting these {value.length} users?</span
+				>
 			{:else}
-				<span class="text-lg">Are you sure you want to delete this user?</span>
-
+				<span class="text-lg">Are you sure you want to continue deleting this user?</span>
 				<span>
-					<Badge class="bg-background-error text-foreground-alt-1 text-sm">{user.username}</Badge>
+					<Badge class="bg-background-error text-foreground-alt-1 text-sm"
+						>{Array.isArray(value) ? value[0].username : value.username}</Badge
+					>
 				</span>
 			{/if}
 			<span class="text-foreground-alt-2">All associated data will be deleted</span>
@@ -116,7 +139,7 @@
 	{#snippet action()}
 		<Button
 			disabled={(me && currentPassword === '') || isPosting}
-			onclick={deleteUser}
+			onclick={deleteUsers}
 			class="bg-background-error disabled:bg-background-error/80 enabled:hover:bg-background-error-alt-1 text-foreground-alt-1 enabled:hover:text-foreground w-24"
 		>
 			{#if !isPosting}

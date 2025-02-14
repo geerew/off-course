@@ -1,6 +1,8 @@
+export { default as ActionIcon } from './action.svelte';
 export { default as BackArrowIcon } from './back-arrow.svelte';
 export { default as CourseIcon } from './course.svelte';
 export { default as DeleteIcon } from './delete.svelte';
+export { default as DeselectIcon } from './deselect.svelte';
 export { default as DotsIcon } from './dots.svelte';
 export { default as EditIcon } from './edit.svelte';
 export { default as FlagIcon } from './flag.svelte';
@@ -15,3 +17,4 @@ export { default as TagIcon } from './tag.svelte';
 export { default as TickIcon } from './tick.svelte';
 export { default as UserIcon } from './user.svelte';
 export { default as WarningIcon } from './warning.svelte';
+export { default as XIcon } from './x.svelte';
