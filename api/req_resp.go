@@ -25,10 +25,10 @@ type fileInfoResponse struct {
 
 type courseProgressResponse struct {
 	Started           bool           `json:"started"`
-	StartedAt         types.DateTime `json:"startedAt"`
+	StartedAt         types.DateTime `json:"started_at"`
 	Percent           int            `json:"percent"`
-	CompletedAt       types.DateTime `json:"completedAt"`
-	ProgressUpdatedAt types.DateTime `json:"progressUpdatedAt"`
+	CompletedAt       types.DateTime `json:"completed_at"`
+	ProgressUpdatedAt types.DateTime `json:"progress_updated_at"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -37,13 +37,13 @@ type courseResponse struct {
 	ID        string         `json:"id"`
 	Title     string         `json:"title"`
 	Path      string         `json:"path"`
-	HasCard   bool           `json:"hasCard"`
+	HasCard   bool           `json:"has_card"`
 	Available bool           `json:"available"`
-	CreatedAt types.DateTime `json:"createdAt"`
-	UpdatedAt types.DateTime `json:"updatedAt"`
+	CreatedAt types.DateTime `json:"created_at"`
+	UpdatedAt types.DateTime `json:"updated_at"`
 
 	// Scan status
-	ScanStatus string `json:"scanStatus"`
+	ScanStatus string `json:"scan_status"`
 
 	// Progress
 	Progress courseProgressResponse `json:"progress"`
@@ -87,7 +87,7 @@ func courseResponseHelper(courses []*models.Course) []*courseResponse {
 type courseTagResponse struct {
 	ID       string `json:"id"`
 	Tag      string `json:"tag,omitempty"`
-	CourseID string `json:"courseId,omitempty"`
+	CourseID string `json:"course_id,omitempty"`
 	Title    string `json:"title,omitempty"`
 }
 
@@ -108,16 +108,16 @@ func courseTagResponseHelper(courseTags []*models.CourseTag) []*courseTagRespons
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type assetProgressRequest struct {
-	VideoPos  int  `json:"videoPos"`
+	VideoPos  int  `json:"video_position"`
 	Completed bool `json:"completed"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type assetProgressResponse struct {
-	VideoPos    int            `json:"videoPos"`
+	VideoPos    int            `json:"video_position"`
 	Completed   bool           `json:"completed"`
-	CompletedAt types.DateTime `json:"completedAt"`
+	CompletedAt types.DateTime `json:"completed_at"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -157,11 +157,11 @@ func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 
 type attachmentResponse struct {
 	ID        string         `json:"id"`
-	AssetId   string         `json:"assetId"`
+	AssetId   string         `json:"asset_id"`
 	Title     string         `json:"title"`
 	Path      string         `json:"path"`
-	CreatedAt types.DateTime `json:"createdAt"`
-	UpdatedAt types.DateTime `json:"updatedAt"`
+	CreatedAt types.DateTime `json:"created_at"`
+	UpdatedAt types.DateTime `json:"updated_at"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -186,14 +186,14 @@ func attachmentResponseHelper(attachments []*models.Attachment) []*attachmentRes
 
 type assetResponse struct {
 	ID        string         `json:"id"`
-	CourseID  string         `json:"courseId"`
+	CourseID  string         `json:"course_id"`
 	Title     string         `json:"title"`
 	Prefix    int            `json:"prefix"`
 	Chapter   string         `json:"chapter"`
 	Path      string         `json:"path"`
-	Type      types.Asset    `json:"assetType"`
-	CreatedAt types.DateTime `json:"createdAt"`
-	UpdatedAt types.DateTime `json:"updatedAt"`
+	Type      types.Asset    `json:"asset_type"`
+	CreatedAt types.DateTime `json:"created_at"`
+	UpdatedAt types.DateTime `json:"updated_at"`
 
 	// Relations
 	Progress    *assetProgressResponse `json:"progress"`
@@ -204,10 +204,10 @@ type assetResponse struct {
 
 type scanResponse struct {
 	ID        string           `json:"id"`
-	CourseID  string           `json:"courseId"`
+	CourseID  string           `json:"course_id"`
 	Status    types.ScanStatus `json:"status"`
-	CreatedAt types.DateTime   `json:"createdAt"`
-	UpdatedAt types.DateTime   `json:"updatedAt"`
+	CreatedAt types.DateTime   `json:"created_at"`
+	UpdatedAt types.DateTime   `json:"updated_at"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -238,10 +238,10 @@ type tagRequest struct {
 type tagResponse struct {
 	ID          string               `json:"id"`
 	Tag         string               `json:"tag"`
-	CourseCount int                  `json:"courseCount"`
+	CourseCount int                  `json:"course_count"`
 	Courses     []*courseTagResponse `json:"courses,omitempty"`
-	CreatedAt   types.DateTime       `json:"createdAt"`
-	UpdatedAt   types.DateTime       `json:"updatedAt"`
+	CreatedAt   types.DateTime       `json:"created_at"`
+	UpdatedAt   types.DateTime       `json:"updated_at"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -294,7 +294,7 @@ type userRequest struct {
 type userResponse struct {
 	ID          string         `json:"id"`
 	Username    string         `json:"username"`
-	DisplayName string         `json:"displayName"`
+	DisplayName string         `json:"display_name"`
 	Role        types.UserRole `json:"role"`
 }
 
@@ -328,7 +328,7 @@ type logResponse struct {
 	Level     int            `json:"level"`
 	Message   string         `json:"message"`
 	Data      types.JsonMap  `json:"data"`
-	CreatedAt types.DateTime `json:"createdAt"`
+	CreatedAt types.DateTime `json:"created_at"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
