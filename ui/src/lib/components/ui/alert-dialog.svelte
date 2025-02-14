@@ -4,17 +4,16 @@
 	import type { Snippet } from 'svelte';
 
 	type Props = AlertDialog.RootProps & {
-		trigger: Snippet;
+		trigger?: Snippet;
 		triggerClass?: string;
 		contentProps?: Omit<WithoutChild<AlertDialog.ContentProps>, 'class'>;
 		contentClass?: string;
 		description: Snippet;
-		action: Snippet;
+		action?: Snippet;
 	};
 
 	let {
 		open = $bindable(false),
-		children,
 		trigger,
 		triggerClass,
 		contentProps,
@@ -26,14 +25,16 @@
 </script>
 
 <AlertDialog.Root bind:open {...restProps}>
-	<AlertDialog.Trigger
-		class={cn(
-			'bg-background-error hover:bg-background-error-alt-1 text-foreground-alt-1 hover:text-foreground w-36 cursor-pointer rounded-md py-2 duration-200 select-none',
-			triggerClass
-		)}
-	>
-		{@render trigger()}
-	</AlertDialog.Trigger>
+	{#if trigger}
+		<AlertDialog.Trigger
+			class={cn(
+				'bg-background-error hover:bg-background-error-alt-1 text-foreground-alt-1 hover:text-foreground w-36 cursor-pointer rounded-md py-2 duration-200 select-none',
+				triggerClass
+			)}
+		>
+			{@render trigger()}
+		</AlertDialog.Trigger>
+	{/if}
 
 	<AlertDialog.Portal>
 		<AlertDialog.Overlay
@@ -79,7 +80,7 @@
 						Cancel
 					</AlertDialog.Cancel>
 
-					{@render action()}
+					{@render action?.()}
 				</div>
 			</div>
 		</AlertDialog.Content>

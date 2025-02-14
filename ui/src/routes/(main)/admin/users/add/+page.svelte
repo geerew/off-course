@@ -4,7 +4,7 @@
 	import { Spinner } from '$lib/components';
 	import { BackArrowIcon } from '$lib/components/icons';
 	import { Button, Input, InputPassword, Select } from '$lib/components/ui';
-	import type { UserRole } from '$lib/models/user';
+	import { SelectRoles, type UserRole } from '$lib/models/user';
 	import { cn } from '$lib/utils';
 	import { Separator } from 'bits-ui';
 	import { toast } from 'svelte-sonner';
@@ -18,10 +18,6 @@
 	let displayNameValue = $state<string>('');
 
 	// Roles
-	let roles = [
-		{ value: 'user', label: 'User' },
-		{ value: 'admin', label: 'Admin' }
-	];
 	let roleValue: UserRole | '' = $state('');
 
 	// Password
@@ -45,8 +41,6 @@
 
 	async function submitForm(event: Event) {
 		event.preventDefault();
-
-		// sleep for 10 second
 		isPosting = true;
 
 		if (passwordValue !== confirmPasswordValue) {
@@ -118,7 +112,7 @@
 				<div class="text-foreground-alt-2 text-[15px] uppercase">Role</div>
 				<Select
 					type="single"
-					items={roles}
+					items={SelectRoles}
 					bind:value={roleValue}
 					placeholder="Select a role"
 					contentProps={{ sideOffset: 8, loop: true }}

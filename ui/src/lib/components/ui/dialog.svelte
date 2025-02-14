@@ -4,7 +4,7 @@
 	import type { Snippet } from 'svelte';
 
 	type Props = Dialog.RootProps & {
-		trigger: Snippet;
+		trigger?: Snippet;
 		triggerClass?: string;
 		content: Snippet;
 		contentProps?: Omit<WithoutChild<Dialog.ContentProps>, 'class'>;
@@ -14,7 +14,6 @@
 
 	let {
 		open = $bindable(false),
-		children,
 		trigger,
 		triggerClass,
 		content,
@@ -26,14 +25,16 @@
 </script>
 
 <Dialog.Root bind:open {...restProps}>
-	<Dialog.Trigger
-		class={cn(
-			'bg-background-alt-4 hover:bg-background-alt-5 text-foreground-alt-1 hover:text-foreground w-38 cursor-pointer rounded-md py-2 duration-200 select-none',
-			triggerClass
-		)}
-	>
-		{@render trigger()}
-	</Dialog.Trigger>
+	{#if trigger}
+		<Dialog.Trigger
+			class={cn(
+				'bg-background-alt-4 hover:bg-background-alt-5 text-foreground-alt-1 hover:text-foreground w-38 cursor-pointer rounded-md py-2 duration-200 select-none',
+				triggerClass
+			)}
+		>
+			{@render trigger()}
+		</Dialog.Trigger>
+	{/if}
 
 	<Dialog.Portal>
 		<Dialog.Overlay

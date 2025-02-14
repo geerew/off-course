@@ -6,6 +6,11 @@ import type { PaginationReqParams } from './pagination';
 const UserRoleSchema = picklist(['admin', 'user']);
 export type UserRole = InferOutput<typeof UserRoleSchema>;
 
+export const SelectRoles = [
+	{ value: 'user', label: 'User' },
+	{ value: 'admin', label: 'Admin' }
+];
+
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export const UserSchema = object({
