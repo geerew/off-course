@@ -16,7 +16,7 @@
 <CheckboxPrimitive.Root
 	bind:ref
 	class={cn(
-		'border-foreground-alt-2 ring-offset-background focus-visible:ring-ring data-[state=checked]:bg-background-primary-alt-1 data-[state=checked]:border-background-primary-alt-1 data-[state=checked]:text-background peer box-content size-4 shrink-0 rounded-sm border hover:cursor-pointer focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50',
+		'border-foreground-alt-2 ring-offset-background focus-visible:ring-ring data-[state=checked]:bg-background-primary-alt-1 data-[state=checked]:border-background-primary-alt-1 data-[state=checked]:text-background data-[state=indeterminate]:bg-background-primary-alt-1 data-[state=indeterminate]:border-background-primary-alt-1 data-[state=indeterminate]:text-background peer box-content size-4 shrink-0 rounded-sm border hover:cursor-pointer focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50',
 		className
 	)}
 	bind:checked
