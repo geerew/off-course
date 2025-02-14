@@ -25,9 +25,9 @@ const (
 // PaginationResult defines the return result of a pagination
 type PaginationResult struct {
 	Page       int               `json:"page"`
-	PerPage    int               `json:"per_page"`
-	TotalItems int               `json:"total_items"`
-	TotalPages int               `json:"total_pages"`
+	PerPage    int               `json:"perPage"`
+	TotalItems int               `json:"totalItems"`
+	TotalPages int               `json:"totalPages"`
 	Items      []json.RawMessage `json:"items"`
 }
 

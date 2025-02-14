@@ -231,7 +231,7 @@ func Test_BuildResult(t *testing.T) {
 
 		type Data struct {
 			ID        string         `json:"id"`
-			CreatedAt types.DateTime `json:"created_at"`
+			CreatedAt types.DateTime `json:"createdAt"`
 		}
 
 		// The data to marshal
@@ -277,7 +277,7 @@ func Test_BuildResult(t *testing.T) {
 
 		// Invalid data
 		badData := []struct {
-			UnsupportedField chan int `json:"unsupported_field"`
+			UnsupportedField chan int `json:"unsupportedField"`
 		}{
 			{UnsupportedField: make(chan int)},
 		}
