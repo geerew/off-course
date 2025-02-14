@@ -4,6 +4,7 @@ export { default as DeleteIcon } from './delete.svelte';
 export { default as DotsIcon } from './dots.svelte';
 export { default as EditIcon } from './edit.svelte';
 export { default as FlagIcon } from './flag.svelte';
+export { default as LeftChevronIcon } from './left-chevron.svelte';
 export { default as LogoIcon } from './logo.svelte';
 export { default as MinusIcon } from './minus.svelte';
 export { default as PlusIcon } from './plus.svelte';

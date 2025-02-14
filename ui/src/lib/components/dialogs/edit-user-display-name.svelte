@@ -46,7 +46,7 @@
 				'Content-Type': 'application/json'
 			},
 			body: JSON.stringify({
-				display_name: newValue
+				displayName: newValue
 			})
 		});
 

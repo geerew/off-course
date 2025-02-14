@@ -10,10 +10,11 @@
 
 	type Props = {
 		user: UserModel;
-		refreshFn: () => void;
+		onUpdate: () => void;
+		onDelete: () => void;
 	};
 
-	let { user = $bindable(), refreshFn }: Props = $props();
+	let { user, onUpdate, onDelete }: Props = $props();
 
 	let roleDialogOpen = $state(false);
 	let passwordDialogOpen = $state(false);
@@ -65,6 +66,6 @@
 	</DropdownMenu.Content>
 </DropdownMenu.Root>
 
-<EditUserRoleDialog bind:open={roleDialogOpen} bind:user successFn={refreshFn} />
+<EditUserRoleDialog bind:open={roleDialogOpen} {user} successFn={onUpdate} />
 <EditUserPasswordDialog bind:open={passwordDialogOpen} {user} me={false} />
-<DeleteUserDialog bind:open={deleteDialogOpen} {user} me={false} successFn={refreshFn} />
+<DeleteUserDialog bind:open={deleteDialogOpen} {user} me={false} successFn={onDelete} />

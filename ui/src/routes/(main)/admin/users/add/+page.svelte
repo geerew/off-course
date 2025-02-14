@@ -39,7 +39,7 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	async function submitForm(event: Event) {
+	async function add(event: Event) {
 		event.preventDefault();
 		isPosting = true;
 
@@ -70,6 +70,8 @@
 		isPosting = false;
 	}
 
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	// Focus on the username input when the page loads
 	$effect(() => {
 		if (usernameInputEl) {
@@ -79,7 +81,7 @@
 </script>
 
 <div class="flex w-full place-content-center">
-	<form onsubmit={submitForm} class="flex w-[22rem] flex-col gap-6 pt-1">
+	<form onsubmit={add} class="flex w-[22rem] flex-col gap-6 pt-1">
 		<!-- Username -->
 		<div class="flex place-content-center">
 			<div class="flex w-xs flex-col gap-3">

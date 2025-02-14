@@ -47,7 +47,7 @@
 		if (me) {
 			api = '/api/auth/me';
 			body = JSON.stringify({
-				current_password: currentPassword,
+				currentPassword: currentPassword,
 				password: newPassword
 			});
 		}

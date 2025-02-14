@@ -14,8 +14,8 @@ export type PaginationRespParams = {
 	page: number;
 	perPage: number;
 	perPages: number[];
-	totalItems: number;
 	totalPages: number;
+	totalItems: number;
 };
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -23,8 +23,8 @@ export type PaginationRespParams = {
 export const PaginationSchema = object({
 	page: number(),
 	perPage: number(),
-	totalItems: number(),
 	totalPages: number(),
+	totalItems: number(),
 	items: union([array(UserSchema)])
 });
 
