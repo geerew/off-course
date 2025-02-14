@@ -138,6 +138,19 @@ func (api userAPI) updateUser(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error updating user", err)
 	}
 
+	// Update the session with the new role
+	if userReq.Role != "" {
+		session, err := api.r.sessionStore.Get(c)
+		if err != nil {
+			return errorResponse(c, fiber.StatusInternalServerError, "Error getting session", err)
+		}
+
+		session.Set("role", user.Role.String())
+		if err := session.Save(); err != nil {
+			return errorResponse(c, fiber.StatusInternalServerError, "Error saving session", err)
+		}
+	}
+
 	return c.Status(fiber.StatusOK).JSON(&userResponse{
 		ID:          user.ID,
 		Username:    user.Username,
