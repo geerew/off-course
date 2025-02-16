@@ -130,7 +130,12 @@ func (api userAPI) updateUser(c *fiber.Ctx) error {
 	}
 
 	if userReq.Role != "" {
-		user.Role = types.NewUserRole(userReq.Role)
+		// Do nothing when the role is the same
+		if user.Role.String() == userReq.Role {
+			userReq.Role = ""
+		} else {
+			user.Role = types.NewUserRole(userReq.Role)
+		}
 	}
 
 	err = api.r.dao.UpdateUser(c.UserContext(), user)
@@ -138,16 +143,26 @@ func (api userAPI) updateUser(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error updating user", err)
 	}
 
-	// Update the session with the new role
+	// Revoke all sessions for the give id
 	if userReq.Role != "" {
-		session, err := api.r.sessionStore.Get(c)
-		if err != nil {
-			return errorResponse(c, fiber.StatusInternalServerError, "Error getting session", err)
+		rows, err := api.r.config.DbManager.DataDb.DB().Query("Select id FROM sessions WHERE user_id = ?", user.ID)
+		if err != nil && err != sql.ErrNoRows {
+			return errorResponse(c, fiber.StatusInternalServerError, "Error looking up session", err)
 		}
+		defer rows.Close()
 
-		session.Set("role", user.Role.String())
-		if err := session.Save(); err != nil {
-			return errorResponse(c, fiber.StatusInternalServerError, "Error saving session", err)
+		ids := []string{}
+		for rows.Next() {
+			var id string
+			rows.Scan(&id)
+			ids = append(ids, id)
+		}
+		rows.Close()
+
+		for _, id := range ids {
+			if err := api.r.sessionStore.Delete(id); err != nil {
+				return errorResponse(c, fiber.StatusInternalServerError, "Error deleting session", err)
+			}
 		}
 	}
 
