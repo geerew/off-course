@@ -269,7 +269,7 @@ func TestUsers_UpdateUser(t *testing.T) {
 		require.NoError(t, router.dao.CreateUser(ctx, user))
 
 		// Update display name
-		req := httptest.NewRequest(http.MethodPut, "/api/users/"+user.ID, strings.NewReader(`{"display_name": "Bob"}`))
+		req := httptest.NewRequest(http.MethodPut, "/api/users/"+user.ID, strings.NewReader(`{"displayName": "Bob"}`))
 		req.Header.Set("Content-Type", "application/json")
 
 		status, _, err := requestHelper(t, router, req)
@@ -333,7 +333,7 @@ func TestUsers_UpdateUser(t *testing.T) {
 	t.Run("404 (user not found)", func(t *testing.T) {
 		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
-		req := httptest.NewRequest(http.MethodPut, "/api/users/invalid", strings.NewReader(`{"display_name": "Admin"}`))
+		req := httptest.NewRequest(http.MethodPut, "/api/users/invalid", strings.NewReader(`{"displayName": "Admin"}`))
 		req.Header.Set("Content-Type", "application/json")
 
 		status, body, err := requestHelper(t, router, req)
