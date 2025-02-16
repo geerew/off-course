@@ -27,7 +27,7 @@ func (dao *DAO) WriteLog(ctx context.Context, log *models.Log) error {
 // 	}
 
 // 	// Always override the order by to created_at
-// 	dbParams.OrderBy = []string{dao.Table() + ".created_at DESC"}
+// 	dbParams.OrderBy = []string{dao.Table() + ".+models.BASE_CREATED_AT+" DESC"}
 
 // 	// Default the columns if not specified
 // 	if len(dbParams.Columns) == 0 {

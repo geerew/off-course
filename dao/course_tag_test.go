@@ -126,7 +126,7 @@ func TestCourseTag_PluckCourseIDsWithTags(t *testing.T) {
 		require.NoError(t, dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[1].ID, Tag: "JavaScript"}))
 		time.Sleep(1 * time.Millisecond)
 
-		options := &database.Options{OrderBy: []string{models.COURSE_TAG_TABLE + ".created_at asc"}}
+		options := &database.Options{OrderBy: []string{models.COURSE_TAG_TABLE + "." + models.BASE_CREATED_AT + " asc"}}
 
 		// Go
 		courseIDs, err := dao.PluckCourseIDsWithTags(ctx, []string{"Go"}, options)

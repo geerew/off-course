@@ -528,7 +528,7 @@ func Test_List(t *testing.T) {
 				squirrel.Eq{models.COURSE_TABLE + ".id": courses[1].ID},
 				squirrel.Eq{models.COURSE_TABLE + ".id": courses[2].ID},
 			},
-			OrderBy: []string{models.COURSE_TABLE + ".created_at ASC"},
+			OrderBy: []string{models.COURSE_TABLE + "." + models.BASE_CREATED_AT + " ASC"},
 		}
 		require.NoError(t, dao.List(ctx, &coursesResult, options))
 		require.Len(t, coursesResult, 2)
@@ -572,7 +572,7 @@ func Test_ListPluck(t *testing.T) {
 			time.Sleep(1 * time.Millisecond)
 		}
 
-		options := &database.Options{OrderBy: []string{models.COURSE_TABLE + ".created_at ASC"}}
+		options := &database.Options{OrderBy: []string{models.COURSE_TABLE + "." + models.BASE_CREATED_AT + " ASC"}}
 
 		// Course IDs
 		ids, err := dao.ListPluck(ctx, &models.Course{}, options, models.BASE_ID)

@@ -37,7 +37,7 @@ func (r *Router) initLogRoutes() {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api *logsAPI) getLogs(c *fiber.Ctx) error {
-	orderBy := c.Query("orderBy", models.LOG_TABLE+".created_at desc")
+	orderBy := c.Query("orderBy", models.LOG_TABLE+"."+models.BASE_CREATED_AT+" desc")
 	levels := c.Query("levels", "")
 	types := c.Query("types", "")
 	messages := c.Query("messages", "")

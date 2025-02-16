@@ -73,7 +73,7 @@ func (r *Router) initCourseRoutes() {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api coursesAPI) getCourses(c *fiber.Ctx) error {
-	orderBy := c.Query("orderBy", models.COURSE_TABLE+".created_at desc")
+	orderBy := c.Query("orderBy", models.COURSE_TABLE+"."+models.BASE_CREATED_AT+" desc")
 	titles := c.Query("titles", "")
 	progress := c.Query("progress", "")
 	tags := c.Query("tags", "")

@@ -68,7 +68,7 @@ func TestCourses_GetCourses(t *testing.T) {
 		}
 
 		// CREATED_AT ASC
-		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?orderBy="+models.COURSE_TABLE+".created_at%20asc", nil))
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?orderBy="+models.COURSE_TABLE+"."+models.BASE_CREATED_AT+"%20asc", nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
@@ -78,7 +78,7 @@ func TestCourses_GetCourses(t *testing.T) {
 		require.Equal(t, courses[0].ID, coursesResp[0].ID)
 
 		// CREATED_AT DESC
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?orderBy="+models.COURSE_TABLE+".created_at%20desc", nil))
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?orderBy="+models.COURSE_TABLE+"."+models.BASE_CREATED_AT+"%20desc", nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
@@ -100,7 +100,7 @@ func TestCourses_GetCourses(t *testing.T) {
 
 		// Get the first page (10 courses)
 		params := url.Values{
-			"orderBy":                    {models.COURSE_TABLE + ".created_at asc"},
+			"orderBy":                    {models.COURSE_TABLE + "." + models.BASE_CREATED_AT + " asc"},
 			pagination.PageQueryParam:    {"1"},
 			pagination.PerPageQueryParam: {"10"},
 		}
@@ -117,7 +117,7 @@ func TestCourses_GetCourses(t *testing.T) {
 
 		// Get the second page (7 courses)
 		params = url.Values{
-			"orderBy":                    {models.COURSE_TABLE + ".created_at asc"},
+			"orderBy":                    {models.COURSE_TABLE + "." + models.BASE_CREATED_AT + " asc"},
 			pagination.PageQueryParam:    {"2"},
 			pagination.PerPageQueryParam: {"10"},
 		}
@@ -723,7 +723,7 @@ func TestCourses_GetAssets(t *testing.T) {
 		}
 
 		// CREATED_AT ASC
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+courses[1].ID+"/assets/?orderBy=created_at%20asc", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+courses[1].ID+"/assets/?orderBy="+models.BASE_CREATED_AT+"%20asc", nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -735,7 +735,7 @@ func TestCourses_GetAssets(t *testing.T) {
 		require.Equal(t, assets[3].ID, assetsResp[1].ID)
 
 		// CREATED_AT DESC
-		req = httptest.NewRequest(http.MethodGet, "/api/courses/"+courses[1].ID+"/assets/?orderBy=created_at%20desc", nil)
+		req = httptest.NewRequest(http.MethodGet, "/api/courses/"+courses[1].ID+"/assets/?orderBy="+models.BASE_CREATED_AT+"%20desc", nil)
 		status, body, err = requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -788,7 +788,7 @@ func TestCourses_GetAssets(t *testing.T) {
 
 		// Get the first page (10 assets)
 		params := url.Values{
-			"orderBy":                    {"created_at asc"},
+			"orderBy":                    {models.BASE_CREATED_AT + " asc"},
 			pagination.PageQueryParam:    {"1"},
 			pagination.PerPageQueryParam: {"10"},
 		}
@@ -806,7 +806,7 @@ func TestCourses_GetAssets(t *testing.T) {
 
 		// Get the second page (7 assets)
 		params = url.Values{
-			"orderBy":                    {"created_at asc"},
+			"orderBy":                    {models.BASE_CREATED_AT + " asc"},
 			pagination.PageQueryParam:    {"2"},
 			pagination.PerPageQueryParam: {"10"},
 		}
@@ -1374,7 +1374,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 		}
 
 		// CREATED_AT ASC
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/attachments?orderBy=created_at%20asc", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/attachments?orderBy="+models.BASE_CREATED_AT+"%20asc", nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -1386,7 +1386,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 		require.Equal(t, attachments[1].ID, attachmentResp[1].ID)
 
 		// CREATED_AT DESC
-		req = httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/attachments?orderBy=created_at%20desc", nil)
+		req = httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/attachments?orderBy="+models.BASE_CREATED_AT+"%20desc", nil)
 		status, body, err = requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -1430,7 +1430,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 
 		// Get the first page (10 attachments)
 		params := url.Values{
-			"orderBy":                    {"created_at asc"},
+			"orderBy":                    {models.BASE_CREATED_AT + " asc"},
 			pagination.PageQueryParam:    {"1"},
 			pagination.PerPageQueryParam: {"10"},
 		}
@@ -1448,7 +1448,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 
 		// Get the second page (7 attachments)
 		params = url.Values{
-			"orderBy":                    {"created_at asc"},
+			"orderBy":                    {models.BASE_CREATED_AT + " asc"},
 			pagination.PageQueryParam:    {"2"},
 			pagination.PerPageQueryParam: {"10"},
 		}

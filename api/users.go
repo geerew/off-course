@@ -35,7 +35,7 @@ func (r *Router) initUserRoutes() {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api userAPI) getUsers(c *fiber.Ctx) error {
-	orderBy := c.Query("orderBy", models.USER_TABLE+".created_at desc")
+	orderBy := c.Query("orderBy", models.USER_TABLE+"."+models.BASE_CREATED_AT+" desc")
 
 	options := &database.Options{
 		OrderBy:    strings.Split(orderBy, ","),

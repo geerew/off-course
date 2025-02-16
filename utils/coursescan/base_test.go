@@ -455,7 +455,7 @@ func TestScanner_Processor(t *testing.T) {
 		require.NoError(t, err)
 
 		attachmentOptions := &database.Options{
-			OrderBy: []string{models.ATTACHMENT_TABLE + ".created_at asc"},
+			OrderBy: []string{models.ATTACHMENT_TABLE + "." + models.BASE_CREATED_AT + " asc"},
 			Where:   squirrel.Eq{models.ATTACHMENT_TABLE + ".asset_ID": assets[0].ID},
 		}
 
@@ -558,7 +558,7 @@ func TestScanner_Processor(t *testing.T) {
 		require.Len(t, assets[0].Attachments, 1)
 
 		attachmentOptions := &database.Options{
-			OrderBy: []string{models.ATTACHMENT_TABLE + ".created_at asc"},
+			OrderBy: []string{models.ATTACHMENT_TABLE + "." + models.BASE_CREATED_AT + " asc"},
 		}
 
 		attachments := []*models.Attachment{}

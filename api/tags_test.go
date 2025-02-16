@@ -74,7 +74,7 @@ func TestTags_GetTags(t *testing.T) {
 		}
 
 		// CREATED_AT ASC
-		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/?orderBy=created_at%20asc", nil))
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/?orderBy="+models.BASE_CREATED_AT+"%20asc", nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
@@ -85,7 +85,7 @@ func TestTags_GetTags(t *testing.T) {
 		require.Equal(t, "PHP", tagsResp[4].Tag)
 
 		// CREATED_AT DESC
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/?orderBy=created_at%20desc", nil))
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/?orderBy="+models.BASE_CREATED_AT+"%20desc", nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
@@ -94,22 +94,6 @@ func TestTags_GetTags(t *testing.T) {
 		require.Len(t, tagsResp, 5)
 		require.Equal(t, "PHP", tagsResp[0].Tag)
 		require.Equal(t, "JavaScript", tagsResp[4].Tag)
-
-		// 		// ----------------------------
-		// 		// CREATED_AT ASC + COURSES.TITLE DESC
-		// 		// ----------------------------
-		// 		courseDao := daos.NewCourseDao(router.config.DbManager.DataDb)
-
-		// 		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/?expand=true&orderBy=created_at%20asc,"+courseDao.Table()+".title%20desc", nil))
-		// 		require.NoError(t, err)
-		// 		require.Equal(t, http.StatusOK, status)
-
-		// 		paginationResp, tagsResp = unmarshalHelper[tagResponse](t, body)
-		// 		require.Equal(t, 5, int(paginationResp.TotalItems))
-		// 		require.Len(t, tagsResp, 5)
-		// 		require.Equal(t, "PHP", tagsResp[0].Tag)
-		// 		require.Len(t, tagsResp[0].Courses, 2)
-		// 		require.Equal(t, "course 2", tagsResp[0].Courses[0].Title)
 	})
 
 	t.Run("200 (filter)", func(t *testing.T) {

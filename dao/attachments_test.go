@@ -157,7 +157,7 @@ func Test_UpdateAttachment(t *testing.T) {
 // 		// ----------------------------
 // 		// CREATED_AT DESC
 // 		// ----------------------------
-// 		result, err := dao.List(&database.DatabaseParams{OrderBy: []string{"created_at desc"}}, nil)
+// 		result, err := dao.List(&database.DatabaseParams{OrderBy: []string{models.BASE_CREATED_AT+" desc"}}, nil)
 // 		require.Nil(t, err)
 // 		require.Len(t, result, 3)
 // 		require.Equal(t, testData[2].Assets[0].Attachments[0].ID, result[0].ID)
@@ -167,7 +167,7 @@ func Test_UpdateAttachment(t *testing.T) {
 // 		// ----------------------------
 // 		// CREATED_AT ASC
 // 		// ----------------------------
-// 		result, err = dao.List(&database.DatabaseParams{OrderBy: []string{"created_at asc"}}, nil)
+// 		result, err = dao.List(&database.DatabaseParams{OrderBy: []string{models.BASE_CREATED_AT+" asc"}}, nil)
 // 		require.Nil(t, err)
 // 		require.Len(t, result, 3)
 // 		require.Equal(t, testData[0].Assets[0].Attachments[0].ID, result[0].ID)
@@ -196,7 +196,7 @@ func Test_UpdateAttachment(t *testing.T) {
 // 				squirrel.Eq{dao.Table() + ".id": testData[1].Assets[1].Attachments[0].ID},
 // 				squirrel.Eq{dao.Table() + ".id": testData[2].Assets[0].Attachments[1].ID},
 // 			},
-// 			OrderBy: []string{"created_at asc"},
+// 			OrderBy: []string{models.BASE_CREATED_AT+" asc"},
 // 		}
 
 // 		result, err = dao.List(dbParams, nil)

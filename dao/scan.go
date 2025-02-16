@@ -48,7 +48,7 @@ func (dao *DAO) NextWaitingScan(ctx context.Context, model models.Modeler) error
 
 	options := &database.Options{
 		Where:   squirrel.Eq{model.Table() + ".status": types.ScanStatusWaiting},
-		OrderBy: []string{model.Table() + ".created_at ASC"},
+		OrderBy: []string{model.Table() + "." + models.BASE_CREATED_AT + " ASC"},
 	}
 
 	return dao.Get(ctx, model, options)
