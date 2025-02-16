@@ -745,23 +745,6 @@ func TestCourses_GetAssets(t *testing.T) {
 		require.Len(t, paginationResp.Items, 2)
 		require.Equal(t, assets[3].ID, assetsResp[0].ID)
 		require.Equal(t, assets[2].ID, assetsResp[1].ID)
-
-		// 		// ----------------------------
-		// 		// CREATED_AT ASC + ATTACHMENTS.TITLE DESC
-		// 		// ----------------------------
-		// 		attDao := daos.NewAttachmentDao(router.config.DbManager.DataDb)
-
-		// 		req = httptest.NewRequest(http.MethodGet, "/api/courses/"+testData[1].ID+"/assets/?expand=true&orderBy=created_at%20asc,"+attDao.Table()+".created_at%20desc", nil)
-		// 		status, body, err = requestHelper(t, router, req)
-		// 		require.NoError(t, err)
-		// 		require.Equal(t, http.StatusOK, status)
-
-		// 		paginationResp, assetsResp = unmarshalHelper[assetResponse](t, body)
-		// 		require.Equal(t, 3, int(paginationResp.TotalItems))
-		// 		require.Len(t, paginationResp.Items, 3)
-		// 		require.Equal(t, testData[1].Assets[0].ID, assetsResp[0].ID)
-		// 		require.Len(t, assetsResp[0].Attachments, 2)
-		// 		require.Equal(t, testData[1].Assets[0].Attachments[1].ID, assetsResp[0].Attachments[0].ID)
 	})
 
 	t.Run("200 (pagination)", func(t *testing.T) {
