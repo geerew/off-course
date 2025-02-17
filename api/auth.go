@@ -250,16 +250,14 @@ func (api authAPI) deleteMe(c *fiber.Ctx) error {
 		}
 	}
 
-	// Delete session information
-	_, err = api.r.config.DbManager.DataDb.DB().Exec("DELETE FROM sessions WHERE user_id = ?", user.ID)
-	if err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting session information", err)
-	}
-
-	// Delete the user
 	err = api.r.dao.Delete(c.UserContext(), user, nil)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user", err)
+	}
+
+	err = api.r.sessionManager.DeleteUserSessions(user.ID)
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user sessions", err)
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)

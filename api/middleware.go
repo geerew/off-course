@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"strings"
 	"time"
@@ -148,7 +147,6 @@ func authMiddleware(r *Router) fiber.Handler {
 			return c.Next()
 		}
 
-		fmt.Println("1")
 		// Get the session
 		session, err := r.sessionManager.Get(c)
 		if err != nil {
