@@ -17,7 +17,6 @@
 	// Object of selected users and the count of selected users
 	let selectedUsers: Record<string, UserModel> = $state({});
 	let selectedUserCount = $derived(Object.keys(selectedUsers).length);
-	let hasEverSelected = $state(false);
 
 	let paginationPage = $state(1);
 	let paginationPerPage = $state(10);
@@ -36,26 +35,6 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	// Set hasEverSelected to true when the user selects a user
-	$effect(() => {
-		if (selectedUserCount > 0) {
-			hasEverSelected = true;
-		}
-	});
-
-	// Show a toast message as the user selects/deselects users
-	$effect(() => {
-		if (!hasEverSelected) return;
-
-		if (selectedUserCount === 0) {
-			toast.success('No users selected');
-		} else {
-			toast.success(`${selectedUserCount} user${selectedUserCount > 1 ? 's' : ''} selected`);
-		}
-	});
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 	async function fetchUsers(): Promise<void> {
 		try {
 			const data = await GetUsers({
@@ -64,7 +43,7 @@
 				perPage: paginationPerPage
 			});
 			paginationTotal = data.totalItems;
-			users = data.items as UsersModel;
+			users = data.items;
 		} catch (error) {
 			throw error;
 		}
@@ -85,7 +64,7 @@
 			paginationPage = Math.ceil(paginationTotalMinusSelf / paginationPerPage);
 		}
 
-		await onRowUpdate();
+		loadPromise = fetchUsers();
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -113,6 +92,18 @@
 				}
 			});
 		}
+
+		toastCount();
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	function toastCount() {
+		if (selectedUserCount === 0) {
+			toast.success('No users selected');
+		} else {
+			toast.success(`${selectedUserCount} user${selectedUserCount > 1 ? 's' : ''} selected`);
+		}
 	}
 </script>
 
@@ -129,7 +120,17 @@
 			</Button>
 
 			<div class="flex h-10 items-center gap-3 rounded-lg">
-				<TableActionMenu bind:users={selectedUsers} onUpdate={onRowUpdate} onDelete={onRowDelete} />
+				<TableActionMenu
+					users={selectedUsers}
+					onUpdate={() => {
+						selectedUsers = {};
+						onRowUpdate();
+					}}
+					onDelete={() => {
+						selectedUsers = {};
+						onRowDelete();
+					}}
+				/>
 			</div>
 		</div>
 
@@ -170,6 +171,8 @@
 													} else {
 														delete selectedUsers[user.id];
 													}
+
+													toastCount();
 												}}
 											/>
 										{/if}

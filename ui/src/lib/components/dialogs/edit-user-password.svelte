@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { UpdateSelf, UpdateUser } from '$lib/api/users';
 	import { auth } from '$lib/auth.svelte';
 	import { Spinner } from '$lib/components';
 	import { Button, Dialog, InputPassword } from '$lib/components/ui';
@@ -9,14 +10,13 @@
 
 	type Props = {
 		open?: boolean;
-		user: UserModel;
-		me: boolean;
+		value: UserModel;
 		trigger?: Snippet;
 		triggerClass?: string;
 		successFn?: () => void;
 	};
 
-	let { open = $bindable(false), user, me, trigger, triggerClass, successFn }: Props = $props();
+	let { open = $bindable(false), value, trigger, triggerClass, successFn }: Props = $props();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -26,8 +26,10 @@
 	let confirmPassword = $state('');
 	let isPosting = $state(false);
 
+	let deletingSelf = value.id === auth?.user?.id;
+
 	let passwordSubmitDisabled = $derived.by(() => {
-		return (me && currentPassword === '') || newPassword === '' || confirmPassword === '';
+		return (deletingSelf && currentPassword === '') || newPassword === '' || confirmPassword === '';
 	});
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -35,45 +37,27 @@
 	async function update() {
 		isPosting = true;
 
-		if (newPassword !== confirmPassword) {
-			toast.error('Passwords do not match');
-			isPosting = false;
-			return;
-		}
+		try {
+			if (deletingSelf) {
+				if (newPassword !== confirmPassword) {
+					toast.error('Passwords do not match');
+					isPosting = false;
+					return;
+				}
 
-		let api = `/api/users/${user.id}`;
-		let body = JSON.stringify({ password: newPassword });
-
-		if (me) {
-			api = '/api/auth/me';
-			body = JSON.stringify({
-				currentPassword: currentPassword,
-				password: newPassword
-			});
-		}
-
-		const response = await fetch(api, {
-			method: 'PUT',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body
-		});
-
-		if (response.ok) {
-			if (me) {
-				await auth.me();
+				await UpdateSelf({ currentPassword, password: newPassword });
 			} else {
-				toast.success('Password changed');
+				await UpdateUser(value.id, { password: newPassword });
 			}
 
 			successFn?.();
-			open = false;
-		} else {
-			const data = await response.json();
-			toast.error(data.message);
-			isPosting = false;
+			toast.success('Password changed');
+		} catch (error) {
+			toast.error((error as Error).message);
 		}
+
+		open = false;
+		isPosting = false;
 	}
 </script>
 
@@ -100,7 +84,7 @@
 >
 	{#snippet content()}
 		<div class="flex flex-col gap-4 p-5">
-			{#if me}
+			{#if deletingSelf}
 				<div class="flex flex-col gap-2.5">
 					<div>Current Password:</div>
 					<InputPassword

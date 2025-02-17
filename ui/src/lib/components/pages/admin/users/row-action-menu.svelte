@@ -66,6 +66,6 @@
 	{/snippet}
 </Dropdown>
 
-<EditUserRoleDialog bind:open={roleDialogOpen} {user} successFn={onUpdate} />
-<EditUserPasswordDialog bind:open={passwordDialogOpen} {user} me={false} />
-<DeleteUserDialog bind:open={deleteDialogOpen} value={user} me={false} successFn={onDelete} />
+<EditUserRoleDialog bind:open={roleDialogOpen} value={user} successFn={onUpdate} />
+<EditUserPasswordDialog bind:open={passwordDialogOpen} value={user} />
+<DeleteUserDialog bind:open={deleteDialogOpen} value={user} successFn={onDelete} />

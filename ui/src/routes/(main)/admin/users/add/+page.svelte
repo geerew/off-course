@@ -4,7 +4,7 @@
 	import { Spinner } from '$lib/components';
 	import { BackArrowIcon } from '$lib/components/icons';
 	import { Button, Input, InputPassword, Select } from '$lib/components/ui';
-	import { SelectRoles, type UserRole } from '$lib/models/user';
+	import { SelectUserRoles, type UserRole } from '$lib/models/user';
 	import { cn } from '$lib/utils';
 	import { Separator } from 'bits-ui';
 	import { toast } from 'svelte-sonner';
@@ -114,7 +114,7 @@
 				<div class="text-foreground-alt-2 text-[15px] uppercase">Role</div>
 				<Select
 					type="single"
-					items={SelectRoles}
+					items={SelectUserRoles}
 					bind:value={roleValue}
 					placeholder="Select a role"
 					contentProps={{ sideOffset: 8, loop: true }}

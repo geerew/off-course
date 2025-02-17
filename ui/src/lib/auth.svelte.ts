@@ -17,6 +17,7 @@ class Auth {
 			const result = safeParse(UserSchema, data);
 
 			if (!result.success) {
+				this.empty();
 				this.#error = 'Invalid response from the server';
 				return;
 			}
@@ -26,6 +27,8 @@ class Auth {
 			this.#isAdmin = result.output.role === 'admin';
 			this.#error = null;
 		} else {
+			this.empty();
+
 			// When the user is not authenticated, the server will return a 403 status code, so
 			// we redirect to the login page
 			if (response.status === 403) {

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { SelectPaginationPerPage } from '$lib/models/pagination';
 	import { Pagination } from 'bits-ui';
 	import { LeftChevronIcon, RightChevronIcon } from './icons';
 	import { Select } from './ui';
@@ -22,13 +23,6 @@
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let perPageValue = $state(`${perPage}`);
-
-	const items = [
-		{ value: '10', label: '10' },
-		{ value: '25', label: '25' },
-		{ value: '50', label: '50' },
-		{ value: '100', label: '100' }
-	];
 </script>
 
 <Pagination.Root {count} {perPage} bind:page class="flex w-full justify-center" {onPageChange}>
@@ -36,7 +30,7 @@
 		<div class="grid w-full flex-1 grow grid-cols-5 items-center justify-between gap-5">
 			<Select
 				type="single"
-				{items}
+				items={SelectPaginationPerPage}
 				bind:value={perPageValue}
 				contentProps={{ sideOffset: 8, loop: true }}
 				contentClass=""

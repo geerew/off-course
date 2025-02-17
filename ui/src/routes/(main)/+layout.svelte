@@ -6,6 +6,12 @@
 
 	$effect(() => {
 		auth.me();
+
+		const interval = setInterval(() => {
+			auth.me();
+		}, 3000);
+
+		return () => clearInterval(interval);
 	});
 </script>
 

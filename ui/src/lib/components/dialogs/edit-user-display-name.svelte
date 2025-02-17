@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { UpdateSelf, UpdateUser } from '$lib/api/users';
 	import { auth } from '$lib/auth.svelte';
 	import { Spinner } from '$lib/components';
 	import { Button, Dialog, Input } from '$lib/components/ui';
@@ -8,8 +9,7 @@
 
 	type Props = {
 		open?: boolean;
-		user: UserModel;
-		me: boolean;
+		value: UserModel;
 		trigger?: Snippet;
 		triggerClass?: string;
 		successFn?: () => void;
@@ -17,8 +17,7 @@
 
 	let {
 		open = $bindable(false),
-		user = $bindable(),
-		me,
+		value = $bindable(),
 		trigger,
 		triggerClass,
 		successFn
@@ -30,39 +29,30 @@
 	let newValue = $state<string>('');
 	let isPosting = $state(false);
 
+	const deletingSelf = value.id === auth?.user?.id;
+
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	async function update() {
+	async function doUpdate() {
 		isPosting = true;
 
-		let api = `/api/users/${user.id}`;
-		if (me) {
-			api = '/api/auth/me';
-		}
-
-		const response = await fetch(api, {
-			method: 'PUT',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
-				displayName: newValue
-			})
-		});
-
-		if (response.ok) {
-			if (me) {
+		try {
+			if (deletingSelf) {
+				await UpdateSelf({ displayName: newValue });
 				await auth.me();
+			} else {
+				await UpdateUser(value.id, { displayName: newValue });
 			}
-			user.displayName = newValue;
+
+			value.displayName = newValue;
 			open = false;
 
 			successFn?.();
-		} else {
-			const data = await response.json();
-			toast.error(data.message);
-			isPosting = false;
+		} catch (error) {
+			toast.error((error as Error).message);
 		}
+
+		isPosting = false;
 	}
 </script>
 
@@ -93,13 +83,13 @@
 				bind:value={newValue}
 				name="display name"
 				type="text"
-				placeholder={user.displayName}
+				placeholder={value.displayName}
 			/>
 		</div>
 	{/snippet}
 
 	{#snippet action()}
-		<Button disabled={newValue === '' || isPosting} class="w-24" onclick={update}>
+		<Button disabled={newValue === '' || isPosting} class="w-24" onclick={doUpdate}>
 			{#if !isPosting}
 				Update
 			{:else}

@@ -25,8 +25,7 @@
 				<div class="flex flex-row items-center gap-3">
 					<div class="text-foreground-alt-2 text-[15px] uppercase">Display Name</div>
 					<EditUserDisplayNameDialog
-						user={auth.user}
-						me={true}
+						value={auth.user}
 						triggerClass="text-foreground-alt-2 bg-transparent hover:bg-transparent w-4.5 hover:text-foreground-alt-1 py-0 mb-0.5 cursor-pointer duration-200"
 					>
 						{#snippet trigger()}
@@ -50,7 +49,7 @@
 			<!-- Password -->
 			<div class="flex flex-col gap-3">
 				<div class="text-foreground-alt-2 text-[15px] uppercase">Password</div>
-				<EditUserPasswordDialog user={auth.user} me={true}>
+				<EditUserPasswordDialog value={auth.user}>
 					{#snippet trigger()}
 						Change Password
 					{/snippet}
@@ -62,7 +61,7 @@
 			<!-- Delete account -->
 			<div class="flex flex-col gap-3">
 				<div class="text-foreground-alt-2 text-[15px] uppercase">Delete Account</div>
-				<DeleteUserDialog value={auth.user} me={true}>
+				<DeleteUserDialog value={auth.user}>
 					{#snippet trigger()}
 						Delete Account
 					{/snippet}

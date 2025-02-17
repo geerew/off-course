@@ -1,13 +1,19 @@
 <script lang="ts">
+	import { UpdateUser } from '$lib/api/users';
 	import { Button, Dialog, Select } from '$lib/components/ui';
-	import { SelectRoles, type UserModel, type UserRole } from '$lib/models/user';
+	import {
+		SelectUserRoles,
+		type UserModel,
+		type UserRole,
+		type UsersModel
+	} from '$lib/models/user';
 	import type { Snippet } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import Spinner from '../spinner.svelte';
 
 	type Props = {
 		open?: boolean;
-		user: UserModel;
+		value: UserModel | UsersModel;
 		trigger?: Snippet;
 		triggerClass?: string;
 		successFn?: () => void;
@@ -15,7 +21,7 @@
 
 	let {
 		open = $bindable(false),
-		user = $bindable(),
+		value = $bindable(),
 		trigger,
 		triggerClass,
 		successFn
@@ -25,39 +31,59 @@
 
 	let inputEl = $state<HTMLInputElement>();
 	let isPosting = $state(false);
+	let roleValue: UserRole | undefined = $state();
 
-	let roleValue: UserRole = $state(user.role);
+	const multipleUsers = Array.isArray(value);
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	async function update() {
+	async function updateUsers(): Promise<void> {
 		isPosting = true;
 
-		const response = await fetch(`/api/users/${user.id}`, {
-			method: 'PUT',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
-				role: roleValue
-			})
-		});
+		try {
+			if (multipleUsers) {
+				await Promise.all(Object.values(value).map((u) => doUpdate(u)));
+				toast.success('Selected users updated');
+			} else {
+				await doUpdate(value);
+			}
 
-		if (response.ok) {
-			user.role = roleValue;
+			successFn?.();
+		} catch (error) {
+			toast.error((error as Error).message);
+		}
+
+		isPosting = false;
+		open = false;
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	async function doUpdate(user: UserModel): Promise<void> {
+		isPosting = true;
+
+		if (!roleValue) {
+			toast.error('Role is required');
+			isPosting = false;
+			return;
+		}
+
+		try {
+			await UpdateUser(user.id, { role: roleValue });
 			open = false;
 			successFn?.();
-		} else {
-			const data = await response.json();
-			toast.error(data.message);
-			isPosting = false;
+		} catch (error) {
+			toast.error((error as Error).message);
 		}
+
+		isPosting = false;
 	}
 </script>
 
 <Dialog
 	bind:open
 	onOpenChange={() => {
+		roleValue = undefined;
 		isPosting = false;
 	}}
 	contentProps={{
@@ -77,8 +103,9 @@
 		<div class="flex flex-col gap-2.5 p-5">
 			<div>Update Role:</div>
 			<Select
+				placeholder="Select Role"
 				type="single"
-				items={SelectRoles}
+				items={SelectUserRoles}
 				bind:value={roleValue}
 				contentProps={{ sideOffset: 8, loop: true }}
 				contentClass="z-50"
@@ -87,7 +114,7 @@
 	{/snippet}
 
 	{#snippet action()}
-		<Button disabled={isPosting} class="w-24" onclick={update}>
+		<Button disabled={isPosting || !roleValue} class="w-24" onclick={updateUsers}>
 			{#if !isPosting}
 				Update
 			{:else}

@@ -1,5 +1,22 @@
-import { array, number, object, union, type InferOutput } from 'valibot';
-import { UserSchema } from './user';
+import { number, object } from 'valibot';
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+export const SelectPaginationPerPage = [
+	{ value: '10', label: '10' },
+	{ value: '25', label: '25' },
+	{ value: '50', label: '50' },
+	{ value: '100', label: '100' }
+];
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+export const BasePaginationSchema = object({
+	page: number(),
+	perPage: number(),
+	totalPages: number(),
+	totalItems: number()
+});
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -8,24 +25,4 @@ export type PaginationReqParams = {
 	perPage?: number;
 };
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-export type PaginationRespParams = {
-	page: number;
-	perPage: number;
-	perPages: number[];
-	totalPages: number;
-	totalItems: number;
-};
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-export const PaginationSchema = object({
-	page: number(),
-	perPage: number(),
-	totalPages: number(),
-	totalItems: number(),
-	items: union([array(UserSchema)])
-});
-
-export type Pagination = InferOutput<typeof PaginationSchema>;
+//
