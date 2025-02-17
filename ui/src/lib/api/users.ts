@@ -83,6 +83,23 @@ export async function DeleteUser(id: string): Promise<void> {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// Revoke all sessions of a user
+export async function RevokeUserSessions(id: string): Promise<void> {
+	const response = await fetch(`/api/users/${id}/sessions`, {
+		method: 'DELETE',
+		headers: {
+			'Content-Type': 'application/json'
+		}
+	});
+
+	if (!response.ok) {
+		const data = await response.json();
+		throw new Error(data.message);
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // Update self
 export async function UpdateSelf(data: UpdateSelfModel): Promise<void> {
 	const response = await fetch('/api/auth/me', {
