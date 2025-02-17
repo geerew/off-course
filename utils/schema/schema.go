@@ -130,8 +130,8 @@ func (s *Schema) Count(options *database.Options, db database.Querier) (int, err
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Insert calls the InsertBuilder and executes the query, inserting a row
-func (s *Schema) Insert(model any, db database.Querier) (sql.Result, error) {
-	query, args, _ := s.InsertBuilder(model).ToSql()
+func (s *Schema) Insert(model any, options *database.Options, db database.Querier) (sql.Result, error) {
+	query, args, _ := s.InsertBuilder(model, options).ToSql()
 	return db.Exec(query, args...)
 }
 
@@ -251,7 +251,7 @@ func (s *Schema) Pluck(column string, result any, options *database.Options, db 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Insert calls the InsertBuilder and executes the query, inserting a row
+// Update calls the UpdateBuilder and executes the query, updating a row
 func (s *Schema) Update(model any, options *database.Options, db database.Querier) (sql.Result, error) {
 	builder, err := s.UpdateBuilder(model, options)
 	if err != nil {
@@ -292,7 +292,7 @@ func (s *Schema) CountBuilder(options *database.Options) squirrel.SelectBuilder 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // InsertBuilder creates a squirrel InsertBuilder for the model
-func (s *Schema) InsertBuilder(model any) squirrel.InsertBuilder {
+func (s *Schema) InsertBuilder(model any, options *database.Options) squirrel.InsertBuilder {
 	data := make(map[string]any, len(s.Fields))
 
 	for _, f := range s.Fields {
@@ -315,10 +315,14 @@ func (s *Schema) InsertBuilder(model any) squirrel.InsertBuilder {
 		}
 	}
 
-	builder := squirrel.
-		StatementBuilder.
-		Insert(s.Table).
-		SetMap(data)
+	var builder squirrel.InsertBuilder
+	if options != nil && options.Replace {
+		builder = squirrel.Replace(s.Table)
+	} else {
+		builder = squirrel.StatementBuilder.Insert(s.Table)
+	}
+
+	builder = builder.SetMap(data)
 
 	return builder
 }

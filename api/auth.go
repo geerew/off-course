@@ -73,24 +73,9 @@ func (api authAPI) register(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error creating user", err)
 	}
 
-	session, err := api.r.sessionStore.Get(c)
+	err = api.r.sessionManager.SetSession(c, user.ID, user.Role)
 	if err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error getting session", err)
-	}
-
-	// Save the session ID as it is cleared when the session is saved
-	sessionId := session.ID()
-
-	session.Set("id", user.ID)
-	session.Set("role", user.Role.String())
-	if err := session.Save(); err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error saving session", err)
-	}
-
-	// Set the user_id in the session
-	_, err = api.r.config.DbManager.DataDb.DB().Exec("UPDATE sessions SET user_id = ? WHERE id = ?", user.ID, sessionId)
-	if err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error updating session with user ID", err)
+		return errorResponse(c, fiber.StatusInternalServerError, "Error setting session", err)
 	}
 
 	return c.SendStatus(fiber.StatusCreated)
@@ -138,24 +123,9 @@ func (api authAPI) login(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Invalid username and/or password", nil)
 	}
 
-	session, err := api.r.sessionStore.Get(c)
+	err = api.r.sessionManager.SetSession(c, user.ID, user.Role)
 	if err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error getting session", err)
-	}
-
-	// Save the session ID as it is cleared when the session is saved
-	sessionId := session.ID()
-
-	session.Set("id", user.ID)
-	session.Set("role", user.Role.String())
-	if err := session.Save(); err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error saving session", err)
-	}
-
-	// Set the user_id in the session
-	_, err = api.r.config.DbManager.DataDb.DB().Exec("UPDATE sessions SET user_id = ? WHERE id = ?", user.ID, sessionId)
-	if err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error updating session with user ID", err)
+		return errorResponse(c, fiber.StatusInternalServerError, "Error setting session", err)
 	}
 
 	return c.SendStatus(fiber.StatusOK)
@@ -164,12 +134,11 @@ func (api authAPI) login(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api authAPI) logout(c *fiber.Ctx) error {
-	session, err := api.r.sessionStore.Get(c)
+	err := api.r.sessionManager.DeleteSession(c)
 	if err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error getting session", err)
+		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting session", err)
 	}
 
-	session.Destroy()
 	return c.SendStatus(fiber.StatusNoContent)
 }
 

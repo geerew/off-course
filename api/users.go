@@ -30,6 +30,8 @@ func (r *Router) initUserRoutes() {
 	userGroup.Post("", protectedRoute, userAPI.createUser)
 	userGroup.Put("/:id", protectedRoute, userAPI.updateUser)
 	userGroup.Delete("/:id", protectedRoute, userAPI.deleteUser)
+
+	// TODO Add route to revoke all sessions for a user
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -99,6 +101,7 @@ func (api userAPI) createUser(c *fiber.Ctx) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// Revokes all sessions for the user when the role is updated
 func (api userAPI) updateUser(c *fiber.Ctx) error {
 	id := c.Params("id")
 
@@ -145,24 +148,9 @@ func (api userAPI) updateUser(c *fiber.Ctx) error {
 
 	// Revoke all sessions for the give id
 	if userReq.Role != "" {
-		rows, err := api.r.config.DbManager.DataDb.DB().Query("Select id FROM sessions WHERE user_id = ?", user.ID)
-		if err != nil && err != sql.ErrNoRows {
-			return errorResponse(c, fiber.StatusInternalServerError, "Error looking up session", err)
-		}
-		defer rows.Close()
-
-		ids := []string{}
-		for rows.Next() {
-			var id string
-			rows.Scan(&id)
-			ids = append(ids, id)
-		}
-		rows.Close()
-
-		for _, id := range ids {
-			if err := api.r.sessionStore.Delete(id); err != nil {
-				return errorResponse(c, fiber.StatusInternalServerError, "Error deleting session", err)
-			}
+		err := api.r.sessionManager.DeleteUserSessions(id)
+		if err != nil {
+			return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user sessions", err)
 		}
 	}
 
@@ -183,6 +171,11 @@ func (api userAPI) deleteUser(c *fiber.Ctx) error {
 	err := api.r.dao.Delete(c.UserContext(), user, nil)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user", err)
+	}
+
+	err = api.r.sessionManager.DeleteUserSessions(id)
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user sessions", err)
 	}
 
 	return c.Status(fiber.StatusNoContent).Send(nil)

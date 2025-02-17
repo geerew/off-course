@@ -16,23 +16,23 @@ import (
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/appFs"
 	"github.com/geerew/off-course/utils/coursescan"
-	storage "github.com/geerew/off-course/utils/session_storage"
+	"github.com/geerew/off-course/utils/session"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/session"
+	fs "github.com/gofiber/fiber/v2/middleware/session"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Router defines a router
 type Router struct {
-	App          *fiber.App
-	api          fiber.Router
-	config       *RouterConfig
-	dao          *dao.DAO
-	logDao       *dao.DAO
-	bootstrapped int32
-	sessionStore *session.Store
+	App            *fiber.App
+	api            fiber.Router
+	config         *RouterConfig
+	dao            *dao.DAO
+	logDao         *dao.DAO
+	bootstrapped   int32
+	sessionManager *session.SessionManager
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -147,14 +147,15 @@ func (r *Router) initRoutes() {
 
 // createSessionStore creates the session store
 func (r *Router) createSessionStore() {
-	sessionStorage := storage.NewSqlite(r.config.DbManager.DataDb.DB(), "sessions")
-
-	r.sessionStore = session.New(session.Config{
-		Storage:        sessionStorage,
+	config := fs.Config{
 		KeyLookup:      "cookie:session",
 		Expiration:     7 * (24 * time.Hour),
 		CookieHTTPOnly: true,
-	})
+	}
+
+	sqliteStorage := session.NewSqliteStorage(r.config.DbManager.DataDb, 10*time.Second)
+
+	r.sessionManager = session.NewSessionManager(r.config.DbManager.DataDb, config, sqliteStorage)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

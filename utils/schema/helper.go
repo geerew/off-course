@@ -164,27 +164,27 @@ func setup(tb testing.TB) *sql.DB {
 
 	// Insert John with a profile and 2 posts
 	john := &TestUser{TestBase: TestBase{ID: 1}}
-	_, err = userSchema.Insert(john, db)
+	_, err = userSchema.Insert(john, nil, db)
 	require.NoError(tb, err)
 
-	_, err = profileSchema.Insert(&TestProfile{TestBase: TestBase{ID: 1}, UserID: john.ID, Name: "John", Username: "john_doe", Email: "john@test.com"}, db)
+	_, err = profileSchema.Insert(&TestProfile{TestBase: TestBase{ID: 1}, UserID: john.ID, Name: "John", Username: "john_doe", Email: "john@test.com"}, nil, db)
 	require.NoError(tb, err)
 
-	_, err = postSchema.Insert(&TestPost{TestBase: TestBase{ID: 1}, UserID: john.ID, Title: "Post 1 by John", Content: "This is the first post by John."}, db)
+	_, err = postSchema.Insert(&TestPost{TestBase: TestBase{ID: 1}, UserID: john.ID, Title: "Post 1 by John", Content: "This is the first post by John."}, nil, db)
 	require.NoError(tb, err)
 
-	_, err = postSchema.Insert(&TestPost{TestBase: TestBase{ID: 2}, UserID: john.ID, Title: "Post 2 by John", Content: "This is the second post by John."}, db)
+	_, err = postSchema.Insert(&TestPost{TestBase: TestBase{ID: 2}, UserID: john.ID, Title: "Post 2 by John", Content: "This is the second post by John."}, nil, db)
 	require.NoError(tb, err)
 
 	// Insert Jane with a profile and 1 post
 	jane := &TestUser{TestBase: TestBase{ID: 2}}
-	_, err = userSchema.Insert(jane, db)
+	_, err = userSchema.Insert(jane, nil, db)
 	require.NoError(tb, err)
 
-	_, err = profileSchema.Insert(&TestProfile{TestBase: TestBase{ID: 2}, UserID: jane.ID, Name: "Jane", Username: "jane_doe", Email: "jane@test.com"}, db)
+	_, err = profileSchema.Insert(&TestProfile{TestBase: TestBase{ID: 2}, UserID: jane.ID, Name: "Jane", Username: "jane_doe", Email: "jane@test.com"}, nil, db)
 	require.NoError(tb, err)
 
-	_, err = postSchema.Insert(&TestPost{TestBase: TestBase{ID: 3}, UserID: jane.ID, Title: "Post by Jane", Content: "This is the post by Jane."}, db)
+	_, err = postSchema.Insert(&TestPost{TestBase: TestBase{ID: 3}, UserID: jane.ID, Title: "Post by Jane", Content: "This is the post by Jane."}, nil, db)
 	require.NoError(tb, err)
 
 	return db

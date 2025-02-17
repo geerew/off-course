@@ -265,7 +265,7 @@ func Benchmark_Create(b *testing.B) {
 			},
 		}
 
-		builder := sch.InsertBuilder(u)
+		builder := sch.InsertBuilder(u, nil)
 		query, args, _ := builder.ToSql()
 
 		_, err = db.Exec(query, args...)

@@ -11,7 +11,7 @@ import (
 	"github.com/geerew/off-course/utils/schema"
 )
 
-// TODO Update dao to support raw INSERT, SELECT, UPDATE, DELETE queries
+// TODO Update dao to support raw queries
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -44,7 +44,29 @@ func (dao *DAO) Create(ctx context.Context, model models.Modeler) error {
 	model.RefreshUpdatedAt()
 
 	q := database.QuerierFromContext(ctx, dao.db)
-	_, err = sch.Insert(model, q)
+	_, err = sch.Insert(model, nil, q)
+	return err
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// CreateOrReplace is a generic function to create or replace a model in the database
+func (dao *DAO) CreateOrReplace(ctx context.Context, model models.Modeler) error {
+	sch, err := schema.Parse(model)
+	if err != nil {
+		return err
+	}
+
+	if model.Id() == "" {
+		model.RefreshId()
+	}
+
+	model.RefreshCreatedAt()
+	model.RefreshUpdatedAt()
+
+	q := database.QuerierFromContext(ctx, dao.db)
+	o := &database.Options{Replace: true}
+	_, err = sch.Insert(model, o, q)
 	return err
 }
 
@@ -186,5 +208,19 @@ func (dao *DAO) Delete(ctx context.Context, model models.Modeler, options *datab
 
 	q := database.QuerierFromContext(ctx, dao.db)
 	_, err = sch.Delete(options, q)
+	return err
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// DeleteAll is a generic function to delete all rows in a table as determined by the model
+func (dao *DAO) DeleteAll(ctx context.Context, model models.Modeler) error {
+	sch, err := schema.Parse(model)
+	if err != nil {
+		return err
+	}
+
+	q := database.QuerierFromContext(ctx, dao.db)
+	_, err = sch.Delete(nil, q)
 	return err
 }

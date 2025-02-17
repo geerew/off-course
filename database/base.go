@@ -100,6 +100,9 @@ type Options struct {
 
 	// Used to paginate the results
 	Pagination *pagination.Pagination
+
+	// Use replace instead of insert
+	Replace bool
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
