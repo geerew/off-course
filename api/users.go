@@ -31,6 +31,8 @@ func (r *Router) initUserRoutes() {
 	userGroup.Put("/:id", protectedRoute, userAPI.updateUser)
 	userGroup.Delete("/:id", protectedRoute, userAPI.deleteUser)
 
+	userGroup.Delete("/:id/sessions", protectedRoute, userAPI.deleteUserSession)
+
 	// TODO Add route to revoke all sessions for a user
 }
 
@@ -174,6 +176,19 @@ func (api userAPI) deleteUser(c *fiber.Ctx) error {
 	}
 
 	err = api.r.sessionManager.DeleteUserSessions(id)
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user sessions", err)
+	}
+
+	return c.Status(fiber.StatusNoContent).Send(nil)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func (api userAPI) deleteUserSession(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	err := api.r.sessionManager.DeleteUserSessions(id)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user sessions", err)
 	}
