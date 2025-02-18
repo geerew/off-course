@@ -1,7 +1,14 @@
 <script lang="ts">
 	import { cn } from '$lib/utils';
+	import type { Snippet } from 'svelte';
+	import type { HTMLAttributes } from 'svelte/elements';
 
-	let { class: containerClass = '', children } = $props();
+	type Props = HTMLAttributes<HTMLElement> & {
+		class?: string;
+		children?: Snippet;
+	};
+
+	let { class: containerClass = '', children, ...restProps }: Props = $props();
 </script>
 
 <thead
@@ -9,6 +16,7 @@
 		'border-background-alt-3 text-foreground-alt-2 border-b text-xs uppercase',
 		containerClass
 	)}
+	{...restProps}
 >
 	{@render children?.()}
 </thead>
