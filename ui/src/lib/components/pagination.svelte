@@ -34,7 +34,7 @@
 				bind:value={perPageValue}
 				contentProps={{ sideOffset: 8, loop: true }}
 				contentClass=""
-				triggerClass="w-full"
+				triggerClass="w-full max-w-36"
 				onValueChange={(v) => {
 					perPage = +v;
 

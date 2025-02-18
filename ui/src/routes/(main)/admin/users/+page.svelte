@@ -2,12 +2,13 @@
 	import { GetUsers } from '$lib/api/user-api';
 	import { auth } from '$lib/auth.svelte';
 	import { Pagination } from '$lib/components';
-	import { PlusIcon, WarningIcon } from '$lib/components/icons';
+	import { WarningIcon } from '$lib/components/icons';
+	import AddUserDialog from '$lib/components/pages/admin/users/add-user-dialog.svelte';
 	import RowActionMenu from '$lib/components/pages/admin/users/row-action-menu.svelte';
 	import TableActionMenu from '$lib/components/pages/admin/users/table-action-menu.svelte';
 	import Spinner from '$lib/components/spinner.svelte';
 	import * as Table from '$lib/components/table';
-	import { Button, Checkbox } from '$lib/components/ui';
+	import { Checkbox } from '$lib/components/ui';
 	import type { UserModel, UsersModel } from '$lib/models/user-model';
 	import { capitalizeFirstLetter } from '$lib/utils';
 	import { toast } from 'svelte-sonner';
@@ -110,14 +111,11 @@
 <div class="flex w-full place-content-center">
 	<div class="flex w-full max-w-4xl min-w-2xl flex-col gap-6 pt-1">
 		<div class="flex flex-row items-center justify-between">
-			<Button
-				href="/admin/users/add"
-				class="bg-background-alt-4 hover:bg-background-alt-5 text-foreground-alt-1 inline-flex h-10 w-auto flex-row items-center gap-2 rounded-md px-5 hover:cursor-pointer"
-				aria-label="Toggle password visibility"
-			>
-				<PlusIcon class="size-5 stroke-[1.5]" />
-				Add User
-			</Button>
+			<AddUserDialog
+				successFn={() => {
+					loadPromise = fetchUsers();
+				}}
+			/>
 
 			<div class="flex h-10 items-center gap-3 rounded-lg">
 				<TableActionMenu
@@ -153,8 +151,8 @@
 								</Table.Th>
 								<Table.Th>Username</Table.Th>
 								<Table.Th>Name</Table.Th>
-								<Table.Th>Role</Table.Th>
-								<Table.Th class="w-[1%]" />
+								<Table.Th class="min-w-[1%]">Role</Table.Th>
+								<Table.Th class="min-w-[1%]" />
 							</Table.Tr>
 						</Table.Thead>
 
