@@ -3,7 +3,11 @@
 	import type { HTMLInputAttributes } from 'svelte/elements';
 	import Input from './input.svelte';
 
-	type Props = HTMLInputAttributes & { ref?: HTMLInputElement };
+	type Props = HTMLInputAttributes & {
+		value: string;
+		ref?: HTMLInputElement;
+		class?: string;
+	};
 
 	let {
 		value = $bindable(''),
