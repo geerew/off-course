@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { UpdateUser } from '$lib/api/users';
+	import { UpdateUser } from '$lib/api/user-api';
 	import { Button, Dialog, Select } from '$lib/components/ui';
 	import {
 		SelectUserRoles,
 		type UserModel,
 		type UserRole,
 		type UsersModel
-	} from '$lib/models/user';
+	} from '$lib/models/user-model';
 	import type { Snippet } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import Spinner from '../spinner.svelte';

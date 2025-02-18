@@ -6,7 +6,7 @@ import {
 	type UpdateUserModel,
 	type UserPaginationModel,
 	type UserReqParams
-} from '$lib/models/user';
+} from '$lib/models/user-model';
 import { buildQueryString } from '$lib/utils';
 import { safeParse } from 'valibot';
 

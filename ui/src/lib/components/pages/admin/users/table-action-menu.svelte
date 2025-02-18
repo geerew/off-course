@@ -13,7 +13,7 @@
 	} from '$lib/components/icons';
 	import RightChevron from '$lib/components/icons/right-chevron.svelte';
 	import { Dropdown } from '$lib/components/ui';
-	import type { UserModel } from '$lib/models/user';
+	import type { UserModel } from '$lib/models/user-model';
 	import { DropdownMenu } from 'bits-ui';
 
 	// TODO: Support removing session

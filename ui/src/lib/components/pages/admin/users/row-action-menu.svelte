@@ -7,7 +7,7 @@
 	} from '$lib/components/dialogs';
 	import { DeleteIcon, DotsIcon, FlagIcon, SecureIcon, SessionIcon } from '$lib/components/icons';
 	import Dropdown from '$lib/components/ui/dropdown.svelte';
-	import type { UserModel } from '$lib/models/user';
+	import type { UserModel } from '$lib/models/user-model';
 	import { DropdownMenu } from 'bits-ui';
 
 	// TODO: Support removing session

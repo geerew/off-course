@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { RevokeUserSessions } from '$lib/api/users';
+	import { RevokeUserSessions } from '$lib/api/user-api';
 	import { Spinner } from '$lib/components';
 	import { AlertDialog, Badge, Button } from '$lib/components/ui';
-	import type { UserModel, UsersModel } from '$lib/models/user';
+	import type { UserModel, UsersModel } from '$lib/models/user-model';
 	import { type Snippet } from 'svelte';
 	import { toast } from 'svelte-sonner';
 

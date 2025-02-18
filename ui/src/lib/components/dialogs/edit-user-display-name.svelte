@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { UpdateSelf, UpdateUser } from '$lib/api/users';
+	import { UpdateSelf, UpdateUser } from '$lib/api/user-api';
 	import { auth } from '$lib/auth.svelte';
 	import { Spinner } from '$lib/components';
 	import { Button, Dialog, Input } from '$lib/components/ui';
-	import type { UserModel } from '$lib/models/user';
+	import type { UserModel } from '$lib/models/user-model';
 	import type { Snippet } from 'svelte';
 	import { toast } from 'svelte-sonner';
 

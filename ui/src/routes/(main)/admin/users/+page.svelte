@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { GetUsers } from '$lib/api/users';
+	import { GetUsers } from '$lib/api/user-api';
 	import { auth } from '$lib/auth.svelte';
 	import { Pagination } from '$lib/components';
 	import { PlusIcon, WarningIcon } from '$lib/components/icons';
@@ -8,7 +8,7 @@
 	import Spinner from '$lib/components/spinner.svelte';
 	import * as Table from '$lib/components/table';
 	import { Button, Checkbox } from '$lib/components/ui';
-	import type { UserModel, UsersModel } from '$lib/models/user';
+	import type { UserModel, UsersModel } from '$lib/models/user-model';
 	import { capitalizeFirstLetter } from '$lib/utils';
 	import { toast } from 'svelte-sonner';
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { SelectPaginationPerPage } from '$lib/models/pagination';
+	import { SelectPaginationPerPage } from '$lib/models/pagination-model';
 	import { Pagination } from 'bits-ui';
 	import { LeftChevronIcon, RightChevronIcon } from './icons';
 	import { Select } from './ui';

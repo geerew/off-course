@@ -1,5 +1,5 @@
 import { array, object, omit, partial, picklist, string, type InferOutput } from 'valibot';
-import { BasePaginationSchema, type PaginationReqParams } from './pagination';
+import { BasePaginationSchema, type PaginationReqParams } from './pagination-model';
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

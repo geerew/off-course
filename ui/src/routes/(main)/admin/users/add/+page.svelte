@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { CreateUser } from '$lib/api/users';
+	import { CreateUser } from '$lib/api/user-api';
 	import { Spinner } from '$lib/components';
 	import { BackArrowIcon } from '$lib/components/icons';
 	import { Button, Input, InputPassword, Select } from '$lib/components/ui';
-	import { SelectUserRoles, type UserRole } from '$lib/models/user';
+	import { SelectUserRoles, type UserRole } from '$lib/models/user-model';
 	import { cn } from '$lib/utils';
 	import { Separator } from 'bits-ui';
 	import { toast } from 'svelte-sonner';
