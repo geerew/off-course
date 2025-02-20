@@ -26,7 +26,7 @@
 					<div class="text-foreground-alt-2 text-[15px] uppercase">Display Name</div>
 					<EditUserDisplayNameDialog
 						value={auth.user}
-						triggerClass="text-foreground-alt-2 bg-transparent hover:bg-transparent w-4.5 hover:text-foreground-alt-1 py-0 mb-0.5 cursor-pointer duration-200"
+						triggerClass="text-foreground-alt-2 hover:text-foreground-alt-1 mb-0.5 w-4.5 cursor-pointer bg-transparent py-0 duration-200 hover:bg-transparent"
 					>
 						{#snippet trigger()}
 							<EditIcon class="size-4.5 stroke-2" />

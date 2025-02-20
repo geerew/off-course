@@ -2,7 +2,7 @@
 	import { DeleteSelf, DeleteUser } from '$lib/api/user-api';
 	import { auth } from '$lib/auth.svelte';
 	import { Spinner } from '$lib/components';
-	import { AlertDialog, Badge, Button, InputPassword } from '$lib/components/ui';
+	import { AlertDialog, Button, InputPassword } from '$lib/components/ui';
 	import type { UserModel, UsersModel } from '$lib/models/user-model';
 	import { Separator } from 'bits-ui';
 	import { type Snippet } from 'svelte';
@@ -24,20 +24,26 @@
 	let currentPassword = $state('');
 	let isPosting = $state(false);
 
-	const multipleUsers = Array.isArray(value);
-	const deletingSelf = multipleUsers ? false : value.id === auth?.user?.id;
+	const isArray = Array.isArray(value);
+	const deletingSelf = isArray ? false : value.id === auth?.user?.id;
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	async function deleteUsers(): Promise<void> {
+	async function doDelete(): Promise<void> {
 		isPosting = true;
 
 		try {
-			if (multipleUsers) {
-				await Promise.all(Object.values(value).map((u) => doDelete(u)));
+			if (isArray) {
+				await Promise.all(Object.values(value).map((u) => DeleteUser(u.id)));
 				toast.success('Selected users deleted');
 			} else {
-				await doDelete(value);
+				if (deletingSelf) {
+					await DeleteSelf({ currentPassword });
+					auth.empty();
+					window.location.href = '/auth/login';
+				} else {
+					await DeleteUser(value.id);
+				}
 			}
 
 			successFn?.();
@@ -47,18 +53,6 @@
 
 		isPosting = false;
 		open = false;
-	}
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	async function doDelete(user: UserModel): Promise<void> {
-		if (deletingSelf) {
-			await DeleteSelf({ currentPassword });
-			auth.empty();
-			window.location.href = '/auth/login';
-		} else {
-			await DeleteUser(user.id);
-		}
 	}
 </script>
 
@@ -85,22 +79,10 @@
 		<div class="text-foreground-alt-1 flex flex-col gap-2 text-center">
 			{#if deletingSelf}
 				<span class="text-lg">Are you sure you want to continue deleting your account?</span>
-			{:else if multipleUsers}
-				<span class="text-lg">
-					Are you sure you want to continue deleting the selected users?
-				</span>
-				<span>
-					<Badge class="bg-background-error text-foreground-alt-1 text-sm">
-						{Object.values(value).length} user{Object.values(value).length > 1 ? 's' : ''} selected
-					</Badge>
-				</span>
+			{:else if isArray && Object.values(value).length > 1}
+				<span class="text-lg"> Are you sure you want to continue deleting these users? </span>
 			{:else}
 				<span class="text-lg">Are you sure you want to continue deleting this user?</span>
-				<span>
-					<Badge class="bg-background-error text-foreground-alt-1 text-sm">
-						{value.username}
-					</Badge>
-				</span>
 			{/if}
 			<span class="text-foreground-alt-2">All associated data will be deleted</span>
 		</div>
@@ -122,7 +104,7 @@
 	{#snippet action()}
 		<Button
 			disabled={(deletingSelf && currentPassword === '') || isPosting}
-			onclick={deleteUsers}
+			onclick={doDelete}
 			class="bg-background-error disabled:bg-background-error/80 enabled:hover:bg-background-error-alt-1 text-foreground-alt-1 enabled:hover:text-foreground w-24"
 		>
 			{#if !isPosting}

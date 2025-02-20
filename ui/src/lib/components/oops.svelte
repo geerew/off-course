@@ -1,13 +1,23 @@
 <script lang="ts">
+	import { cn } from '$lib/utils';
 	import { Separator } from 'bits-ui';
 	import { WarningIcon } from './icons';
 
-	let { message } = $props();
+	type Props = {
+		class?: string;
+		contentClass?: string;
+		message: string;
+	};
+
+	let { class: containerClass, contentClass, message }: Props = $props();
 </script>
 
-<div class="flex w-full justify-center pt-20">
+<div class={cn('flex w-full justify-center pt-20', containerClass)}>
 	<div
-		class="border-background-alt-5 flex max-w-lg min-w-sm flex-col place-items-center gap-4 rounded-lg border p-5"
+		class={cn(
+			'border-background-alt-5 flex max-w-lg min-w-sm flex-col place-items-center gap-4 rounded-lg border p-5',
+			contentClass
+		)}
 	>
 		<WarningIcon class="text-foreground-error size-10" />
 

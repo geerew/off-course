@@ -1,0 +1,279 @@
+<script lang="ts">
+	import { CreateCourse } from '$lib/api/course-api';
+	import { GetFileSystem } from '$lib/api/fs-api';
+	import { Oops, Spinner } from '$lib/components';
+	import { BackArrowIcon, CourseIcon, PlusIcon } from '$lib/components/icons';
+	import { Badge, Button, Checkbox, Dialog } from '$lib/components/ui';
+	import { FsPathClassification, type FsModel } from '$lib/models/fs-model';
+	import { cn } from '$lib/utils';
+	import { Separator } from 'bits-ui';
+	import { toast } from 'svelte-sonner';
+
+	type Props = {
+		successFn?: () => void;
+	};
+
+	let { successFn }: Props = $props();
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	let open = $state(false);
+
+	let fs: FsModel = $state({
+		count: 0,
+		directories: [],
+		files: []
+	});
+
+	let paths: string[] = $state([]);
+	let selectedPath = $state('');
+
+	let selectedCourses: Record<string, string> = $state({});
+	let selectedCoursesCount = $derived(Object.keys(selectedCourses).length);
+
+	let isPosting = $state(false);
+
+	let mainEl: HTMLElement | null = null;
+
+	// Back button unique id
+	const backId = 'back-' + Math.random().toString(36);
+
+	let loadPromise = $state<Promise<void>>();
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	$effect(() => {
+		if (open) {
+			loadPromise = load('');
+		}
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Load the drives or the directories of the selected path
+	async function load(path: string): Promise<void> {
+		if (path === '' || paths.includes(path)) {
+			selectedPath = backId;
+		} else {
+			selectedPath = path;
+		}
+
+		try {
+			const flickerPromise = new Promise((resolve) => setTimeout(resolve, 200));
+			const [response] = await Promise.all([GetFileSystem(path), flickerPromise]);
+
+			if (mainEl) mainEl.scrollTop = 0;
+
+			fs = response;
+		} catch (error) {
+			throw error;
+		} finally {
+			if (path !== '' && !paths.includes(path)) paths.push(path);
+			selectedPath = '';
+		}
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Move the user back to the previous path
+	async function moveBack() {
+		if (paths.length === 1) {
+			await load('');
+		} else {
+			await load(paths[paths.length - 2]);
+		}
+
+		paths.pop();
+	}
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Print the number of selected courses
+	function toastCount() {
+		if (selectedCoursesCount === 0) {
+			toast.success('No courses selected');
+		} else {
+			toast.success(
+				`${selectedCoursesCount} course${selectedCoursesCount > 1 ? 's' : ''} selected`
+			);
+		}
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Add the selected courses
+	async function addCourses(): Promise<void> {
+		isPosting = true;
+
+		try {
+			await Promise.all(
+				Object.keys(selectedCourses).map((path) =>
+					CreateCourse({ path, title: selectedCourses[path] })
+				)
+			);
+			successFn?.();
+		} catch (error) {
+			toast.error((error as Error).message);
+		}
+
+		isPosting = false;
+		open = false;
+	}
+</script>
+
+<Dialog
+	bind:open
+	triggerClass="flex h-10 w-auto flex-row items-center gap-2 px-5"
+	contentClass="inline-flex h-[min(calc(100vh-10rem),50rem)] max-w-2xl flex-col"
+	onOpenChange={() => {
+		selectedCourses = {};
+		paths = [];
+		selectedPath = '';
+	}}
+>
+	{#snippet trigger()}
+		<PlusIcon class="size-5 stroke-[1.5]" />
+		Add Courses
+	{/snippet}
+
+	{#snippet content()}
+		<header
+			class="border-background-alt-3 bg-background-alt-2 flex h-16 items-center justify-between border-b px-3 text-base font-medium"
+		>
+			<div class="flex items-center gap-2">
+				<CourseIcon class="size-5 stroke-2" />
+				<span>Course Selection</span>
+			</div>
+
+			<!-- <Button
+					variant="ghost"
+					disabled={isLoadingOrRefreshing}
+					class="group hover:bg-alt-1 px-2.5 disabled:opacity-100"
+					on:click={refresh}
+				>
+					<Icons.Refresh
+						class={cn(
+							'text-muted-foreground group-hover:text-foreground size-5',
+							refreshing && 'animate-spin'
+						)}
+					/>
+				</Button> -->
+		</header>
+
+		<main
+			bind:this={mainEl}
+			class="flex min-h-[5rem] w-full flex-1 flex-col overflow-x-hidden overflow-y-auto"
+		>
+			{#await loadPromise}
+				<div class="flex justify-center pt-10">
+					<Spinner class="bg-foreground-alt-2 size-4" />
+				</div>
+			{:then _}
+				{#if paths.length > 0}
+					{#key paths[paths.length - 1]}
+						<div class="border-background-alt-3 flex flex-row items-center border-b">
+							<Button
+								class="text-foreground-alt-1 hover:bg-background disabled:text-foreground-alt-2 h-14 grow justify-start rounded-none bg-transparent p-0 px-3 text-start whitespace-normal duration-0 disabled:bg-transparent disabled:hover:cursor-default"
+								disabled={selectedPath !== ''}
+								onclick={async () => {
+									await moveBack();
+								}}
+							>
+								<BackArrowIcon class="size-4 stroke-2" />
+								<span>Back</span>
+							</Button>
+
+							{#if backId === selectedPath}
+								<div class="flex h-full w-20 shrink-0 justify-center">
+									<div class="flex w-full place-content-center">
+										<Spinner class="bg-foreground-alt-2 size-2.5" />
+									</div>
+								</div>
+							{/if}
+						</div>
+					{/key}
+				{/if}
+				{#each fs.directories as dir (dir.path)}
+					<div class="border-background-alt-3 flex flex-row items-center border-b">
+						<Button
+							class="text-foreground-alt-1 hover:bg-background disabled:text-foreground-alt-2 h-full min-h-14 grow justify-start rounded-none bg-transparent p-0 px-3 py-2 text-start whitespace-normal duration-0 disabled:bg-transparent disabled:hover:cursor-default"
+							disabled={isPosting ||
+								selectedPath !== '' ||
+								selectedCourses[dir.path] !== undefined ||
+								dir.classification === FsPathClassification.Course}
+							onclick={async () => {
+								await load(dir.path);
+							}}
+						>
+							{dir.title}
+						</Button>
+
+						<div class="flex h-full w-20 shrink-0 justify-center">
+							<Separator.Root orientation="vertical" class="bg-background-alt-3 h-full w-px" />
+
+							{#if dir.classification === FsPathClassification.Course}
+								<div class="flex w-full justify-center place-self-center">
+									<Badge
+										class="border-foreground-alt-2 text-foreground-alt-2 h-auto border bg-transparent text-xs"
+									>
+										Added
+									</Badge>
+								</div>
+							{:else if dir.path === selectedPath}
+								<div class="flex w-full place-content-center">
+									<Spinner class="bg-foreground-alt-2 size-2.5" />
+								</div>
+							{:else}
+								<Button
+									class={cn(
+										'hover:bg-background group disabled:text-foreground-alt-2 h-full w-full rounded-none bg-transparent p-0 disabled:bg-transparent disabled:hover:cursor-default',
+										dir.classification === FsPathClassification.Ancestor &&
+											'cursor-default hover:bg-transparent'
+									)}
+									disabled={isPosting || selectedPath !== ''}
+									onclick={() => {
+										if (dir.classification !== FsPathClassification.None) return;
+										dir.path in selectedCourses
+											? delete selectedCourses[dir.path]
+											: (selectedCourses[dir.path] = dir.title);
+
+										toastCount();
+									}}
+								>
+									<Checkbox
+										disabled={isPosting || selectedPath !== ''}
+										class="border-2 data-[state=indeterminate]:cursor-default"
+										checked={selectedCourses[dir.path] !== undefined}
+										indeterminate={dir.classification === FsPathClassification.Ancestor}
+										onclick={(e) => {
+											e.preventDefault();
+										}}
+									/>
+								</Button>
+							{/if}
+						</div>
+					</div>
+				{/each}
+			{:catch error}
+				<Oops
+					class="pt-0"
+					contentClass="border-0"
+					message={'Failed to fetch file system information: ' + error.message}
+				/>
+			{/await}
+		</main>
+	{/snippet}
+
+	{#snippet action()}
+		<Button
+			onclick={addCourses}
+			disabled={isPosting || selectedCoursesCount === 0}
+			class="h-10 w-25 py-2"
+		>
+			{#if !isPosting}
+				Add
+			{:else}
+				<Spinner class="bg-foreground-alt-3 size-2" />
+			{/if}
+		</Button>
+	{/snippet}
+</Dialog>

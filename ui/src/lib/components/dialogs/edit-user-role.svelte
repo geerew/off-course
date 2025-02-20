@@ -31,21 +31,21 @@
 
 	let inputEl = $state<HTMLInputElement>();
 	let isPosting = $state(false);
-	let roleValue: UserRole | undefined = $state();
+	let roleValue = $state<UserRole>();
 
-	const multipleUsers = Array.isArray(value);
+	const isArray = Array.isArray(value);
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	async function updateUsers(): Promise<void> {
+	async function doUpdate(): Promise<void> {
 		isPosting = true;
 
 		try {
-			if (multipleUsers) {
-				await Promise.all(Object.values(value).map((u) => doUpdate(u)));
+			if (isArray) {
+				await Promise.all(Object.values(value).map((u) => UpdateUser(u.id, { role: roleValue })));
 				toast.success('Selected users updated');
 			} else {
-				await doUpdate(value);
+				await UpdateUser(value.id, { role: roleValue });
 			}
 
 			successFn?.();
@@ -55,28 +55,6 @@
 
 		isPosting = false;
 		open = false;
-	}
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	async function doUpdate(user: UserModel): Promise<void> {
-		isPosting = true;
-
-		if (!roleValue) {
-			toast.error('Role is required');
-			isPosting = false;
-			return;
-		}
-
-		try {
-			await UpdateUser(user.id, { role: roleValue });
-			open = false;
-			successFn?.();
-		} catch (error) {
-			toast.error((error as Error).message);
-		}
-
-		isPosting = false;
 	}
 </script>
 
@@ -98,6 +76,7 @@
 	}}
 	{trigger}
 	{triggerClass}
+	contentClass="w-80"
 >
 	{#snippet content()}
 		<div class="flex flex-col gap-2.5 p-5">
@@ -114,7 +93,7 @@
 	{/snippet}
 
 	{#snippet action()}
-		<Button disabled={isPosting || !roleValue} class="w-24" onclick={updateUsers}>
+		<Button disabled={isPosting || !roleValue} class="w-24" onclick={doUpdate}>
 			{#if !isPosting}
 				Update
 			{:else}

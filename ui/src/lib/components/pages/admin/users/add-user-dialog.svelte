@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { CreateUser } from '$lib/api/user-api';
 	import { Spinner } from '$lib/components';
-	import { PlusIcon } from '$lib/components/icons';
+	import { PlusIcon, UserIcon } from '$lib/components/icons';
 	import { Button, Dialog, Input, InputPassword, Select } from '$lib/components/ui';
 	import { SelectUserRoles, type UserRole } from '$lib/models/user-model';
 	import { Separator } from 'bits-ui';
@@ -90,7 +90,8 @@
 
 <Dialog
 	bind:open
-	triggerClass="h-10 flex w-auto flex-row items-center gap-2 px-5"
+	triggerClass="flex h-10 w-auto flex-row items-center gap-2 px-5"
+	contentClass="inline-flex h-[min(calc(100vh-10rem),46rem)] max-w-lg flex-col"
 	onOpenChange={() => {
 		usernameValue = '';
 		displayNameValue = '';
@@ -115,7 +116,18 @@
 	{/snippet}
 
 	{#snippet content()}
-		<div class="flex max-h-[30rem] min-h-[20rem] w-sm flex-col gap-6 overflow-y-auto py-5">
+		<header
+			class="border-background-alt-3 bg-background-alt-2 flex h-16 shrink-0 items-center border-b px-3 text-base font-medium"
+		>
+			<div class="flex items-center gap-2">
+				<UserIcon class="size-5 stroke-2" />
+				<span>User Add</span>
+			</div>
+		</header>
+
+		<main
+			class="flex min-h-[5rem] w-full flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto py-5"
+		>
 			<!-- Username -->
 			<div class="flex place-content-center">
 				<div class="flex w-xs flex-col gap-3">
@@ -177,7 +189,7 @@
 					<InputPassword bind:value={confirmPasswordValue} name="confirm password" />
 				</div>
 			</div>
-		</div>
+		</main>
 	{/snippet}
 
 	{#snippet action()}

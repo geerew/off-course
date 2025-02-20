@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { RevokeUserSessions } from '$lib/api/user-api';
+	import { DeleteCourse } from '$lib/api/course-api';
 	import { Spinner } from '$lib/components';
 	import { AlertDialog, Button } from '$lib/components/ui';
-	import type { UserModel, UsersModel } from '$lib/models/user-model';
+	import type { CourseModel, CoursesModel } from '$lib/models/course-model';
 	import { type Snippet } from 'svelte';
 	import { toast } from 'svelte-sonner';
 
 	type Props = {
 		open?: boolean;
-		value: UserModel | UsersModel;
+		value: CourseModel | CoursesModel;
 		trigger?: Snippet;
 		triggerClass?: string;
 		successFn?: () => void;
@@ -19,19 +19,19 @@
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let isPosting = $state(false);
-	const multipleUsers = Array.isArray(value);
+	const isArray = Array.isArray(value);
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	async function doRevoke(): Promise<void> {
+	async function doDelete(): Promise<void> {
 		isPosting = true;
 
 		try {
-			if (multipleUsers) {
-				await Promise.all(Object.values(value).map((u) => RevokeUserSessions(u.id)));
-				toast.success('Selected users deleted');
+			if (isArray) {
+				await Promise.all(Object.values(value).map((u) => DeleteCourse(u.id)));
+				toast.success('Selected courses deleted');
 			} else {
-				await RevokeUserSessions(value.id);
+				await DeleteCourse(value.id);
 			}
 
 			successFn?.();
@@ -57,22 +57,19 @@
 >
 	{#snippet description()}
 		<div class="text-foreground-alt-1 flex flex-col gap-2 text-center">
-			{#if multipleUsers && Object.values(value).length > 1}
-				<span class="text-lg">
-					Are you sure you want to continue revoking all sessions for these users?
-				</span>
+			{#if isArray && Object.values(value).length > 1}
+				<span class="text-lg">Are you sure you want to continue deleting these courses?</span>
 			{:else}
-				<span class="text-lg">
-					Are you sure you want to continue revoking all sessions for this user?
-				</span>
+				<span class="text-lg">Are you sure you want to continue deleting this course?</span>
 			{/if}
+			<span class="text-foreground-alt-2">All associated data will be deleted</span>
 		</div>
 	{/snippet}
 
 	{#snippet action()}
 		<Button
 			disabled={isPosting}
-			onclick={doRevoke}
+			onclick={doDelete}
 			class="bg-background-error disabled:bg-background-error/80 enabled:hover:bg-background-error-alt-1 text-foreground-alt-1 enabled:hover:text-foreground w-24"
 		>
 			{#if !isPosting}

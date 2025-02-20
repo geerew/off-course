@@ -1,4 +1,241 @@
 <script lang="ts">
+	import { GetCourses } from '$lib/api/course-api';
+	import { NiceDate, Pagination } from '$lib/components';
+	import { TickIcon, WarningIcon, XIcon } from '$lib/components/icons';
+	import AddCoursesDialog from '$lib/components/pages/admin/courses/add-courses-dialog.svelte';
+	import RowActionMenu from '$lib/components/pages/admin/courses/row-action-menu.svelte';
+	import TableActionMenu from '$lib/components/pages/admin/courses/table-action-menu.svelte';
+	import Spinner from '$lib/components/spinner.svelte';
+	import * as Table from '$lib/components/table';
+	import { Checkbox } from '$lib/components/ui';
+	import type { CourseModel, CoursesModel } from '$lib/models/course-model';
+	import { toast } from 'svelte-sonner';
+
+	let courses: CoursesModel = $state([]);
+
+	let selectedCourses: Record<string, CourseModel> = $state({});
+	let selectedCoursesCount = $derived(Object.keys(selectedCourses).length);
+
+	let paginationPage = $state(1);
+	let paginationPerPage = $state(10);
+	let paginationTotal = $state(0);
+	let paginationTotalMinusSelf = $derived(paginationTotal - 1);
+
+	// Whether the main checkbox is indeterminate/checked
+	let isIndeterminate = $derived(
+		selectedCoursesCount > 0 && selectedCoursesCount < paginationTotalMinusSelf
+	);
+	let isChecked = $derived(
+		selectedCoursesCount !== 0 && selectedCoursesCount === paginationTotalMinusSelf
+	);
+
+	let loadPromise = $state(fetchCourses());
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	async function fetchCourses(): Promise<void> {
+		try {
+			const data = await GetCourses({
+				orderBy: 'title',
+				page: paginationPage,
+				perPage: paginationPerPage
+			});
+			paginationTotal = data.totalItems;
+			courses = data.items;
+		} catch (error) {
+			throw error;
+		}
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	async function onRowUpdate() {
+		loadPromise = fetchCourses();
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	async function onRowDelete() {
+		// If the current page is greater than the new total, set it to the last
+		// page
+		if (paginationPage > Math.ceil(paginationTotalMinusSelf / paginationPerPage)) {
+			paginationPage = Math.ceil(paginationTotalMinusSelf / paginationPerPage);
+		}
+
+		loadPromise = fetchCourses();
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	function onCheckboxClicked(e: MouseEvent) {
+		e.preventDefault();
+
+		// const allUsersSelectedOnPage = users.every((u) => {
+		// 	if (u.id === auth.user?.id) {
+		// 		return true;
+		// 	}
+		// 	return selectedCourses[u.id] !== undefined;
+		// });
+
+		// if (allUsersSelectedOnPage) {
+		// 	users.forEach((u) => {
+		// 		if (u.id !== auth.user?.id) {
+		// 			delete selectedCourses[u.id];
+		// 		}
+		// 	});
+		// } else {
+		// 	users.forEach((u) => {
+		// 		if (u.id !== auth.user?.id) {
+		// 			selectedCourses[u.id] = u;
+		// 		}
+		// 	});
+		// }
+
+		toastCount();
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	function toastCount() {
+		if (selectedCoursesCount === 0) {
+			toast.success('No users selected');
+		} else {
+			toast.success(`${selectedCoursesCount} user${selectedCoursesCount > 1 ? 's' : ''} selected`);
+		}
+	}
 </script>
 
-<div class="container-px">Courses</div>
+<div class="flex w-full place-content-center">
+	<div class="flex w-full max-w-7xl min-w-4xl flex-col gap-6 pt-1">
+		<div class="flex flex-row items-center justify-between">
+			<AddCoursesDialog
+				successFn={() => {
+					loadPromise = fetchCourses();
+				}}
+			/>
+
+			<div class="flex h-10 items-center gap-3 rounded-lg">
+				<TableActionMenu
+					courses={selectedCourses}
+					onUpdate={() => {
+						selectedCourses = {};
+						onRowUpdate();
+					}}
+					onDelete={() => {
+						selectedCourses = {};
+						onRowDelete();
+					}}
+				/>
+			</div>
+		</div>
+
+		<div class="flex w-full place-content-center">
+			{#await loadPromise}
+				<div class="flex justify-center pt-10">
+					<Spinner class="bg-foreground-alt-2 size-4" />
+				</div>
+			{:then _}
+				<div class="flex w-full flex-col gap-8">
+					<Table.Root>
+						<Table.Thead>
+							<Table.Tr>
+								<Table.Th class="min-w-[1%]">
+									<Checkbox
+										indeterminate={isIndeterminate}
+										checked={isChecked}
+										onclick={onCheckboxClicked}
+									/>
+								</Table.Th>
+								<Table.Th class="max-w-[5rem]">Course</Table.Th>
+								<Table.Th class="min-w-[1%]">Available</Table.Th>
+								<Table.Th class="min-w-[1%] text-center">Created</Table.Th>
+								<Table.Th class="min-w-[1%] text-center">Updated</Table.Th>
+								<Table.Th class="min-w-[1%]" />
+							</Table.Tr>
+						</Table.Thead>
+
+						<Table.Tbody>
+							{#if courses.length === 0}
+								<Table.Tr>
+									<Table.Td class="text-center" colspan={9999}>No courses found</Table.Td>
+								</Table.Tr>
+							{/if}
+
+							{#each courses as course}
+								<Table.Tr class="hover:bg-background-alt-1 items-center duration-200">
+									<Table.Td>
+										<Checkbox
+											checked={selectedCourses[course.id] !== undefined}
+											onCheckedChange={(checked) => {
+												if (checked) {
+													selectedCourses[course.id] = course;
+												} else {
+													delete selectedCourses[course.id];
+												}
+
+												toastCount();
+											}}
+										/>
+									</Table.Td>
+
+									<Table.Td>
+										{course.title}
+									</Table.Td>
+
+									<Table.Td class="min-w-[1%]">
+										<div class="flex w-full place-content-center">
+											{#if course.available}
+												<div class="bg-background-success size-5 place-self-center rounded-md p-1">
+													<TickIcon class="text-foreground size-3 stroke-2" />
+												</div>
+											{:else}
+												<div class="bg-background-error size-5 place-self-center rounded-md p-1">
+													<XIcon class="text-foreground size-3 stroke-2" />
+												</div>
+											{/if}
+										</div>
+									</Table.Td>
+
+									<Table.Td class="min-w-[1%] whitespace-nowrap">
+										<NiceDate date={course.createdAt} />
+									</Table.Td>
+									<Table.Td class="w-[1%] whitespace-nowrap">
+										<NiceDate date={course.updatedAt} />
+									</Table.Td>
+
+									<Table.Td class="flex items-center justify-center">
+										<RowActionMenu
+											{course}
+											onUpdate={onRowUpdate}
+											onDelete={async () => {
+												await onRowDelete();
+												if (selectedCourses[course.id] !== undefined) {
+													delete selectedCourses[course.id];
+												}
+											}}
+										/>
+									</Table.Td>
+								</Table.Tr>
+							{/each}
+						</Table.Tbody>
+					</Table.Root>
+
+					{#if courses.length !== 0}
+						<Pagination
+							count={paginationTotal}
+							bind:perPage={paginationPerPage}
+							bind:page={paginationPage}
+							onPageChange={fetchCourses}
+							onPerPageChange={fetchCourses}
+						/>
+					{/if}
+				</div>
+			{:catch error}
+				<div class="flex w-full flex-col items-center gap-2 pt-10">
+					<WarningIcon class="text-foreground-error size-10" />
+					<span class="text-lg">Failed to fetch users: {error.message}</span>
+				</div>
+			{/await}
+		</div>
+	</div>
+</div>

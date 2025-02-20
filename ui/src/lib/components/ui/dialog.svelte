@@ -43,15 +43,15 @@
 
 		<Dialog.Content
 			class={cn(
-				'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 data-[state=open]:slide-in-from-top-5 bg-background-alt-1 data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-5 fixed top-20 left-1/2 z-50 min-w-[20rem] -translate-x-1/2 overflow-hidden rounded-lg data-[state=closed]:duration-200 data-[state=open]:duration-200',
+				'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 data-[state=open]:slide-in-from-top-5 bg-background-alt-1 data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-5 fixed top-20 left-1/2 z-50 w-[calc(100%-4rem)] max-w-[calc(100vw-4rem)] -translate-x-1/2 overflow-hidden rounded-lg data-[state=closed]:duration-200 data-[state=open]:duration-200',
 				contentClass
 			)}
 			{...contentProps}
 		>
 			{@render content()}
 
-			<div
-				class="bg-background-alt-2 border-background-alt-3 flex w-full items-center justify-end gap-2 border-t px-5 py-2.5"
+			<footer
+				class="bg-background-alt-2 border-background-alt-3 flex h-16 w-full shrink-0 items-center justify-end gap-2 border-t px-5 py-2.5"
 			>
 				<Dialog.Close
 					type="button"
@@ -61,7 +61,7 @@
 				</Dialog.Close>
 
 				{@render action?.()}
-			</div>
+			</footer>
 		</Dialog.Content>
 	</Dialog.Portal>
 </Dialog.Root>

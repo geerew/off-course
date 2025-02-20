@@ -12,7 +12,7 @@
 
 <span
 	class={cn(
-		'focus:ring-ring bg-background-alt-4 text-foreground-alt-1 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-none',
+		'focus:ring-ring bg-background-alt-4 text-foreground-alt-1 inline-flex items-center rounded-md px-2.5 py-0.5 text-xs transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-none',
 		className
 	)}
 	{...restProps}

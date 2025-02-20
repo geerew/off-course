@@ -49,7 +49,7 @@
 		{#if auth.user !== null}
 			<div class="flex flex-1 justify-end">
 				<Dropdown
-					triggerClass="border-none bg-background-primary-alt-1 hover:bg-background-primary data-[state=open]:bg-background-primary rounded-full font-semibold size-10 items-center justify-center text-foreground-alt-3 "
+					triggerClass="bg-background-primary-alt-1 hover:bg-background-primary data-[state=open]:bg-background-primary text-foreground-alt-3 size-10 items-center justify-center rounded-full border-none font-semibold "
 				>
 					{#snippet trigger()}
 						{auth.userLetter}

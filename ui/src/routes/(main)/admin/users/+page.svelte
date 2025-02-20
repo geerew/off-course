@@ -193,7 +193,16 @@
 
 									<Table.Td class="flex items-center justify-center">
 										{#if user.id !== auth.user?.id}
-											<RowActionMenu {user} onUpdate={onRowUpdate} onDelete={onRowDelete} />
+											<RowActionMenu
+												{user}
+												onUpdate={onRowUpdate}
+												onDelete={async () => {
+													await onRowDelete();
+													if (selectedUsers[user.id] !== undefined) {
+														delete selectedUsers[user.id];
+													}
+												}}
+											/>
 										{/if}
 									</Table.Td>
 								</Table.Tr>

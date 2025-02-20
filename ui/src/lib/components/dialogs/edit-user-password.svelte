@@ -34,7 +34,7 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	async function update() {
+	async function doUpdate() {
 		isPosting = true;
 
 		try {
@@ -115,7 +115,7 @@
 	{/snippet}
 
 	{#snippet action()}
-		<Button disabled={passwordSubmitDisabled || isPosting} class="w-24" onclick={update}>
+		<Button disabled={passwordSubmitDisabled || isPosting} class="w-24" onclick={doUpdate}>
 			{#if !isPosting}
 				Update
 			{:else}
