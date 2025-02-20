@@ -36,8 +36,21 @@ func (r *Router) initScanRoutes() {
 	}
 
 	scanGroup := r.api.Group("/scans")
+	scanGroup.Get("/", protectedRoute, scansAPI.getScans)
 	scanGroup.Get("/:courseId", protectedRoute, scansAPI.getScan)
 	scanGroup.Post("", protectedRoute, scansAPI.createScan)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func (api *scansAPI) getScans(c *fiber.Ctx) error {
+	scans := []*models.Scan{}
+	err := api.dao.List(c.UserContext(), &scans, nil)
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up scan", err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(scanResponseHelper(scans))
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
