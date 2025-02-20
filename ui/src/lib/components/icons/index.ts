@@ -14,6 +14,7 @@ export { default as MinusIcon } from './minus.svelte';
 export { default as PlusIcon } from './plus.svelte';
 export { default as RightArrowIcon } from './right-arrow.svelte';
 export { default as RightChevronIcon } from './right-chevron.svelte';
+export { default as ScanIcon } from './scan.svelte';
 export { default as SecureIcon } from './secure.svelte';
 export { default as SessionIcon } from './session.svelte';
 export { default as TagIcon } from './tag.svelte';

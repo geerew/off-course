@@ -9,6 +9,7 @@
 	import * as Table from '$lib/components/table';
 	import { Checkbox } from '$lib/components/ui';
 	import type { CourseModel, CoursesModel } from '$lib/models/course-model';
+	import { scanMonitor } from '$lib/scans.svelte';
 	import { toast } from 'svelte-sonner';
 
 	let courses: CoursesModel = $state([]);
@@ -19,22 +20,28 @@
 	let paginationPage = $state(1);
 	let paginationPerPage = $state(10);
 	let paginationTotal = $state(0);
-	let paginationTotalMinusSelf = $derived(paginationTotal - 1);
 
-	// Whether the main checkbox is indeterminate/checked
 	let isIndeterminate = $derived(
-		selectedCoursesCount > 0 && selectedCoursesCount < paginationTotalMinusSelf
+		selectedCoursesCount > 0 && selectedCoursesCount < paginationTotal
 	);
-	let isChecked = $derived(
-		selectedCoursesCount !== 0 && selectedCoursesCount === paginationTotalMinusSelf
-	);
+	let isChecked = $derived(selectedCoursesCount !== 0 && selectedCoursesCount === paginationTotal);
 
-	let loadPromise = $state(fetchCourses());
+	let loadPromise = $state(fetchCourses(true));
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	async function fetchCourses(): Promise<void> {
+	// Stop the scan monitor when the component is destroyed
+	$effect(() => {
+		return () => scanMonitor.stop();
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Fetch courses
+	async function fetchCourses(doScan: boolean): Promise<void> {
 		try {
+			if (doScan) await scanMonitor.fetch();
+
 			const data = await GetCourses({
 				orderBy: 'title',
 				page: paginationPage,
@@ -49,20 +56,14 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	async function onRowUpdate() {
-		loadPromise = fetchCourses();
-	}
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 	async function onRowDelete() {
 		// If the current page is greater than the new total, set it to the last
 		// page
-		if (paginationPage > Math.ceil(paginationTotalMinusSelf / paginationPerPage)) {
-			paginationPage = Math.ceil(paginationTotalMinusSelf / paginationPerPage);
+		if (paginationPage > Math.ceil(paginationTotal / paginationPerPage)) {
+			paginationPage = Math.ceil(paginationTotal / paginationPerPage);
 		}
 
-		loadPromise = fetchCourses();
+		loadPromise = fetchCourses(false);
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -70,26 +71,19 @@
 	function onCheckboxClicked(e: MouseEvent) {
 		e.preventDefault();
 
-		// const allUsersSelectedOnPage = users.every((u) => {
-		// 	if (u.id === auth.user?.id) {
-		// 		return true;
-		// 	}
-		// 	return selectedCourses[u.id] !== undefined;
-		// });
+		const allCoursesSelectedOnPage = courses.every((c) => {
+			return selectedCourses[c.id] !== undefined;
+		});
 
-		// if (allUsersSelectedOnPage) {
-		// 	users.forEach((u) => {
-		// 		if (u.id !== auth.user?.id) {
-		// 			delete selectedCourses[u.id];
-		// 		}
-		// 	});
-		// } else {
-		// 	users.forEach((u) => {
-		// 		if (u.id !== auth.user?.id) {
-		// 			selectedCourses[u.id] = u;
-		// 		}
-		// 	});
-		// }
+		if (allCoursesSelectedOnPage) {
+			courses.forEach((c) => {
+				delete selectedCourses[c.id];
+			});
+		} else {
+			courses.forEach((c) => {
+				selectedCourses[c.id] = c;
+			});
+		}
 
 		toastCount();
 	}
@@ -98,7 +92,7 @@
 
 	function toastCount() {
 		if (selectedCoursesCount === 0) {
-			toast.success('No users selected');
+			toast.success('No courses selected');
 		} else {
 			toast.success(`${selectedCoursesCount} user${selectedCoursesCount > 1 ? 's' : ''} selected`);
 		}
@@ -110,7 +104,7 @@
 		<div class="flex flex-row items-center justify-between">
 			<AddCoursesDialog
 				successFn={() => {
-					loadPromise = fetchCourses();
+					loadPromise = fetchCourses(true);
 				}}
 			/>
 
@@ -119,7 +113,7 @@
 					courses={selectedCourses}
 					onUpdate={() => {
 						selectedCourses = {};
-						onRowUpdate();
+						loadPromise = fetchCourses(true);
 					}}
 					onDelete={() => {
 						selectedCourses = {};
@@ -179,7 +173,20 @@
 									</Table.Td>
 
 									<Table.Td>
-										{course.title}
+										<div class="flex items-center gap-2">
+											<span>{course.title}</span>
+											{#if scanMonitor.scans[course.id] !== undefined}
+												{#if scanMonitor.scans[course.id] === 'processing'}
+													<div
+														class="bg-background-primary mt-0.5 size-2 shrink-0 rounded-full"
+													></div>
+												{:else}
+													<div
+														class="bg-background-alt-6 mt-0.5 size-2 shrink-0 rounded-full"
+													></div>
+												{/if}
+											{/if}
+										</div>
 									</Table.Td>
 
 									<Table.Td class="min-w-[1%]">
@@ -206,7 +213,9 @@
 									<Table.Td class="flex items-center justify-center">
 										<RowActionMenu
 											{course}
-											onUpdate={onRowUpdate}
+											onScan={async () => {
+												await scanMonitor.fetch();
+											}}
 											onDelete={async () => {
 												await onRowDelete();
 												if (selectedCourses[course.id] !== undefined) {
@@ -220,13 +229,27 @@
 						</Table.Tbody>
 					</Table.Root>
 
+					<div class="flex flex-row gap-3 text-sm">
+						<span>Scan Status:</span>
+						<div class="flex flex-row gap-3">
+							<div class="flex flex-row items-center gap-2">
+								<div class="bg-background-primary mt-px size-4 rounded-md"></div>
+								<span>Processing</span>
+							</div>
+							<div class="flex flex-row items-center gap-2">
+								<div class="bg-background-alt-4 mt-px size-4 rounded-md"></div>
+								<span>Waiting</span>
+							</div>
+						</div>
+					</div>
+
 					{#if courses.length !== 0}
 						<Pagination
 							count={paginationTotal}
 							bind:perPage={paginationPerPage}
 							bind:page={paginationPage}
-							onPageChange={fetchCourses}
-							onPerPageChange={fetchCourses}
+							onPageChange={() => fetchCourses(false)}
+							onPerPageChange={() => fetchCourses(false)}
 						/>
 					{/if}
 				</div>

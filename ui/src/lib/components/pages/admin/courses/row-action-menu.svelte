@@ -1,22 +1,34 @@
 <script lang="ts">
+	import { StartScan } from '$lib/api/scan-api';
 	import { DeleteCourseDialog } from '$lib/components/dialogs';
-	import { DeleteIcon, DotsIcon } from '$lib/components/icons';
+	import { DeleteIcon, DotsIcon, ScanIcon } from '$lib/components/icons';
 	import Dropdown from '$lib/components/ui/dropdown.svelte';
 	import type { CourseModel } from '$lib/models/course-model';
 	import { DropdownMenu } from 'bits-ui';
+	import { toast } from 'svelte-sonner';
 
 	type Props = {
 		course: CourseModel;
-		onUpdate: () => void;
+		onScan: () => void;
 		onDelete: () => void;
 	};
 
-	let { course, onUpdate, onDelete }: Props = $props();
+	let { course, onScan, onDelete }: Props = $props();
 
-	// let roleDialogOpen = $state(false);
-	// let passwordDialogOpen = $state(false);
-	// let revokeSessionsDialogOpen = $state(false);
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	let deleteDialogOpen = $state(false);
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	async function doScan() {
+		try {
+			await StartScan({ courseId: course.id });
+			onScan();
+		} catch (error) {
+			toast.error('Failed to start the scan ' + (error as Error).message);
+		}
+	}
 </script>
 
 <Dropdown
@@ -28,37 +40,17 @@
 	{/snippet}
 
 	{#snippet content()}
-		<!-- <DropdownMenu.Item
-			class="text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-2 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none"
-			onclick={() => {
-				roleDialogOpen = true;
-			}}
-		>
-			<FlagIcon class="size-4 stroke-[1.5]" />
-			<span>Update Role</span>
-		</DropdownMenu.Item>
-
 		<DropdownMenu.Item
 			class="text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-2 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none"
-			onclick={() => {
-				passwordDialogOpen = true;
+			onclick={async () => {
+				doScan();
 			}}
 		>
-			<SecureIcon class="size-4 stroke-[1.5]" />
-			<span>Update Password</span>
+			<ScanIcon class="size-4 stroke-[1.5]" />
+			<span>Scan</span>
 		</DropdownMenu.Item>
 
-		<DropdownMenu.Item
-			class="text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-2 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none"
-			onclick={() => {
-				revokeSessionsDialogOpen = true;
-			}}
-		>
-			<SessionIcon class="size-4 stroke-[1.5]" />
-			<span>Revoke Sessions</span>
-		</DropdownMenu.Item>
-
-		<DropdownMenu.Separator class="bg-background-alt-3 h-px w-full" /> -->
+		<DropdownMenu.Separator class="bg-background-alt-3 h-px w-full" />
 
 		<DropdownMenu.Item
 			class="text-foreground-error hover:text-foreground hover:bg-background-error inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none"
