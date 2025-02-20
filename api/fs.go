@@ -28,7 +28,7 @@ func (r *Router) initFsRoutes() {
 		dao:    r.dao,
 	}
 
-	fsGroup := r.api.Group("/fileSystem")
+	fsGroup := r.api.Group("/filesystem")
 
 	fsGroup.Get("", protectedRoute, fsAPI.fileSystem)
 	fsGroup.Get("/:path", protectedRoute, fsAPI.path)
