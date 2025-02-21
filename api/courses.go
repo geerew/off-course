@@ -141,12 +141,12 @@ func (api coursesAPI) getCourses(c *fiber.Ctx) error {
 			return errorResponse(c, fiber.StatusBadRequest, "Invalid tags parameter", err)
 		}
 
-		tmpCourseIDs, err := api.dao.PluckCourseIDsWithTags(c.UserContext(), filtered, nil)
+		tempCourseIDs, err := api.dao.PluckCourseIDsWithTags(c.UserContext(), filtered, nil)
 		if err != nil {
 			return errorResponse(c, fiber.StatusInternalServerError, "Error looking up courses by tags", err)
 		}
 
-		if len(tmpCourseIDs) == 0 {
+		if len(tempCourseIDs) == 0 {
 			pResult, err := options.Pagination.BuildResult(courseResponseHelper(nil))
 			if err != nil {
 				return errorResponse(c, fiber.StatusInternalServerError, "Error building pagination result", err)
@@ -156,9 +156,9 @@ func (api coursesAPI) getCourses(c *fiber.Ctx) error {
 		}
 
 		if len(courseIDs) != 0 {
-			courseIDs = utils.SliceIntersection(courseIDs, tmpCourseIDs)
+			courseIDs = utils.SliceIntersection(courseIDs, tempCourseIDs)
 		} else {
-			courseIDs = tmpCourseIDs
+			courseIDs = tempCourseIDs
 		}
 	}
 

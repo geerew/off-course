@@ -18,12 +18,12 @@ class ScanMonitor {
 				this.stop();
 				return;
 			} else {
-				const tmpScans: Record<string, ScanStatus> = {};
+				const tempScans: Record<string, ScanStatus> = {};
 				for (const scan of resp) {
-					tmpScans[scan.courseId] = scan.status;
+					tempScans[scan.courseId] = scan.status;
 				}
 
-				this.#scans = tmpScans;
+				this.#scans = tempScans;
 
 				if (this.#interval === null) {
 					this.#interval = setInterval(() => {
