@@ -12,6 +12,7 @@ export { default as LogoIcon } from './logo.svelte';
 export { default as LogoutIcon } from './logout.svelte';
 export { default as MinusIcon } from './minus.svelte';
 export { default as PlusIcon } from './plus.svelte';
+export { default as RefreshIcon } from './refresh.svelte';
 export { default as RightArrowIcon } from './right-arrow.svelte';
 export { default as RightChevronIcon } from './right-chevron.svelte';
 export { default as ScanIcon } from './scan.svelte';

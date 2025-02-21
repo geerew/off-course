@@ -2,7 +2,7 @@
 	import { CreateCourse } from '$lib/api/course-api';
 	import { GetFileSystem } from '$lib/api/fs-api';
 	import { Oops, Spinner } from '$lib/components';
-	import { BackArrowIcon, CourseIcon, PlusIcon } from '$lib/components/icons';
+	import { BackArrowIcon, CourseIcon, PlusIcon, RefreshIcon } from '$lib/components/icons';
 	import { Badge, Button, Checkbox, Dialog } from '$lib/components/ui';
 	import { FsPathClassification, type FsModel } from '$lib/models/fs-model';
 	import { cn } from '$lib/utils';
@@ -32,6 +32,7 @@
 	let selectedCoursesCount = $derived(Object.keys(selectedCourses).length);
 
 	let isPosting = $state(false);
+	let isRefreshing = $state(false);
 
 	let mainEl: HTMLElement | null = null;
 
@@ -144,19 +145,19 @@
 				<span>Course Selection</span>
 			</div>
 
-			<!-- <Button
-					variant="ghost"
-					disabled={isLoadingOrRefreshing}
-					class="group hover:bg-alt-1 px-2.5 disabled:opacity-100"
-					on:click={refresh}
-				>
-					<Icons.Refresh
-						class={cn(
-							'text-muted-foreground group-hover:text-foreground size-5',
-							refreshing && 'animate-spin'
-						)}
-					/>
-				</Button> -->
+			<Button
+				disabled={isRefreshing}
+				class="hover:bg-background-alt-4 mr-2 w-auto bg-transparent px-2 disabled:bg-transparent"
+				onclick={async () => {
+					isRefreshing = true;
+					paths.length > 0 ? await load(paths[paths.length - 1]) : await load('');
+					isRefreshing = false;
+				}}
+			>
+				<RefreshIcon
+					class={cn('text-foreground-alt-1 size-5 stroke-2', isRefreshing && 'animate-spin')}
+				/>
+			</Button>
 		</header>
 
 		<main
@@ -173,7 +174,7 @@
 						<div class="border-background-alt-3 flex flex-row items-center border-b">
 							<Button
 								class="text-foreground-alt-1 hover:bg-background disabled:text-foreground-alt-2 h-14 grow justify-start rounded-none bg-transparent p-0 px-3 text-start whitespace-normal duration-0 disabled:bg-transparent disabled:hover:cursor-default"
-								disabled={selectedPath !== ''}
+								disabled={selectedPath !== '' || isPosting || isRefreshing}
 								onclick={async () => {
 									await moveBack();
 								}}
@@ -197,6 +198,7 @@
 						<Button
 							class="text-foreground-alt-1 hover:bg-background disabled:text-foreground-alt-2 h-full min-h-14 grow justify-start rounded-none bg-transparent p-0 px-3 py-2 text-start whitespace-normal duration-0 disabled:bg-transparent disabled:hover:cursor-default"
 							disabled={isPosting ||
+								isRefreshing ||
 								selectedPath !== '' ||
 								selectedCourses[dir.path] !== undefined ||
 								dir.classification === FsPathClassification.Course}
@@ -229,7 +231,7 @@
 										dir.classification === FsPathClassification.Ancestor &&
 											'cursor-default hover:bg-transparent'
 									)}
-									disabled={isPosting || selectedPath !== ''}
+									disabled={isPosting || isRefreshing || selectedPath !== ''}
 									onclick={() => {
 										if (dir.classification !== FsPathClassification.None) return;
 										dir.path in selectedCourses
@@ -240,7 +242,7 @@
 									}}
 								>
 									<Checkbox
-										disabled={isPosting || selectedPath !== ''}
+										disabled={isPosting || isRefreshing || selectedPath !== ''}
 										class="border-2 data-[state=indeterminate]:cursor-default"
 										checked={selectedCourses[dir.path] !== undefined}
 										indeterminate={dir.classification === FsPathClassification.Ancestor}
@@ -266,7 +268,7 @@
 	{#snippet action()}
 		<Button
 			onclick={addCourses}
-			disabled={isPosting || selectedCoursesCount === 0}
+			disabled={isPosting || isRefreshing || selectedCoursesCount === 0}
 			class="h-10 w-25 py-2"
 		>
 			{#if !isPosting}
