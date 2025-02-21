@@ -91,6 +91,8 @@
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	function toastCount() {
+		if (courses.length === 0) return;
+
 		if (selectedCoursesCount === 0) {
 			toast.success('No courses selected');
 		} else {
@@ -135,6 +137,7 @@
 							<Table.Tr>
 								<Table.Th class="min-w-[1%]">
 									<Checkbox
+										disabled={courses.length === 0}
 										indeterminate={isIndeterminate}
 										checked={isChecked}
 										onclick={onCheckboxClicked}
