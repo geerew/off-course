@@ -243,7 +243,7 @@
 								>
 									<Checkbox
 										disabled={isPosting || isRefreshing || selectedPath !== ''}
-										class="border-2 data-[state=indeterminate]:cursor-default"
+										class="group-hover:border-foreground-alt-1 border-2 duration-200 data-[state=indeterminate]:cursor-default"
 										checked={selectedCourses[dir.path] !== undefined}
 										indeterminate={dir.classification === FsPathClassification.Ancestor}
 										onclick={(e) => {
