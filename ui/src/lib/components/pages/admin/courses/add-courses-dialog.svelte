@@ -34,9 +34,23 @@
 	let isPosting = $state(false);
 	let isRefreshing = $state(false);
 
+	let deselectAllDisabled = $derived.by(() => {
+		if (isPosting || isRefreshing || selectedCoursesCount === 0) return true;
+		return fs.directories.find((dir) => dir.path in selectedCourses) === undefined;
+	});
+
+	let selectAllDisabled = $derived.by(() => {
+		if (isPosting || isRefreshing) return true;
+
+		return (
+			fs.directories.find(
+				(dir) => dir.classification === FsPathClassification.None && !(dir.path in selectedCourses)
+			) === undefined
+		);
+	});
+
 	let mainEl: HTMLElement | null = null;
 
-	// Back button unique id
 	const backId = 'back-' + Math.random().toString(36);
 
 	let loadPromise = $state<Promise<void>>();
@@ -262,20 +276,58 @@
 			{/await}
 		</main>
 
-		<Dialog.Footer>
-			<Dialog.CloseButton />
+		<Dialog.Footer class="flex justify-between">
+			<div class="flex justify-start gap-2">
+				<Button
+					class="border-background-alt-4 text-foreground-alt-1 hover:bg-background-alt-4 hover:text-foreground disabled:text-foreground-alt-2 w-24 cursor-pointer rounded-md border bg-transparent py-2 duration-200 select-none disabled:bg-transparent"
+					disabled={selectAllDisabled}
+					onclick={() => {
+						// Select all courses current not selected (and can be selected)
+						fs.directories.forEach((dir) => {
+							if (dir.classification === FsPathClassification.None) {
+								selectedCourses[dir.path] = dir.title;
+							}
+						});
 
-			<Button
-				onclick={addCourses}
-				disabled={isPosting || isRefreshing || selectedCoursesCount === 0}
-				class="h-10 w-25 py-2"
-			>
-				{#if !isPosting}
-					Add
-				{:else}
-					<Spinner class="bg-foreground-alt-3 size-2" />
-				{/if}
-			</Button>
+						toastCount();
+					}}
+				>
+					Select All
+				</Button>
+
+				<Button
+					class="border-background-alt-4 text-foreground-alt-1 hover:bg-background-alt-4 hover:text-foreground disabled:text-foreground-alt-2 w-28 cursor-pointer rounded-md border bg-transparent py-2 duration-200 select-none disabled:bg-transparent"
+					disabled={deselectAllDisabled}
+					onclick={() => {
+						// Remove all selected courses
+						Object.keys(selectedCourses).forEach((path) => {
+							if (fs.directories.find((dir) => dir.path === path)) {
+								delete selectedCourses[path];
+							}
+						});
+
+						toastCount();
+					}}
+				>
+					Deselect All
+				</Button>
+			</div>
+
+			<div class="flex justify-end gap-2">
+				<Dialog.CloseButton />
+
+				<Button
+					onclick={addCourses}
+					disabled={isPosting || isRefreshing || selectedCoursesCount === 0}
+					class="h-10 w-25 py-2"
+				>
+					{#if !isPosting}
+						Add
+					{:else}
+						<Spinner class="bg-foreground-alt-3 size-2" />
+					{/if}
+				</Button>
+			</div>
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>
