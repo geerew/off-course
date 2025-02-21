@@ -15,17 +15,10 @@
 		open?: boolean;
 		value: UserModel | UsersModel;
 		trigger?: Snippet;
-		triggerClass?: string;
 		successFn?: () => void;
 	};
 
-	let {
-		open = $bindable(false),
-		value = $bindable(),
-		trigger,
-		triggerClass,
-		successFn
-	}: Props = $props();
+	let { open = $bindable(false), value = $bindable(), trigger, successFn }: Props = $props();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -58,28 +51,26 @@
 	}
 </script>
 
-<Dialog
+<Dialog.Root
 	bind:open
 	onOpenChange={() => {
 		roleValue = undefined;
 		isPosting = false;
 	}}
-	contentProps={{
-		interactOutsideBehavior: 'close',
-		onOpenAutoFocus: (e) => {
+	{trigger}
+>
+	<Dialog.Content
+		class="w-80"
+		interactOutsideBehavior="close"
+		onOpenAutoFocus={(e) => {
 			e.preventDefault();
 			inputEl?.focus();
-		},
-		onCloseAutoFocus: (e) => {
+		}}
+		onCloseAutoFocus={(e) => {
 			e.preventDefault();
-		}
-	}}
-	{trigger}
-	{triggerClass}
-	contentClass="w-80"
->
-	{#snippet content()}
-		<div class="flex flex-col gap-2.5 p-5">
+		}}
+	>
+		<main class="flex flex-col gap-2.5 p-5">
 			<div>Update Role:</div>
 			<Select
 				placeholder="Select Role"
@@ -89,16 +80,17 @@
 				contentProps={{ sideOffset: 8, loop: true }}
 				contentClass="z-50"
 			/>
-		</div>
-	{/snippet}
+		</main>
 
-	{#snippet action()}
-		<Button disabled={isPosting || !roleValue} class="w-24" onclick={doUpdate}>
-			{#if !isPosting}
-				Update
-			{:else}
-				<Spinner class="bg-foreground-alt-3 size-2" />
-			{/if}
-		</Button>
-	{/snippet}
-</Dialog>
+		<Dialog.Footer>
+			<Dialog.CloseButton />
+			<Button disabled={isPosting || !roleValue} class="w-24" onclick={doUpdate}>
+				{#if !isPosting}
+					Update
+				{:else}
+					<Spinner class="bg-foreground-alt-3 size-2" />
+				{/if}
+			</Button>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>

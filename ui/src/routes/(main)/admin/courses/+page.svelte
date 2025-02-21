@@ -112,7 +112,7 @@
 
 			<div class="flex h-10 items-center gap-3 rounded-lg">
 				<TableActionMenu
-					courses={selectedCourses}
+					bind:courses={selectedCourses}
 					onUpdate={() => {
 						selectedCourses = {};
 						loadPromise = fetchCourses(true);

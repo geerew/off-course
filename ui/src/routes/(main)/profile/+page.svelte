@@ -6,6 +6,7 @@
 		EditUserPasswordDialog
 	} from '$lib/components/dialogs';
 	import { EditIcon } from '$lib/components/icons';
+	import { Dialog } from '$lib/components/ui';
 	import { Separator } from 'bits-ui';
 </script>
 
@@ -24,12 +25,13 @@
 			<div class="flex flex-col gap-3">
 				<div class="flex flex-row items-center gap-3">
 					<div class="text-foreground-alt-2 text-[15px] uppercase">Display Name</div>
-					<EditUserDisplayNameDialog
-						value={auth.user}
-						triggerClass="text-foreground-alt-2 hover:text-foreground-alt-1 mb-0.5 w-4.5 cursor-pointer bg-transparent py-0 duration-200 hover:bg-transparent"
-					>
+					<EditUserDisplayNameDialog value={auth.user}>
 						{#snippet trigger()}
-							<EditIcon class="size-4.5 stroke-2" />
+							<Dialog.Trigger
+								class="text-foreground-alt-2 hover:text-foreground-alt-1 mb-0.5 w-4.5 cursor-pointer bg-transparent py-0 duration-200 hover:bg-transparent"
+							>
+								<EditIcon class="size-4.5 stroke-2" />
+							</Dialog.Trigger>
 						{/snippet}
 					</EditUserDisplayNameDialog>
 				</div>
@@ -51,7 +53,7 @@
 				<div class="text-foreground-alt-2 text-[15px] uppercase">Password</div>
 				<EditUserPasswordDialog value={auth.user}>
 					{#snippet trigger()}
-						Change Password
+						<Dialog.Trigger>Change Password</Dialog.Trigger>
 					{/snippet}
 				</EditUserPasswordDialog>
 			</div>

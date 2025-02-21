@@ -14,8 +14,6 @@
 
 	let { courses = $bindable(), onUpdate, onDelete }: Props = $props();
 
-	// let roleDialogOpen = $state(false);
-	// let revokeSessionsDialogOpen = $state(false);
 	let deleteDialogOpen = $state(false);
 </script>
 
@@ -43,26 +41,6 @@
 			<span>Deselect all</span>
 		</DropdownMenu.Item>
 
-		<!--<DropdownMenu.Item
-			class="text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-2 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 text-sm duration-200 select-none"
-			onclick={() => {
-				roleDialogOpen = true;
-			}}
-		>
-			<FlagIcon class="size-4 stroke-[1.5]" />
-			<span>Update Role</span>
-		</DropdownMenu.Item>
-
-		<DropdownMenu.Item
-			class="text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-2 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 text-sm duration-200 select-none"
-			onclick={() => {
-				revokeSessionsDialogOpen = true;
-			}}
-		>
-			<SessionIcon class="size-4 stroke-[1.5]" />
-			<span>Revoke Sessions</span>
-		</DropdownMenu.Item>
- -->
 		<DropdownMenu.Separator class="bg-background-alt-3 h-px w-full" />
 
 		<DropdownMenu.Item
@@ -77,8 +55,6 @@
 	{/snippet}
 </Dropdown>
 
-<!-- <EditUserRoleDialog bind:open={roleDialogOpen} value={Object.values(users)} successFn={onUpdate} />
-<RevokeUserSessionsDialog bind:open={revokeSessionsDialogOpen} value={Object.values(users)} /> -->
 <DeleteCourseDialog
 	bind:open={deleteDialogOpen}
 	value={Object.values(courses)}

@@ -121,10 +121,8 @@
 	}
 </script>
 
-<Dialog
+<Dialog.Root
 	bind:open
-	triggerClass="flex h-10 w-auto flex-row items-center gap-2 px-5"
-	contentClass="inline-flex h-[min(calc(100vh-10rem),50rem)] max-w-2xl flex-col"
 	onOpenChange={() => {
 		selectedCourses = {};
 		paths = [];
@@ -132,14 +130,14 @@
 	}}
 >
 	{#snippet trigger()}
-		<PlusIcon class="size-5 stroke-[1.5]" />
-		Add Courses
+		<Dialog.Trigger class="flex h-10 w-auto flex-row items-center gap-2 px-5">
+			<PlusIcon class="size-5 stroke-[1.5]" />
+			Add Courses
+		</Dialog.Trigger>
 	{/snippet}
 
-	{#snippet content()}
-		<header
-			class="border-background-alt-3 bg-background-alt-2 flex h-16 items-center justify-between border-b px-3 text-base font-medium"
-		>
+	<Dialog.Content class="inline-flex h-[min(calc(100vh-10rem),50rem)] max-w-2xl flex-col">
+		<Dialog.Header>
 			<div class="flex items-center gap-2">
 				<CourseIcon class="size-5 stroke-2" />
 				<span>Course Selection</span>
@@ -158,7 +156,7 @@
 					class={cn('text-foreground-alt-1 size-5 stroke-2', isRefreshing && 'animate-spin')}
 				/>
 			</Button>
-		</header>
+		</Dialog.Header>
 
 		<main
 			bind:this={mainEl}
@@ -263,19 +261,21 @@
 				/>
 			{/await}
 		</main>
-	{/snippet}
 
-	{#snippet action()}
-		<Button
-			onclick={addCourses}
-			disabled={isPosting || isRefreshing || selectedCoursesCount === 0}
-			class="h-10 w-25 py-2"
-		>
-			{#if !isPosting}
-				Add
-			{:else}
-				<Spinner class="bg-foreground-alt-3 size-2" />
-			{/if}
-		</Button>
-	{/snippet}
-</Dialog>
+		<Dialog.Footer>
+			<Dialog.CloseButton />
+
+			<Button
+				onclick={addCourses}
+				disabled={isPosting || isRefreshing || selectedCoursesCount === 0}
+				class="h-10 w-25 py-2"
+			>
+				{#if !isPosting}
+					Add
+				{:else}
+					<Spinner class="bg-foreground-alt-3 size-2" />
+				{/if}
+			</Button>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>

@@ -119,7 +119,7 @@
 
 			<div class="flex h-10 items-center gap-3 rounded-lg">
 				<TableActionMenu
-					users={selectedUsers}
+					bind:users={selectedUsers}
 					onUpdate={() => {
 						selectedUsers = {};
 						onRowUpdate();

@@ -88,42 +88,30 @@
 	});
 </script>
 
-<Dialog
-	bind:open
-	triggerClass="flex h-10 w-auto flex-row items-center gap-2 px-5"
-	contentClass="inline-flex h-[min(calc(100vh-10rem),46rem)] max-w-lg flex-col"
-	onOpenChange={() => {
-		usernameValue = '';
-		displayNameValue = '';
-		roleValue = '';
-		passwordValue = '';
-		confirmPasswordValue = '';
-		isPosting = false;
-	}}
-	contentProps={{
-		onOpenAutoFocus: (e) => {
-			e.preventDefault();
-			usernameInputEl?.focus();
-		},
-		onCloseAutoFocus: (e) => {
-			e.preventDefault();
-		}
-	}}
->
+<Dialog.Root bind:open>
 	{#snippet trigger()}
-		<PlusIcon class="size-5 stroke-[1.5]" />
-		Add User
+		<Dialog.Trigger class="flex h-10 w-auto flex-row items-center gap-2 px-5">
+			<PlusIcon class="size-5 stroke-[1.5]" />
+			Add User
+		</Dialog.Trigger>
 	{/snippet}
 
-	{#snippet content()}
-		<header
-			class="border-background-alt-3 bg-background-alt-2 flex h-16 shrink-0 items-center border-b px-3 text-base font-medium"
-		>
+	<Dialog.Content
+		class="inline-flex h-[min(calc(100vh-10rem),46rem)] max-w-lg flex-col"
+		onOpenAutoFocus={(e) => {
+			e.preventDefault();
+			usernameInputEl?.focus();
+		}}
+		onCloseAutoFocus={(e) => {
+			e.preventDefault();
+		}}
+	>
+		<Dialog.Header>
 			<div class="flex items-center gap-2">
 				<UserIcon class="size-5 stroke-2" />
 				<span>User Add</span>
 			</div>
-		</header>
+		</Dialog.Header>
 
 		<main
 			class="flex min-h-[5rem] w-full flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto py-5"
@@ -190,15 +178,16 @@
 				</div>
 			</div>
 		</main>
-	{/snippet}
 
-	{#snippet action()}
-		<Button onclick={add} disabled={submitDisabled || isPosting} class="h-10 w-25 py-2">
-			{#if !isPosting}
-				Create
-			{:else}
-				<Spinner class="bg-foreground-alt-3 size-2" />
-			{/if}
-		</Button>
-	{/snippet}
-</Dialog>
+		<Dialog.Footer>
+			<Dialog.CloseButton />
+			<Button onclick={add} disabled={submitDisabled || isPosting} class="h-10 w-25 py-2">
+				{#if !isPosting}
+					Create
+				{:else}
+					<Spinner class="bg-foreground-alt-3 size-2" />
+				{/if}
+			</Button>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
