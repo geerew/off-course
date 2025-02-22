@@ -181,6 +181,7 @@
 					<Spinner class="bg-foreground-alt-2 size-4" />
 				</div>
 			{:then _}
+				<!-- Back button -->
 				{#if paths.length > 0}
 					{#key paths[paths.length - 1]}
 						<div class="border-background-alt-3 flex flex-row items-center border-b">
@@ -205,6 +206,8 @@
 						</div>
 					{/key}
 				{/if}
+
+				<!-- Filesystem directories -->
 				{#each fs.directories as dir (dir.path)}
 					<div class="border-background-alt-3 flex flex-row items-center border-b">
 						<Button
@@ -243,9 +246,12 @@
 										dir.classification === FsPathClassification.Ancestor &&
 											'cursor-default hover:bg-transparent'
 									)}
-									disabled={isPosting || isRefreshing || selectedPath !== ''}
+									disabled={isPosting ||
+										isRefreshing ||
+										selectedPath !== '' ||
+										dir.classification !== FsPathClassification.None ||
+										Object.keys(selectedCourses).some((path) => path.startsWith(dir.path))}
 									onclick={() => {
-										if (dir.classification !== FsPathClassification.None) return;
 										dir.path in selectedCourses
 											? delete selectedCourses[dir.path]
 											: (selectedCourses[dir.path] = dir.title);
@@ -257,7 +263,8 @@
 										disabled={isPosting || isRefreshing || selectedPath !== ''}
 										class="group-hover:border-foreground-alt-1 border-2 duration-200 data-[state=indeterminate]:cursor-default"
 										checked={selectedCourses[dir.path] !== undefined}
-										indeterminate={dir.classification === FsPathClassification.Ancestor}
+										indeterminate={dir.classification === FsPathClassification.Ancestor ||
+											Object.keys(selectedCourses).some((path) => path.startsWith(dir.path))}
 										onclick={(e) => {
 											e.preventDefault();
 										}}
