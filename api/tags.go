@@ -134,16 +134,16 @@ func (api *tagsAPI) getTag(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api *tagsAPI) createTag(c *fiber.Ctx) error {
-	tag := new(models.Tag)
-	if err := c.BodyParser(tag); err != nil {
+	tagReq := &tagRequest{}
+	if err := c.BodyParser(tagReq); err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
 	}
 
-	if tag.Tag == "" {
+	if tagReq.Tag == "" {
 		return errorResponse(c, fiber.StatusBadRequest, "A tag is required", nil)
 	}
 
-	tag.ID = ""
+	tag := &models.Tag{Tag: tagReq.Tag}
 	err := api.dao.CreateTag(c.UserContext(), tag)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
@@ -161,8 +161,8 @@ func (api *tagsAPI) createTag(c *fiber.Ctx) error {
 func (api *tagsAPI) updateTag(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	reqTag := &tagRequest{}
-	if err := c.BodyParser(reqTag); err != nil {
+	tagReq := &tagRequest{}
+	if err := c.BodyParser(tagReq); err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
 	}
 
@@ -176,7 +176,7 @@ func (api *tagsAPI) updateTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tag", err)
 	}
 
-	tag.Tag = reqTag.Tag
+	tag.Tag = tagReq.Tag
 
 	err = api.dao.UpdateTag(c.UserContext(), tag)
 	if err != nil {

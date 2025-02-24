@@ -85,10 +85,8 @@ func courseResponseHelper(courses []*models.Course) []*courseResponse {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type courseTagResponse struct {
-	ID       string `json:"id"`
-	Tag      string `json:"tag,omitempty"`
-	CourseID string `json:"courseId,omitempty"`
-	Title    string `json:"title,omitempty"`
+	ID  string `json:"id"`
+	Tag string `json:"tag"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -235,13 +233,20 @@ type tagRequest struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+type tagCourseTagResponse struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 type tagResponse struct {
-	ID          string               `json:"id"`
-	Tag         string               `json:"tag"`
-	CourseCount int                  `json:"courseCount"`
-	Courses     []*courseTagResponse `json:"courses,omitempty"`
-	CreatedAt   types.DateTime       `json:"createdAt"`
-	UpdatedAt   types.DateTime       `json:"updatedAt"`
+	ID          string                  `json:"id"`
+	Tag         string                  `json:"tag"`
+	CourseCount int                     `json:"courseCount"`
+	Courses     []*tagCourseTagResponse `json:"courses,omitempty"`
+	CreatedAt   types.DateTime          `json:"createdAt"`
+	UpdatedAt   types.DateTime          `json:"updatedAt"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -258,15 +263,14 @@ func tagResponseHelper(tags []*models.Tag) []*tagResponse {
 			CourseCount: len(tag.CourseTags),
 		}
 
-		// Add the course tags
+		// Add basic course information
 		if len(tag.CourseTags) > 0 {
-			courses := []*courseTagResponse{}
+			courses := []*tagCourseTagResponse{}
 
 			for _, ct := range tag.CourseTags {
-				courses = append(courses, &courseTagResponse{
-					ID:       ct.ID,
-					CourseID: ct.CourseID,
-					Title:    ct.Course,
+				courses = append(courses, &tagCourseTagResponse{
+					ID:    ct.CourseID,
+					Title: ct.Course,
 				})
 			}
 
