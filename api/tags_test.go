@@ -456,7 +456,7 @@ func TestTags_UpdateTag(t *testing.T) {
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusBadRequest, status)
-		require.Contains(t, string(body), "Duplicate tag")
+		require.Contains(t, string(body), "Tag already exists")
 
 		// Update from `Go` to `php` (case insensitive)
 		req = httptest.NewRequest(http.MethodPut, "/api/tags/"+tag1.ID, strings.NewReader(`{"tag":"php"}`))
@@ -465,7 +465,7 @@ func TestTags_UpdateTag(t *testing.T) {
 		status, body, err = requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusBadRequest, status)
-		require.Contains(t, string(body), "Duplicate tag")
+		require.Contains(t, string(body), "Tag already exists")
 
 	})
 

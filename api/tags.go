@@ -181,7 +181,7 @@ func (api *tagsAPI) updateTag(c *fiber.Ctx) error {
 	err = api.dao.UpdateTag(c.UserContext(), tag)
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "UNIQUE constraint failed") {
-			return errorResponse(c, fiber.StatusBadRequest, "Duplicate tag", err)
+			return errorResponse(c, fiber.StatusBadRequest, "Tag already exists", err)
 		}
 
 		return errorResponse(c, fiber.StatusInternalServerError, "Error updating tag", err)
