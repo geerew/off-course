@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { DeleteTagDialog, EditTagName } from '$lib/components/dialogs';
+	import { DeleteTagDialog, EditTagNameDialog } from '$lib/components/dialogs';
 	import { DeleteIcon, DotsIcon, EditIcon } from '$lib/components/icons';
 	import Dropdown from '$lib/components/ui/dropdown.svelte';
 	import type { TagModel } from '$lib/models/tag-model';
@@ -51,5 +51,5 @@
 	{/snippet}
 </Dropdown>
 
-<EditTagName bind:open={tagDialogOpen} bind:value={tag} />
+<EditTagNameDialog bind:open={tagDialogOpen} bind:value={tag} />
 <DeleteTagDialog bind:open={deleteDialogOpen} value={tag} successFn={onDelete} />
