@@ -20,6 +20,7 @@ export { default as SecureIcon } from './secure.svelte';
 export { default as SessionIcon } from './session.svelte';
 export { default as TagIcon } from './tag.svelte';
 export { default as TickIcon } from './tick.svelte';
+export { default as UndoIcon } from './undo.svelte';
 export { default as UserIcon } from './user.svelte';
 export { default as WarningIcon } from './warning.svelte';
 export { default as XIcon } from './x.svelte';

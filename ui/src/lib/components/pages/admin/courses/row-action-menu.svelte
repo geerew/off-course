@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type { APIError } from '$lib/api-error.svelte';
 	import { StartScan } from '$lib/api/scan-api';
-	import { DeleteCourseDialog } from '$lib/components/dialogs';
-	import { DeleteIcon, DotsIcon, ScanIcon } from '$lib/components/icons';
+	import { DeleteCourseDialog, EditCourseTagsDialog } from '$lib/components/dialogs';
+	import { DeleteIcon, DotsIcon, ScanIcon, TagIcon } from '$lib/components/icons';
 	import Dropdown from '$lib/components/ui/dropdown.svelte';
 	import type { CourseModel } from '$lib/models/course-model';
 	import { DropdownMenu } from 'bits-ui';
@@ -18,6 +18,7 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	let tagsDialogOpen = $state(false);
 	let deleteDialogOpen = $state(false);
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -51,6 +52,16 @@
 			<span>Scan</span>
 		</DropdownMenu.Item>
 
+		<DropdownMenu.Item
+			class="text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-2 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none"
+			onclick={() => {
+				tagsDialogOpen = true;
+			}}
+		>
+			<TagIcon class="size-4 stroke-[1.5]" />
+			<span>Edit Tags</span>
+		</DropdownMenu.Item>
+
 		<DropdownMenu.Separator class="bg-background-alt-3 h-px w-full" />
 
 		<DropdownMenu.Item
@@ -65,4 +76,5 @@
 	{/snippet}
 </Dropdown>
 
+<EditCourseTagsDialog bind:open={tagsDialogOpen} value={course} />
 <DeleteCourseDialog bind:open={deleteDialogOpen} value={course} successFn={onDelete} />

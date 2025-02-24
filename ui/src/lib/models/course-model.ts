@@ -43,6 +43,25 @@ export type CreateCourseModel = InferOutput<typeof CreateCourseSchema>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// Create course tag schema
+export const CreateCourseTagSchema = object({
+	tag: string()
+});
+
+export type CreateCourseTagModel = InferOutput<typeof CreateCourseTagSchema>;
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+export const CourseTagSchema = object({
+	id: string(),
+	tag: string()
+});
+
+export type CourseTagModel = InferOutput<typeof CourseTagSchema>;
+export type CourseTagsModel = CourseTagModel[];
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 export const CoursePaginationSchema = object({
 	...BasePaginationSchema.entries,
 	items: array(CourseSchema)

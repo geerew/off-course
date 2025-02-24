@@ -73,7 +73,7 @@
 
 		try {
 			await Promise.all(toAdd.map((name) => CreateTag({ tag: name })));
-			toast.success('Tags added successfully');
+			toast.success('Tags added');
 			successFn?.();
 		} catch (error) {
 			toast.error((error as APIError).message);
