@@ -4,15 +4,14 @@ import { BasePaginationSchema, type PaginationReqParams } from './pagination-mod
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-export const CourseTagSchema = object({
+// Tag course tag schema
+export const TagCourseTagSchema = object({
 	id: string(),
-	tag: string(),
-	courseId: string(),
 	title: string()
 });
 
-export type CourseTagModel = InferOutput<typeof CourseTagSchema>;
-export type CourseTagsModel = CourseTagModel[];
+export type TagCourseTagModel = InferOutput<typeof TagCourseTagSchema>;
+export type TagCourseTagsModel = TagCourseTagModel[];
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -21,7 +20,7 @@ export const TagSchema = object({
 	...BaseSchema.entries,
 	tag: string(),
 	courseCount: number(),
-	courses: optional(array(CourseTagSchema))
+	courses: optional(array(TagCourseTagSchema))
 });
 
 export type TagModel = InferOutput<typeof TagSchema>;

@@ -52,6 +52,7 @@ export type CreateCourseTagModel = InferOutput<typeof CreateCourseTagSchema>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// Course tag schema
 export const CourseTagSchema = object({
 	id: string(),
 	tag: string()
