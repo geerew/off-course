@@ -34,6 +34,7 @@ func (r *Router) initTagRoutes() {
 
 	tagGroup := r.api.Group("/tags")
 	tagGroup.Get("", tagsAPI.getTags)
+	tagGroup.Get("/names", tagsAPI.getTagNames)
 	tagGroup.Get("/:name", tagsAPI.getTag)
 	tagGroup.Post("", protectedRoute, tagsAPI.createTag)
 	tagGroup.Put("/:id", protectedRoute, tagsAPI.updateTag)
@@ -100,6 +101,61 @@ func (api *tagsAPI) getTags(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(pResult)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func (api *tagsAPI) getTagNames(c *fiber.Ctx) error {
+	filter := c.Query("filter", "")
+	orderBy := c.Query("orderBy", models.TAG_TABLE+".tag asc")
+
+	options := &database.Options{
+		OrderBy: strings.Split(orderBy, ","),
+	}
+
+	if filter != "" {
+		options.Where = squirrel.Like{fmt.Sprintf("%s.%s", models.TAG_TABLE, models.TAG_TAG): "%" + filter + "%"}
+	}
+
+	tags, err := api.dao.ListPluck(c.UserContext(), &models.Tag{}, options, models.TAG_TAG)
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tags", err)
+	}
+
+	if filter != "" {
+		sort.SliceStable(tags, func(i, j int) bool {
+			// Convert tags and filter to lower case for case insensitive comparison
+			iTag, jTag := strings.ToLower(tags[i]), strings.ToLower(tags[j])
+			filterLower := strings.ToLower(filter)
+
+			// Check for exact matches, starts with, and contains in a case insensitive manner
+			iExact, jExact := iTag == filterLower, jTag == filterLower
+			iStarts, jStarts := strings.HasPrefix(iTag, filterLower), strings.HasPrefix(jTag, filterLower)
+			iContains, jContains := strings.Contains(iTag, filterLower), strings.Contains(jTag, filterLower)
+
+			// Prioritize exact matches first
+			if iExact && !jExact {
+				return true
+			} else if !iExact && jExact {
+				return false
+			}
+
+			// Then prioritize tags starting with the filter
+			if iStarts && !jStarts {
+				return true
+			} else if !iStarts && jStarts {
+				return false
+			}
+
+			// Lastly, sort by those that contain the substring, alphabetically
+			if iContains && jContains {
+				return iTag < jTag
+			}
+			return iContains && !jContains
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(tags)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

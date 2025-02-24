@@ -230,6 +230,153 @@ func TestTags_GetTags(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+func TestTags_GetTagNames(t *testing.T) {
+	t.Run("200 (empty)", func(t *testing.T) {
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/names", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		var resp []string
+		require.Nil(t, json.Unmarshal(body, &resp))
+		require.Zero(t, len(resp))
+	})
+
+	t.Run("200 (found)", func(t *testing.T) {
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+
+		for i := range 5 {
+			tag := &models.Tag{Tag: fmt.Sprintf("Tag %02d", i)}
+			require.Nil(t, router.dao.CreateTag(ctx, tag))
+		}
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/names", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		var resp []string
+		require.Nil(t, json.Unmarshal(body, &resp))
+		require.Len(t, resp, 5)
+	})
+
+	t.Run("200 (orderBy)", func(t *testing.T) {
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+
+		tag_keys := []string{"JavaScript", "Python", "Java", "Ruby", "PHP"}
+		for _, tag := range tag_keys {
+			require.Nil(t, router.dao.CreateTag(ctx, &models.Tag{Tag: tag}))
+			time.Sleep(1 * time.Millisecond)
+		}
+
+		// CREATED_AT ASC
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/names?orderBy="+models.BASE_CREATED_AT+"%20asc", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		var resp []string
+		require.Nil(t, json.Unmarshal(body, &resp))
+		require.Len(t, resp, 5)
+		require.Equal(t, "JavaScript", resp[0])
+		require.Equal(t, "PHP", resp[4])
+
+		// CREATED_AT DESC
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/names?orderBy="+models.BASE_CREATED_AT+"%20desc", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		require.Nil(t, json.Unmarshal(body, &resp))
+		require.Len(t, resp, 5)
+		require.Equal(t, "PHP", resp[0])
+		require.Equal(t, "JavaScript", resp[4])
+	})
+
+	t.Run("200 (filter)", func(t *testing.T) {
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+
+		tag_keys := []string{"slightly", "light", "lighter", "highlight", "ghoul", "lightning", "delight"}
+
+		for _, tag := range tag_keys {
+			require.Nil(t, router.dao.CreateTag(ctx, &models.Tag{Tag: tag}))
+			time.Sleep(1 * time.Millisecond)
+		}
+
+		// Filter `invalid`
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/names?filter=invalid", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		var resp []string
+		require.Nil(t, json.Unmarshal(body, &resp))
+		require.Empty(t, resp)
+
+		// Filter by `li`
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/names?filter=li", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		require.Nil(t, json.Unmarshal(body, &resp))
+		require.Len(t, resp, 6)
+		require.Equal(t, "light", resp[0])
+		require.Equal(t, "lighter", resp[1])
+		require.Equal(t, "lightning", resp[2])
+		require.Equal(t, "delight", resp[3])
+		require.Equal(t, "highlight", resp[4])
+		require.Equal(t, "slightly", resp[5])
+
+		// Filter by `gh`
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/names?filter=gh", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		require.Nil(t, json.Unmarshal(body, &resp))
+		require.Len(t, resp, 7)
+		require.Equal(t, "ghoul", resp[0])
+		require.Equal(t, "delight", resp[1])
+		require.Equal(t, "highlight", resp[2])
+		require.Equal(t, "light", resp[3])
+		require.Equal(t, "lighter", resp[4])
+		require.Equal(t, "lightning", resp[5])
+		require.Equal(t, "slightly", resp[6])
+
+		// Filter by `slight`
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/names?filter=slight", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		require.Nil(t, json.Unmarshal(body, &resp))
+		require.Len(t, resp, 1)
+		require.Equal(t, "slightly", resp[0])
+
+		// Case insensitive
+		tag := &models.Tag{Tag: "Slight"}
+		require.Nil(t, router.dao.CreateTag(ctx, tag))
+
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/names?filter=SLigHt", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		require.Nil(t, json.Unmarshal(body, &resp))
+		require.Len(t, resp, 2)
+		require.Equal(t, "Slight", resp[0])
+		require.Equal(t, "slightly", resp[1])
+	})
+
+	t.Run("500 (internal error)", func(t *testing.T) {
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
+
+		// Drop the courses table
+		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
+		require.NoError(t, err)
+
+		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/names", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusInternalServerError, status)
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 func TestTags_GetTag(t *testing.T) {
 	t.Run("200 (found)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
