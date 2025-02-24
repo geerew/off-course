@@ -278,7 +278,7 @@ func TestTags_GetTag(t *testing.T) {
 		require.Equal(t, tag1.ID, tagResp.ID)
 		require.Len(t, tagResp.Courses, 1)
 		require.Equal(t, 1, tagResp.CourseCount)
-		require.Equal(t, course.ID, tagResp.Courses[0].CourseID)
+		require.Equal(t, course.ID, tagResp.Courses[0].ID)
 	})
 
 	t.Run("404 (not found)", func(t *testing.T) {
