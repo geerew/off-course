@@ -1,4 +1,5 @@
 import { toast } from 'svelte-sonner';
+import type { APIError } from './api-error.svelte';
 import { GetScans } from './api/scan-api';
 import type { ScanStatus } from './models/scan-model';
 
@@ -32,7 +33,7 @@ class ScanMonitor {
 				}
 			}
 		} catch (error) {
-			toast.error((error as Error).message);
+			toast.error((error as APIError).message);
 		}
 	}
 

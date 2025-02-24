@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { UpdateSelf, UpdateUser } from '$lib/api/user-api';
+	import type { APIError } from '$lib/api-error.svelte';
+	import { UpdateSelf } from '$lib/api/self-api';
+	import { UpdateUser } from '$lib/api/user-api';
 	import { auth } from '$lib/auth.svelte';
 	import { Spinner } from '$lib/components';
 	import { Button, Dialog, InputPassword } from '$lib/components/ui';
@@ -52,7 +54,7 @@
 			successFn?.();
 			toast.success('Password changed');
 		} catch (error) {
-			toast.error((error as Error).message);
+			toast.error((error as APIError).message);
 		}
 
 		open = false;
@@ -81,45 +83,47 @@
 			e.preventDefault();
 		}}
 	>
-		<main class="flex flex-col gap-4 p-5">
-			{#if deletingSelf}
-				<div class="flex flex-col gap-2.5">
-					<div>Current Password:</div>
-					<InputPassword
-						bind:ref={firstInputEl}
-						bind:value={currentPassword}
-						name="current password"
-					/>
-				</div>
+		<form onsubmit={doUpdate}>
+			<main class="flex flex-col gap-4 p-5">
+				{#if deletingSelf}
+					<div class="flex flex-col gap-2.5">
+						<div>Current Password:</div>
+						<InputPassword
+							bind:ref={firstInputEl}
+							bind:value={currentPassword}
+							name="current password"
+						/>
+					</div>
 
-				<Separator.Root class="bg-background-alt-3 mt-2 h-px w-full shrink-0" />
+					<Separator.Root class="bg-background-alt-3 mt-2 h-px w-full shrink-0" />
 
-				<div class="flex flex-col gap-2.5">
-					<div>New Password:</div>
-					<InputPassword bind:value={newPassword} name="new password" />
-				</div>
-			{:else}
-				<div class="flex flex-col gap-2.5">
-					<div>New Password:</div>
-					<InputPassword bind:ref={firstInputEl} bind:value={newPassword} name="new password" />
-				</div>
-			{/if}
-
-			<div class="flex flex-col gap-2.5">
-				<div>Confirm Password:</div>
-				<InputPassword bind:value={confirmPassword} name="confirm password" />
-			</div>
-		</main>
-
-		<Dialog.Footer>
-			<Dialog.CloseButton />
-			<Button disabled={passwordSubmitDisabled || isPosting} class="w-24" onclick={doUpdate}>
-				{#if !isPosting}
-					Update
+					<div class="flex flex-col gap-2.5">
+						<div>New Password:</div>
+						<InputPassword bind:value={newPassword} name="new password" />
+					</div>
 				{:else}
-					<Spinner class="bg-foreground-alt-3 size-2" />
+					<div class="flex flex-col gap-2.5">
+						<div>New Password:</div>
+						<InputPassword bind:ref={firstInputEl} bind:value={newPassword} name="new password" />
+					</div>
 				{/if}
-			</Button>
-		</Dialog.Footer>
+
+				<div class="flex flex-col gap-2.5">
+					<div>Confirm Password:</div>
+					<InputPassword bind:value={confirmPassword} name="confirm password" />
+				</div>
+			</main>
+
+			<Dialog.Footer>
+				<Dialog.CloseButton />
+				<Button type="submit" disabled={passwordSubmitDisabled || isPosting} class="w-24">
+					{#if !isPosting}
+						Update
+					{:else}
+						<Spinner class="bg-foreground-alt-3 size-2" />
+					{/if}
+				</Button>
+			</Dialog.Footer>
+		</form>
 	</Dialog.Content>
 </Dialog.Root>

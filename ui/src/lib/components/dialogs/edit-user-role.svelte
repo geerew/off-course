@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { APIError } from '$lib/api-error.svelte';
 	import { UpdateUser } from '$lib/api/user-api';
 	import { Button, Dialog, Select } from '$lib/components/ui';
 	import {
@@ -43,7 +44,7 @@
 
 			successFn?.();
 		} catch (error) {
-			toast.error((error as Error).message);
+			toast.error((error as APIError).message);
 		}
 
 		isPosting = false;

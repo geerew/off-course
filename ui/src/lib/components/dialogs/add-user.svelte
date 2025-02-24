@@ -17,17 +17,13 @@
 
 	let open = $state(false);
 
-	// Username
 	let usernameInputEl = $state<HTMLInputElement>();
 	let usernameValue = $state<string>('');
 
-	// Display name
 	let displayNameValue = $state<string>('');
 
-	// Roles
 	let roleValue: UserRole | '' = $state('');
 
-	// Password
 	let passwordValue = $state('');
 	let confirmPasswordValue = $state('');
 
@@ -41,7 +37,6 @@
 		);
 	});
 
-	// True when a request is being made
 	let isPosting = $state(false);
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -88,7 +83,17 @@
 	});
 </script>
 
-<Dialog.Root bind:open>
+<Dialog.Root
+	bind:open
+	onOpenChange={() => {
+		usernameValue = '';
+		displayNameValue = '';
+		roleValue = '';
+		passwordValue = '';
+		confirmPasswordValue = '';
+		isPosting = false;
+	}}
+>
 	{#snippet trigger()}
 		<Dialog.Trigger class="flex h-10 w-auto flex-row items-center gap-2 px-5">
 			<PlusIcon class="size-5 stroke-[1.5]" />
@@ -113,81 +118,83 @@
 			</div>
 		</Dialog.Header>
 
-		<main
-			class="flex min-h-[5rem] w-full flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto py-5"
-		>
-			<!-- Username -->
-			<div class="flex place-content-center">
-				<div class="flex w-xs flex-col gap-3">
-					<div class="text-foreground-alt-2 text-[15px] uppercase">Username</div>
-					<Input
-						bind:ref={usernameInputEl}
-						bind:value={usernameValue}
-						name="username"
-						type="text"
-					/>
+		<form onsubmit={add}>
+			<main
+				class="flex min-h-[5rem] w-full flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto py-5"
+			>
+				<!-- Username -->
+				<div class="flex place-content-center">
+					<div class="flex w-xs flex-col gap-3">
+						<div class="text-foreground-alt-2 text-[15px] uppercase">Username</div>
+						<Input
+							bind:ref={usernameInputEl}
+							bind:value={usernameValue}
+							name="username"
+							type="text"
+						/>
+					</div>
 				</div>
-			</div>
 
-			<Separator.Root class="bg-background-alt-3 my-2 h-px w-full shrink-0" />
+				<Separator.Root class="bg-background-alt-3 my-2 h-px w-full shrink-0" />
 
-			<!-- Display name -->
-			<div class="flex place-content-center">
-				<div class="flex w-xs flex-col gap-3">
-					<div class="text-foreground-alt-2 text-[15px] uppercase">Display Name</div>
-					<Input
-						bind:value={displayNameValue}
-						name="display name"
-						type="text"
-						placeholder={displayNameValue === '' ? usernameValue : displayNameValue}
-					/>
+				<!-- Display name -->
+				<div class="flex place-content-center">
+					<div class="flex w-xs flex-col gap-3">
+						<div class="text-foreground-alt-2 text-[15px] uppercase">Display Name</div>
+						<Input
+							bind:value={displayNameValue}
+							name="display name"
+							type="text"
+							placeholder={displayNameValue === '' ? usernameValue : displayNameValue}
+						/>
+					</div>
 				</div>
-			</div>
 
-			<Separator.Root class="bg-background-alt-3 my-2 h-px w-full shrink-0" />
+				<Separator.Root class="bg-background-alt-3 my-2 h-px w-full shrink-0" />
 
-			<!-- Role -->
-			<div class="flex place-content-center">
-				<div class="flex w-xs flex-col gap-3">
-					<div class="text-foreground-alt-2 text-[15px] uppercase">Role</div>
-					<Select
-						type="single"
-						items={SelectUserRoles}
-						bind:value={roleValue}
-						placeholder="Select a role"
-						contentProps={{ sideOffset: 8, loop: true }}
-						contentClass="z-[50]"
-					/>
+				<!-- Role -->
+				<div class="flex place-content-center">
+					<div class="flex w-xs flex-col gap-3">
+						<div class="text-foreground-alt-2 text-[15px] uppercase">Role</div>
+						<Select
+							type="single"
+							items={SelectUserRoles}
+							bind:value={roleValue}
+							placeholder="Select a role"
+							contentProps={{ sideOffset: 8, loop: true }}
+							contentClass="z-[50]"
+						/>
+					</div>
 				</div>
-			</div>
 
-			<Separator.Root class="bg-background-alt-3 my-2 h-px w-full shrink-0" />
+				<Separator.Root class="bg-background-alt-3 my-2 h-px w-full shrink-0" />
 
-			<!-- Password -->
-			<div class="flex place-content-center">
-				<div class="flex w-xs flex-col gap-3">
-					<div class="text-foreground-alt-2 text-[15px] uppercase">Password</div>
-					<InputPassword bind:value={passwordValue} name="new password" />
+				<!-- Password -->
+				<div class="flex place-content-center">
+					<div class="flex w-xs flex-col gap-3">
+						<div class="text-foreground-alt-2 text-[15px] uppercase">Password</div>
+						<InputPassword bind:value={passwordValue} name="new password" />
+					</div>
 				</div>
-			</div>
 
-			<div class="flex place-content-center">
-				<div class="flex w-xs flex-col gap-3">
-					<div class="text-foreground-alt-2 text-[15px] uppercase">Confirm Password</div>
-					<InputPassword bind:value={confirmPasswordValue} name="confirm password" />
+				<div class="flex place-content-center">
+					<div class="flex w-xs flex-col gap-3">
+						<div class="text-foreground-alt-2 text-[15px] uppercase">Confirm Password</div>
+						<InputPassword bind:value={confirmPasswordValue} name="confirm password" />
+					</div>
 				</div>
-			</div>
-		</main>
+			</main>
 
-		<Dialog.Footer>
-			<Dialog.CloseButton />
-			<Button onclick={add} disabled={submitDisabled || isPosting} class="h-10 w-25 py-2">
-				{#if !isPosting}
-					Create
-				{:else}
-					<Spinner class="bg-foreground-alt-3 size-2" />
-				{/if}
-			</Button>
-		</Dialog.Footer>
+			<Dialog.Footer>
+				<Dialog.CloseButton />
+				<Button type="submit" disabled={submitDisabled || isPosting} class="h-10 w-25 py-2">
+					{#if !isPosting}
+						Create
+					{:else}
+						<Spinner class="bg-foreground-alt-3 size-2" />
+					{/if}
+				</Button>
+			</Dialog.Footer>
+		</form>
 	</Dialog.Content>
 </Dialog.Root>

@@ -1,3 +1,4 @@
+import { APIError } from '$lib/api-error.svelte';
 import {
 	CoursePaginationSchema,
 	type CoursePaginationModel,
@@ -19,11 +20,11 @@ export async function GetCourses(params?: CourseReqParams): Promise<CoursePagina
 		const data = (await response.json()) as CoursePaginationModel;
 		const result = safeParse(CoursePaginationSchema, data);
 
-		if (!result.success) throw new Error('Invalid response from the server');
+		if (!result.success) throw new APIError(response.status, 'Invalid response from the server');
 		return result.output;
 	} else {
 		const data = await response.json();
-		throw new Error(data.message);
+		throw new APIError(response.status, data.message || 'Unknown error');
 	}
 }
 
@@ -39,7 +40,7 @@ export async function CreateCourse(data: CreateCourseModel): Promise<void> {
 
 	if (!response.ok) {
 		const data = await response.json();
-		throw new Error(data.message);
+		throw new APIError(response.status, data.message || 'Unknown error');
 	}
 }
 
@@ -56,93 +57,6 @@ export async function DeleteCourse(id: string): Promise<void> {
 
 	if (!response.ok) {
 		const data = await response.json();
-		throw new Error(data.message);
+		throw new APIError(response.status, data.message || 'Unknown error');
 	}
 }
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// Update a user
-// export async function UpdateUser(id: string, data: UpdateUserModel): Promise<void> {
-// 	const response = await fetch(`/api/users/${id}`, {
-// 		method: 'PUT',
-// 		headers: {
-// 			'Content-Type': 'application/json'
-// 		},
-// 		body: JSON.stringify(data)
-// 	});
-
-// 	if (!response.ok) {
-// 		const data = await response.json();
-// 		throw new Error(data.message);
-// 	}
-// }
-
-// // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// // Delete a user
-// export async function DeleteUser(id: string): Promise<void> {
-// 	const response = await fetch(`/api/users/${id}`, {
-// 		method: 'DELETE',
-// 		headers: {
-// 			'Content-Type': 'application/json'
-// 		}
-// 	});
-
-// 	if (!response.ok) {
-// 		const data = await response.json();
-// 		throw new Error(data.message);
-// 	}
-// }
-
-// // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// // Revoke all sessions of a user
-// export async function RevokeUserSessions(id: string): Promise<void> {
-// 	const response = await fetch(`/api/users/${id}/sessions`, {
-// 		method: 'DELETE',
-// 		headers: {
-// 			'Content-Type': 'application/json'
-// 		}
-// 	});
-
-// 	if (!response.ok) {
-// 		const data = await response.json();
-// 		throw new Error(data.message);
-// 	}
-// }
-
-// // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// // Update self
-// export async function UpdateSelf(data: UpdateSelfModel): Promise<void> {
-// 	const response = await fetch('/api/auth/me', {
-// 		method: 'PUT',
-// 		headers: {
-// 			'Content-Type': 'application/json'
-// 		},
-// 		body: JSON.stringify(data)
-// 	});
-
-// 	if (!response.ok) {
-// 		const data = await response.json();
-// 		throw new Error(data.message);
-// 	}
-// }
-
-// // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// // Delete self
-// export async function DeleteSelf(data: DeleteSelfModel): Promise<void> {
-// 	const response = await fetch('/api/auth/me', {
-// 		method: 'DELETE',
-// 		headers: {
-// 			'Content-Type': 'application/json'
-// 		},
-// 		body: JSON.stringify(data)
-// 	});
-
-// 	if (!response.ok) {
-// 		const data = await response.json();
-// 		throw new Error(data.message);
-// 	}
-// }

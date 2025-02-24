@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { DeleteSelf, DeleteUser } from '$lib/api/user-api';
+	import type { APIError } from '$lib/api-error.svelte';
+	import { DeleteSelf } from '$lib/api/self-api';
+	import { DeleteUser } from '$lib/api/user-api';
 	import { auth } from '$lib/auth.svelte';
 	import { Spinner } from '$lib/components';
 	import { AlertDialog, Button, InputPassword } from '$lib/components/ui';
@@ -48,7 +50,7 @@
 
 			successFn?.();
 		} catch (error) {
-			toast.error((error as Error).message);
+			toast.error((error as APIError).message);
 		}
 
 		isPosting = false;
@@ -78,11 +80,11 @@
 	{#snippet description()}
 		<div class="text-foreground-alt-1 flex flex-col gap-2 text-center">
 			{#if deletingSelf}
-				<span class="text-lg">Are you sure you want to continue deleting your account?</span>
+				<span class="text-lg">Are you sure you want to delete your account?</span>
 			{:else if isArray && Object.values(value).length > 1}
-				<span class="text-lg"> Are you sure you want to continue deleting these users? </span>
+				<span class="text-lg"> Are you sure you want to delete these users? </span>
 			{:else}
-				<span class="text-lg">Are you sure you want to continue deleting this user?</span>
+				<span class="text-lg">Are you sure you want to delete this user?</span>
 			{/if}
 			<span class="text-foreground-alt-2">All associated data will be deleted</span>
 		</div>

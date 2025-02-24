@@ -1,35 +1,21 @@
 <script lang="ts">
-	import type { APIError } from '$lib/api-error.svelte';
-	import { StartScan } from '$lib/api/scan-api';
-	import { DeleteCourseDialog } from '$lib/components/dialogs';
-	import { DeleteIcon, DotsIcon, ScanIcon } from '$lib/components/icons';
+	import { DeleteTagDialog, EditTagName } from '$lib/components/dialogs';
+	import { DeleteIcon, DotsIcon, EditIcon } from '$lib/components/icons';
 	import Dropdown from '$lib/components/ui/dropdown.svelte';
-	import type { CourseModel } from '$lib/models/course-model';
+	import type { TagModel } from '$lib/models/tag-model';
 	import { DropdownMenu } from 'bits-ui';
-	import { toast } from 'svelte-sonner';
 
 	type Props = {
-		course: CourseModel;
-		onScan: () => void;
+		tag: TagModel;
 		onDelete: () => void;
 	};
 
-	let { course, onScan, onDelete }: Props = $props();
+	let { tag = $bindable(), onDelete }: Props = $props();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	let tagDialogOpen = $state(false);
 	let deleteDialogOpen = $state(false);
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	async function doScan() {
-		try {
-			await StartScan({ courseId: course.id });
-			onScan();
-		} catch (error) {
-			toast.error('Failed to start the scan ' + (error as APIError).message);
-		}
-	}
 </script>
 
 <Dropdown
@@ -43,12 +29,12 @@
 	{#snippet content()}
 		<DropdownMenu.Item
 			class="text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-2 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none"
-			onclick={async () => {
-				doScan();
+			onclick={() => {
+				tagDialogOpen = true;
 			}}
 		>
-			<ScanIcon class="size-4 stroke-[1.5]" />
-			<span>Scan</span>
+			<EditIcon class="size-4 stroke-[1.5]" />
+			<span>Rename</span>
 		</DropdownMenu.Item>
 
 		<DropdownMenu.Separator class="bg-background-alt-3 h-px w-full" />
@@ -65,4 +51,5 @@
 	{/snippet}
 </Dropdown>
 
-<DeleteCourseDialog bind:open={deleteDialogOpen} value={course} successFn={onDelete} />
+<EditTagName bind:open={tagDialogOpen} bind:value={tag} />
+<DeleteTagDialog bind:open={deleteDialogOpen} value={tag} successFn={onDelete} />

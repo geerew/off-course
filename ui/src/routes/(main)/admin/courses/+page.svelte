@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { GetCourses } from '$lib/api/course-api';
 	import { NiceDate, Pagination } from '$lib/components';
+	import { AddCoursesDialog } from '$lib/components/dialogs';
 	import { TickIcon, WarningIcon, XIcon } from '$lib/components/icons';
-	import AddCoursesDialog from '$lib/components/pages/admin/courses/add-courses-dialog.svelte';
 	import RowActionMenu from '$lib/components/pages/admin/courses/row-action-menu.svelte';
 	import TableActionMenu from '$lib/components/pages/admin/courses/table-action-menu.svelte';
 	import Spinner from '$lib/components/spinner.svelte';

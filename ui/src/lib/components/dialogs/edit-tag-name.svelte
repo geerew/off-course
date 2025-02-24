@@ -1,17 +1,15 @@
 <script lang="ts">
 	import type { APIError } from '$lib/api-error.svelte';
-	import { UpdateSelf } from '$lib/api/self-api';
-	import { UpdateUser } from '$lib/api/user-api';
-	import { auth } from '$lib/auth.svelte';
+	import { UpdateTag } from '$lib/api/tag-api';
 	import { Spinner } from '$lib/components';
 	import { Button, Dialog, Input } from '$lib/components/ui';
-	import type { UserModel } from '$lib/models/user-model';
+	import type { TagModel } from '$lib/models/tag-model';
 	import type { Snippet } from 'svelte';
 	import { toast } from 'svelte-sonner';
 
 	type Props = {
 		open?: boolean;
-		value: UserModel;
+		value: TagModel;
 		trigger?: Snippet;
 		successFn?: () => void;
 	};
@@ -24,24 +22,16 @@
 	let newValue = $state<string>('');
 	let isPosting = $state(false);
 
-	const deletingSelf = value.id === auth?.user?.id;
-
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	async function doUpdate() {
+	async function doUpdate(e: Event) {
+		e.preventDefault();
 		isPosting = true;
 
 		try {
-			if (deletingSelf) {
-				await UpdateSelf({ displayName: newValue });
-				await auth.me();
-			} else {
-				await UpdateUser(value.id, { displayName: newValue });
-			}
-
-			value.displayName = newValue;
+			await UpdateTag(value.id, { tag: newValue });
+			value.tag = newValue;
 			open = false;
-
 			successFn?.();
 		} catch (error) {
 			toast.error((error as APIError).message);
@@ -72,13 +62,13 @@
 	>
 		<form onsubmit={doUpdate}>
 			<main class="flex flex-col gap-2.5 p-5">
-				<div>Display Name:</div>
+				<div>Tag:</div>
 				<Input
 					bind:ref={inputEl}
 					bind:value={newValue}
-					name="display name"
+					name="tag name"
 					type="text"
-					placeholder={value.displayName}
+					placeholder={value.tag}
 				/>
 			</main>
 

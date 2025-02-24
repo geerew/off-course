@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { APIError } from '$lib/api-error.svelte';
 	import { RevokeUserSessions } from '$lib/api/user-api';
 	import { Spinner } from '$lib/components';
 	import { AlertDialog, Button } from '$lib/components/ui';
@@ -36,7 +37,7 @@
 
 			successFn?.();
 		} catch (error) {
-			toast.error((error as Error).message);
+			toast.error((error as APIError).message);
 		}
 
 		isPosting = false;

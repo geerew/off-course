@@ -1,3 +1,4 @@
+import { APIError } from '$lib/api-error.svelte';
 import { FsSchema, type FsModel } from '$lib/models/fs-model';
 import { safeParse } from 'valibot';
 
@@ -17,10 +18,10 @@ export async function GetFileSystem(path?: string): Promise<FsModel> {
 		const data = (await response.json()) as FsModel;
 		const result = safeParse(FsSchema, data);
 
-		if (!result.success) throw new Error('Invalid response from the server');
+		if (!result.success) throw new APIError(response.status, 'Invalid response from the server');
 		return result.output;
 	} else {
 		const data = await response.json();
-		throw new Error(data.message);
+		throw new APIError(response.status, data.message || 'Unknown error');
 	}
 }

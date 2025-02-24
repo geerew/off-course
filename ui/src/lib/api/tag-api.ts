@@ -1,28 +1,29 @@
 import { APIError } from '$lib/api-error.svelte';
 import {
-	UserPaginationSchema,
-	type CreateUserModel,
-	type UpdateUserModel,
-	type UserPaginationModel,
-	type UserReqParams
-} from '$lib/models/user-model';
+	TagPaginationSchema,
+	TagSchema,
+	type CreateTagModel,
+	type TagModel,
+	type TagPaginationModel,
+	type TagReqParams,
+	type UpdateTagModel
+} from '$lib/models/tag-model';
 import { buildQueryString } from '$lib/utils';
 import { safeParse } from 'valibot';
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Get a paginated list of users
-export async function GetUsers(params?: UserReqParams): Promise<UserPaginationModel> {
+// Get a paginated list of tags
+export async function GetTags(params?: TagReqParams): Promise<TagPaginationModel> {
 	const qs = params && buildQueryString(params);
 
-	const response = await fetch('/api/users' + (qs ? `?${qs}` : ''));
+	const response = await fetch('/api/tags' + (qs ? `?${qs}` : ''));
 
 	if (response.ok) {
-		const data = (await response.json()) as UserPaginationModel;
-		const result = safeParse(UserPaginationSchema, data);
+		const data = (await response.json()) as TagPaginationModel;
+		const result = safeParse(TagPaginationSchema, data);
 
 		if (!result.success) throw new APIError(response.status, 'Invalid response from the server');
-
 		return result.output;
 	} else {
 		const data = await response.json();
@@ -32,9 +33,27 @@ export async function GetUsers(params?: UserReqParams): Promise<UserPaginationMo
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Create a new user
-export async function CreateUser(data: CreateUserModel): Promise<void> {
-	const response = await fetch('/api/users', {
+// Get a tag (by name)
+export async function GetTag(name: string): Promise<TagModel> {
+	const response = await fetch(`/api/tags/${name}`);
+
+	if (response.ok) {
+		const data = (await response.json()) as TagModel;
+		const result = safeParse(TagSchema, data);
+
+		if (!result.success) throw new Error('Invalid response from the server');
+		return result.output;
+	} else {
+		const data = await response.json();
+		throw new APIError(response.status, data.message || 'Unknown error');
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Create a tag
+export async function CreateTag(data: CreateTagModel): Promise<void> {
+	const response = await fetch('/api/tags', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify(data)
@@ -48,9 +67,9 @@ export async function CreateUser(data: CreateUserModel): Promise<void> {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Update a user
-export async function UpdateUser(id: string, data: UpdateUserModel): Promise<void> {
-	const response = await fetch(`/api/users/${id}`, {
+// Update a tag
+export async function UpdateTag(id: string, data: UpdateTagModel): Promise<void> {
+	const response = await fetch(`/api/tags/${id}`, {
 		method: 'PUT',
 		headers: {
 			'Content-Type': 'application/json'
@@ -66,26 +85,9 @@ export async function UpdateUser(id: string, data: UpdateUserModel): Promise<voi
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Delete a user
-export async function DeleteUser(id: string): Promise<void> {
-	const response = await fetch(`/api/users/${id}`, {
-		method: 'DELETE',
-		headers: {
-			'Content-Type': 'application/json'
-		}
-	});
-
-	if (!response.ok) {
-		const data = await response.json();
-		throw new APIError(response.status, data.message || 'Unknown error');
-	}
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// Revoke all sessions of a user
-export async function RevokeUserSessions(id: string): Promise<void> {
-	const response = await fetch(`/api/users/${id}/sessions`, {
+// Delete a tag
+export async function DeleteTag(id: string): Promise<void> {
+	const response = await fetch(`/api/tags/${id}`, {
 		method: 'DELETE',
 		headers: {
 			'Content-Type': 'application/json'

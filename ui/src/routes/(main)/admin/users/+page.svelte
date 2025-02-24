@@ -2,8 +2,8 @@
 	import { GetUsers } from '$lib/api/user-api';
 	import { auth } from '$lib/auth.svelte';
 	import { Pagination } from '$lib/components';
+	import { AddUserDialog } from '$lib/components/dialogs';
 	import { WarningIcon } from '$lib/components/icons';
-	import AddUserDialog from '$lib/components/pages/admin/users/add-user-dialog.svelte';
 	import RowActionMenu from '$lib/components/pages/admin/users/row-action-menu.svelte';
 	import TableActionMenu from '$lib/components/pages/admin/users/table-action-menu.svelte';
 	import Spinner from '$lib/components/spinner.svelte';
@@ -15,21 +15,19 @@
 
 	let users: UsersModel = $state([]);
 
-	// Object of selected users and the count of selected users
 	let selectedUsers: Record<string, UserModel> = $state({});
-	let selectedUserCount = $derived(Object.keys(selectedUsers).length);
+	let selectedUsersCount = $derived(Object.keys(selectedUsers).length);
 
 	let paginationPage = $state(1);
 	let paginationPerPage = $state(10);
 	let paginationTotal = $state(0);
 	let paginationTotalMinusSelf = $derived(paginationTotal - 1);
 
-	// Whether the main checkbox is indeterminate/checked
 	let isIndeterminate = $derived(
-		selectedUserCount > 0 && selectedUserCount < paginationTotalMinusSelf
+		selectedUsersCount > 0 && selectedUsersCount < paginationTotalMinusSelf
 	);
 	let isChecked = $derived(
-		selectedUserCount !== 0 && selectedUserCount === paginationTotalMinusSelf
+		selectedUsersCount !== 0 && selectedUsersCount === paginationTotalMinusSelf
 	);
 
 	let loadPromise = $state(fetchUsers());
@@ -100,10 +98,10 @@
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	function toastCount() {
-		if (selectedUserCount === 0) {
+		if (selectedUsersCount === 0) {
 			toast.success('No users selected');
 		} else {
-			toast.success(`${selectedUserCount} user${selectedUserCount > 1 ? 's' : ''} selected`);
+			toast.success(`${selectedUsersCount} user${selectedUsersCount > 1 ? 's' : ''} selected`);
 		}
 	}
 </script>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { APIError } from '$lib/api-error.svelte';
 	import { CreateCourse } from '$lib/api/course-api';
 	import { GetFileSystem } from '$lib/api/fs-api';
 	import { Oops, Spinner } from '$lib/components';
@@ -127,7 +128,7 @@
 			);
 			successFn?.();
 		} catch (error) {
-			toast.error((error as Error).message);
+			toast.error((error as APIError).message);
 		}
 
 		isPosting = false;
