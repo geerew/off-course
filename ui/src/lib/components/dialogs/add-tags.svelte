@@ -133,7 +133,7 @@
 
 		<main
 			bind:this={tagsEl}
-			class="flex min-h-[10rem] w-full flex-1 flex-row flex-wrap gap-2 overflow-x-hidden overflow-y-auto px-3 py-5"
+			class="flex max-h-60 min-h-40 w-full flex-1 shrink-0 flex-wrap place-content-start gap-2.5 overflow-x-hidden overflow-y-auto p-5"
 		>
 			{#each toAdd as tag}
 				<Badge class="bg-background-success text-foreground h-6 p-0 text-sm" data-tag={tag}>
