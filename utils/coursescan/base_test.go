@@ -185,6 +185,11 @@ func TestScanner_Worker(t *testing.T) {
 		// Wait for the worker to finish
 		<-processingDone
 
+		// TMP LOGS
+		for _, l := range *logs {
+			fmt.Printf("%s\n", l.Message)
+		}
+
 		require.NotEmpty(t, *logs)
 		require.Greater(t, len(*logs), 2)
 		require.Equal(t, "Failed to process scan job", (*logs)[len(*logs)-2].Message)
