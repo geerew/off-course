@@ -134,8 +134,6 @@
 		isPosting = false;
 		open = false;
 	}
-
-	$inspect(toDelete);
 </script>
 
 <Dialog.Root
