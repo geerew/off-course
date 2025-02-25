@@ -43,12 +43,6 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	async function onRowUpdate() {
-		loadPromise = fetchTags();
-	}
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 	async function onRowDelete() {
 		// If the current page is greater than the new total, set it to the last
 		// page

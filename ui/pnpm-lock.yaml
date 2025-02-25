@@ -17,6 +17,9 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      runed:
+        specifier: ^0.23.4
+        version: 0.23.4(svelte@5.19.6)
       s-ago:
         specifier: ^2.2.0
         version: 2.2.0
@@ -743,8 +746,8 @@ packages:
     engines: {node: '>=18.0.0', npm: '>=8.0.0'}
     hasBin: true
 
-  runed@0.23.2:
-    resolution: {integrity: sha512-AhHCb5/B+YQW6ar1pzhGQOQy+byfjCH63ofuhrexSWwQKhC0EbQ60Z/wMYwETLo3ZubhwlNryxBt0seOMOrVFQ==}
+  runed@0.23.4:
+    resolution: {integrity: sha512-9q8oUiBYeXIDLWNK5DfCWlkL0EW3oGbk845VdKlPeia28l751VpfesaB/+7pI6rnbx1I6rqoZ2fZxptOJLxILA==}
     peerDependencies:
       svelte: ^5.7.0
 
@@ -1187,7 +1190,7 @@ snapshots:
       '@floating-ui/dom': 1.6.12
       '@internationalized/date': 3.6.0
       esm-env: 1.2.2
-      runed: 0.23.2(svelte@5.19.6)
+      runed: 0.23.4(svelte@5.19.6)
       svelte: 5.19.6
       svelte-toolbelt: 0.7.1(svelte@5.19.6)
       tabbable: 6.2.0
@@ -1374,7 +1377,7 @@ snapshots:
       '@rollup/rollup-win32-x64-msvc': 4.28.0
       fsevents: 2.3.3
 
-  runed@0.23.2(svelte@5.19.6):
+  runed@0.23.4(svelte@5.19.6):
     dependencies:
       esm-env: 1.2.2
       svelte: 5.19.6
@@ -1418,7 +1421,7 @@ snapshots:
   svelte-toolbelt@0.7.1(svelte@5.19.6):
     dependencies:
       clsx: 2.1.1
-      runed: 0.23.2(svelte@5.19.6)
+      runed: 0.23.4(svelte@5.19.6)
       style-to-object: 1.0.8
       svelte: 5.19.6
 

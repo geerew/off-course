@@ -51,6 +51,23 @@ export async function GetTag(name: string): Promise<TagModel> {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// Get a list of tag names
+export async function GetTagNames(params?: TagReqParams): Promise<string[]> {
+	const qs = params && buildQueryString(params);
+
+	const response = await fetch('/api/tags/names' + (qs ? `?${qs}` : ''));
+
+	if (response.ok) {
+		const data = (await response.json()) as string[];
+		return data;
+	} else {
+		const data = await response.json();
+		throw new APIError(response.status, data.message || 'Unknown error');
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // Create a tag
 export async function CreateTag(data: CreateTagModel): Promise<void> {
 	const response = await fetch('/api/tags', {
