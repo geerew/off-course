@@ -31,6 +31,15 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	$effect(() => {
+		if (open) {
+			currentPassword = '';
+			isPosting = false;
+		}
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	async function doDelete(): Promise<void> {
 		isPosting = true;
 
@@ -60,10 +69,6 @@
 
 <AlertDialog
 	bind:open
-	onOpenChange={() => {
-		currentPassword = '';
-		isPosting = false;
-	}}
 	contentProps={{
 		interactOutsideBehavior: 'close',
 		onOpenAutoFocus: (e) => {

@@ -60,6 +60,9 @@
 
 	$effect(() => {
 		if (open) {
+			selectedCourses = {};
+			paths = [];
+			selectedPath = '';
 			loadPromise = load('');
 		}
 	});
@@ -136,14 +139,7 @@
 	}
 </script>
 
-<Dialog.Root
-	bind:open
-	onOpenChange={() => {
-		selectedCourses = {};
-		paths = [];
-		selectedPath = '';
-	}}
->
+<Dialog.Root bind:open>
 	{#snippet trigger()}
 		<Dialog.Trigger class="flex h-10 w-auto flex-row items-center gap-2 px-5">
 			<PlusIcon class="size-5 stroke-[1.5]" />

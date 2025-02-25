@@ -31,6 +31,15 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	$effect(() => {
+		if (open) {
+			roleValue = undefined;
+			isPosting = false;
+		}
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	async function doUpdate(): Promise<void> {
 		isPosting = true;
 
@@ -52,14 +61,7 @@
 	}
 </script>
 
-<Dialog.Root
-	bind:open
-	onOpenChange={() => {
-		roleValue = undefined;
-		isPosting = false;
-	}}
-	{trigger}
->
+<Dialog.Root bind:open {trigger}>
 	<Dialog.Content
 		class="w-80"
 		interactOutsideBehavior="close"

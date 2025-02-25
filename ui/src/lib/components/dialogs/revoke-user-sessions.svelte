@@ -24,6 +24,14 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	$effect(() => {
+		if (open) {
+			isPosting = false;
+		}
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	async function doRevoke(): Promise<void> {
 		isPosting = true;
 
@@ -47,9 +55,6 @@
 
 <AlertDialog
 	bind:open
-	onOpenChange={() => {
-		isPosting = false;
-	}}
 	contentProps={{
 		interactOutsideBehavior: 'close'
 	}}

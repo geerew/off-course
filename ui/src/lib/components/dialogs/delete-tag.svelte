@@ -23,6 +23,13 @@
 	const isArray = Array.isArray(value);
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	$effect(() => {
+		if (open) {
+			isPosting = false;
+		}
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function doDelete(): Promise<void> {
 		isPosting = true;
@@ -47,9 +54,6 @@
 
 <AlertDialog
 	bind:open
-	onOpenChange={() => {
-		isPosting = false;
-	}}
 	contentProps={{
 		interactOutsideBehavior: 'close'
 	}}

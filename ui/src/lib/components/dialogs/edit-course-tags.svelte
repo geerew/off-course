@@ -51,6 +51,15 @@
 	// When the dialog is opened, load the existing tags
 	$effect(() => {
 		if (open) {
+			toAdd = [];
+			toDelete = [];
+			existingTags = [];
+			availableTags = [];
+			filteredTags = [];
+			inputValue = '';
+			selectedValue = '';
+			isPosting = false;
+
 			loadTagsPromise = loadTags();
 		}
 	});
@@ -244,20 +253,7 @@
 	}
 </script>
 
-<Dialog.Root
-	bind:open
-	onOpenChange={() => {
-		toAdd = [];
-		toDelete = [];
-		existingTags = [];
-		availableTags = [];
-		filteredTags = [];
-		inputValue = '';
-		selectedValue = '';
-		isPosting = false;
-	}}
-	{trigger}
->
+<Dialog.Root bind:open {trigger}>
 	<Dialog.Content
 		class="inline-flex max-w-md flex-col"
 		onOpenAutoFocus={(e) => {
@@ -389,7 +385,9 @@
 
 			<Button
 				disabled={isPosting || (toAdd.length === 0 && toDelete.length === 0)}
-				onclick={createTags}
+				onclick={async () => {
+					await createTags();
+				}}
 				class="h-10 w-25 py-2"
 			>
 				{#if !isPosting}

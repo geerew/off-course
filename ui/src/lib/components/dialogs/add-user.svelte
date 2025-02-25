@@ -41,6 +41,28 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	$effect(() => {
+		if (open) {
+			usernameValue = '';
+			displayNameValue = '';
+			roleValue = '';
+			passwordValue = '';
+			confirmPasswordValue = '';
+			isPosting = false;
+		}
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Focus on the username input when the page loads
+	$effect(() => {
+		if (usernameInputEl) {
+			usernameInputEl.focus();
+		}
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	async function add(event: Event) {
 		event.preventDefault();
 		isPosting = true;
@@ -72,28 +94,9 @@
 		isPosting = false;
 		open = false;
 	}
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	// Focus on the username input when the page loads
-	$effect(() => {
-		if (usernameInputEl) {
-			usernameInputEl.focus();
-		}
-	});
 </script>
 
-<Dialog.Root
-	bind:open
-	onOpenChange={() => {
-		usernameValue = '';
-		displayNameValue = '';
-		roleValue = '';
-		passwordValue = '';
-		confirmPasswordValue = '';
-		isPosting = false;
-	}}
->
+<Dialog.Root bind:open>
 	{#snippet trigger()}
 		<Dialog.Trigger class="flex h-10 w-auto flex-row items-center gap-2 px-5">
 			<PlusIcon class="size-5 stroke-[1.5]" />

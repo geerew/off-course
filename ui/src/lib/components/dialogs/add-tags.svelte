@@ -24,6 +24,16 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	$effect(() => {
+		if (open) {
+			toAdd = [];
+			currentTag = '';
+			isPosting = false;
+		}
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	async function handleTagInput(e: KeyboardEvent): Promise<void> {
 		if (e.key !== 'Enter') return;
 
@@ -84,14 +94,7 @@
 	}
 </script>
 
-<Dialog.Root
-	bind:open
-	onOpenChange={() => {
-		toAdd = [];
-		currentTag = '';
-		isPosting = false;
-	}}
->
+<Dialog.Root bind:open>
 	{#snippet trigger()}
 		<Dialog.Trigger class="flex h-10 w-auto flex-row items-center gap-2 px-5">
 			<PlusIcon class="size-5 stroke-[1.5]" />

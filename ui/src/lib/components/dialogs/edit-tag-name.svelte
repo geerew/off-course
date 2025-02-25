@@ -24,6 +24,15 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	$effect(() => {
+		if (open) {
+			newValue = '';
+			isPosting = false;
+		}
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	async function doUpdate(e: Event) {
 		e.preventDefault();
 		isPosting = true;
@@ -41,14 +50,7 @@
 	}
 </script>
 
-<Dialog.Root
-	bind:open
-	onOpenChange={() => {
-		newValue = '';
-		isPosting = false;
-	}}
-	{trigger}
->
+<Dialog.Root bind:open {trigger}>
 	<Dialog.Content
 		class="max-w-xs"
 		interactOutsideBehavior="close"

@@ -35,6 +35,17 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	$effect(() => {
+		if (open) {
+			currentPassword = '';
+			newPassword = '';
+			confirmPassword = '';
+			isPosting = false;
+		}
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	async function doUpdate() {
 		isPosting = true;
 
@@ -62,16 +73,7 @@
 	}
 </script>
 
-<Dialog.Root
-	bind:open
-	onOpenChange={() => {
-		currentPassword = '';
-		newPassword = '';
-		confirmPassword = '';
-		isPosting = false;
-	}}
-	{trigger}
->
+<Dialog.Root bind:open {trigger}>
 	<Dialog.Content
 		class="max-w-sm"
 		interactOutsideBehavior="close"
