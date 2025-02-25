@@ -113,9 +113,9 @@
 			<div class="flex h-10 items-center gap-3 rounded-lg">
 				<TableActionMenu
 					bind:courses={selectedCourses}
-					onUpdate={() => {
+					onScan={async () => {
 						selectedCourses = {};
-						loadPromise = fetchCourses(true);
+						await scanMonitor.fetch();
 					}}
 					onDelete={() => {
 						selectedCourses = {};

@@ -1,20 +1,36 @@
 <script lang="ts">
+	import type { APIError } from '$lib/api-error.svelte';
+	import { StartScan } from '$lib/api/scan-api';
 	import { DeleteCourseDialog, EditCourseTagsDialog } from '$lib/components/dialogs';
-	import { ActionIcon, DeleteIcon, DeselectIcon, TagIcon } from '$lib/components/icons';
+	import { ActionIcon, DeleteIcon, DeselectIcon, ScanIcon, TagIcon } from '$lib/components/icons';
 	import RightChevron from '$lib/components/icons/right-chevron.svelte';
 	import { Dropdown } from '$lib/components/ui';
 	import type { CourseModel } from '$lib/models/course-model';
 	import { DropdownMenu } from 'bits-ui';
+	import { toast } from 'svelte-sonner';
 
 	type Props = {
 		courses: Record<string, CourseModel>;
+		onScan: () => void;
 		onDelete: () => void;
 	};
 
-	let { courses = $bindable(), onDelete }: Props = $props();
+	let { courses = $bindable(), onScan, onDelete }: Props = $props();
 
 	let tagsDialogOpen = $state(false);
 	let deleteDialogOpen = $state(false);
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	async function doScan() {
+		try {
+			await Promise.all(Object.values(courses).map((c) => StartScan({ courseId: c.id })));
+			toast.success('Scanning started for selected courses');
+			onScan();
+		} catch (error) {
+			toast.error('Failed to start the scans ' + (error as APIError).message);
+		}
+	}
 </script>
 
 <Dropdown
@@ -39,6 +55,16 @@
 		>
 			<DeselectIcon class="size-4 stroke-[1.5]" />
 			<span>Deselect all</span>
+		</DropdownMenu.Item>
+
+		<DropdownMenu.Item
+			class="text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-2 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none"
+			onclick={async () => {
+				doScan();
+			}}
+		>
+			<ScanIcon class="size-4 stroke-[1.5]" />
+			<span>Scan</span>
 		</DropdownMenu.Item>
 
 		<DropdownMenu.Item
