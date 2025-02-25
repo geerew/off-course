@@ -259,7 +259,7 @@
 			{:catch error}
 				<div class="flex w-full flex-col items-center gap-2 pt-10">
 					<WarningIcon class="text-foreground-error size-10" />
-					<span class="text-lg">Failed to fetch users: {error.message}</span>
+					<span class="text-lg">Failed to fetch courses: {error.message}</span>
 				</div>
 			{/await}
 		</div>
