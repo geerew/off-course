@@ -36,7 +36,7 @@
 
 	let inputEl = $state<HTMLInputElement | null>(null);
 	let inputValue = $state('');
-	const inputDebounced = new Debounced(() => inputValue, 50);
+	const inputDebounced = new Debounced(() => inputValue, 250);
 
 	let tagsEl = $state<HTMLElement>();
 
@@ -48,7 +48,7 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	// When the dialog is opened, load the existing tags
+	// When the dialog is opened, clean state and load the existing/available tags
 	$effect(() => {
 		if (open) {
 			toAdd = [];
@@ -64,7 +64,7 @@
 		}
 	});
 
-	// Open the combobox when there are tags to show
+	// Toggle the combobox based on the filtered tags
 	$effect(() => {
 		if (filteredTags.length === 0) {
 			comboboxOpen = false;
@@ -73,12 +73,12 @@
 		}
 	});
 
-	// When the selectedValue is populated, add the tag
+	// When the selectedValue is populated, add the tag. The effect will run when the user
+	// selects a tag from the combobox
 	$effect(() => {
 		if (!selectedValue) return;
 
 		addTag(selectedValue).then(() => {
-			// Make sure the values are cleared
 			selectedValue = '';
 			inputValue = '';
 			if (inputEl) inputEl.value = '';
@@ -125,6 +125,7 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	// Filter the tags from availableTags based on the input value
 	function filterTags(filterOn: string): string[] {
 		if (filterOn === '') return [];
 
@@ -154,6 +155,9 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	// Used to handle the keyboard input for the input element. If the input is empty, and
+	// there are tags to add, call createTags(). If the input is not empty, add the tag to
+	// the toAdd list
 	async function handleInput(e: KeyboardEvent) {
 		// Handle an edge case where the user presses the down arrow key when there
 		// are no tags to show
@@ -266,7 +270,13 @@
 	>
 		<Combobox.Root
 			type="single"
-			bind:open={() => comboboxOpen, (newOpen) => (comboboxOpen = newOpen)}
+			bind:open={
+				() => comboboxOpen,
+				(newOpen) => {
+					if (newOpen) return;
+					comboboxOpen = newOpen;
+				}
+			}
 			bind:value={selectedValue}
 		>
 			<Dialog.Header class="relative px-0">
@@ -290,24 +300,24 @@
 				/>
 
 				<Combobox.Portal>
-					{#if filteredTags.length > 0}
-						<Combobox.Content
-							class="bg-background border-background-alt-5 data-[side=bottom]:slide-in-from-top-2 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 z-[60] max-h-60 w-[calc(var(--bits-combobox-anchor-width)-1rem)] overflow-x-hidden overflow-y-auto rounded-lg py-3 outline-hidden select-none data-[side=bottom]:translate-y-1"
-							sideOffset={10}
-						>
-							{#each filteredTags as tag, i (i + tag)}
-								<Combobox.Item
-									class="rounded-button data-highlighted:bg-background-alt-2 flex h-10 w-full items-center py-3 ps-9 pr-1.5 text-sm outline-hidden select-none"
-									value={tag}
-									label={tag}
-								>
-									{#snippet children()}
-										{tag}
-									{/snippet}
-								</Combobox.Item>
-							{/each}
-						</Combobox.Content>
-					{/if}
+					<!-- {#if filteredTags.length > 0} -->
+					<Combobox.Content
+						class="bg-background border-background-alt-5 data-[side=bottom]:slide-in-from-top-2 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 z-[60] max-h-60 w-[calc(var(--bits-combobox-anchor-width)-1rem)] overflow-x-hidden overflow-y-auto rounded-lg py-3 outline-hidden select-none data-[side=bottom]:translate-y-1"
+						sideOffset={10}
+					>
+						{#each filteredTags as tag, i (i + tag)}
+							<Combobox.Item
+								class="rounded-button data-highlighted:bg-background-alt-2 flex h-10 w-full items-center py-3 ps-9 pr-1.5 text-sm outline-hidden select-none"
+								value={tag}
+								label={tag}
+							>
+								{#snippet children()}
+									{tag}
+								{/snippet}
+							</Combobox.Item>
+						{/each}
+					</Combobox.Content>
+					<!-- {/if} -->
 				</Combobox.Portal>
 			</Dialog.Header>
 		</Combobox.Root>
