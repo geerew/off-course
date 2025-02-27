@@ -19,7 +19,7 @@ func TestCourseAvailability_Run(t *testing.T) {
 	t.Run("update", func(t *testing.T) {
 		db, appFs, logger, _ := setup(t)
 
-		dao := dao.NewDAO(db)
+		dao := dao.New(db)
 		ctx := context.Background()
 
 		courses := []*models.Course{}
@@ -57,7 +57,7 @@ func TestCourseAvailability_Run(t *testing.T) {
 	t.Run("stat error", func(t *testing.T) {
 		db, _, logger, logs := setup(t)
 
-		dao := dao.NewDAO(db)
+		dao := dao.New(db)
 		ctx := context.Background()
 
 		course := &models.Course{Title: "course 1", Path: "/course-1", Available: false}
@@ -92,7 +92,7 @@ func TestCourseAvailability_Run(t *testing.T) {
 
 		ca := &courseAvailability{
 			db:        db,
-			dao:       dao.NewDAO(db),
+			dao:       dao.New(db),
 			appFs:     appFs,
 			logger:    logger,
 			batchSize: 1,

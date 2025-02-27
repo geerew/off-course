@@ -55,7 +55,7 @@ func New(config *CourseScanConfig) *CourseScan {
 	return &CourseScan{
 		appFs:     config.AppFs,
 		db:        config.Db,
-		dao:       dao.NewDAO(config.Db),
+		dao:       dao.New(config.Db),
 		logger:    config.Logger,
 		jobSignal: make(chan bool, 1),
 	}

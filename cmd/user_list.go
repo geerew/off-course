@@ -36,7 +36,7 @@ var listCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		dao := dao.NewDAO(dbManager.DataDb)
+		dao := dao.New(dbManager.DataDb)
 
 		users := []*models.User{}
 		err = dao.List(ctx, &users, nil)

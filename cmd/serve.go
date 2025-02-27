@@ -156,7 +156,7 @@ func loggerBeforeAddFn() logger.BeforeAddFn {
 // loggerWriteFn returns a logger.WriteFn that writes logs to the database
 func loggerWriteFn(db database.Database) logger.WriteFn {
 	return func(ctx context.Context, logs []*logger.Log) error {
-		logDao := dao.NewDAO(db)
+		logDao := dao.New(db)
 
 		// Write accumulated logs
 		db.RunInTransaction(ctx, func(txCtx context.Context) error {

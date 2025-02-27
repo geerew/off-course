@@ -35,7 +35,7 @@ func NewSessionManager(db database.Database, config fs.Config, storage Storage) 
 	}
 
 	sessionManager := &SessionManager{
-		dao:        dao.NewDAO(db),
+		dao:        dao.New(db),
 		fiberStore: fs.New(config),
 		storage:    storage,
 	}

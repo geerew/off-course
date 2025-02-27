@@ -22,8 +22,8 @@ type DAO struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// NewDAO creates a new DAO
-func NewDAO(db database.Database) *DAO {
+// New creates a new DAO
+func New(db database.Database) *DAO {
 	return &DAO{db: db}
 }
 

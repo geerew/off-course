@@ -53,8 +53,8 @@ type RouterConfig struct {
 func NewRouter(config *RouterConfig) *Router {
 	r := &Router{
 		config: config,
-		dao:    dao.NewDAO(config.DbManager.DataDb),
-		logDao: dao.NewDAO(config.DbManager.LogsDb),
+		dao:    dao.New(config.DbManager.DataDb),
+		logDao: dao.New(config.DbManager.LogsDb),
 	}
 
 	r.createSessionStore()
@@ -76,8 +76,8 @@ func NewRouter(config *RouterConfig) *Router {
 func devRouter(config *RouterConfig, id string, role types.UserRole) *Router {
 	r := &Router{
 		config: config,
-		dao:    dao.NewDAO(config.DbManager.DataDb),
-		logDao: dao.NewDAO(config.DbManager.LogsDb),
+		dao:    dao.New(config.DbManager.DataDb),
+		logDao: dao.New(config.DbManager.LogsDb),
 	}
 
 	r.createSessionStore()

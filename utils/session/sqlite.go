@@ -24,7 +24,7 @@ type SqliteStorage struct {
 // NewSqliteStorage creates a new sqlite storage
 func NewSqliteStorage(db database.Database, gcInterval time.Duration) *SqliteStorage {
 	storage := &SqliteStorage{
-		dao:        dao.NewDAO(db),
+		dao:        dao.New(db),
 		gcInterval: gcInterval,
 	}
 

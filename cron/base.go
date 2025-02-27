@@ -32,7 +32,7 @@ func InitCron(config *CronConfig) {
 	// Course availability
 	ca := &courseAvailability{
 		db:        config.Db,
-		dao:       dao.NewDAO(config.Db),
+		dao:       dao.New(config.Db),
 		appFs:     config.AppFs,
 		logger:    config.Logger,
 		batchSize: 200,

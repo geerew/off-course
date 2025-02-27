@@ -99,7 +99,7 @@ var addCmd = &cobra.Command{
 			user.Role = types.UserRoleUser
 		}
 
-		dao := dao.NewDAO(dbManager.DataDb)
+		dao := dao.New(dbManager.DataDb)
 		options := &database.Options{
 			Where: squirrel.Eq{models.USER_TABLE + "." + models.USER_USERNAME: username},
 		}
