@@ -61,7 +61,7 @@ var serveCmd = &cobra.Command{
 		dbManager.DataDb.SetLogger(logger)
 		appFs.SetLogger(logger)
 
-		courseScan := coursescan.NewCourseScan(&coursescan.CourseScanConfig{
+		courseScan := coursescan.New(&coursescan.CourseScanConfig{
 			Db:     dbManager.DataDb,
 			AppFs:  appFs,
 			Logger: logger,

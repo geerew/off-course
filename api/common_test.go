@@ -43,7 +43,7 @@ func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Conte
 	require.NoError(t, err)
 	require.NotNil(t, dbManager)
 
-	courseScan := coursescan.NewCourseScan(&coursescan.CourseScanConfig{
+	courseScan := coursescan.New(&coursescan.CourseScanConfig{
 		Db:     dbManager.DataDb,
 		AppFs:  appFs,
 		Logger: logger,

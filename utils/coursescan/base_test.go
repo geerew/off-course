@@ -49,7 +49,7 @@ func setup(t *testing.T) (*CourseScan, context.Context, *[]*logger.Log) {
 	require.NoError(t, err)
 	require.NotNil(t, dbManager)
 
-	courseScan := NewCourseScan(&CourseScanConfig{
+	courseScan := New(&CourseScanConfig{
 		Db:     dbManager.DataDb,
 		AppFs:  appFs,
 		Logger: logger,

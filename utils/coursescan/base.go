@@ -50,8 +50,8 @@ type CourseScanConfig struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// NewCourseScan creates a new CourseScan
-func NewCourseScan(config *CourseScanConfig) *CourseScan {
+// New creates a new CourseScan
+func New(config *CourseScanConfig) *CourseScan {
 	return &CourseScan{
 		appFs:     config.AppFs,
 		db:        config.Db,
