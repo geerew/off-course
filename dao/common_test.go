@@ -12,7 +12,7 @@ import (
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
-	"github.com/geerew/off-course/utils/appFs"
+	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/pagination"
 	"github.com/geerew/off-course/utils/types"
@@ -37,7 +37,7 @@ func setup(tb testing.TB) (*DAO, context.Context) {
 	// DB
 	dbManager, err := database.NewSqliteDBManager(&database.DatabaseConfig{
 		DataDir:  "./oc_data",
-		AppFs:    appFs.NewAppFs(afero.NewMemMapFs(), logger),
+		AppFs:    appfs.New(afero.NewMemMapFs(), logger),
 		InMemory: true,
 	})
 
