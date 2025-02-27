@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/geerew/off-course/database"
-	"github.com/geerew/off-course/utils/appFs"
+	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
@@ -14,7 +14,7 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func setup(t *testing.T) (database.Database, *appFs.AppFs, *slog.Logger, *[]*logger.Log) {
+func setup(t *testing.T) (database.Database, *appfs.AppFs, *slog.Logger, *[]*logger.Log) {
 	t.Helper()
 
 	// Logger
@@ -26,7 +26,7 @@ func setup(t *testing.T) (database.Database, *appFs.AppFs, *slog.Logger, *[]*log
 	})
 	require.NoError(t, err, "Failed to initialize logger")
 
-	appFs := appFs.NewAppFs(afero.NewMemMapFs(), logger)
+	appFs := appfs.New(afero.NewMemMapFs(), logger)
 
 	dbManager, err := database.NewSqliteDBManager(&database.DatabaseConfig{
 		DataDir:  "./oc_data",

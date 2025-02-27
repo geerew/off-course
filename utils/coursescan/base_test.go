@@ -16,7 +16,7 @@ import (
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
-	"github.com/geerew/off-course/utils/appFs"
+	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/security"
 	"github.com/geerew/off-course/utils/types"
@@ -38,7 +38,7 @@ func setup(t *testing.T) (*CourseScan, context.Context, *[]*logger.Log) {
 	})
 	require.NoError(t, err, "Failed to initialize logger")
 
-	appFs := appFs.NewAppFs(afero.NewMemMapFs(), logger)
+	appFs := appfs.New(afero.NewMemMapFs(), logger)
 
 	dbManager, err := database.NewSqliteDBManager(&database.DatabaseConfig{
 		DataDir:  "./oc_data",

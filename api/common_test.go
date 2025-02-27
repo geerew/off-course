@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/geerew/off-course/database"
-	"github.com/geerew/off-course/utils/appFs"
+	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/pagination"
@@ -32,7 +32,7 @@ func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Conte
 	})
 	require.NoError(t, err, "Failed to initialize logger")
 
-	appFs := appFs.NewAppFs(afero.NewMemMapFs(), logger)
+	appFs := appfs.New(afero.NewMemMapFs(), logger)
 
 	dbManager, err := database.NewSqliteDBManager(&database.DatabaseConfig{
 		DataDir:  "./oc_data",

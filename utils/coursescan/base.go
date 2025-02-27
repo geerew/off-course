@@ -14,7 +14,7 @@ import (
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
-	"github.com/geerew/off-course/utils/appFs"
+	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/security"
 	"github.com/geerew/off-course/utils/types"
 )
@@ -32,7 +32,7 @@ type CourseScanProcessorFn func(context.Context, *CourseScan, *models.Scan) erro
 
 // CourseScan scans a course and finds assets and attachments
 type CourseScan struct {
-	appFs     *appFs.AppFs
+	appFs     *appfs.AppFs
 	db        database.Database
 	dao       *dao.DAO
 	logger    *slog.Logger
@@ -44,7 +44,7 @@ type CourseScan struct {
 // CourseScanConfig is the config for a CourseScan
 type CourseScanConfig struct {
 	Db     database.Database
-	AppFs  *appFs.AppFs
+	AppFs  *appfs.AppFs
 	Logger *slog.Logger
 }
 

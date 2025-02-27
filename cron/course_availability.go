@@ -8,14 +8,14 @@ import (
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
-	"github.com/geerew/off-course/utils/appFs"
+	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/pagination"
 )
 
 type courseAvailability struct {
 	db        database.Database
 	dao       *dao.DAO
-	appFs     *appFs.AppFs
+	appFs     *appfs.AppFs
 	logger    *slog.Logger
 	batchSize int
 }

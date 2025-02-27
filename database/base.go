@@ -6,7 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/utils/appFs"
+	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/pagination"
 	"github.com/geerew/off-course/utils/types"
 )
@@ -120,7 +120,7 @@ type DatabaseConfig struct {
 	DataDir    string
 	DSN        string
 	MigrateDir string
-	AppFs      *appFs.AppFs
+	AppFs      *appfs.AppFs
 	InMemory   bool
 	Logger     *slog.Logger
 }

@@ -1,4 +1,4 @@
-package appFs
+package appfs
 
 import (
 	"crypto/sha256"
@@ -37,8 +37,8 @@ type AppFs struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// NewAppFs create a new filesystem
-func NewAppFs(fs afero.Fs, logger *slog.Logger) *AppFs {
+// New create a new filesystem
+func New(fs afero.Fs, logger *slog.Logger) *AppFs {
 	return &AppFs{
 		Fs:     fs,
 		logger: logger,

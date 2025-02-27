@@ -7,7 +7,7 @@ import (
 
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/models"
-	"github.com/geerew/off-course/utils/appFs"
+	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/mocks"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
@@ -71,7 +71,7 @@ func TestCourseAvailability_Run(t *testing.T) {
 		ca := &courseAvailability{
 			db:        db,
 			dao:       dao,
-			appFs:     appFs.NewAppFs(fsWithError, logger),
+			appFs:     appfs.New(fsWithError, logger),
 			logger:    logger,
 			batchSize: 1,
 		}

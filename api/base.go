@@ -14,12 +14,12 @@ import (
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
-	"github.com/geerew/off-course/utils/appFs"
+	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/session"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
-	fs "github.com/gofiber/fiber/v2/middleware/session"
+	fibersession "github.com/gofiber/fiber/v2/middleware/session"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -41,7 +41,7 @@ type Router struct {
 type RouterConfig struct {
 	DbManager    *database.DatabaseManager
 	Logger       *slog.Logger
-	AppFs        *appFs.AppFs
+	AppFs        *appfs.AppFs
 	CourseScan   *coursescan.CourseScan
 	HttpAddr     string
 	IsProduction bool
@@ -147,7 +147,7 @@ func (r *Router) initRoutes() {
 
 // createSessionStore creates the session store
 func (r *Router) createSessionStore() {
-	config := fs.Config{
+	config := fibersession.Config{
 		KeyLookup:      "cookie:session",
 		Expiration:     7 * (24 * time.Hour),
 		CookieHTTPOnly: true,

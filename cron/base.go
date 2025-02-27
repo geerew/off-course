@@ -5,7 +5,7 @@ import (
 
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
-	"github.com/geerew/off-course/utils/appFs"
+	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/robfig/cron/v3"
 )
@@ -19,7 +19,7 @@ var loggerType = slog.Any("type", types.LogTypeCron)
 
 type CronConfig struct {
 	Db     database.Database
-	AppFs  *appFs.AppFs
+	AppFs  *appfs.AppFs
 	Logger *slog.Logger
 }
 

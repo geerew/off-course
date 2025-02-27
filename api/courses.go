@@ -14,7 +14,7 @@ import (
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
-	"github.com/geerew/off-course/utils/appFs"
+	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/pagination"
 	"github.com/gofiber/fiber/v2"
@@ -26,7 +26,7 @@ import (
 
 type coursesAPI struct {
 	logger     *slog.Logger
-	appFs      *appFs.AppFs
+	appFs      *appfs.AppFs
 	courseScan *coursescan.CourseScan
 	dao        *dao.DAO
 }

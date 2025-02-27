@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/geerew/off-course/utils/appFs"
+	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
@@ -24,7 +24,7 @@ func setupSqliteDB(t *testing.T) *DatabaseManager {
 	require.NoError(t, err, "Failed to initialize logger")
 
 	// Filesystem
-	appFs := appFs.NewAppFs(afero.NewMemMapFs(), logger)
+	appFs := appfs.New(afero.NewMemMapFs(), logger)
 
 	// DB
 	dbManager, err := NewSqliteDBManager(&DatabaseConfig{
@@ -53,7 +53,7 @@ func TestSqliteDb_Bootstrap(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		appFs := appFs.NewAppFs(afero.NewMemMapFs(), logger)
+		appFs := appfs.New(afero.NewMemMapFs(), logger)
 
 		db, err := NewSqliteDB(&DatabaseConfig{
 			DataDir:    "./oc_data",
@@ -75,7 +75,7 @@ func TestSqliteDb_Bootstrap(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		appFs := appFs.NewAppFs(afero.NewReadOnlyFs(afero.NewMemMapFs()), logger)
+		appFs := appfs.New(afero.NewReadOnlyFs(afero.NewMemMapFs()), logger)
 
 		db, err := NewSqliteDB(&DatabaseConfig{
 			DataDir:    "./oc_data",
@@ -97,7 +97,7 @@ func TestSqliteDb_Bootstrap(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		appFs := appFs.NewAppFs(afero.NewMemMapFs(), logger)
+		appFs := appfs.New(afero.NewMemMapFs(), logger)
 
 		db, err := NewSqliteDB(&DatabaseConfig{
 			DataDir:    "./oc_data",

@@ -1,4 +1,4 @@
-package appFs
+package appfs
 
 import (
 	"errors"
@@ -29,7 +29,7 @@ func setup(t *testing.T) (*AppFs, *[]*logger.Log) {
 	require.NoError(t, err, "Failed to initialize logger")
 
 	// Filesystem
-	appFs := NewAppFs(afero.NewMemMapFs(), logger)
+	appFs := New(afero.NewMemMapFs(), logger)
 
 	return appFs, &logs
 }

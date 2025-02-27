@@ -10,7 +10,7 @@ import (
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
-	"github.com/geerew/off-course/utils/appFs"
+	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -25,7 +25,7 @@ var deleteCmd = &cobra.Command{
 		fmt.Println()
 
 		ctx := context.Background()
-		appFs := appFs.NewAppFs(afero.NewOsFs(), nil)
+		appFs := appfs.New(afero.NewOsFs(), nil)
 
 		dbManager, err := database.NewSqliteDBManager(&database.DatabaseConfig{
 			DataDir:  "./oc_data",

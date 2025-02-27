@@ -10,7 +10,7 @@ import (
 
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
-	"github.com/geerew/off-course/utils/appFs"
+	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
@@ -52,7 +52,7 @@ const maxInitialChunkSize = 1024 * 1024 * 5 // 5MB, adjust as needed
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // handleVideo handles the video streaming logic
-func handleVideo(c *fiber.Ctx, appFs *appFs.AppFs, asset *models.Asset) error {
+func handleVideo(c *fiber.Ctx, appFs *appfs.AppFs, asset *models.Asset) error {
 	// Open the video
 	file, err := appFs.Fs.Open(asset.Path)
 	if err != nil {
@@ -126,7 +126,7 @@ func handleVideo(c *fiber.Ctx, appFs *appFs.AppFs, asset *models.Asset) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // handleHtml handles serving HTML files
-func handleHtml(c *fiber.Ctx, appFs *appFs.AppFs, asset *models.Asset) error {
+func handleHtml(c *fiber.Ctx, appFs *appfs.AppFs, asset *models.Asset) error {
 	// Open the HTML file
 	file, err := appFs.Fs.Open(asset.Path)
 	if err != nil {

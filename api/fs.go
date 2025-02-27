@@ -6,7 +6,7 @@ import (
 
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/utils"
-	"github.com/geerew/off-course/utils/appFs"
+	"github.com/geerew/off-course/utils/appfs"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -14,7 +14,7 @@ import (
 
 type fsAPI struct {
 	logger *slog.Logger
-	appFs  *appFs.AppFs
+	appFs  *appfs.AppFs
 	dao    *dao.DAO
 }
 

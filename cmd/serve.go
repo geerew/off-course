@@ -16,7 +16,7 @@ import (
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
-	"github.com/geerew/off-course/utils/appFs"
+	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/security"
@@ -32,7 +32,7 @@ var serveCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
 
-		appFs := appFs.NewAppFs(afero.NewOsFs(), nil)
+		appFs := appfs.New(afero.NewOsFs(), nil)
 
 		dbManager, err := database.NewSqliteDBManager(&database.DatabaseConfig{
 			DataDir:  "./oc_data",
