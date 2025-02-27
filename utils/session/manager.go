@@ -29,7 +29,7 @@ type SessionManager struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // New creates a new session manager. It is essentially a wrapper around the fiber session store
-func NewSessionManager(db database.Database, config fs.Config, storage Storage) *SessionManager {
+func New(db database.Database, config fs.Config, storage Storage) *SessionManager {
 	if storage != nil {
 		config.Storage = storage
 	}

@@ -155,7 +155,7 @@ func (r *Router) createSessionStore() {
 
 	sqliteStorage := session.NewSqliteStorage(r.config.DbManager.DataDb, 10*time.Second)
 
-	r.sessionManager = session.NewSessionManager(r.config.DbManager.DataDb, config, sqliteStorage)
+	r.sessionManager = session.New(r.config.DbManager.DataDb, config, sqliteStorage)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
