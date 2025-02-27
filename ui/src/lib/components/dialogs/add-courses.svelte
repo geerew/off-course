@@ -156,7 +156,7 @@
 
 			<Button
 				disabled={isRefreshing}
-				class="hover:bg-background-alt-4 mr-2 w-auto bg-transparent px-2 disabled:bg-transparent"
+				class="enabled:hover:bg-background-alt-4 mr-2 w-auto bg-transparent px-2 disabled:bg-transparent"
 				onclick={async () => {
 					isRefreshing = true;
 					paths.length > 0 ? await load(paths[paths.length - 1]) : await load('');
@@ -183,7 +183,7 @@
 					{#key paths[paths.length - 1]}
 						<div class="border-background-alt-3 flex flex-row items-center border-b">
 							<Button
-								class="text-foreground-alt-1 hover:bg-background disabled:text-foreground-alt-2 h-14 grow justify-start rounded-none bg-transparent p-0 px-3 text-start whitespace-normal duration-0 disabled:bg-transparent disabled:hover:cursor-default"
+								class="text-foreground-alt-1 enabled:hover:bg-background disabled:text-foreground-alt-2 h-14 grow justify-start rounded-none bg-transparent p-0 px-3 text-start whitespace-normal duration-0 disabled:bg-transparent disabled:hover:cursor-default"
 								disabled={selectedPath !== '' || isPosting || isRefreshing}
 								onclick={async () => {
 									await moveBack();
@@ -208,7 +208,7 @@
 				{#each fs.directories as dir (dir.path)}
 					<div class="border-background-alt-3 flex flex-row items-center border-b">
 						<Button
-							class="text-foreground-alt-1 hover:bg-background disabled:text-foreground-alt-2 h-full min-h-14 grow justify-start rounded-none bg-transparent p-0 px-3 py-2 text-start whitespace-normal duration-0 disabled:bg-transparent disabled:hover:cursor-default"
+							class="text-foreground-alt-1 enabled:hover:bg-background disabled:text-foreground-alt-2 h-full min-h-14 grow justify-start rounded-none bg-transparent p-0 px-3 py-2 text-start whitespace-normal duration-0 disabled:bg-transparent disabled:hover:cursor-default"
 							disabled={isPosting ||
 								isRefreshing ||
 								selectedPath !== '' ||
@@ -239,7 +239,7 @@
 							{:else}
 								<Button
 									class={cn(
-										'hover:bg-background group disabled:text-foreground-alt-2 h-full w-full rounded-none bg-transparent p-0 disabled:bg-transparent disabled:hover:cursor-default',
+										'enabled:hover:bg-background group disabled:text-foreground-alt-2 h-full w-full rounded-none bg-transparent p-0 disabled:bg-transparent disabled:hover:cursor-default',
 										dir.classification === FsPathClassification.Ancestor &&
 											'cursor-default hover:bg-transparent'
 									)}
@@ -283,7 +283,7 @@
 		<Dialog.Footer class="flex justify-between">
 			<div class="flex justify-start gap-2">
 				<Button
-					class="border-background-alt-4 text-foreground-alt-1 hover:bg-background-alt-4 hover:text-foreground disabled:text-foreground-alt-2 w-24 cursor-pointer rounded-md border bg-transparent py-2 duration-200 select-none disabled:bg-transparent"
+					class="border-background-alt-4 text-foreground-alt-1 enabled:hover:bg-background-alt-4 enabled:hover:text-foreground disabled:text-foreground-alt-2 w-24 cursor-pointer rounded-md border bg-transparent py-2 duration-200 select-none disabled:bg-transparent disabled:opacity-70"
 					disabled={selectAllDisabled}
 					onclick={() => {
 						// Select all courses current not selected (and can be selected)
@@ -300,7 +300,7 @@
 				</Button>
 
 				<Button
-					class="border-background-alt-4 text-foreground-alt-1 hover:bg-background-alt-4 hover:text-foreground disabled:text-foreground-alt-2 w-28 cursor-pointer rounded-md border bg-transparent py-2 duration-200 select-none disabled:bg-transparent"
+					class="border-background-alt-4 text-foreground-alt-1 enabled:hover:bg-background-alt-4 enabled:hover:text-foreground disabled:text-foreground-alt-2 w-28 cursor-pointer rounded-md border bg-transparent py-2 duration-200 select-none disabled:bg-transparent disabled:opacity-70"
 					disabled={deselectAllDisabled}
 					onclick={() => {
 						// Remove all selected courses
@@ -325,10 +325,10 @@
 					disabled={isPosting || isRefreshing || selectedCoursesCount === 0}
 					class="h-10 w-25 py-2"
 				>
-					{#if !isPosting}
-						Add
+					{#if isPosting}
+						<Spinner class="bg-background-alt-4 size-2" />
 					{:else}
-						<Spinner class="bg-foreground-alt-3 size-2" />
+						Add
 					{/if}
 				</Button>
 			</div>

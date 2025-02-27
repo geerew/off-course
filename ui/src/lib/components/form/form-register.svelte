@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { Spinner } from '$lib/components';
-	import { RightArrowIcon } from '$lib/components/icons';
 	import { Button, Input, InputPassword } from '$lib/components/ui';
 	import { toast } from 'svelte-sonner';
 
@@ -39,14 +38,10 @@
 	<Input bind:value={username} name="username" type="text" placeholder="Username" />
 	<InputPassword bind:value={password} placeholder="password" />
 	<Button disabled={!username || !password || posting}>
-		{#if !posting}
-			Create account
+		{#if posting}
+			<Spinner class="bg-background-alt-4  size-4" />
 		{:else}
-			<Spinner class="bg-foreground-alt-3 size-4" />
+			Create account
 		{/if}
-
-		<RightArrowIcon
-			class="relative left-0 size-5 transition-all duration-200 ease-in-out group-enabled:group-hover:left-1.5"
-		/>
 	</Button>
 </form>

@@ -190,11 +190,12 @@
 
 			<Dialog.Footer>
 				<Dialog.CloseButton />
+
 				<Button type="submit" disabled={submitDisabled || isPosting} class="h-10 w-25 py-2">
-					{#if !isPosting}
-						Create
+					{#if isPosting}
+						<Spinner class="bg-background-alt-4 size-2" />
 					{:else}
-						<Spinner class="bg-foreground-alt-3 size-2" />
+						Create
 					{/if}
 				</Button>
 			</Dialog.Footer>

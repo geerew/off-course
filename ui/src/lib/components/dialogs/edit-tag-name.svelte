@@ -78,10 +78,10 @@
 				<Dialog.CloseButton />
 
 				<Button type="submit" disabled={newValue === '' || isPosting} class="w-24">
-					{#if !isPosting}
-						Update
+					{#if isPosting}
+						<Spinner class="bg-background-alt-4  size-2" />
 					{:else}
-						<Spinner class="bg-foreground-alt-3 size-2" />
+						Update
 					{/if}
 				</Button>
 			</Dialog.Footer>

@@ -38,10 +38,10 @@
 	<Input bind:value={username} name="username" type="text" placeholder="Username" />
 	<InputPassword bind:value={password} placeholder="password" />
 	<Button disabled={!username || !password || posting}>
-		{#if !posting}
-			Login
+		{#if posting}
+			<Spinner class="bg-background-alt-4  size-4" />
 		{:else}
-			<Spinner class="bg-foreground-alt-3 size-4" />
+			Login
 		{/if}
 	</Button>
 </form>

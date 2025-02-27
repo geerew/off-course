@@ -281,7 +281,7 @@
 		>
 			<Dialog.Header class="relative px-0">
 				<Button
-					class="absolute h-full w-auto cursor-text rounded-none bg-transparent px-3 hover:bg-transparent hover:brightness-100"
+					class="absolute h-full w-auto cursor-text rounded-none bg-transparent px-3 enabled:hover:bg-transparent"
 					onfocusin={() => {
 						inputEl?.focus();
 					}}
@@ -335,7 +335,7 @@
 					{#each existingTags as tag}
 						<Badge
 							class={cn(
-								'bg-background-alt-3 text-foreground h-6 p-0 text-sm select-none',
+								'bg-background-alt-3 text-foreground h-6 overflow-hidden p-0 text-sm select-none',
 								toDelete.find((t) => t === tag) && 'text-foreground-alt-2'
 							)}
 							data-tag={tag.tag}
@@ -347,7 +347,10 @@
 							<Button
 								disabled={isPosting}
 								class={cn(
-									'border-background-alt-6 text-foreground hover:bg-background-alt-4 h-full rounded-none rounded-r-md border-l bg-transparent px-1 disabled:bg-transparent'
+									'border-background-alt-6 text-foreground h-full rounded-none rounded-r-md border-l bg-transparent px-1',
+									toDelete.find((t) => t.tag === tag.tag)
+										? 'enabled:hover:bg-background-success'
+										: 'enabled:hover:bg-background-error'
 								)}
 								onclick={() => {
 									if (toDelete.find((t) => t === tag)) {
@@ -373,13 +376,16 @@
 			{/if}
 
 			{#each toAdd as tag}
-				<Badge class="bg-background-success text-foreground h-6 p-0 text-sm" data-tag={tag}>
+				<Badge
+					class="bg-background-success text-foreground h-6 overflow-hidden p-0 text-sm"
+					data-tag={tag}
+				>
 					<span class="mt-px h-full px-2.5 font-semibold">
 						{tag}
 					</span>
 
 					<Button
-						class="border-background-alt-3 text-foreground h-full rounded-none border-l bg-transparent px-1"
+						class="border-background-alt-3 text-foreground enabled:hover:bg-background-error h-full rounded-none border-l bg-transparent px-1"
 						onclick={() => {
 							toAdd = toAdd.filter((t) => t !== tag);
 						}}
@@ -400,10 +406,10 @@
 				}}
 				class="h-10 w-25 py-2"
 			>
-				{#if !isPosting}
-					{isArray ? 'Add' : 'Update'}
+				{#if isPosting}
+					<Spinner class="bg-background-alt-4 size-2" />
 				{:else}
-					<Spinner class="bg-foreground-alt-3 size-2" />
+					{isArray ? 'Add' : 'Update'}
 				{/if}
 			</Button>
 		</Dialog.Footer>
