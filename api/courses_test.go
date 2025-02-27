@@ -132,7 +132,7 @@ func TestCourses_GetCourses(t *testing.T) {
 		require.Equal(t, courses[16].ID, coursesResp[6].ID)
 	})
 
-	t.Run("200 (progress)", func(t *testing.T) {
+	t.Run("200 (filter progress)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		// No courses
@@ -215,7 +215,7 @@ func TestCourses_GetCourses(t *testing.T) {
 		require.Equal(t, courses[2].ID, coursesResp[0].ID)
 	})
 
-	t.Run("200 (tags)", func(t *testing.T) {
+	t.Run("200 (filter tags)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		courses := []*models.Course{}
@@ -274,7 +274,7 @@ func TestCourses_GetCourses(t *testing.T) {
 		require.Len(t, paginationResp.Items, 0)
 	})
 
-	t.Run("200 (titles)", func(t *testing.T) {
+	t.Run("200 (filter titles)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		courses := []*models.Course{}
@@ -322,6 +322,52 @@ func TestCourses_GetCourses(t *testing.T) {
 		paginationResp, _ = unmarshalHelper[courseResponse](t, body)
 		require.Equal(t, 0, int(paginationResp.TotalItems))
 		require.Len(t, paginationResp.Items, 0)
+	})
+
+	t.Run("200 (filter available)", func(t *testing.T) {
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+
+		courses := []*models.Course{}
+		for i := range 3 {
+			course := &models.Course{
+				Title:     fmt.Sprintf("course %d", i+1),
+				Path:      fmt.Sprintf("/course %d", i+1),
+				Available: i%2 == 0, // Courses 1 and 3 are available
+			}
+			require.NoError(t, router.dao.CreateCourse(ctx, course))
+			courses = append(courses, course)
+			time.Sleep(1 * time.Millisecond)
+		}
+
+		// `available` not defined
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, _ := unmarshalHelper[courseResponse](t, body)
+		require.Equal(t, 3, int(paginationResp.TotalItems))
+		require.Len(t, paginationResp.Items, 3)
+
+		// `available` is true
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?available=true&orderBy=title%20asc", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, coursesResp := unmarshalHelper[courseResponse](t, body)
+		require.Equal(t, 2, int(paginationResp.TotalItems))
+		require.Len(t, coursesResp, 2)
+		require.Equal(t, courses[0].ID, coursesResp[0].ID)
+		require.Equal(t, courses[2].ID, coursesResp[1].ID)
+
+		// `available` is false
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?available=false&orderBy=title%20asc", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, coursesResp = unmarshalHelper[courseResponse](t, body)
+		require.Equal(t, 1, int(paginationResp.TotalItems))
+		require.Len(t, coursesResp, 1)
+		require.Equal(t, courses[1].ID, coursesResp[0].ID)
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {

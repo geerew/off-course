@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
@@ -75,6 +76,7 @@ func (r *Router) initCourseRoutes() {
 func (api coursesAPI) getCourses(c *fiber.Ctx) error {
 	orderBy := c.Query("orderBy", models.COURSE_TABLE+"."+models.BASE_CREATED_AT+" desc")
 	titles := c.Query("titles", "")
+	available := c.Query("available", "")
 	progress := c.Query("progress", "")
 	tags := c.Query("tags", "")
 
@@ -160,6 +162,15 @@ func (api coursesAPI) getCourses(c *fiber.Ctx) error {
 		} else {
 			courseIDs = tempCourseIDs
 		}
+	}
+
+	if available != "" {
+		availableBool, err := strconv.ParseBool(available)
+		if err != nil {
+			return errorResponse(c, fiber.StatusBadRequest, "Invalid available parameter", err)
+		}
+
+		whereClause = append(whereClause, squirrel.Eq{models.COURSE_TABLE + "." + models.COURSE_AVAILABLE: availableBool})
 	}
 
 	if len(courseIDs) > 0 {
