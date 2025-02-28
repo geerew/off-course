@@ -210,6 +210,163 @@ func Test_Select(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+func Test_RawSelect(t *testing.T) {
+	t.Run("struct success", func(t *testing.T) {
+		db := setup(t)
+
+		sch, err := Parse(&TestUser{})
+		require.NoError(t, err)
+		require.NotNil(t, sch)
+
+		u := &TestUser{}
+		err = sch.RawSelect(u, "SELECT * FROM users WHERE id = ?", []any{1}, db)
+		require.NoError(t, err)
+
+		require.Equal(t, 1, u.ID)
+		require.Equal(t, 1, u.Profile.ID)
+		require.Len(t, u.Posts, 2)
+		require.Equal(t, "Post 1 by John", u.Posts[0].Title)
+		require.Equal(t, "Post 2 by John", u.Posts[1].Title)
+		require.Len(t, *u.PtrPosts, 2)
+	})
+
+	t.Run("slice success", func(t *testing.T) {
+		db := setup(t)
+
+		sch, err := Parse(&TestUser{})
+		require.NoError(t, err)
+		require.NotNil(t, sch)
+
+		u := []TestUser{}
+		err = sch.RawSelect(&u, "SELECT * FROM users", nil, db)
+		require.NoError(t, err)
+		require.Len(t, u, 2)
+
+		require.Equal(t, 1, u[0].ID)
+		require.Equal(t, 1, u[0].Profile.ID)
+		require.Len(t, u[0].Posts, 2)
+		require.Equal(t, "Post 1 by John", u[0].Posts[0].Title)
+		require.Equal(t, "Post 2 by John", u[0].Posts[1].Title)
+		require.Len(t, *u[0].PtrPosts, 2)
+
+		require.Equal(t, 2, u[1].ID)
+		require.Equal(t, 2, u[1].Profile.ID)
+		require.Len(t, u[1].Posts, 1)
+		require.Equal(t, "Post by Jane", u[1].Posts[0].Title)
+		require.Len(t, *u[1].PtrPosts, 1)
+	})
+
+	t.Run("no relation found", func(t *testing.T) {
+		db := setup(t)
+
+		userSchema, err := Parse(&TestUser{})
+		require.NoError(t, err)
+		require.NotNil(t, userSchema)
+
+		profileSchema, err := Parse(&TestProfile{})
+		require.NoError(t, err)
+		require.NotNil(t, profileSchema)
+
+		postSchema, err := Parse(&TestPost{})
+		require.NoError(t, err)
+		require.NotNil(t, postSchema)
+
+		// Delete all profiles
+		_, err = profileSchema.Delete(nil, db)
+		require.NoError(t, err)
+
+		// Delete all posts
+		_, err = postSchema.Delete(nil, db)
+		require.NoError(t, err)
+
+		u := &TestUser{}
+		err = userSchema.RawSelect(u, "SELECT * FROM users WHERE id = ?", []any{1}, db)
+		require.NoError(t, err)
+
+		require.Equal(t, 1, u.ID)
+		require.Equal(t, TestProfile{}, u.Profile)
+		require.Len(t, u.Posts, 0)
+	})
+
+	t.Run("some relations found", func(t *testing.T) {
+		db := setup(t)
+
+		userSchema, err := Parse(&TestUser{})
+		require.NoError(t, err)
+		require.NotNil(t, userSchema)
+
+		profileSchema, err := Parse(&TestProfile{})
+		require.NoError(t, err)
+		require.NotNil(t, profileSchema)
+
+		postSchema, err := Parse(&TestPost{})
+		require.NoError(t, err)
+		require.NotNil(t, postSchema)
+
+		// Delete Johns profile
+		_, err = profileSchema.Delete(&database.Options{Where: squirrel.Eq{"id": 1}}, db)
+		require.NoError(t, err)
+
+		// Delete Johns posts
+		_, err = postSchema.Delete(&database.Options{Where: squirrel.Eq{"user_id": 1}}, db)
+		require.NoError(t, err)
+
+		u := []*TestUser{}
+		err = userSchema.RawSelect(&u, "SELECT * FROM users", nil, db)
+		require.NoError(t, err)
+
+		require.Len(t, u, 2)
+		require.Equal(t, 1, u[0].ID)
+		require.Equal(t, TestProfile{}, u[0].Profile)
+		require.Len(t, u[0].Posts, 0)
+
+		require.Equal(t, 2, u[1].ID)
+		require.Equal(t, 2, u[1].Profile.ID)
+		require.Len(t, u[1].Posts, 1)
+	})
+
+	t.Run("no rows", func(t *testing.T) {
+		db := setup(t)
+
+		sch, err := Parse(&TestUser{})
+		require.NoError(t, err)
+		require.NotNil(t, sch)
+
+		// Delete everything from the users table
+		_, err = sch.Delete(nil, db)
+		require.NoError(t, err)
+
+		u := &TestUser{}
+		err = sch.RawSelect(u, "SELECT * FROM users WHERE id = ?", []any{1}, db)
+		require.ErrorIs(t, err, sql.ErrNoRows)
+	})
+
+	t.Run("not a pointer", func(t *testing.T) {
+		db := setup(t)
+
+		sch, err := Parse(&TestUser{})
+		require.NoError(t, err)
+		require.NotNil(t, sch)
+
+		err = sch.RawSelect(TestUser{}, "SELECT * FROM users WHERE id = ?", []any{1}, db)
+		require.ErrorIs(t, err, utils.ErrNotPtr)
+	})
+
+	t.Run("nil pointer", func(t *testing.T) {
+		db := setup(t)
+
+		sch, err := Parse(&TestUser{})
+		require.NoError(t, err)
+		require.NotNil(t, sch)
+
+		var u *TestUser
+		err = sch.RawSelect(u, "SELECT * FROM users WHERE id = ?", []any{1}, db)
+		require.ErrorIs(t, err, utils.ErrNilPtr)
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 func Test_Count(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		db := setup(t)

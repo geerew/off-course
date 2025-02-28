@@ -118,6 +118,52 @@ func Parse(model any) (*Schema, error) {
 // CALLERS
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+func (s *Schema) RawSelect(model any, query string, args []any, db database.Querier) error {
+	rv := reflect.ValueOf(model)
+
+	if rv.Kind() != reflect.Ptr {
+		return utils.ErrNotPtr
+	}
+
+	if rv.IsNil() {
+		return utils.ErrNilPtr
+	}
+
+	var err error
+	var rows Rows
+
+	concreteRv, err := concreteReflectValue(reflect.ValueOf(model))
+	if err != nil {
+		return err
+	}
+
+	rows, err = db.Query(query, args...)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	if concreteRv.Kind() == reflect.Slice {
+		err = s.ScanMany(rows, rv, false)
+		if err != nil {
+			return err
+		}
+
+		err = s.loadRelationsMany(concreteRv, db)
+	} else {
+		err = s.ScanOne(rows, rv, false)
+		if err != nil {
+			return err
+		}
+
+		err = s.loadRelationsOne(concreteRv, db)
+	}
+
+	return err
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // Count calls the CountBuilder and executes the query, returning the count
 func (s *Schema) Count(options *database.Options, db database.Querier) (int, error) {
 	query, args, _ := s.CountBuilder(options).ToSql()
