@@ -112,11 +112,15 @@ func (ap *astParser) parseOperand() (QueryExpr, error) {
 			ap.FoundFilters[key] = true
 			ap.consume()
 			val := strings.TrimSpace(parts[1])
-
+			if val == "" {
+				// Check if next token exists and is quoted, then use its value.
+				if ap.pos < len(ap.tokens) && ap.current().Quoted {
+					val = strings.TrimSpace(ap.consume().Text)
+				}
+			}
 			if val == "" {
 				return nil, nil
 			}
-
 			return &FilterExpr{Key: key, Value: val}, nil
 		}
 

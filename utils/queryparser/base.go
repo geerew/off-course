@@ -19,3 +19,14 @@ func Parse(q string, allowedFilters []string) (*QueryResult, error) {
 		FoundFilters: ast.FoundFilters,
 	}, nil
 }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// IsFilterWithKey checks if the given expression is a filter with the given key
+func IsFilterWithKey(expr QueryExpr, key string) bool {
+	if f, ok := expr.(*FilterExpr); ok {
+		return f.Key == key
+	}
+
+	return false
+}

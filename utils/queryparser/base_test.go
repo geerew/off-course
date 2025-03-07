@@ -21,8 +21,6 @@ func TestParse_Empty(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// TODO: Test open ended brackets
-// TODO: Test open ended quotes
 func TestParse_EdgeCases(t *testing.T) {
 	t.Run("missing value", func(t *testing.T) {
 		q := "course 1 AND progress: OR progress:started"
@@ -203,11 +201,11 @@ func TestParse_FreeText(t *testing.T) {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func TestParse_Filters(t *testing.T) {
-	q := "available:true AND tag:go OR progress:completed"
+	q := `available:true AND tag:"go 1" OR progress:completed OR progress:"not started"`
 	result, err := Parse(q, allowed)
 	require.NoError(t, err)
 
-	require.Equal(t, "((available:true AND tag:go) OR progress:completed)", result.Expr.String())
+	require.Equal(t, "(((available:true AND tag:go 1) OR progress:completed) OR progress:not started)", result.Expr.String())
 	require.Empty(t, result.Sort)
 	require.True(t, result.FoundFilters["available"])
 	require.True(t, result.FoundFilters["tag"])
