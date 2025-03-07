@@ -73,14 +73,12 @@ type Querier interface {
 
 // Options defines optional params for a database query
 type Options struct {
-	// A slice of columns to order by (ex ["id DESC", "title ASC"])
+	// ORDER BY
+	//
+	// Example: []string{"id DESC", "title ASC"}
 	OrderBy []string
 
-	// A slice of columns to select (ex ["id", "title", "courses.col"])
-	Columns []string
-
 	// Any valid squirrel WHERE expression
-	//
 	//
 	// Examples:
 	//
@@ -92,16 +90,25 @@ type Options struct {
 	//   NOT:  squirrel.NotEq{"id": "123"}
 	Where squirrel.Sqlizer
 
-	// Columns to group by
+	// GROUP BY
+	//
+	// Example: []string{table1.id}
 	GroupBy []string
 
-	// Limit the results
+	// HAVING (used with GROUP BY)
+	//
+	// Example: squirrel.Eq{"COUNT(table1.id)": 1}
 	Having squirrel.Sqlizer
+
+	// Additional joins to use in SELECT queries
+	//
+	// Example: []string{"table1 ON table1.id = table2.id"}
+	AdditionalJoins []string
 
 	// Used to paginate the results
 	Pagination *pagination.Pagination
 
-	// Use replace instead of insert
+	// Use REPLACE instead of INSERT
 	Replace bool
 }
 

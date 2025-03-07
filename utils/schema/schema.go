@@ -328,8 +328,26 @@ func (s *Schema) CountBuilder(options *database.Options) squirrel.SelectBuilder 
 		Select("COUNT(DISTINCT " + s.Table + ".id)").
 		From(s.Table)
 
-	if options != nil && options.Where != nil {
-		builder = builder.Where(options.Where)
+	if options != nil {
+		for _, j := range options.AdditionalJoins {
+			builder = builder.Join(j)
+		}
+
+		builder = builder.Where(options.Where).
+			OrderBy(options.OrderBy...).
+			GroupBy(options.GroupBy...)
+
+		if options.Having != nil {
+			builder = builder.Having(options.Having)
+		}
+
+		// When there is a GroupBy and Having clause, we need to wrap the query in a subquery
+		if len(options.GroupBy) > 0 && options.Having != nil {
+			builder = squirrel.StatementBuilder.
+				PlaceholderFormat(squirrel.Question).
+				Select("COUNT(*)").
+				FromSelect(builder, "sub")
+		}
 	}
 
 	return builder
@@ -402,9 +420,17 @@ func (s *Schema) SelectBuilder(options *database.Options) squirrel.SelectBuilder
 	}
 
 	if options != nil {
+		for _, j := range options.AdditionalJoins {
+			builder = builder.Join(j)
+		}
+
 		builder = builder.Where(options.Where).
 			OrderBy(options.OrderBy...).
 			GroupBy(options.GroupBy...)
+
+		if options.Having != nil {
+			builder = builder.Having(options.Having)
+		}
 
 		if options.Pagination != nil {
 			builder = builder.
