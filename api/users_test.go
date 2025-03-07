@@ -56,7 +56,7 @@ func TestUsers_GetUsers(t *testing.T) {
 		require.Len(t, userResp, 5)
 	})
 
-	t.Run("200 (orderBy)", func(t *testing.T) {
+	t.Run("200 (sort)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		users := []*models.User{}
@@ -73,7 +73,8 @@ func TestUsers_GetUsers(t *testing.T) {
 		}
 
 		// CREATED_AT ASC
-		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/?orderBy="+models.USER_TABLE+"."+models.BASE_CREATED_AT+"%20asc", nil))
+		q := "sort:\"" + models.USER_TABLE + "." + models.BASE_CREATED_AT + " asc\""
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
@@ -83,7 +84,8 @@ func TestUsers_GetUsers(t *testing.T) {
 		require.Equal(t, users[0].ID, userResp[0].ID)
 
 		// CREATED_AT DESC
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/?orderBy="+models.USER_TABLE+"."+models.BASE_CREATED_AT+"%20desc", nil))
+		q = "sort:\"" + models.USER_TABLE + "." + models.BASE_CREATED_AT + " desc\""
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
@@ -110,7 +112,7 @@ func TestUsers_GetUsers(t *testing.T) {
 
 		// Get the first page (10 users)
 		params := url.Values{
-			"orderBy":                    {models.USER_TABLE + "." + models.BASE_CREATED_AT + " asc"},
+			"q":                          {"sort:\"" + models.USER_TABLE + "." + models.BASE_CREATED_AT + " asc\""},
 			pagination.PageQueryParam:    {"1"},
 			pagination.PerPageQueryParam: {"10"},
 		}
@@ -127,7 +129,7 @@ func TestUsers_GetUsers(t *testing.T) {
 
 		// Get the second page (7 users)
 		params = url.Values{
-			"orderBy":                    {models.USER_TABLE + "." + models.BASE_CREATED_AT + " asc"},
+			"q":                          {"sort:\"" + models.USER_TABLE + "." + models.BASE_CREATED_AT + " asc\""},
 			pagination.PageQueryParam:    {"2"},
 			pagination.PerPageQueryParam: {"10"},
 		}

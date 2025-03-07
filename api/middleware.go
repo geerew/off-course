@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"strings"
 	"time"
@@ -132,6 +133,7 @@ func bootstrapMiddleware(r *Router) fiber.Handler {
 // authMiddleware authenticates the request
 func authMiddleware(r *Router) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		fmt.Println(c.OriginalURL())
 		// When bootstrapping, ignore auth entirely. All invalid requests will be
 		// handled by the bootstrap middleware
 		if bootstrapping, ok := c.Locals("bootstrapping").(bool); ok && bootstrapping {

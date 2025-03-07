@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -26,6 +27,25 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+func createCourses(t *testing.T, router *Router, ctx context.Context, n int) []*models.Course {
+	t.Helper()
+
+	courses := []*models.Course{}
+	for i := range n {
+		course := &models.Course{
+			Title: fmt.Sprintf("course %d", i+1),
+			Path:  fmt.Sprintf("/course %d", i+1),
+		}
+		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		courses = append(courses, course)
+		time.Sleep(1 * time.Millisecond)
+	}
+
+	return courses
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 func TestCourses_GetCourses(t *testing.T) {
 	t.Run("200 (empty)", func(t *testing.T) {
 		router, _ := setup(t, "admin", types.UserRoleAdmin)
@@ -42,10 +62,7 @@ func TestCourses_GetCourses(t *testing.T) {
 	t.Run("200 (found)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
-		for i := range 5 {
-			course := &models.Course{Title: fmt.Sprintf("course %d", i), Path: fmt.Sprintf("/course %d", i)}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
-		}
+		createCourses(t, router, ctx, 5)
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/", nil))
 		require.NoError(t, err)
@@ -56,19 +73,14 @@ func TestCourses_GetCourses(t *testing.T) {
 		require.Len(t, coursesResp, 5)
 	})
 
-	t.Run("200 (orderBy)", func(t *testing.T) {
+	t.Run("200 (sort)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
-		courses := []*models.Course{}
-		for i := range 5 {
-			course := &models.Course{Title: fmt.Sprintf("course %d", i), Path: fmt.Sprintf("/course %d", i)}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
-			courses = append(courses, course)
-			time.Sleep(1 * time.Millisecond)
-		}
+		courses := createCourses(t, router, ctx, 5)
 
 		// CREATED_AT ASC
-		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?orderBy="+models.COURSE_TABLE+"."+models.BASE_CREATED_AT+"%20asc", nil))
+		q := "sort:\"" + models.COURSE_TABLE + "." + models.BASE_CREATED_AT + " asc\""
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
@@ -78,7 +90,8 @@ func TestCourses_GetCourses(t *testing.T) {
 		require.Equal(t, courses[0].ID, coursesResp[0].ID)
 
 		// CREATED_AT DESC
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?orderBy="+models.COURSE_TABLE+"."+models.BASE_CREATED_AT+"%20desc", nil))
+		q = "sort:\"" + models.COURSE_TABLE + "." + models.BASE_CREATED_AT + " desc\""
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
@@ -86,21 +99,17 @@ func TestCourses_GetCourses(t *testing.T) {
 		require.Equal(t, 5, int(paginationResp.TotalItems))
 		require.Len(t, coursesResp, 5)
 		require.Equal(t, courses[4].ID, coursesResp[0].ID)
+
 	})
 
 	t.Run("200 (pagination)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
-		courses := []*models.Course{}
-		for i := range 17 {
-			course := &models.Course{Title: fmt.Sprintf("course %d", i), Path: fmt.Sprintf("/course %d", i)}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
-			courses = append(courses, course)
-		}
+		courses := createCourses(t, router, ctx, 17)
 
-		// Get the first page (10 courses)
+		// Page 1 (10 courses)
 		params := url.Values{
-			"orderBy":                    {models.COURSE_TABLE + "." + models.BASE_CREATED_AT + " asc"},
+			"q":                          {"sort:\"" + models.COURSE_TABLE + "." + models.BASE_CREATED_AT + " asc\""},
 			pagination.PageQueryParam:    {"1"},
 			pagination.PerPageQueryParam: {"10"},
 		}
@@ -115,9 +124,9 @@ func TestCourses_GetCourses(t *testing.T) {
 		require.Equal(t, courses[0].ID, coursesResp[0].ID)
 		require.Equal(t, courses[9].ID, coursesResp[9].ID)
 
-		// Get the second page (7 courses)
+		// Page 2 (7 courses)
 		params = url.Values{
-			"orderBy":                    {models.COURSE_TABLE + "." + models.BASE_CREATED_AT + " asc"},
+			"q":                          {"sort:\"" + models.COURSE_TABLE + "." + models.BASE_CREATED_AT + " asc\""},
 			pagination.PageQueryParam:    {"2"},
 			pagination.PerPageQueryParam: {"10"},
 		}
@@ -132,27 +141,15 @@ func TestCourses_GetCourses(t *testing.T) {
 		require.Equal(t, courses[16].ID, coursesResp[6].ID)
 	})
 
-	t.Run("200 (filter progress)", func(t *testing.T) {
+	t.Run("200 (filter)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
-		// No courses
-		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?progress=started", nil))
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
-
-		paginationResp, _ := unmarshalHelper[courseResponse](t, body)
-		require.Zero(t, int(paginationResp.TotalItems))
-		require.Len(t, paginationResp.Items, 0)
-
-		// Create 3 courses, each with 1 asset
-		courses := []*models.Course{}
-		for i := range 3 {
-			course := &models.Course{Title: fmt.Sprintf("course %d", i), Path: fmt.Sprintf("/course %d", i)}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
-			courses = append(courses, course)
-		}
-
+		courses := createCourses(t, router, ctx, 6)
 		assets := []*models.Asset{}
+
+		defaultSort := " sort:\"" + models.COURSE_TABLE + "." + models.BASE_CREATED_AT + " asc\""
+
+		// Add asset for each course
 		for i, c := range courses {
 			asset := &models.Asset{
 				CourseID: c.ID,
@@ -163,211 +160,102 @@ func TestCourses_GetCourses(t *testing.T) {
 				Path:     fmt.Sprintf("/course %d/chapter 1/01 asset 1.mp4", i+1),
 				Hash:     security.RandomString(64),
 			}
-
 			require.NoError(t, router.dao.CreateAsset(ctx, asset))
 			assets = append(assets, asset)
-
 		}
 
-		// Mark course 1 as started
+		// Set progress (course 1 started, course 5 completed)
 		require.NoError(t, router.dao.CreateOrUpdateAssetProgress(ctx, &models.AssetProgress{AssetID: assets[0].ID, VideoPos: 10}))
+		require.NoError(t, router.dao.CreateOrUpdateAssetProgress(ctx, &models.AssetProgress{AssetID: assets[4].ID, VideoPos: 10, Completed: true}))
 
-		// Mark course 2 as completed
-		require.NoError(t, router.dao.CreateOrUpdateAssetProgress(ctx, &models.AssetProgress{AssetID: assets[1].ID, VideoPos: 10, Completed: true}))
-
-		// `progress` not defined
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/", nil))
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
-
-		paginationResp, _ = unmarshalHelper[courseResponse](t, body)
-		require.Equal(t, 3, int(paginationResp.TotalItems))
-		require.Len(t, paginationResp.Items, 3)
-
-		// `progress` is started
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?progress=started", nil))
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
-
-		paginationResp, coursesResp := unmarshalHelper[courseResponse](t, body)
-		require.Equal(t, 1, int(paginationResp.TotalItems))
-		require.Len(t, paginationResp.Items, 1)
-		require.Equal(t, courses[0].ID, coursesResp[0].ID)
-
-		// `progress` is completed
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?progress=completed", nil))
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
-
-		paginationResp, coursesResp = unmarshalHelper[courseResponse](t, body)
-		require.Equal(t, 1, int(paginationResp.TotalItems))
-		require.Len(t, paginationResp.Items, 1)
-		require.Equal(t, courses[1].ID, coursesResp[0].ID)
-
-		// `progress` is not started
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?progress=not%20started", nil))
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
-
-		paginationResp, coursesResp = unmarshalHelper[courseResponse](t, body)
-		require.Equal(t, 1, int(paginationResp.TotalItems))
-		require.Len(t, paginationResp.Items, 1)
-		require.Equal(t, courses[2].ID, coursesResp[0].ID)
-	})
-
-	t.Run("200 (filter tags)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
-
-		courses := []*models.Course{}
-		for i := range 2 {
-			course := &models.Course{Title: fmt.Sprintf("course %d", i), Path: fmt.Sprintf("/course %d", i)}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
-			courses = append(courses, course)
-			time.Sleep(1 * time.Millisecond)
+		// Set availability (courses 1, 3, 5 available)
+		for i, c := range courses {
+			c.Available = i%2 == 0
+			require.NoError(t, router.dao.UpdateCourse(ctx, c))
 		}
 
-		// Add Go and C to course 1
-		require.NoError(t, router.dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[0].ID, Tag: "Go"}))
-		require.NoError(t, router.dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[0].ID, Tag: "C"}))
+		// Set tags
+		require.NoError(t, router.dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[0].ID, Tag: "tag1"}))
+		require.NoError(t, router.dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[0].ID, Tag: "tag2"}))
 
-		// Add Go and Python to course 2
-		require.NoError(t, router.dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[1].ID, Tag: "Go"}))
-		require.NoError(t, router.dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[1].ID, Tag: "Python"}))
+		require.NoError(t, router.dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[1].ID, Tag: "tag1"}))
+		require.NoError(t, router.dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[1].ID, Tag: "tag2"}))
+		require.NoError(t, router.dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[1].ID, Tag: "tag3"}))
 
-		// `tags` not defined
+		require.NoError(t, router.dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[2].ID, Tag: "tag1"}))
+
+		require.NoError(t, router.dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[3].ID, Tag: "tag3"}))
+		require.NoError(t, router.dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[3].ID, Tag: "tag4"}))
+
+		// No filter
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/", nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
 		paginationResp, _ := unmarshalHelper[courseResponse](t, body)
-		require.Equal(t, 2, int(paginationResp.TotalItems))
-		require.Len(t, paginationResp.Items, 2)
+		require.Equal(t, 6, int(paginationResp.TotalItems))
+		require.Len(t, paginationResp.Items, 6)
 
-		// `tags` is Go
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?tags=Go&orderBy=title%20asc", nil))
+		// Title
+		q := "course AND (1 OR 2) OR course 5" + defaultSort
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
 		paginationResp, coursesResp := unmarshalHelper[courseResponse](t, body)
-		require.Equal(t, 2, int(paginationResp.TotalItems))
-		require.Len(t, paginationResp.Items, 2)
+		require.Equal(t, 3, int(paginationResp.TotalItems))
+		require.Len(t, paginationResp.Items, 3)
 		require.Equal(t, courses[0].ID, coursesResp[0].ID)
 		require.Equal(t, courses[1].ID, coursesResp[1].ID)
+		require.Equal(t, courses[4].ID, coursesResp[2].ID)
 
-		// `tags` is Go and C
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?tags=Go,C", nil))
+		// Tags
+		q = "(tag:tag1 AND (tag:tag2 OR tag:tag3)) OR tag:tag4" + defaultSort
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
 		paginationResp, coursesResp = unmarshalHelper[courseResponse](t, body)
-		require.Equal(t, 1, int(paginationResp.TotalItems))
-		require.Len(t, paginationResp.Items, 1)
-		require.Equal(t, courses[0].ID, coursesResp[0].ID)
-
-		// `tags` is Go and Data Structures
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?tags=Go,Data%20Structures", nil))
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
-
-		paginationResp, _ = unmarshalHelper[courseResponse](t, body)
-		require.Equal(t, 0, int(paginationResp.TotalItems))
-		require.Len(t, paginationResp.Items, 0)
-	})
-
-	t.Run("200 (filter titles)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
-
-		courses := []*models.Course{}
-		for i := range 3 {
-			course := &models.Course{Title: fmt.Sprintf("course %d", i+1), Path: fmt.Sprintf("/course %d", i+1)}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
-			courses = append(courses, course)
-			time.Sleep(1 * time.Millisecond)
-		}
-
-		// `titles` not defined
-		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/", nil))
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
-
-		paginationResp, _ := unmarshalHelper[courseResponse](t, body)
 		require.Equal(t, 3, int(paginationResp.TotalItems))
 		require.Len(t, paginationResp.Items, 3)
-
-		// `titles` is course
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?titles=course", nil))
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
-
-		paginationResp, _ = unmarshalHelper[courseResponse](t, body)
-		require.Equal(t, 3, int(paginationResp.TotalItems))
-		require.Len(t, paginationResp.Items, 3)
-
-		// `titles` is course 1 and course 2
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?titles=course%201,course%202&orderBy=title%20asc", nil))
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
-
-		paginationResp, coursesResp := unmarshalHelper[courseResponse](t, body)
-		require.Equal(t, 2, int(paginationResp.TotalItems))
-		require.Len(t, paginationResp.Items, 2)
 		require.Equal(t, courses[0].ID, coursesResp[0].ID)
 		require.Equal(t, courses[1].ID, coursesResp[1].ID)
+		require.Equal(t, courses[3].ID, coursesResp[2].ID)
 
-		// `titles` is nothing
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?titles=nothing", nil))
+		// Available
+		q = "available:true" + defaultSort
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
-		paginationResp, _ = unmarshalHelper[courseResponse](t, body)
-		require.Equal(t, 0, int(paginationResp.TotalItems))
-		require.Len(t, paginationResp.Items, 0)
-	})
-
-	t.Run("200 (filter available)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
-
-		courses := []*models.Course{}
-		for i := range 3 {
-			course := &models.Course{
-				Title:     fmt.Sprintf("course %d", i+1),
-				Path:      fmt.Sprintf("/course %d", i+1),
-				Available: i%2 == 0, // Courses 1 and 3 are available
-			}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
-			courses = append(courses, course)
-			time.Sleep(1 * time.Millisecond)
-		}
-
-		// `available` not defined
-		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/", nil))
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
-
-		paginationResp, _ := unmarshalHelper[courseResponse](t, body)
+		paginationResp, coursesResp = unmarshalHelper[courseResponse](t, body)
 		require.Equal(t, 3, int(paginationResp.TotalItems))
 		require.Len(t, paginationResp.Items, 3)
-
-		// `available` is true
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?available=true&orderBy=title%20asc", nil))
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
-
-		paginationResp, coursesResp := unmarshalHelper[courseResponse](t, body)
-		require.Equal(t, 2, int(paginationResp.TotalItems))
-		require.Len(t, coursesResp, 2)
 		require.Equal(t, courses[0].ID, coursesResp[0].ID)
 		require.Equal(t, courses[2].ID, coursesResp[1].ID)
+		require.Equal(t, courses[4].ID, coursesResp[2].ID)
 
-		// `available` is false
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?available=false&orderBy=title%20asc", nil))
+		// Progress
+		q = `progress:started OR progress:completed OR progress:"not started"` + defaultSort
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?q="+url.QueryEscape(q), nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, _ = unmarshalHelper[courseResponse](t, body)
+		require.Equal(t, 6, int(paginationResp.TotalItems))
+		require.Len(t, paginationResp.Items, 6)
+
+		// Complex filter
+		q = "(course AND (1 OR 2) OR course 4) AND available:true AND (tag:tag1 OR tag:tag4) OR progress:completed" + defaultSort
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
 		paginationResp, coursesResp = unmarshalHelper[courseResponse](t, body)
-		require.Equal(t, 1, int(paginationResp.TotalItems))
-		require.Len(t, coursesResp, 1)
-		require.Equal(t, courses[1].ID, coursesResp[0].ID)
+		require.Equal(t, 2, int(paginationResp.TotalItems))
+		require.Len(t, paginationResp.Items, 2)
+		require.Equal(t, courses[0].ID, coursesResp[0].ID)
+		require.Equal(t, courses[4].ID, coursesResp[1].ID)
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {

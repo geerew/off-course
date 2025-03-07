@@ -4,9 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"net/url"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
@@ -17,9 +15,17 @@ import (
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/pagination"
+	"github.com/geerew/off-course/utils/queryparser"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/spf13/afero"
+	"github.com/spf13/cast"
+)
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+var (
+	defaultCoursesOrderBy = []string{models.COURSE_TABLE + "." + models.BASE_CREATED_AT + " desc"}
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -74,113 +80,13 @@ func (r *Router) initCourseRoutes() {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api coursesAPI) getCourses(c *fiber.Ctx) error {
-	orderBy := c.Query("orderBy", models.COURSE_TABLE+"."+models.BASE_CREATED_AT+" desc")
-	titles := c.Query("titles", "")
-	available := c.Query("available", "")
-	progress := c.Query("progress", "")
-	tags := c.Query("tags", "")
-
-	options := &database.Options{
-		OrderBy:    strings.Split(orderBy, ","),
-		Pagination: pagination.NewFromApi(c),
+	options, err := courseOptionsBuilder(c, true)
+	if err != nil {
+		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
-
-	whereClause := squirrel.And{}
-	courseIDs := []string{}
-
-	// Filter based on titles
-	if titles != "" {
-		filtered, err := filter(titles)
-		if err != nil {
-			return errorResponse(c, fiber.StatusBadRequest, "Invalid titles parameter", err)
-		}
-
-		orClause := squirrel.Or{}
-		for _, title := range filtered {
-			orClause = append(orClause, squirrel.Like{models.COURSE_TABLE + ".title": "%" + title + "%"})
-		}
-
-		whereClause = append(whereClause, orClause)
-	}
-
-	// Filter on progress ("not started", "started", "completed") by identifying the course IDs that
-	// match the progress filter
-	if progress != "" {
-		unescapedProgress, err := url.QueryUnescape(progress)
-		if err != nil {
-			return fiber.NewError(fiber.StatusBadRequest, "invalid progress parameter")
-		}
-
-		unescapedProgress = strings.ToLower(unescapedProgress)
-
-		switch unescapedProgress {
-		case "not started":
-			courseIDs, err = api.dao.PluckIDsForNotStartedCourses(c.UserContext(), nil)
-		case "started":
-			courseIDs, err = api.dao.PluckIDsForStartedCourses(c.UserContext(), nil)
-		case "completed":
-			courseIDs, err = api.dao.PluckIDsForCompletedCourses(c.UserContext(), nil)
-		}
-
-		if err != nil {
-			return errorResponse(c, fiber.StatusInternalServerError, "Error looking up courses by progress", err)
-		}
-
-		if len(courseIDs) == 0 {
-			pResult, err := options.Pagination.BuildResult(courseResponseHelper(nil))
-			if err != nil {
-				return errorResponse(c, fiber.StatusInternalServerError, "Error building pagination result", err)
-			}
-
-			return c.Status(fiber.StatusOK).JSON(pResult)
-		}
-	}
-
-	// Filter based on tags by identifying the course IDs that match the tags filter
-	if tags != "" {
-		filtered, err := filter(tags)
-		if err != nil {
-			return errorResponse(c, fiber.StatusBadRequest, "Invalid tags parameter", err)
-		}
-
-		tempCourseIDs, err := api.dao.PluckCourseIDsWithTags(c.UserContext(), filtered, nil)
-		if err != nil {
-			return errorResponse(c, fiber.StatusInternalServerError, "Error looking up courses by tags", err)
-		}
-
-		if len(tempCourseIDs) == 0 {
-			pResult, err := options.Pagination.BuildResult(courseResponseHelper(nil))
-			if err != nil {
-				return errorResponse(c, fiber.StatusInternalServerError, "Error building pagination result", err)
-			}
-
-			return c.Status(fiber.StatusOK).JSON(pResult)
-		}
-
-		if len(courseIDs) != 0 {
-			courseIDs = utils.SliceIntersection(courseIDs, tempCourseIDs)
-		} else {
-			courseIDs = tempCourseIDs
-		}
-	}
-
-	if available != "" {
-		availableBool, err := strconv.ParseBool(available)
-		if err != nil {
-			return errorResponse(c, fiber.StatusBadRequest, "Invalid available parameter", err)
-		}
-
-		whereClause = append(whereClause, squirrel.Eq{models.COURSE_TABLE + "." + models.COURSE_AVAILABLE: availableBool})
-	}
-
-	if len(courseIDs) > 0 {
-		whereClause = append(whereClause, squirrel.Eq{models.COURSE_TABLE + ".id": courseIDs})
-	}
-
-	options.Where = whereClause
 
 	courses := []*models.Course{}
-	err := api.dao.List(c.UserContext(), &courses, options)
+	err = api.dao.List(c.UserContext(), &courses, options)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up courses", err)
 	}
@@ -623,4 +529,155 @@ func (api coursesAPI) deleteTag(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusNoContent).Send(nil)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// courseOptionsBuilder builds the database.Options for a courses query
+func courseOptionsBuilder(c *fiber.Ctx, paginate bool) (*database.Options, error) {
+	options := &database.Options{
+		OrderBy: defaultCoursesOrderBy,
+	}
+
+	if paginate {
+		options.Pagination = pagination.NewFromApi(c)
+	}
+
+	q := c.Query("q", "")
+	if q == "" {
+		return options, nil
+	}
+
+	parsed, err := queryparser.Parse(q, []string{"available", "tag", "progress"})
+	if err != nil {
+		return nil, err
+	}
+
+	if parsed == nil {
+		return options, nil
+	}
+
+	if len(parsed.Sort) > 0 {
+		options.OrderBy = parsed.Sort
+	}
+
+	if parsed.Expr == nil {
+		return options, nil
+	}
+
+	options.Where = courseWhereBuilder(parsed.Expr)
+
+	if foundProgress, ok := parsed.FoundFilters["progress"]; ok && foundProgress {
+		// TODO: Make a LEFT JOIN for when courses do not have progress
+		options.AdditionalJoins = append(options.AdditionalJoins,
+			models.COURSE_PROGRESS_TABLE+" ON "+models.COURSE_PROGRESS_TABLE+"."+models.COURSE_PROGRESS_COURSE_ID+" = "+models.COURSE_TABLE+"."+models.BASE_ID,
+		)
+	}
+
+	return options, nil
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// courseWhereBuilder builds a squirrel.Sqlizer, for use in a WHERE clause, based on a query expression
+func courseWhereBuilder(expr queryparser.QueryExpr) squirrel.Sqlizer {
+	switch node := expr.(type) {
+	case *queryparser.ValueExpr:
+		return squirrel.Like{models.COURSE_TABLE + "." + models.COURSE_TITLE: "%" + node.Value + "%"}
+	case *queryparser.FilterExpr:
+		switch node.Key {
+		case "available":
+			value, err := cast.ToBoolE(node.Value)
+			if err != nil {
+				return squirrel.Expr("1=0")
+			}
+			return squirrel.Eq{models.COURSE_TABLE + "." + models.COURSE_AVAILABLE: value}
+		case "tag":
+			return buildTagsQuery([]string{node.Value})
+		case "progress":
+			switch strings.ToLower(node.Value) {
+			case "not started":
+				return squirrel.Eq{models.COURSE_PROGRESS_TABLE + "." + models.COURSE_PROGRESS_STARTED: false}
+			case "started":
+				return squirrel.And{
+					squirrel.Eq{models.COURSE_PROGRESS_TABLE + "." + models.COURSE_PROGRESS_STARTED: true},
+					squirrel.NotEq{models.COURSE_PROGRESS_TABLE + "." + models.COURSE_PROGRESS_PERCENT: 100},
+				}
+			case "completed":
+				return squirrel.Eq{models.COURSE_PROGRESS_TABLE + "." + models.COURSE_PROGRESS_PERCENT: 100}
+			default:
+				return nil
+			}
+		default:
+			return nil
+		}
+	case *queryparser.AndExpr:
+		var andSlice []squirrel.Sqlizer
+		var tags []string
+		onlyTags := true
+
+		// Loop through all children and separate tag filters from non-tag conditions
+		for _, child := range node.Children {
+			if queryparser.IsFilterWithKey(child, "tag") {
+				tags = append(tags, child.(*queryparser.FilterExpr).Value)
+			} else {
+				onlyTags = false
+				andSlice = append(andSlice, courseWhereBuilder(child))
+			}
+		}
+
+		// If we found tags, build the EXISTS subquery
+		var tagCond squirrel.Sqlizer
+		if len(tags) > 0 {
+			tagCond = buildTagsQuery(tags)
+
+			if onlyTags {
+				return tagCond
+			} else if tagCond != nil {
+				andSlice = append(andSlice, tagCond)
+			}
+		}
+
+		return squirrel.And(andSlice)
+	case *queryparser.OrExpr:
+		var orSlice []squirrel.Sqlizer
+		for _, child := range node.Children {
+			orSlice = append(orSlice, courseWhereBuilder(child))
+		}
+
+		return squirrel.Or(orSlice)
+	default:
+		return nil
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// buildTagsQuery builds an EXISTS squirrel.Sqlizer subquery for a list of tags
+func buildTagsQuery(tags []string) squirrel.Sqlizer {
+	if len(tags) == 0 {
+		return squirrel.Expr("1=1")
+	}
+
+	baseQuery := squirrel.
+		Select("1").
+		From(models.COURSE_TAG_TABLE).
+		Join(fmt.Sprintf("%s ON %s.%s = %s.%s",
+			models.TAG_TABLE,
+			models.TAG_TABLE, models.BASE_ID,
+			models.COURSE_TAG_TABLE, models.COURSE_TAG_TAG_ID)).
+		Where(fmt.Sprintf("%s.%s = %s.%s",
+			models.COURSE_TAG_TABLE, models.COURSE_TAG_COURSE_ID,
+			models.COURSE_TABLE, models.BASE_ID))
+
+	if len(tags) == 1 {
+		baseQuery = baseQuery.Where(squirrel.Eq{models.TAG_TABLE + "." + models.TAG_TAG: tags[0]})
+	} else if len(tags) > 1 {
+		baseQuery = baseQuery.
+			Where(squirrel.Eq{models.TAG_TABLE + ".tag": tags}).
+			GroupBy(models.COURSE_TAG_TABLE+".course_id").
+			Having("COUNT(DISTINCT "+models.TAG_TABLE+".tag) = ?", len(tags))
+	}
+
+	return squirrel.Expr("EXISTS (?)", baseQuery)
 }

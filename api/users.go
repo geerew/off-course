@@ -8,8 +8,15 @@ import (
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/auth"
 	"github.com/geerew/off-course/utils/pagination"
+	"github.com/geerew/off-course/utils/queryparser"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
+)
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+var (
+	defaultUsersOrderBy = []string{models.USER_TABLE + "." + models.BASE_CREATED_AT + " desc"}
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -39,15 +46,13 @@ func (r *Router) initUserRoutes() {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api userAPI) getUsers(c *fiber.Ctx) error {
-	orderBy := c.Query("orderBy", models.USER_TABLE+"."+models.BASE_CREATED_AT+" desc")
-
-	options := &database.Options{
-		OrderBy:    strings.Split(orderBy, ","),
-		Pagination: pagination.NewFromApi(c),
+	options, err := userOptionsBuilder(c, true)
+	if err != nil {
+		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
 	users := []*models.User{}
-	err := api.r.dao.List(c.UserContext(), &users, options)
+	err = api.r.dao.List(c.UserContext(), &users, options)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up users", err)
 	}
@@ -194,4 +199,39 @@ func (api userAPI) deleteUserSession(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusNoContent).Send(nil)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// userOptionsBuilder builds the database.Options for a users query
+func userOptionsBuilder(c *fiber.Ctx, paginate bool) (*database.Options, error) {
+	options := &database.Options{
+		OrderBy: defaultUsersOrderBy,
+	}
+
+	if paginate {
+		options.Pagination = pagination.NewFromApi(c)
+	}
+
+	q := c.Query("q", "")
+	if q == "" {
+		return options, nil
+	}
+
+	parsed, err := queryparser.Parse(q, []string{"available", "tag", "progress"})
+	if err != nil {
+		return nil, err
+	}
+
+	if parsed == nil {
+		return options, nil
+	}
+
+	if len(parsed.Sort) > 0 {
+		options.OrderBy = parsed.Sort
+	}
+
+	return options, nil
 }
