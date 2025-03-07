@@ -54,23 +54,3 @@ func (dao *DAO) CreateCourseTag(ctx context.Context, courseTag *models.CourseTag
 
 	})
 }
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// PluckCourseIDsWithTags returns a list of course IDs where the course has all the tags in the
-// slice
-func (dao *DAO) PluckCourseIDsWithTags(ctx context.Context, tags []string, options *database.Options) ([]string, error) {
-	if len(tags) == 0 {
-		return nil, nil
-	}
-
-	if options == nil {
-		options = &database.Options{}
-	}
-
-	options.Where = squirrel.Eq{fmt.Sprintf("%s.%s", models.TAG_TABLE, models.TAG_TAG): tags}
-	options.GroupBy = []string{fmt.Sprintf("%s.%s", models.COURSE_TAG_TABLE, models.COURSE_TAG_COURSE_ID)}
-	options.Having = squirrel.Expr("COUNT(DISTINCT "+models.TAG_TABLE+".tag) = ?", len(tags))
-
-	return dao.ListPluck(ctx, &models.CourseTag{}, options, models.COURSE_TAG_COURSE_ID)
-}
