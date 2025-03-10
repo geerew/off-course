@@ -185,7 +185,7 @@ func TestScanner_Worker(t *testing.T) {
 		// Wait for the worker to finish
 		<-processingDone
 
-		// TMP LOGS
+		// TMP LOGS for debugging race error
 		for _, l := range *logs {
 			fmt.Printf("%s\n", l.Message)
 		}

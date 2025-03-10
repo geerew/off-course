@@ -359,44 +359,6 @@ func (s *Schema) CountBuilder(options *database.Options) squirrel.SelectBuilder 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// InsertBuilder creates a squirrel InsertBuilder for the model
-func (s *Schema) InsertBuilder(model any, options *database.Options) squirrel.InsertBuilder {
-	data := make(map[string]any, len(s.Fields))
-
-	for _, f := range s.Fields {
-		// Ignore fields that part of a join
-		if f.JoinTable != "" {
-			continue
-		}
-
-		val, zero := f.ValueOf(reflect.ValueOf(model))
-
-		// When the field cannot be null and the value is zero, set the value to nil
-		if f.NotNull && zero {
-			if f.IgnoreIfNull {
-				continue
-			}
-
-			data[f.Column] = nil
-		} else {
-			data[f.Column] = val
-		}
-	}
-
-	var builder squirrel.InsertBuilder
-	if options != nil && options.Replace {
-		builder = squirrel.Replace(s.Table)
-	} else {
-		builder = squirrel.StatementBuilder.Insert(s.Table)
-	}
-
-	builder = builder.SetMap(data)
-
-	return builder
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 // SelectBuilder creates a squirrel SelectBuilder for the model
 func (s *Schema) SelectBuilder(options *database.Options) squirrel.SelectBuilder {
 	builder := squirrel.
@@ -485,8 +447,13 @@ func (s *Schema) PluckBuilder(column string, options *database.Options) squirrel
 
 	if options != nil {
 		builder = builder.Where(options.Where).
-			OrderBy(options.OrderBy...).
-			GroupBy(options.GroupBy...)
+			OrderBy(options.OrderBy...)
+
+		if options.OrderByClause != nil {
+			builder = builder.OrderByClause(options.OrderByClause)
+		}
+
+		builder = builder.GroupBy(options.GroupBy...)
 
 		if options.Having != nil {
 			builder = builder.Having(options.Having)
@@ -498,6 +465,44 @@ func (s *Schema) PluckBuilder(column string, options *database.Options) squirrel
 				Limit(uint64(options.Pagination.Limit()))
 		}
 	}
+
+	return builder
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// InsertBuilder creates a squirrel InsertBuilder for the model
+func (s *Schema) InsertBuilder(model any, options *database.Options) squirrel.InsertBuilder {
+	data := make(map[string]any, len(s.Fields))
+
+	for _, f := range s.Fields {
+		// Ignore fields that part of a join
+		if f.JoinTable != "" {
+			continue
+		}
+
+		val, zero := f.ValueOf(reflect.ValueOf(model))
+
+		// When the field cannot be null and the value is zero, set the value to nil
+		if f.NotNull && zero {
+			if f.IgnoreIfNull {
+				continue
+			}
+
+			data[f.Column] = nil
+		} else {
+			data[f.Column] = val
+		}
+	}
+
+	var builder squirrel.InsertBuilder
+	if options != nil && options.Replace {
+		builder = squirrel.Replace(s.Table)
+	} else {
+		builder = squirrel.StatementBuilder.Insert(s.Table)
+	}
+
+	builder = builder.SetMap(data)
 
 	return builder
 }
