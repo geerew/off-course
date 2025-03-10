@@ -337,6 +337,10 @@ func (s *Schema) CountBuilder(options *database.Options) squirrel.SelectBuilder 
 			OrderBy(options.OrderBy...).
 			GroupBy(options.GroupBy...)
 
+		if options.OrderByClause != nil {
+			builder = builder.OrderByClause(options.OrderByClause)
+		}
+
 		if options.Having != nil {
 			builder = builder.Having(options.Having)
 		}
@@ -425,8 +429,13 @@ func (s *Schema) SelectBuilder(options *database.Options) squirrel.SelectBuilder
 		}
 
 		builder = builder.Where(options.Where).
-			OrderBy(options.OrderBy...).
-			GroupBy(options.GroupBy...)
+			OrderBy(options.OrderBy...)
+
+		if options.OrderByClause != nil {
+			builder = builder.OrderByClause(options.OrderByClause)
+		}
+
+		builder = builder.GroupBy(options.GroupBy...)
 
 		if options.Having != nil {
 			builder = builder.Having(options.Having)

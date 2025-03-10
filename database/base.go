@@ -78,6 +78,11 @@ type Options struct {
 	// Example: []string{"id DESC", "title ASC"}
 	OrderBy []string
 
+	// ORDER BY (clause)
+	//
+	// Example: []string{"id DESC", "title ASC"}
+	OrderByClause squirrel.Sqlizer
+
 	// Any valid squirrel WHERE expression
 	//
 	// Examples:
