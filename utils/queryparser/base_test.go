@@ -30,6 +30,7 @@ func TestParse_EdgeCases(t *testing.T) {
 
 		require.Equal(t, "(course 1 OR progress:started)", result.Expr.String())
 		require.Empty(t, result.Sort)
+		require.Equal(t, []string{"course 1"}, result.FreeText)
 		require.False(t, result.FoundFilters["available"])
 		require.False(t, result.FoundFilters["tag"])
 		require.True(t, result.FoundFilters["progress"])
@@ -44,6 +45,7 @@ func TestParse_EdgeCases(t *testing.T) {
 		require.NotNil(t, result.Expr)
 		require.Equal(t, "(course 1 OR course 2)", result.Expr.String())
 		require.Empty(t, result.Sort)
+		require.Equal(t, []string{"course 1", "course 2"}, result.FreeText)
 		require.False(t, result.FoundFilters["available"])
 		require.False(t, result.FoundFilters["tag"])
 		require.False(t, result.FoundFilters["progress"])
@@ -57,6 +59,7 @@ func TestParse_EdgeCases(t *testing.T) {
 
 		require.Equal(t, "((course 1 or AND course 2 AND CANDY) OR BORE)", result.Expr.String())
 		require.Empty(t, result.Sort)
+		require.Equal(t, []string{"course 1 or", "course 2", "CANDY", "BORE"}, result.FreeText)
 		require.False(t, result.FoundFilters["available"])
 		require.False(t, result.FoundFilters["tag"])
 		require.False(t, result.FoundFilters["progress"])
@@ -72,6 +75,7 @@ func TestParse_EdgeCases(t *testing.T) {
 		require.IsType(t, &ValueExpr{}, result.Expr)
 		require.Equal(t, "course 1 AND course 2", result.Expr.String())
 		require.Empty(t, result.Sort)
+		require.Equal(t, []string{"course 1 AND course 2"}, result.FreeText)
 		require.False(t, result.FoundFilters["available"])
 		require.False(t, result.FoundFilters["tag"])
 		require.False(t, result.FoundFilters["progress"])
@@ -97,6 +101,7 @@ func TestParse_Sort(t *testing.T) {
 
 		require.Nil(t, result.Expr)
 		require.Equal(t, []string{"created_at asc", "id desc", "title"}, result.Sort)
+		require.Empty(t, result.FreeText)
 		require.False(t, result.FoundFilters["available"])
 		require.False(t, result.FoundFilters["tag"])
 		require.False(t, result.FoundFilters["progress"])
@@ -110,6 +115,7 @@ func TestParse_Sort(t *testing.T) {
 
 		require.Nil(t, result.Expr)
 		require.Empty(t, result.Sort)
+		require.Empty(t, result.FreeText)
 		require.False(t, result.FoundFilters["available"])
 		require.False(t, result.FoundFilters["tag"])
 		require.False(t, result.FoundFilters["progress"])
@@ -123,6 +129,7 @@ func TestParse_Sort(t *testing.T) {
 
 		require.Equal(t, "(course 1 AND tag:test)", result.Expr.String())
 		require.Equal(t, []string{"created_at asc", "id desc", "title"}, result.Sort)
+		require.Equal(t, []string{"course 1"}, result.FreeText)
 		require.False(t, result.FoundFilters["available"])
 		require.False(t, result.FoundFilters["progress"])
 		require.True(t, result.FoundFilters["tag"])
@@ -136,6 +143,7 @@ func TestParse_Sort(t *testing.T) {
 
 		require.Equal(t, "(sort: test AND course 1)", result.Expr.String())
 		require.Equal(t, []string{"created_at asc", "title"}, result.Sort)
+		require.Equal(t, []string{"sort: test", "course 1"}, result.FreeText)
 		require.False(t, result.FoundFilters["available"])
 		require.False(t, result.FoundFilters["tag"])
 		require.False(t, result.FoundFilters["progress"])
@@ -153,6 +161,7 @@ func TestParse_FreeText(t *testing.T) {
 
 		require.Equal(t, "((course 1 OR (course 2 AND course 3)) OR (course 4 AND course 5))", result.Expr.String())
 		require.Empty(t, result.Sort)
+		require.Equal(t, []string{"course 1", "course 2", "course 3", "course 4", "course 5"}, result.FreeText)
 		require.False(t, result.FoundFilters["available"])
 		require.False(t, result.FoundFilters["tag"])
 		require.False(t, result.FoundFilters["progress"])
@@ -166,6 +175,7 @@ func TestParse_FreeText(t *testing.T) {
 
 		require.Equal(t, "(((course 1 AND course 2) OR course 3) OR available:true)", result.Expr.String())
 		require.Empty(t, result.Sort)
+		require.Equal(t, []string{"course 1", "course 2", "course 3"}, result.FreeText)
 		require.True(t, result.FoundFilters["available"])
 		require.False(t, result.FoundFilters["tag"])
 		require.False(t, result.FoundFilters["progress"])
@@ -179,6 +189,7 @@ func TestParse_FreeText(t *testing.T) {
 
 		require.Equal(t, "((course:1 AND tag:a) OR course: a b)", result.Expr.String())
 		require.Empty(t, result.Sort)
+		require.Equal(t, []string{"course:1", "course: a b"}, result.FreeText)
 		require.False(t, result.FoundFilters["available"])
 		require.True(t, result.FoundFilters["tag"])
 		require.False(t, result.FoundFilters["progress"])
@@ -192,6 +203,7 @@ func TestParse_FreeText(t *testing.T) {
 
 		require.Equal(t, "tag:1", result.Expr.String())
 		require.Empty(t, result.Sort)
+		require.Empty(t, result.FreeText)
 		require.True(t, result.FoundFilters["tag"])
 		require.False(t, result.FoundFilters["available"])
 		require.False(t, result.FoundFilters["progress"])
@@ -207,6 +219,7 @@ func TestParse_Filters(t *testing.T) {
 
 	require.Equal(t, "(((available:true AND tag:go 1) OR progress:completed) OR progress:not started)", result.Expr.String())
 	require.Empty(t, result.Sort)
+	require.Empty(t, result.FreeText)
 	require.True(t, result.FoundFilters["available"])
 	require.True(t, result.FoundFilters["tag"])
 	require.True(t, result.FoundFilters["progress"])
@@ -219,9 +232,9 @@ func TestParse_ComplexParentheses(t *testing.T) {
 	result, err := Parse(q, allowed)
 	require.NoError(t, err)
 
-	expected := "((course 1 AND (progress:started OR progress:completed)) OR (course 2 AND progress:completed))"
+	require.Equal(t, "((course 1 AND (progress:started OR progress:completed)) OR (course 2 AND progress:completed))", result.Expr.String())
 	require.Empty(t, result.Sort)
-	require.Equal(t, expected, result.Expr.String())
+	require.Equal(t, []string{"course 1", "course 2"}, result.FreeText)
 	require.False(t, result.FoundFilters["available"])
 	require.False(t, result.FoundFilters["tag"])
 	require.True(t, result.FoundFilters["progress"])

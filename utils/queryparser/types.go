@@ -4,13 +4,6 @@ package queryparser
 
 import "strings"
 
-// QueryResult represents the result of parsing.=
-type QueryResult struct {
-	Expr         QueryExpr
-	Sort         []string
-	FoundFilters map[string]bool
-}
-
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // QueryExpr is the interface for a boolean expression

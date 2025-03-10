@@ -12,6 +12,7 @@ type astParser struct {
 	tokens         []token
 	pos            int
 	allowedFilters map[string]bool
+	FreeText       []string
 	FoundFilters   map[string]bool
 }
 
@@ -31,6 +32,7 @@ func newASTParser(tokens []token, allowedFilters []string) *astParser {
 		tokens:         tokens,
 		pos:            0,
 		allowedFilters: allowed,
+		FreeText:       []string{},
 		FoundFilters:   found,
 	}
 }
@@ -112,19 +114,23 @@ func (ap *astParser) parseOperand() (QueryExpr, error) {
 			ap.FoundFilters[key] = true
 			ap.consume()
 			val := strings.TrimSpace(parts[1])
+
 			if val == "" {
 				// Check if next token exists and is quoted, then use its value.
 				if ap.pos < len(ap.tokens) && ap.current().Quoted {
 					val = strings.TrimSpace(ap.consume().Text)
 				}
 			}
+
 			if val == "" {
 				return nil, nil
 			}
+
 			return &FilterExpr{Key: key, Value: val}, nil
 		}
 
 		ap.consume()
+		ap.FreeText = append(ap.FreeText, cur.Text)
 		return &ValueExpr{Value: cur.Text}, nil
 	}
 
@@ -134,6 +140,7 @@ func (ap *astParser) parseOperand() (QueryExpr, error) {
 			return nil, nil
 		}
 
+		ap.FreeText = append(ap.FreeText, tok)
 		return &ValueExpr{Value: tok}, nil
 	}
 
@@ -161,6 +168,7 @@ func (ap *astParser) parseOperand() (QueryExpr, error) {
 		return nil, nil
 	}
 
+	ap.FreeText = append(ap.FreeText, joined)
 	return &ValueExpr{Value: joined}, nil
 }
 

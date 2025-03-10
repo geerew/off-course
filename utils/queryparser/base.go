@@ -2,6 +2,16 @@ package queryparser
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// QueryResult represents the result of parsing.=
+type QueryResult struct {
+	Expr         QueryExpr
+	Sort         []string
+	FreeText     []string
+	FoundFilters map[string]bool
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // Parse a query string into an AST of sort tokens, free-text and allowed filters
 func Parse(q string, allowedFilters []string) (*QueryResult, error) {
 	allTokens := tokenize(q)
@@ -16,6 +26,7 @@ func Parse(q string, allowedFilters []string) (*QueryResult, error) {
 	return &QueryResult{
 		Expr:         expr,
 		Sort:         sortTokens,
+		FreeText:     ast.FreeText,
 		FoundFilters: ast.FoundFilters,
 	}, nil
 }
