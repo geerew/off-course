@@ -42,14 +42,12 @@ func TestCourses_GetCourses(t *testing.T) {
 	t.Run("200 (found)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
-		courses := []*models.Course{}
 		for i := range 5 {
 			course := &models.Course{
 				Title: fmt.Sprintf("course %d", i+1),
 				Path:  fmt.Sprintf("/course %d", i+1),
 			}
 			require.NoError(t, router.dao.CreateCourse(ctx, course))
-			courses = append(courses, course)
 			time.Sleep(1 * time.Millisecond)
 		}
 
