@@ -29,7 +29,7 @@ func Test_CreateParam(t *testing.T) {
 		param := &models.Param{Key: "param 1", Value: "value 1"}
 		require.NoError(t, dao.CreateParam(ctx, param))
 
-		require.ErrorContains(t, dao.CreateParam(ctx, param), "UNIQUE constraint failed: "+models.PARAM_TABLE+".key")
+		require.ErrorContains(t, dao.CreateParam(ctx, param), "UNIQUE constraint failed: "+models.PARAM_TABLE_KEY)
 	})
 }
 
@@ -61,7 +61,7 @@ func Test_GetParamByKey(t *testing.T) {
 		param := &models.Param{Key: "param 1", Value: "value 1"}
 		require.NoError(t, dao.CreateParam(ctx, param))
 
-		require.ErrorContains(t, dao.CreateParam(ctx, param), "UNIQUE constraint failed: "+models.PARAM_TABLE+".key")
+		require.ErrorContains(t, dao.CreateParam(ctx, param), "UNIQUE constraint failed: "+models.PARAM_TABLE_KEY)
 	})
 }
 

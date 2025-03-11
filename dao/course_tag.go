@@ -31,7 +31,7 @@ func (dao *DAO) CreateCourseTag(ctx context.Context, courseTag *models.CourseTag
 		// Get the tag by tag name (case-insensitive)
 		tag := models.Tag{}
 		options := &database.Options{
-			Where: squirrel.Eq{fmt.Sprintf("%s.%s", models.TAG_TABLE, models.TAG_TAG): courseTag.Tag},
+			Where: squirrel.Eq{models.TAG_TABLE_TAG: courseTag.Tag},
 		}
 
 		err := dao.Get(txCtx, &tag, options)

@@ -42,7 +42,7 @@ func (s *SqliteStorage) Get(key string) ([]byte, error) {
 		return nil, nil
 	}
 
-	options := &database.Options{Where: squirrel.Eq{models.SESSION_TABLE + "." + models.SESSION_ID: key}}
+	options := &database.Options{Where: squirrel.Eq{models.SESSION_TABLE_ID: key}}
 	session := &models.Session{}
 	err := s.dao.Get(context.Background(), session, options)
 	if err != nil {
@@ -115,7 +115,7 @@ func (s *SqliteStorage) Delete(key string) error {
 		return nil
 	}
 
-	options := &database.Options{Where: squirrel.Eq{models.SESSION_TABLE + "." + models.SESSION_ID: key}}
+	options := &database.Options{Where: squirrel.Eq{models.SESSION_TABLE_ID: key}}
 	return s.dao.Delete(context.Background(), &models.Session{}, options)
 }
 
@@ -127,7 +127,7 @@ func (s *SqliteStorage) DeleteUser(id string) error {
 		return nil
 	}
 
-	options := &database.Options{Where: squirrel.Eq{models.SESSION_TABLE + "." + models.SESSION_USER_ID: id}}
+	options := &database.Options{Where: squirrel.Eq{models.SESSION_TABLE_USER_ID: id}}
 	return s.dao.Delete(context.Background(), &models.Session{}, options)
 }
 

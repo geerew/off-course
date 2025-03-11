@@ -306,7 +306,7 @@ func Test_Get(t *testing.T) {
 		}
 
 		courseResult := &models.Course{}
-		require.NoError(t, dao.Get(ctx, courseResult, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE + ".path": courses[1].Path}}))
+		require.NoError(t, dao.Get(ctx, courseResult, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_PATH: courses[1].Path}}))
 		require.Equal(t, courses[1].ID, courseResult.ID)
 	})
 
@@ -325,7 +325,7 @@ func Test_Get(t *testing.T) {
 		}
 
 		result := &models.Course{}
-		options := &database.Options{OrderBy: []string{fmt.Sprintf("%s.title DESC", models.COURSE_TABLE)}}
+		options := &database.Options{OrderBy: []string{models.COURSE_TABLE_TITLE + " DESC"}}
 		require.NoError(t, dao.Get(ctx, result, options))
 		require.Equal(t, courses[2].ID, result.ID)
 	})
@@ -465,46 +465,10 @@ func Test_List(t *testing.T) {
 
 		// CREATED_AT DESC
 		coursesResult := []*models.Course{}
-		options := &database.Options{OrderBy: []string{models.COURSE_TABLE + ".title DESC"}}
+		options := &database.Options{OrderBy: []string{models.COURSE_TABLE_TITLE + " DESC"}}
 		require.NoError(t, dao.List(ctx, &coursesResult, options))
 		require.Len(t, coursesResult, 3)
 		require.Equal(t, courses[2].ID, coursesResult[0].ID)
-
-		// 	// // ----------------------------
-		// 	// // SCAN_STATUS DESC
-		// 	// // ----------------------------
-
-		// 	// // Create a scan for course 2 and 3
-		// 	// scanDao := NewScanDao(db)
-
-		// 	// testData[1].Scan = &models.Scan{CourseID: testData[1].ID}
-		// 	// require.Nil(t, scanDao.Create(testData[1].Scan, nil))
-		// 	// testData[2].Scan = &models.Scan{CourseID: testData[2].ID}
-		// 	// require.Nil(t, scanDao.Create(testData[2].Scan, nil))
-
-		// 	// // Set course 3 to processing
-		// 	// testData[2].Scan.Status = types.NewScanStatus(types.ScanStatusProcessing)
-		// 	// require.Nil(t, scanDao.Update(testData[2].Scan, nil))
-
-		// 	// result, err = dao.List(&database.DatabaseParams{OrderBy: []string{dao.Table() + ".scan_status desc"}}, nil)
-		// 	// require.Nil(t, err)
-		// 	// require.Len(t, result, 3)
-
-		// 	// require.Equal(t, testData[0].ID, result[2].ID)
-		// 	// require.Equal(t, testData[1].ID, result[1].ID)
-		// 	// require.Equal(t, testData[2].ID, result[0].ID)
-
-		// 	// // ----------------------------
-		// 	// // SCAN_STATUS ASC
-		// 	// // ----------------------------
-		// 	// result, err = dao.List(&database.DatabaseParams{OrderBy: []string{dao.Table() + ".scan_status asc"}}, nil)
-		// 	// require.Nil(t, err)
-		// 	// require.Len(t, result, 3)
-
-		// 	// require.Equal(t, testData[0].ID, result[0].ID)
-		// 	// require.Equal(t, testData[1].ID, result[1].ID)
-		// 	// require.Equal(t, testData[2].ID, result[2].ID)
-
 	})
 
 	t.Run("where", func(t *testing.T) {
@@ -525,10 +489,10 @@ func Test_List(t *testing.T) {
 		coursesResult := []*models.Course{}
 		options := &database.Options{
 			Where: squirrel.Or{
-				squirrel.Eq{models.COURSE_TABLE + ".id": courses[1].ID},
-				squirrel.Eq{models.COURSE_TABLE + ".id": courses[2].ID},
+				squirrel.Eq{models.COURSE_TABLE_ID: courses[1].ID},
+				squirrel.Eq{models.COURSE_TABLE_ID: courses[2].ID},
 			},
-			OrderBy: []string{models.COURSE_TABLE + "." + models.BASE_CREATED_AT + " ASC"},
+			OrderBy: []string{models.COURSE_TABLE_CREATED_AT + " ASC"},
 		}
 		require.NoError(t, dao.List(ctx, &coursesResult, options))
 		require.Len(t, coursesResult, 2)
@@ -572,7 +536,7 @@ func Test_ListPluck(t *testing.T) {
 			time.Sleep(1 * time.Millisecond)
 		}
 
-		options := &database.Options{OrderBy: []string{models.COURSE_TABLE + "." + models.BASE_CREATED_AT + " ASC"}}
+		options := &database.Options{OrderBy: []string{models.COURSE_TABLE_CREATED_AT + " ASC"}}
 
 		// Course IDs
 		ids, err := dao.ListPluck(ctx, &models.Course{}, options, models.BASE_ID)

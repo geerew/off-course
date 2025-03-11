@@ -108,13 +108,7 @@ func (api authAPI) login(c *fiber.Ctx) error {
 	}
 
 	user := &models.User{}
-	options := &database.Options{
-		Where: squirrel.Eq{
-			models.USER_TABLE + "." + models.USER_USERNAME: userReq.Username,
-		},
-	}
-
-	err := api.r.dao.Get(c.UserContext(), user, options)
+	err := api.r.dao.Get(c.UserContext(), user, &database.Options{Where: squirrel.Eq{models.USER_TABLE_USERNAME: userReq.Username}})
 	if err != nil {
 		return errorResponse(c, fiber.StatusUnauthorized, "Invalid username and/or password", nil)
 	}
@@ -238,7 +232,7 @@ func (api authAPI) deleteMe(c *fiber.Ctx) error {
 	if user.Role == types.UserRoleAdmin {
 		// Count the number of admin users and fail if there is only one
 		adminCount, err := api.r.dao.Count(c.UserContext(), &models.User{}, &database.Options{
-			Where: squirrel.Eq{models.USER_TABLE + "." + models.USER_ROLE: types.UserRoleAdmin},
+			Where: squirrel.Eq{models.USER_TABLE_ROLE: types.UserRoleAdmin},
 		})
 
 		if err != nil {

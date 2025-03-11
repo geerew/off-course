@@ -3,8 +3,6 @@ package models
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 import (
-	"fmt"
-
 	"github.com/geerew/off-course/utils/schema"
 	"github.com/geerew/off-course/utils/types"
 )
@@ -58,5 +56,5 @@ func (s *Scan) Define(c *schema.ModelConfig) {
 	c.Field("CoursePath").JoinTable(COURSE_TABLE).Column(SCAN_COURSE_PATH).Alias("course_path")
 
 	// Joins
-	c.LeftJoin(COURSE_TABLE).On(fmt.Sprintf("%s.%s = %s.%s", SCAN_TABLE, SCAN_COURSE_ID, COURSE_TABLE, BASE_ID))
+	c.LeftJoin(COURSE_TABLE).On(SCAN_TABLE_COURSE_ID + " = " + COURSE_TABLE_ID)
 }

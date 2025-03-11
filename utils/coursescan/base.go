@@ -420,7 +420,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 			}
 		}
 
-		ids, err := s.dao.ListPluck(txCtx, &models.Asset{}, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE + ".course_id": course.ID}}, models.BASE_ID)
+		ids, err := s.dao.ListPluck(txCtx, &models.Asset{}, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_COURSE_ID: course.ID}}, models.BASE_ID)
 		if err != nil {
 			return err
 		}
@@ -572,7 +572,7 @@ func isCard(filename string) bool {
 // additions, deletions, and updates
 func updateAssets(ctx context.Context, dao *dao.DAO, courseId string, assets []*models.Asset) error {
 	existingAssets := []*models.Asset{}
-	err := dao.List(ctx, &existingAssets, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE + ".course_id": courseId}})
+	err := dao.List(ctx, &existingAssets, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_COURSE_ID: courseId}})
 	if err != nil {
 		return err
 	}
@@ -649,7 +649,7 @@ func updateAssets(ctx context.Context, dao *dao.DAO, courseId string, assets []*
 // the necessary additions and deletions
 func updateAttachments(ctx context.Context, dao *dao.DAO, assetIDs []string, attachments []*models.Attachment) error {
 	existingAttachments := []*models.Attachment{}
-	err := dao.List(ctx, &existingAttachments, &database.Options{Where: squirrel.Eq{models.ATTACHMENT_TABLE + ".asset_id": assetIDs}})
+	err := dao.List(ctx, &existingAttachments, &database.Options{Where: squirrel.Eq{models.ATTACHMENT_TABLE_ASSET_ID: assetIDs}})
 	if err != nil {
 		return err
 	}

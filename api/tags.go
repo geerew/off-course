@@ -103,7 +103,7 @@ func (api *tagsAPI) getTag(c *fiber.Ctx) error {
 	}
 
 	options := &database.Options{
-		Where: squirrel.Eq{fmt.Sprintf("%s.%s", models.TAG_TABLE, models.TAG_TAG): name},
+		Where: squirrel.Eq{models.TAG_TABLE_TAG: name},
 	}
 
 	tag := &models.Tag{}
@@ -202,7 +202,7 @@ func tagsAfterParseHook(parsed *queryparser.QueryResult, options *database.Optio
 
 	filter := strings.ToLower(parsed.FreeText[0])
 
-	tagCol := fmt.Sprintf("LOWER(%s.%s)", models.TAG_TABLE, models.TAG_TAG)
+	tagCol := fmt.Sprintf("LOWER(%s)", models.TAG_TABLE_TAG)
 
 	// Always take the first free text filter
 	options.Where = squirrel.Like{tagCol: "%" + filter + "%"}

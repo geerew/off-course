@@ -2,7 +2,6 @@ package api
 
 import (
 	"database/sql"
-	"fmt"
 	"log/slog"
 
 	"github.com/Masterminds/squirrel"
@@ -60,7 +59,7 @@ func (api *scansAPI) getScan(c *fiber.Ctx) error {
 
 	scan := &models.Scan{}
 	options := &database.Options{
-		Where: squirrel.Eq{fmt.Sprintf("%s.%s", models.SCAN_TABLE, models.SCAN_COURSE_ID): courseId},
+		Where: squirrel.Eq{models.SCAN_TABLE_COURSE_ID: courseId},
 	}
 
 	err := api.dao.Get(c.UserContext(), scan, options)

@@ -355,8 +355,8 @@ func TestScanner_Processor(t *testing.T) {
 		require.NoError(t, err)
 
 		options := &database.Options{
-			OrderBy: []string{models.ASSET_TABLE + ".chapter asc", models.ASSET_TABLE + ".prefix asc"},
-			Where:   squirrel.Eq{models.ASSET_TABLE + ".course_id": course.ID},
+			OrderBy: []string{models.ASSET_TABLE_CHAPTER + " asc", models.ASSET_TABLE_PREFIX + " asc"},
+			Where:   squirrel.Eq{models.ASSET_TABLE_COURSE_ID: course.ID},
 		}
 
 		assets := []*models.Asset{}
@@ -437,8 +437,8 @@ func TestScanner_Processor(t *testing.T) {
 		require.NoError(t, err)
 
 		assetOptions := &database.Options{
-			OrderBy: []string{models.ASSET_TABLE + ".chapter asc", models.ASSET_TABLE + ".prefix asc"},
-			Where:   squirrel.Eq{models.ASSET_TABLE + ".course_id": course.ID},
+			OrderBy: []string{models.ASSET_TABLE_CHAPTER + " asc", models.ASSET_TABLE_PREFIX + " asc"},
+			Where:   squirrel.Eq{models.ASSET_TABLE_COURSE_ID: course.ID},
 		}
 
 		assets := []*models.Asset{}
@@ -460,8 +460,8 @@ func TestScanner_Processor(t *testing.T) {
 		require.NoError(t, err)
 
 		attachmentOptions := &database.Options{
-			OrderBy: []string{models.ATTACHMENT_TABLE + "." + models.BASE_CREATED_AT + " asc"},
-			Where:   squirrel.Eq{models.ATTACHMENT_TABLE + ".asset_ID": assets[0].ID},
+			OrderBy: []string{models.ATTACHMENT_TABLE_CREATED_AT + " asc"},
+			Where:   squirrel.Eq{models.ATTACHMENT_TABLE_ASSET_ID: assets[0].ID},
 		}
 
 		attachments := []*models.Attachment{}
@@ -527,8 +527,8 @@ func TestScanner_Processor(t *testing.T) {
 		require.NoError(t, err)
 
 		assetOptions := &database.Options{
-			OrderBy: []string{models.ASSET_TABLE + ".chapter asc", models.ASSET_TABLE + ".prefix asc"},
-			Where:   squirrel.Eq{models.ASSET_TABLE + ".course_id": course.ID},
+			OrderBy: []string{models.ASSET_TABLE_CHAPTER + " asc", models.ASSET_TABLE_PREFIX + " asc"},
+			Where:   squirrel.Eq{models.ASSET_TABLE_COURSE_ID: course.ID},
 		}
 
 		assets := []*models.Asset{}
@@ -563,7 +563,7 @@ func TestScanner_Processor(t *testing.T) {
 		require.Len(t, assets[0].Attachments, 1)
 
 		attachmentOptions := &database.Options{
-			OrderBy: []string{models.ATTACHMENT_TABLE + "." + models.BASE_CREATED_AT + " asc"},
+			OrderBy: []string{models.ATTACHMENT_TABLE_CREATED_AT + " asc"},
 		}
 
 		attachments := []*models.Attachment{}

@@ -56,12 +56,12 @@ func (dao *DAO) RefreshCourseProgress(ctx context.Context, courseID string) erro
 		StatementBuilder.
 		PlaceholderFormat(squirrel.Question).
 		Select(
-			"COUNT(DISTINCT "+models.ASSET_TABLE+".id) AS total_count",
-			"SUM(CASE WHEN "+models.ASSET_PROGRESS_TABLE+".completed THEN 1 ELSE 0 END) AS completed_count",
-			"SUM(CASE WHEN "+models.ASSET_PROGRESS_TABLE+".video_pos > 0 THEN 1 ELSE 0 END) AS started_count").
+			"COUNT(DISTINCT "+models.ASSET_TABLE_ID+") AS total_count",
+			"SUM(CASE WHEN "+models.ASSET_PROGRESS_TABLE_COMPLETED+" THEN 1 ELSE 0 END) AS completed_count",
+			"SUM(CASE WHEN "+models.ASSET_PROGRESS_TABLE_VIDEO_POS+" > 0 THEN 1 ELSE 0 END) AS started_count").
 		From(models.ASSET_TABLE).
-		LeftJoin(models.ASSET_PROGRESS_TABLE + " ON " + models.ASSET_TABLE + ".id = " + models.ASSET_PROGRESS_TABLE + ".asset_id").
-		Where(squirrel.And{squirrel.Eq{models.ASSET_TABLE + ".course_id": courseID}}).
+		LeftJoin(models.ASSET_PROGRESS_TABLE + " ON " + models.ASSET_TABLE_ID + " = " + models.ASSET_PROGRESS_TABLE_ASSET_ID).
+		Where(squirrel.And{squirrel.Eq{models.ASSET_TABLE_COURSE_ID: courseID}}).
 		ToSql()
 
 	var totalAssetCount sql.NullInt32
@@ -76,7 +76,7 @@ func (dao *DAO) RefreshCourseProgress(ctx context.Context, courseID string) erro
 
 	// Get the course progress
 	courseProgress := &models.CourseProgress{}
-	err = dao.Get(ctx, courseProgress, &database.Options{Where: squirrel.Eq{courseProgress.Table() + ".course_id": courseID}})
+	err = dao.Get(ctx, courseProgress, &database.Options{Where: squirrel.Eq{models.COURSE_PROGRESS_COURSE_ID: courseID}})
 	if err != nil {
 		return err
 	}
@@ -114,8 +114,8 @@ func (dao *DAO) PluckIDsForStartedCourses(ctx context.Context, options *database
 	}
 
 	options.Where = squirrel.And{
-		squirrel.Eq{models.COURSE_PROGRESS_TABLE + ".started": true},
-		squirrel.NotEq{models.COURSE_PROGRESS_TABLE + ".percent": 100},
+		squirrel.Eq{models.COURSE_PROGRESS_TABLE_STARTED: true},
+		squirrel.NotEq{models.COURSE_PROGRESS_TABLE_PERCENT: 100},
 	}
 
 	return dao.ListPluck(ctx, &models.CourseProgress{}, options, models.COURSE_PROGRESS_COURSE_ID)
@@ -129,7 +129,7 @@ func (dao *DAO) PluckIDsForCompletedCourses(ctx context.Context, options *databa
 		options = &database.Options{}
 	}
 
-	options.Where = squirrel.Eq{models.COURSE_PROGRESS_TABLE + ".percent": 100}
+	options.Where = squirrel.Eq{models.COURSE_PROGRESS_TABLE_PERCENT: 100}
 	return dao.ListPluck(ctx, &models.CourseProgress{}, options, models.COURSE_PROGRESS_COURSE_ID)
 }
 
@@ -141,6 +141,6 @@ func (dao *DAO) PluckIDsForNotStartedCourses(ctx context.Context, options *datab
 		options = &database.Options{}
 	}
 
-	options.Where = squirrel.Eq{models.COURSE_PROGRESS_TABLE + ".started": false}
+	options.Where = squirrel.Eq{models.COURSE_PROGRESS_TABLE_STARTED: false}
 	return dao.ListPluck(ctx, &models.CourseProgress{}, options, models.COURSE_PROGRESS_COURSE_ID)
 }

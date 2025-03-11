@@ -29,7 +29,7 @@ func TestAuth_Register(t *testing.T) {
 		require.Equal(t, http.StatusCreated, status)
 
 		user := &models.User{}
-		options := &database.Options{Where: squirrel.Eq{models.USER_TABLE + "." + models.USER_USERNAME: "test"}}
+		options := &database.Options{Where: squirrel.Eq{models.USER_TABLE_USERNAME: "test"}}
 		require.NoError(t, router.dao.Get(ctx, user, options))
 		require.NotEqual(t, "password", user.PasswordHash)
 		require.Equal(t, types.UserRoleUser, user.Role)
@@ -127,7 +127,7 @@ func TestAuth_Bootstrap(t *testing.T) {
 		require.Equal(t, http.StatusCreated, status)
 
 		user := &models.User{}
-		options := &database.Options{Where: squirrel.Eq{models.USER_TABLE + "." + models.USER_USERNAME: "test"}}
+		options := &database.Options{Where: squirrel.Eq{models.USER_TABLE_USERNAME: "test"}}
 		require.NoError(t, router.dao.Get(ctx, user, options))
 		require.NotEqual(t, "password", user.PasswordHash)
 		require.Equal(t, types.UserRoleAdmin, user.Role)

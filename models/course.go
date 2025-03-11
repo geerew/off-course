@@ -1,8 +1,6 @@
 package models
 
 import (
-	"fmt"
-
 	"github.com/geerew/off-course/utils/schema"
 	"github.com/geerew/off-course/utils/types"
 )
@@ -70,5 +68,5 @@ func (c *Course) Define(s *schema.ModelConfig) {
 	s.Relation("Progress").MatchOn(COURSE_PROGRESS_COURSE_ID)
 
 	// Joins
-	s.LeftJoin(SCAN_TABLE).On(fmt.Sprintf("%s.%s = %s.%s", COURSE_TABLE, BASE_ID, SCAN_TABLE, SCAN_COURSE_ID))
+	s.LeftJoin(SCAN_TABLE).On(COURSE_TABLE_ID + " = " + SCAN_TABLE_COURSE_ID)
 }

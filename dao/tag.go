@@ -22,7 +22,7 @@ func (dao *DAO) CreateTag(ctx context.Context, tag *models.Tag) error {
 	// Check if the tag already exists
 	options := &database.Options{
 		Where: squirrel.Expr(
-			fmt.Sprintf("LOWER(%s.%s) = LOWER(?)", models.TAG_TABLE, models.TAG_TAG),
+			fmt.Sprintf("LOWER(%s) = LOWER(?)", models.TAG_TABLE_TAG),
 			tag.Tag,
 		),
 	}

@@ -221,7 +221,7 @@ func (api coursesAPI) getAssets(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
-	options.Where = squirrel.Eq{models.ASSET_TABLE + "." + models.ASSET_COURSE_ID: id}
+	options.Where = squirrel.Eq{models.ASSET_TABLE_COURSE_ID: id}
 
 	assets := []*models.Asset{}
 	err = api.dao.List(c.UserContext(), &assets, options)
@@ -248,12 +248,12 @@ func (api coursesAPI) getAsset(c *fiber.Ctx) error {
 	// Join the course table
 	options.AdditionalJoins = append(
 		options.AdditionalJoins,
-		models.COURSE_TABLE+" ON "+models.ASSET_TABLE+"."+models.ASSET_COURSE_ID+" = "+models.COURSE_TABLE+"."+models.BASE_ID,
+		models.COURSE_TABLE+" ON "+models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID,
 	)
 
 	options.Where = squirrel.And{
-		squirrel.Eq{models.ASSET_TABLE + "." + models.BASE_ID: assetId},
-		squirrel.Eq{models.COURSE_TABLE + "." + models.BASE_ID: id},
+		squirrel.Eq{models.ASSET_TABLE_ID: assetId},
+		squirrel.Eq{models.COURSE_TABLE_ID: id},
 	}
 
 	asset := &models.Asset{}
@@ -280,12 +280,12 @@ func (api coursesAPI) serveAsset(c *fiber.Ctx) error {
 	// Join the course table
 	options.AdditionalJoins = append(
 		options.AdditionalJoins,
-		models.COURSE_TABLE+" ON "+models.ASSET_TABLE+"."+models.ASSET_COURSE_ID+" = "+models.COURSE_TABLE+"."+models.BASE_ID,
+		models.COURSE_TABLE+" ON "+models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID,
 	)
 
 	options.Where = squirrel.And{
-		squirrel.Eq{models.ASSET_TABLE + "." + models.BASE_ID: assetId},
-		squirrel.Eq{models.COURSE_TABLE + "." + models.BASE_ID: id},
+		squirrel.Eq{models.ASSET_TABLE_ID: assetId},
+		squirrel.Eq{models.COURSE_TABLE_ID: id},
 	}
 
 	asset := &models.Asset{}
@@ -361,13 +361,13 @@ func (api coursesAPI) getAttachments(c *fiber.Ctx) error {
 	// Join the asset and course tables to ensure the asset belongs to the course
 	options.AdditionalJoins = append(
 		options.AdditionalJoins,
-		models.ASSET_TABLE+" ON "+models.ATTACHMENT_TABLE+"."+models.ATTACHMENT_ASSET_ID+" = "+models.ASSET_TABLE+"."+models.BASE_ID,
-		models.COURSE_TABLE+" ON "+models.ASSET_TABLE+"."+models.ASSET_COURSE_ID+" = "+models.COURSE_TABLE+"."+models.BASE_ID,
+		models.ASSET_TABLE+" ON "+models.ATTACHMENT_TABLE_ASSET_ID+" = "+models.ASSET_TABLE_ID,
+		models.COURSE_TABLE+" ON "+models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID,
 	)
 
 	options.Where = squirrel.And{
-		squirrel.Eq{models.ATTACHMENT_TABLE + "." + models.ATTACHMENT_ASSET_ID: assetId},
-		squirrel.Eq{models.COURSE_TABLE + "." + models.BASE_ID: id},
+		squirrel.Eq{models.ATTACHMENT_TABLE_ASSET_ID: assetId},
+		squirrel.Eq{models.COURSE_TABLE_ID: id},
 	}
 
 	attachments := []*models.Attachment{}
@@ -396,14 +396,14 @@ func (api coursesAPI) getAttachment(c *fiber.Ctx) error {
 	// Join the asset and course tables
 	options.AdditionalJoins = append(
 		options.AdditionalJoins,
-		models.ASSET_TABLE+" ON "+models.ATTACHMENT_TABLE+"."+models.ATTACHMENT_ASSET_ID+" = "+models.ASSET_TABLE+"."+models.BASE_ID,
-		models.COURSE_TABLE+" ON "+models.ASSET_TABLE+"."+models.ASSET_COURSE_ID+" = "+models.COURSE_TABLE+"."+models.BASE_ID,
+		models.ASSET_TABLE+" ON "+models.ATTACHMENT_TABLE_ASSET_ID+" = "+models.ASSET_TABLE_ID,
+		models.COURSE_TABLE+" ON "+models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID,
 	)
 
 	options.Where = squirrel.And{
-		squirrel.Eq{models.ATTACHMENT_TABLE + "." + models.BASE_ID: attachmentId},
-		squirrel.Eq{models.ASSET_TABLE + "." + models.BASE_ID: assetId},
-		squirrel.Eq{models.COURSE_TABLE + "." + models.BASE_ID: id},
+		squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachmentId},
+		squirrel.Eq{models.ASSET_TABLE_ID: assetId},
+		squirrel.Eq{models.COURSE_TABLE_ID: id},
 	}
 
 	attachment := &models.Attachment{}
@@ -431,14 +431,14 @@ func (api coursesAPI) serveAttachment(c *fiber.Ctx) error {
 	// Join the asset and course tables
 	options.AdditionalJoins = append(
 		options.AdditionalJoins,
-		models.ASSET_TABLE+" ON "+models.ATTACHMENT_TABLE+"."+models.ATTACHMENT_ASSET_ID+" = "+models.ASSET_TABLE+"."+models.BASE_ID,
-		models.COURSE_TABLE+" ON "+models.ASSET_TABLE+"."+models.ASSET_COURSE_ID+" = "+models.COURSE_TABLE+"."+models.BASE_ID,
+		models.ASSET_TABLE+" ON "+models.ATTACHMENT_TABLE_ASSET_ID+" = "+models.ASSET_TABLE_ID,
+		models.COURSE_TABLE+" ON "+models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID,
 	)
 
 	options.Where = squirrel.And{
-		squirrel.Eq{models.ATTACHMENT_TABLE + "." + models.BASE_ID: attachmentId},
-		squirrel.Eq{models.ASSET_TABLE + "." + models.BASE_ID: assetId},
-		squirrel.Eq{models.COURSE_TABLE + "." + models.BASE_ID: id},
+		squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachmentId},
+		squirrel.Eq{models.ASSET_TABLE_ID: assetId},
+		squirrel.Eq{models.COURSE_TABLE_ID: id},
 	}
 
 	attachment := &models.Attachment{}
@@ -466,7 +466,7 @@ func (api coursesAPI) getTags(c *fiber.Ctx) error {
 
 	options := &database.Options{
 		OrderBy: defaultTagsOrderBy,
-		Where:   squirrel.Eq{models.COURSE_TAG_TABLE + "." + models.COURSE_TAG_COURSE_ID: id},
+		Where:   squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: id},
 	}
 
 	tags := []*models.CourseTag{}
@@ -538,7 +538,7 @@ func coursesAfterParseHook(parsed *queryparser.QueryResult, options *database.Op
 	if foundProgress, ok := parsed.FoundFilters["progress"]; ok && foundProgress {
 		// TODO: Make a LEFT JOIN for when courses do not have progress
 		options.AdditionalJoins = append(options.AdditionalJoins,
-			models.COURSE_PROGRESS_TABLE+" ON "+models.COURSE_PROGRESS_TABLE+"."+models.COURSE_PROGRESS_COURSE_ID+" = "+models.COURSE_TABLE+"."+models.BASE_ID,
+			models.COURSE_PROGRESS_TABLE+" ON "+models.COURSE_PROGRESS_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID,
 		)
 	}
 }
@@ -549,7 +549,7 @@ func coursesAfterParseHook(parsed *queryparser.QueryResult, options *database.Op
 func coursesWhereBuilder(expr queryparser.QueryExpr) squirrel.Sqlizer {
 	switch node := expr.(type) {
 	case *queryparser.ValueExpr:
-		return squirrel.Like{models.COURSE_TABLE + "." + models.COURSE_TITLE: "%" + node.Value + "%"}
+		return squirrel.Like{models.COURSE_TABLE_TITLE: "%" + node.Value + "%"}
 	case *queryparser.FilterExpr:
 		switch node.Key {
 		case "available":
@@ -557,20 +557,20 @@ func coursesWhereBuilder(expr queryparser.QueryExpr) squirrel.Sqlizer {
 			if err != nil {
 				return squirrel.Expr("1=0")
 			}
-			return squirrel.Eq{models.COURSE_TABLE + "." + models.COURSE_AVAILABLE: value}
+			return squirrel.Eq{models.COURSE_TABLE_AVAILABLE: value}
 		case "tag":
 			return courseTagsBuilder([]string{node.Value})
 		case "progress":
 			switch strings.ToLower(node.Value) {
 			case "not started":
-				return squirrel.Eq{models.COURSE_PROGRESS_TABLE + "." + models.COURSE_PROGRESS_STARTED: false}
+				return squirrel.Eq{models.COURSE_PROGRESS_TABLE_STARTED: false}
 			case "started":
 				return squirrel.And{
-					squirrel.Eq{models.COURSE_PROGRESS_TABLE + "." + models.COURSE_PROGRESS_STARTED: true},
-					squirrel.NotEq{models.COURSE_PROGRESS_TABLE + "." + models.COURSE_PROGRESS_PERCENT: 100},
+					squirrel.Eq{models.COURSE_PROGRESS_TABLE_STARTED: true},
+					squirrel.NotEq{models.COURSE_PROGRESS_TABLE_PERCENT: 100},
 				}
 			case "completed":
-				return squirrel.Eq{models.COURSE_PROGRESS_TABLE + "." + models.COURSE_PROGRESS_PERCENT: 100}
+				return squirrel.Eq{models.COURSE_PROGRESS_TABLE_PERCENT: 100}
 			default:
 				return nil
 			}
@@ -628,21 +628,16 @@ func courseTagsBuilder(tags []string) squirrel.Sqlizer {
 	baseQuery := squirrel.
 		Select("1").
 		From(models.COURSE_TAG_TABLE).
-		Join(fmt.Sprintf("%s ON %s.%s = %s.%s",
-			models.TAG_TABLE,
-			models.TAG_TABLE, models.BASE_ID,
-			models.COURSE_TAG_TABLE, models.COURSE_TAG_TAG_ID)).
-		Where(fmt.Sprintf("%s.%s = %s.%s",
-			models.COURSE_TAG_TABLE, models.COURSE_TAG_COURSE_ID,
-			models.COURSE_TABLE, models.BASE_ID))
+		Join(models.TAG_TABLE + " ON " + models.TAG_TABLE_ID + " = " + models.COURSE_TAG_TABLE_TAG_ID).
+		Where(models.COURSE_TAG_TABLE_COURSE_ID + " = " + models.COURSE_TABLE_ID)
 
 	if len(tags) == 1 {
-		baseQuery = baseQuery.Where(squirrel.Eq{models.TAG_TABLE + "." + models.TAG_TAG: tags[0]})
+		baseQuery = baseQuery.Where(squirrel.Eq{models.TAG_TABLE_TAG: tags[0]})
 	} else if len(tags) > 1 {
 		baseQuery = baseQuery.
-			Where(squirrel.Eq{models.TAG_TABLE + ".tag": tags}).
-			GroupBy(models.COURSE_TAG_TABLE+".course_id").
-			Having("COUNT(DISTINCT "+models.TAG_TABLE+".tag) = ?", len(tags))
+			Where(squirrel.Eq{models.TAG_TABLE_TAG: tags}).
+			GroupBy(models.COURSE_TAG_TABLE_COURSE_ID).
+			Having("COUNT(DISTINCT "+models.TAG_TABLE_TAG+") = ?", len(tags))
 	}
 
 	return squirrel.Expr("EXISTS (?)", baseQuery)

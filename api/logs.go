@@ -82,13 +82,13 @@ func logsAfterParseHook(parsed *queryparser.QueryResult, options *database.Optio
 func logsWhereBuilder(expr queryparser.QueryExpr) squirrel.Sqlizer {
 	switch node := expr.(type) {
 	case *queryparser.ValueExpr:
-		return squirrel.Like{models.LOG_TABLE + "." + models.LOG_MESSAGE: "%" + node.Value + "%"}
+		return squirrel.Like{models.LOG_TABLE_MESSAGE: "%" + node.Value + "%"}
 	case *queryparser.FilterExpr:
 		switch node.Key {
 		case "level":
-			return squirrel.Eq{models.LOG_TABLE + "." + models.LOG_LEVEL: node.Value}
+			return squirrel.Eq{models.LOG_TABLE_LEVEL: node.Value}
 		case "type":
-			return squirrel.Eq{"JSON_EXTRACT(" + models.LOG_TABLE + "." + models.LOG_DATA + ", '$.type')": node.Value}
+			return squirrel.Eq{"JSON_EXTRACT(" + models.LOG_TABLE_DATA + ", '$.type')": node.Value}
 		default:
 			return nil
 		}

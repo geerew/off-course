@@ -74,7 +74,7 @@ func TestTags_GetTags(t *testing.T) {
 		}
 
 		// CREATED_AT ASC
-		q := "sort:\"" + models.TAG_TABLE + "." + models.BASE_CREATED_AT + " asc\""
+		q := "sort:\"" + models.TAG_TABLE_CREATED_AT + " asc\""
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -86,7 +86,7 @@ func TestTags_GetTags(t *testing.T) {
 		require.Equal(t, "PHP", tagsResp[4].Tag)
 
 		// CREATED_AT DESC
-		q = "sort:\"" + models.TAG_TABLE + "." + models.BASE_CREATED_AT + " desc\""
+		q = "sort:\"" + models.TAG_TABLE_CREATED_AT + " desc\""
 		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -190,7 +190,7 @@ func TestTags_GetTags(t *testing.T) {
 
 		// Get the first page (10 tags)
 		params := url.Values{
-			"q":                          {"sort:\"" + models.TAG_TABLE + "." + models.TAG_TAG + " asc\""},
+			"q":                          {"sort:\"" + models.TAG_TABLE_TAG + " asc\""},
 			pagination.PageQueryParam:    {"1"},
 			pagination.PerPageQueryParam: {"10"},
 		}
@@ -207,7 +207,7 @@ func TestTags_GetTags(t *testing.T) {
 
 		// Get the second page (7 tags)
 		params = url.Values{
-			"q":                          {"sort:\"" + models.TAG_TABLE + "." + models.TAG_TAG + " asc\""},
+			"q":                          {"sort:\"" + models.TAG_TABLE_TAG + " asc\""},
 			pagination.PageQueryParam:    {"2"},
 			pagination.PerPageQueryParam: {"10"},
 		}
@@ -277,7 +277,7 @@ func TestTags_GetTagNames(t *testing.T) {
 		}
 
 		// CREATED_AT ASC
-		q := "sort:\"" + models.TAG_TABLE + "." + models.BASE_CREATED_AT + " asc\""
+		q := "sort:\"" + models.TAG_TABLE_CREATED_AT + " asc\""
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/names?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -289,7 +289,7 @@ func TestTags_GetTagNames(t *testing.T) {
 		require.Equal(t, "PHP", resp[4])
 
 		// CREATED_AT DESC
-		q = "sort:\"" + models.TAG_TABLE + "." + models.BASE_CREATED_AT + " desc\""
+		q = "sort:\"" + models.TAG_TABLE_CREATED_AT + " desc\""
 		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/names?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)

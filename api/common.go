@@ -20,12 +20,12 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 var (
-	defaultCoursesOrderBy                = []string{models.COURSE_TABLE + "." + models.BASE_CREATED_AT + " desc"}
-	defaultCourseAssetsOrderBy           = []string{models.ASSET_TABLE + "." + models.ASSET_CHAPTER + " asc", models.ASSET_TABLE + "." + models.ASSET_PREFIX + " asc"}
-	defaultCourseAssetAttachmentsOrderBy = []string{models.ATTACHMENT_TABLE + "." + models.ATTACHMENT_TITLE + " asc"}
-	defaultTagsOrderBy                   = []string{models.TAG_TABLE + "." + models.TAG_TAG + " asc"}
-	defaultUsersOrderBy                  = []string{models.USER_TABLE + "." + models.BASE_CREATED_AT + " desc"}
-	defaultLogsOrderBy                   = []string{models.LOG_TABLE + "." + models.BASE_CREATED_AT + " desc"}
+	defaultCoursesOrderBy                = []string{models.COURSE_TABLE_CREATED_AT + " desc"}
+	defaultCourseAssetsOrderBy           = []string{models.ASSET_TABLE_CHAPTER + " asc", models.ASSET_TABLE_PREFIX + " asc"}
+	defaultCourseAssetAttachmentsOrderBy = []string{models.ATTACHMENT_TABLE_TITLE + " asc"}
+	defaultTagsOrderBy                   = []string{models.TAG_TABLE_TAG + " asc"}
+	defaultUsersOrderBy                  = []string{models.USER_TABLE_CREATED_AT + " desc"}
+	defaultLogsOrderBy                   = []string{models.LOG_TABLE_CREATED_AT + " desc"}
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

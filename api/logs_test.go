@@ -66,7 +66,7 @@ func TestLogs_GetLogs(t *testing.T) {
 
 		require.NoError(t, router.logDao.WriteLog(ctx, &models.Log{Data: map[string]any{"type": types.LogTypeCourseScan.String()}, Level: 8, Message: "log 4"}))
 
-		defaultSort := " sort:\"" + models.LOG_TABLE + "." + models.BASE_CREATED_AT + " asc\""
+		defaultSort := " sort:\"" + models.LOG_TABLE_CREATED_AT + " asc\""
 
 		// No query
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/logs/", nil))

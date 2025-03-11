@@ -164,7 +164,7 @@ func (r *Router) createSessionStore() {
 // an admin user
 func (r *Router) initBootstrap() {
 	options := &database.Options{
-		Where: squirrel.Eq{models.USER_TABLE + "." + models.USER_ROLE: types.UserRoleAdmin},
+		Where: squirrel.Eq{models.USER_TABLE_ROLE: types.UserRoleAdmin},
 	}
 	count, err := r.dao.Count(context.Background(), &models.User{}, options)
 	if err != nil {

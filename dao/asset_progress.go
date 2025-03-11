@@ -28,12 +28,12 @@ func (dao *DAO) CreateOrUpdateAssetProgress(ctx context.Context, courseId string
 		// Join the course table
 		options.AdditionalJoins = append(
 			options.AdditionalJoins,
-			models.COURSE_TABLE+" ON "+models.ASSET_TABLE+"."+models.ASSET_COURSE_ID+" = "+models.COURSE_TABLE+"."+models.BASE_ID,
+			models.COURSE_TABLE+" ON "+models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID,
 		)
 
 		options.Where = squirrel.And{
-			squirrel.Eq{models.ASSET_TABLE + "." + models.BASE_ID: assetProgress.AssetID},
-			squirrel.Eq{models.COURSE_TABLE + "." + models.BASE_ID: courseId},
+			squirrel.Eq{models.ASSET_TABLE_ID: assetProgress.AssetID},
+			squirrel.Eq{models.COURSE_TABLE_ID: courseId},
 		}
 
 		asset := &models.Asset{}

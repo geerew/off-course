@@ -1,8 +1,6 @@
 package models
 
 import (
-	"fmt"
-
 	"github.com/geerew/off-course/utils/schema"
 )
 
@@ -54,7 +52,7 @@ func (ct *CourseTag) Define(c *schema.ModelConfig) {
 	c.Field("Course").JoinTable(COURSE_TABLE).Column(COURSE_TITLE).Alias("course_title")
 	c.Field("Tag").JoinTable(TAG_TABLE).Column(TAG_TAG).Alias("tag_tag")
 
-	c.LeftJoin(COURSE_TABLE).On(fmt.Sprintf("%s.%s = %s.%s", COURSE_TAG_TABLE, COURSE_TAG_COURSE_ID, COURSE_TABLE, BASE_ID))
-	c.LeftJoin(TAG_TABLE).On(fmt.Sprintf("%s.%s = %s.%s", COURSE_TAG_TABLE, COURSE_TAG_TAG_ID, TAG_TABLE, BASE_ID))
+	c.LeftJoin(COURSE_TABLE).On(COURSE_TAG_TABLE_COURSE_ID + " = " + COURSE_TABLE_ID)
+	c.LeftJoin(TAG_TABLE).On(COURSE_TAG_TABLE_TAG_ID + " = " + TAG_TABLE_ID)
 
 }
