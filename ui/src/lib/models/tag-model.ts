@@ -56,6 +56,6 @@ export type TagPaginationModel = InferOutput<typeof TagPaginationSchema>;
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export type TagReqParams = PaginationReqParams & {
-	orderBy?: string;
+	q?: string;
 	filter?: string;
 };

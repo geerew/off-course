@@ -30,7 +30,7 @@
 	async function fetchTags(): Promise<void> {
 		try {
 			const data = await GetTags({
-				orderBy: 'tag',
+				q: 'sort:"tags.tag asc"',
 				page: paginationPage,
 				perPage: paginationPerPage
 			});

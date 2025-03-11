@@ -83,5 +83,5 @@ export type UserPaginationModel = InferOutput<typeof UserPaginationSchema>;
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export type UserReqParams = PaginationReqParams & {
-	orderBy?: string;
+	q?: string;
 };

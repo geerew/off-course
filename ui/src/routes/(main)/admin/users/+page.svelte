@@ -37,7 +37,7 @@
 	async function fetchUsers(): Promise<void> {
 		try {
 			const data = await GetUsers({
-				orderBy: 'username',
+				q: 'sort:"users.username asc"',
 				page: paginationPage,
 				perPage: paginationPerPage
 			});

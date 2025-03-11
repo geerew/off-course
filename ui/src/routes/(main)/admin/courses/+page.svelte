@@ -43,7 +43,7 @@
 			if (doScan) await scanMonitor.fetch();
 
 			const data = await GetCourses({
-				orderBy: 'title',
+				q: 'sort:"courses.created_at desc"',
 				page: paginationPage,
 				perPage: paginationPerPage
 			});

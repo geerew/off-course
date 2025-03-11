@@ -90,14 +90,6 @@
 		filteredTags = filterTags(inputDebounced.current);
 	});
 
-	// As the inputValue changes, update the first entry in the filteredTags list, ignoring
-	// the debounce logic
-	$effect(() => {
-		if (filteredTags.length > 0) {
-			filteredTags[0] = inputValue;
-		}
-	});
-
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Load all available tags. If this is a single course, load the existing tags for that course

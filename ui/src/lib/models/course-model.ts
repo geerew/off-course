@@ -73,5 +73,6 @@ export type CoursePaginationModel = InferOutput<typeof CoursePaginationSchema>;
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export type CourseReqParams = PaginationReqParams & {
-	orderBy?: string;
+	q?: string;
+	available?: boolean;
 };

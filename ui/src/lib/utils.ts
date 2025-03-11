@@ -1,13 +1,7 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
-/**
- * Combines class names using `clsx` and then merges them using `twMerge`.
- *
- * @param {...ClassValue[]} inputs - The list of class values to be joined and merged.
- * @returns {string} A string of merged class values.
- *
- */
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
@@ -31,4 +25,11 @@ export function buildQueryString(params: Record<string, string | number | undefi
 	});
 
 	return searchParams.toString();
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+export function remCalc(px: number | string, base: number = 16): number {
+	const tempPx = `${px}`.replace('px', '');
+	return (1 / base) * parseInt(tempPx);
 }
