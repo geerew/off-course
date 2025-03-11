@@ -72,7 +72,7 @@ func (a *Asset) Define(s *schema.ModelConfig) {
 
 	// Common fields
 	s.Field("CourseID").Column(ASSET_COURSE_ID).NotNull()
-	s.Field("Title").Column(COURSE_TITLE).NotNull().Mutable()
+	s.Field("Title").Column(ASSET_TITLE).NotNull().Mutable()
 	s.Field("Prefix").Column(ASSET_PREFIX).Mutable()
 	s.Field("Chapter").Column(ASSET_CHAPTER).Mutable()
 	s.Field("Type").Column(ASSET_TYPE).NotNull().Mutable()

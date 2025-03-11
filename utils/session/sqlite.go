@@ -156,8 +156,8 @@ func (s *SqliteStorage) gcTicker() {
 	for t := range ticker.C {
 		o := &database.Options{
 			Where: squirrel.And{
-				squirrel.LtOrEq{models.SESSION_EXPIRES: t.Unix()},
-				squirrel.NotEq{models.SESSION_EXPIRES: 0}},
+				squirrel.LtOrEq{models.SESSION_TABLE_EXPIRES: t.Unix()},
+				squirrel.NotEq{models.SESSION_TABLE_EXPIRES: 0}},
 		}
 		s.dao.Delete(ctx, &models.Session{}, o)
 	}

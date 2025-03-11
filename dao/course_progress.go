@@ -76,7 +76,7 @@ func (dao *DAO) RefreshCourseProgress(ctx context.Context, courseID string) erro
 
 	// Get the course progress
 	courseProgress := &models.CourseProgress{}
-	err = dao.Get(ctx, courseProgress, &database.Options{Where: squirrel.Eq{models.COURSE_PROGRESS_COURSE_ID: courseID}})
+	err = dao.Get(ctx, courseProgress, &database.Options{Where: squirrel.Eq{models.COURSE_PROGRESS_TABLE_COURSE_ID: courseID}})
 	if err != nil {
 		return err
 	}
@@ -102,45 +102,4 @@ func (dao *DAO) RefreshCourseProgress(ctx context.Context, courseID string) erro
 	// Update the course progress
 	_, err = dao.Update(ctx, courseProgress)
 	return err
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// PluckIDsForStartedCourses returns a list of course IDs for courses that have been started but not
-// completed
-func (dao *DAO) PluckIDsForStartedCourses(ctx context.Context, options *database.Options) ([]string, error) {
-	if options == nil {
-		options = &database.Options{}
-	}
-
-	options.Where = squirrel.And{
-		squirrel.Eq{models.COURSE_PROGRESS_TABLE_STARTED: true},
-		squirrel.NotEq{models.COURSE_PROGRESS_TABLE_PERCENT: 100},
-	}
-
-	return dao.ListPluck(ctx, &models.CourseProgress{}, options, models.COURSE_PROGRESS_COURSE_ID)
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// PluckIDsForCompletedCourses returns a list of course IDs for courses that have been completed
-func (dao *DAO) PluckIDsForCompletedCourses(ctx context.Context, options *database.Options) ([]string, error) {
-	if options == nil {
-		options = &database.Options{}
-	}
-
-	options.Where = squirrel.Eq{models.COURSE_PROGRESS_TABLE_PERCENT: 100}
-	return dao.ListPluck(ctx, &models.CourseProgress{}, options, models.COURSE_PROGRESS_COURSE_ID)
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// PluckNotStartedCourses returns a list of course IDs for courses that have not been started
-func (dao *DAO) PluckIDsForNotStartedCourses(ctx context.Context, options *database.Options) ([]string, error) {
-	if options == nil {
-		options = &database.Options{}
-	}
-
-	options.Where = squirrel.Eq{models.COURSE_PROGRESS_TABLE_STARTED: false}
-	return dao.ListPluck(ctx, &models.CourseProgress{}, options, models.COURSE_PROGRESS_COURSE_ID)
 }

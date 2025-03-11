@@ -2,14 +2,12 @@ package dao
 
 import (
 	"database/sql"
-	"fmt"
 	"testing"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
-	"github.com/geerew/off-course/utils/security"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/stretchr/testify/require"
 )
@@ -115,59 +113,6 @@ func Test_RefreshCourseProgress(t *testing.T) {
 		dao, ctx := setup(t)
 		require.ErrorIs(t, dao.RefreshCourseProgress(ctx, ""), utils.ErrInvalidId)
 	})
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-func Test_PluckIDsForStartedCourses(t *testing.T) {
-	dao, ctx := setup(t)
-
-	courses := []*models.Course{}
-	for i := range 3 {
-		course := &models.Course{Title: fmt.Sprintf("course %d", i), Path: fmt.Sprintf("/course %d", i)}
-		require.NoError(t, dao.CreateCourse(ctx, course))
-		courses = append(courses, course)
-	}
-
-	assets := []*models.Asset{}
-	for i, c := range courses {
-		asset := &models.Asset{
-			CourseID: c.ID,
-			Title:    "asset 1",
-			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     fmt.Sprintf("/course %d/chapter 1/01 asset 1.mp4", i+1),
-			Hash:     security.RandomString(64),
-		}
-
-		require.NoError(t, dao.CreateAsset(ctx, asset))
-		assets = append(assets, asset)
-	}
-
-	// Mark course 1 as started
-	require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, courses[0].ID, &models.AssetProgress{AssetID: assets[0].ID, VideoPos: 10}))
-
-	// Mark course 2 as completed
-	require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, courses[1].ID, &models.AssetProgress{AssetID: assets[1].ID, VideoPos: 10, Completed: true}))
-
-	// Find started courses
-	ids, err := dao.PluckIDsForStartedCourses(ctx, nil)
-	require.NoError(t, err)
-	require.Len(t, ids, 1)
-	require.Equal(t, courses[0].ID, ids[0])
-
-	// Find completed courses
-	ids, err = dao.PluckIDsForCompletedCourses(ctx, nil)
-	require.NoError(t, err)
-	require.Len(t, ids, 1)
-	require.Equal(t, courses[1].ID, ids[0])
-
-	// Find not started courses
-	ids, err = dao.PluckIDsForNotStartedCourses(ctx, nil)
-	require.NoError(t, err)
-	require.Len(t, ids, 1)
-	require.Equal(t, courses[2].ID, ids[0])
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
