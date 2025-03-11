@@ -28,6 +28,13 @@ var (
 	SCAN_COURSE_ID   = "course_id"
 	SCAN_STATUS      = "status"
 	SCAN_COURSE_PATH = "path"
+
+	SCAN_TABLE_ID          = SCAN_TABLE + "." + BASE_ID
+	SCAN_TABLE_CREATED_AT  = SCAN_TABLE + "." + BASE_CREATED_AT
+	SCAN_TABLE_UPDATED_AT  = SCAN_TABLE + "." + BASE_UPDATED_AT
+	SCAN_TABLE_COURSE_ID   = SCAN_TABLE + "." + SCAN_COURSE_ID
+	SCAN_TABLE_STATUS      = SCAN_TABLE + "." + SCAN_STATUS
+	SCAN_TABLE_COURSE_PATH = SCAN_TABLE + "." + SCAN_COURSE_PATH
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

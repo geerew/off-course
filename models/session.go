@@ -22,6 +22,11 @@ var (
 	SESSION_DATA    = "data"
 	SESSION_EXPIRES = "expires"
 	SESSION_USER_ID = "user_id"
+
+	SESSION_TABLE_ID      = SESSION_TABLE + "." + SESSION_ID
+	SESSION_TABLE_DATA    = SESSION_TABLE + "." + SESSION_DATA
+	SESSION_TABLE_EXPIRES = SESSION_TABLE + "." + SESSION_EXPIRES
+	SESSION_TABLE_USER_ID = SESSION_TABLE + "." + SESSION_USER_ID
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

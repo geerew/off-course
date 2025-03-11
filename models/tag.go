@@ -18,6 +18,11 @@ type Tag struct {
 var (
 	TAG_TABLE = "tags"
 	TAG_TAG   = "tag"
+
+	TAG_TABLE_ID         = TAG_TABLE + "." + BASE_ID
+	TAG_TABLE_CREATED_AT = TAG_TABLE + "." + BASE_CREATED_AT
+	TAG_TABLE_UPDATED_AT = TAG_TABLE + "." + BASE_UPDATED_AT
+	TAG_TABLE_TAG        = TAG_TABLE + "." + TAG_TAG
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
