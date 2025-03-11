@@ -4,8 +4,11 @@ import (
 	"database/sql"
 	"strings"
 
+	"github.com/Masterminds/squirrel"
+	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/auth"
+	"github.com/geerew/off-course/utils/queryparser"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
 )
@@ -37,7 +40,13 @@ func (r *Router) initUserRoutes() {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api userAPI) getUsers(c *fiber.Ctx) error {
-	options, err := optionsBuilder(c, builderOptions{DefaultOrderBy: defaultUsersOrderBy, Paginate: true})
+	builderOptions := builderOptions{
+		DefaultOrderBy: defaultUsersOrderBy,
+		Paginate:       true,
+		AllowedFilters: []string{"role"},
+		AfterParseHook: usersAfterParseHook,
+	}
+	options, err := optionsBuilder(c, builderOptions)
 	if err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
@@ -190,4 +199,50 @@ func (api userAPI) deleteUserSession(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusNoContent).Send(nil)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// usersAfterParseHook builds the database.Options.Where based on the query expression
+func usersAfterParseHook(parsed *queryparser.QueryResult, options *database.Options) {
+	options.Where = usersWhereBuilder(parsed.Expr)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// usersWhereBuilder builds a squirrel.Sqlizer, for use in a WHERE clause
+func usersWhereBuilder(expr queryparser.QueryExpr) squirrel.Sqlizer {
+	switch node := expr.(type) {
+	case *queryparser.ValueExpr:
+		return squirrel.Or{
+			squirrel.Like{"LOWER(" + models.USER_TABLE_USERNAME + ")": "%" + node.Value + "%"},
+			squirrel.Like{"LOWER(" + models.USER_TABLE_DISPLAY_NAME + ")": "%" + node.Value + "%"},
+		}
+	case *queryparser.FilterExpr:
+		switch node.Key {
+		case "role":
+			return squirrel.Eq{models.USER_TABLE_ROLE: node.Value}
+
+		default:
+			return nil
+		}
+	case *queryparser.AndExpr:
+		var andSlice []squirrel.Sqlizer
+		for _, child := range node.Children {
+			andSlice = append(andSlice, usersWhereBuilder(child))
+		}
+
+		return squirrel.And(andSlice)
+	case *queryparser.OrExpr:
+		var orSlice []squirrel.Sqlizer
+		for _, child := range node.Children {
+			orSlice = append(orSlice, usersWhereBuilder(child))
+		}
+
+		return squirrel.Or(orSlice)
+	default:
+		return nil
+	}
 }

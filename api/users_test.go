@@ -144,6 +144,74 @@ func TestUsers_GetUsers(t *testing.T) {
 		require.Equal(t, users[16].ID, userResp[6].ID)
 	})
 
+	t.Run("200 (filter)", func(t *testing.T) {
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+
+		defaultSort := " sort:\"" + models.USER_TABLE_USERNAME + " asc\""
+
+		users := []*models.User{}
+		for i := range 5 {
+			role := types.UserRoleUser
+			if i%2 == 0 {
+				role = types.UserRoleAdmin
+			}
+
+			user := &models.User{
+				Username:     fmt.Sprintf("user %d", i+1),
+				DisplayName:  fmt.Sprintf("User %d", i+1),
+				PasswordHash: security.RandomString(10),
+				Role:         role,
+			}
+			require.NoError(t, router.dao.CreateUser(ctx, user))
+			users = append(users, user)
+		}
+
+		// No filter
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, _ := unmarshalHelper[userResponse](t, body)
+		require.Equal(t, 5, int(paginationResp.TotalItems))
+		require.Len(t, paginationResp.Items, 5)
+
+		// Username
+		q := "user 1 OR user 4 " + defaultSort
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/?q="+url.QueryEscape(q), nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, usersResp := unmarshalHelper[userResponse](t, body)
+		require.Equal(t, 2, int(paginationResp.TotalItems))
+		require.Len(t, paginationResp.Items, 2)
+		require.Equal(t, users[0].ID, usersResp[0].ID)
+		require.Equal(t, users[3].ID, usersResp[1].ID)
+
+		// Role
+		q = "role:admin " + defaultSort
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/?q="+url.QueryEscape(q), nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, usersResp = unmarshalHelper[userResponse](t, body)
+		require.Equal(t, 3, int(paginationResp.TotalItems))
+		require.Len(t, paginationResp.Items, 3)
+		require.Equal(t, users[0].ID, usersResp[0].ID)
+		require.Equal(t, users[2].ID, usersResp[1].ID)
+		require.Equal(t, users[4].ID, usersResp[2].ID)
+
+		// Complex filter
+		q = "user 1 OR user 4 AND role:admin " + defaultSort
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/?q="+url.QueryEscape(q), nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, usersResp = unmarshalHelper[userResponse](t, body)
+		require.Equal(t, 1, int(paginationResp.TotalItems))
+		require.Len(t, paginationResp.Items, 1)
+		require.Equal(t, users[0].ID, usersResp[0].ID)
+	})
+
 	t.Run("403 (not admin)", func(t *testing.T) {
 		router, _ := setup(t, "user", types.UserRoleUser)
 
