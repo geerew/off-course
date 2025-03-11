@@ -13,7 +13,7 @@ import (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // CreateOrUpdateAssetProgress creates/updates an asset progress and refreshes course progress
-func (dao *DAO) CreateOrUpdateAssetProgress(ctx context.Context, assetProgress *models.AssetProgress) error {
+func (dao *DAO) CreateOrUpdateAssetProgress(ctx context.Context, courseId string, assetProgress *models.AssetProgress) error {
 	if assetProgress == nil {
 		return utils.ErrNilPtr
 	}
@@ -23,11 +23,24 @@ func (dao *DAO) CreateOrUpdateAssetProgress(ctx context.Context, assetProgress *
 			assetProgress.VideoPos = 0
 		}
 
+		options := &database.Options{}
+
+		// Join the course table
+		options.AdditionalJoins = append(
+			options.AdditionalJoins,
+			models.COURSE_TABLE+" ON "+models.ASSET_TABLE+"."+models.ASSET_COURSE_ID+" = "+models.COURSE_TABLE+"."+models.BASE_ID,
+		)
+
+		options.Where = squirrel.And{
+			squirrel.Eq{models.ASSET_TABLE + "." + models.BASE_ID: assetProgress.AssetID},
+			squirrel.Eq{models.COURSE_TABLE + "." + models.BASE_ID: courseId},
+		}
+
 		asset := &models.Asset{}
 		err := dao.Get(
 			txCtx,
 			asset,
-			&database.Options{Where: squirrel.Eq{models.ASSET_TABLE + ".id": assetProgress.AssetID}},
+			options,
 		)
 
 		if err != nil {

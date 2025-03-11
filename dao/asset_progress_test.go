@@ -34,7 +34,7 @@ func Test_CreateOrUpdateAssetProgress(t *testing.T) {
 		assetProgress := &models.AssetProgress{
 			AssetID: asset.ID,
 		}
-		require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, assetProgress))
+		require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, course.ID, assetProgress))
 	})
 
 	t.Run("update", func(t *testing.T) {
@@ -56,16 +56,16 @@ func Test_CreateOrUpdateAssetProgress(t *testing.T) {
 		assetProgress := &models.AssetProgress{
 			AssetID: asset.ID,
 		}
-		require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, assetProgress))
+		require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, course.ID, assetProgress))
 
 		assetProgress.VideoPos = 20
 		assetProgress.Completed = true
-		require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, assetProgress))
+		require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, course.ID, assetProgress))
 	})
 
 	t.Run("nil", func(t *testing.T) {
 		dao, ctx := setup(t)
-		require.ErrorIs(t, dao.CreateOrUpdateAssetProgress(ctx, nil), utils.ErrNilPtr)
+		require.ErrorIs(t, dao.CreateOrUpdateAssetProgress(ctx, "", nil), utils.ErrNilPtr)
 	})
 }
 
@@ -91,7 +91,7 @@ func Test_AssetProgressDeleteCascade(t *testing.T) {
 	assetProgress := &models.AssetProgress{
 		AssetID: asset.ID,
 	}
-	require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, assetProgress))
+	require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, course.ID, assetProgress))
 
 	require.NoError(t, dao.Delete(ctx, asset, nil))
 
