@@ -31,15 +31,15 @@ func Test_CreateTag(t *testing.T) {
 
 		// Duplicate ID
 		tag = &models.Tag{Base: models.Base{ID: "1"}, Tag: "Tag 2"}
-		require.ErrorContains(t, dao.CreateTag(ctx, tag), "UNIQUE constraint failed: tags.id")
+		require.ErrorContains(t, dao.CreateTag(ctx, tag), "UNIQUE constraint failed: "+models.TAG_TABLE_ID)
 
 		// Duplicate tag
 		tag = &models.Tag{Base: models.Base{ID: "2"}, Tag: "Tag 1"}
-		require.ErrorContains(t, dao.CreateTag(ctx, tag), "UNIQUE constraint failed: tags.tag")
+		require.ErrorContains(t, dao.CreateTag(ctx, tag), "UNIQUE constraint failed: "+models.TAG_TABLE_TAG)
 
 		// Duplicate tag (case-insensitive)
 		tag = &models.Tag{Base: models.Base{ID: "3"}, Tag: "tag 1"}
-		require.ErrorContains(t, dao.CreateTag(ctx, tag), "UNIQUE constraint failed: tags.tag")
+		require.ErrorContains(t, dao.CreateTag(ctx, tag), "UNIQUE constraint failed: "+models.TAG_TABLE_TAG)
 	})
 }
 

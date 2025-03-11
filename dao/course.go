@@ -71,12 +71,12 @@ func (dao *DAO) ClassifyCoursePaths(ctx context.Context, paths []string) (map[st
 
 	whereClause := make([]squirrel.Sqlizer, len(paths))
 	for i, path := range paths {
-		whereClause[i] = squirrel.Like{course.Table() + ".path": path + "%"}
+		whereClause[i] = squirrel.Like{models.COURSE_TABLE_PATH: path + "%"}
 	}
 
 	query, args, _ := squirrel.
 		StatementBuilder.
-		Select(course.Table() + ".path").
+		Select(models.COURSE_TABLE_PATH).
 		From(course.Table()).
 		Where(squirrel.Or(whereClause)).
 		ToSql()

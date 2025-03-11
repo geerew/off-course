@@ -95,6 +95,6 @@ func Test_AssetProgressDeleteCascade(t *testing.T) {
 
 	require.NoError(t, dao.Delete(ctx, asset, nil))
 
-	err := dao.Get(ctx, assetProgress, &database.Options{Where: squirrel.Eq{assetProgress.Table() + ".id": assetProgress.ID}})
+	err := dao.Get(ctx, assetProgress, &database.Options{Where: squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: assetProgress.ID}})
 	require.ErrorIs(t, err, sql.ErrNoRows)
 }

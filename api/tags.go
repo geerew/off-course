@@ -2,7 +2,6 @@ package api
 
 import (
 	"database/sql"
-	"fmt"
 	"log/slog"
 	"net/url"
 	"strings"
@@ -202,20 +201,18 @@ func tagsAfterParseHook(parsed *queryparser.QueryResult, options *database.Optio
 
 	filter := strings.ToLower(parsed.FreeText[0])
 
-	tagCol := fmt.Sprintf("LOWER(%s)", models.TAG_TABLE_TAG)
-
 	// Always take the first free text filter
-	options.Where = squirrel.Like{tagCol: "%" + filter + "%"}
+	options.Where = squirrel.Like{"LOWER(" + models.TAG_TABLE_TAG + ")": "%" + filter + "%"}
 
 	// Clear the order y as it will be set in the orderby clause
 	options.OrderBy = []string{}
 
 	// Build the orderby case expression, then suffix with the default orderby
 	caseExpr := squirrel.Case().
-		When(squirrel.Eq{tagCol: filter}, "0").
-		When(squirrel.Like{tagCol: filter + "%"}, "1").
-		When(squirrel.Like{tagCol: "%" + filter + "%"}, "2")
+		When(squirrel.Eq{"LOWER(" + models.TAG_TABLE_TAG + ")": filter}, "0").
+		When(squirrel.Like{"LOWER(" + models.TAG_TABLE_TAG + ")": filter + "%"}, "1").
+		When(squirrel.Like{"LOWER(" + models.TAG_TABLE_TAG + ")": "%" + filter + "%"}, "2")
 
 	sql, args, _ := caseExpr.ToSql()
-	options.OrderByClause = squirrel.Expr(fmt.Sprintf("%s, %s", sql, defaultTagsOrderBy[0]), args...)
+	options.OrderByClause = squirrel.Expr(sql+", "+defaultTagsOrderBy[0], args...)
 }

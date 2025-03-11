@@ -109,7 +109,7 @@ func (dao *DAO) GetById(ctx context.Context, model models.Modeler) error {
 	}
 
 	options := &database.Options{
-		Where: squirrel.Eq{model.Table() + ".id": model.Id()},
+		Where: squirrel.Eq{model.Table() + "." + models.BASE_ID: model.Id()},
 	}
 
 	return dao.Get(ctx, model, options)
@@ -177,7 +177,7 @@ func (dao *DAO) Update(ctx context.Context, model models.Modeler) (bool, error) 
 	model.RefreshUpdatedAt()
 
 	q := database.QuerierFromContext(ctx, dao.db)
-	res, err := sch.Update(model, &database.Options{Where: squirrel.Eq{model.Table() + ".id": model.Id()}}, q)
+	res, err := sch.Update(model, &database.Options{Where: squirrel.Eq{model.Table() + "." + models.BASE_ID: model.Id()}}, q)
 	if err != nil {
 		return false, err
 	}
@@ -203,7 +203,7 @@ func (dao *DAO) Delete(ctx context.Context, model models.Modeler, options *datab
 	}
 
 	if options == nil || options.Where == nil {
-		options = &database.Options{Where: squirrel.Eq{model.Table() + ".id": model.Id()}}
+		options = &database.Options{Where: squirrel.Eq{model.Table() + "." + models.BASE_ID: model.Id()}}
 	}
 
 	q := database.QuerierFromContext(ctx, dao.db)

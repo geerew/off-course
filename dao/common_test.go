@@ -96,14 +96,14 @@ func Test_Count(t *testing.T) {
 		// ----------------------------
 		// EQUALS ID
 		// ----------------------------
-		count, err := dao.Count(ctx, course, &database.Options{Where: squirrel.Eq{course.Table() + ".id": courses[1].ID}})
+		count, err := dao.Count(ctx, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: courses[1].ID}})
 		require.NoError(t, err)
 		require.Equal(t, 1, count)
 
 		// ----------------------------
 		// NOT EQUALS ID
 		// ----------------------------
-		count, err = dao.Count(ctx, course, &database.Options{Where: squirrel.NotEq{course.Table() + ".id": courses[1].ID}})
+		count, err = dao.Count(ctx, course, &database.Options{Where: squirrel.NotEq{models.COURSE_TABLE_ID: courses[1].ID}})
 		require.NoError(t, err)
 		require.Equal(t, 2, count)
 
@@ -287,7 +287,7 @@ func Test_Get(t *testing.T) {
 	t.Run("not found", func(t *testing.T) {
 		dao, ctx := setup(t)
 		course := &models.Course{}
-		err := dao.Get(ctx, course, &database.Options{Where: squirrel.Eq{course.Table() + ".path": "1234"}})
+		err := dao.Get(ctx, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_PATH: "1234"}})
 		require.ErrorIs(t, err, sql.ErrNoRows)
 	})
 
@@ -565,12 +565,12 @@ func Test_Delete(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.Create(ctx, course))
 
-		require.NoError(t, dao.Delete(ctx, course, &database.Options{Where: squirrel.Eq{course.Table() + ".path": course.Path}}))
+		require.NoError(t, dao.Delete(ctx, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_PATH: course.Path}}))
 	})
 
 	t.Run("nil model", func(t *testing.T) {
 		dao, ctx := setup(t)
-		err := dao.Delete(ctx, nil, &database.Options{Where: squirrel.Eq{"path": "1234"}})
+		err := dao.Delete(ctx, nil, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_PATH: "1234"}})
 		require.ErrorIs(t, err, utils.ErrNilPtr)
 	})
 
@@ -593,7 +593,7 @@ func Test_Delete(t *testing.T) {
 		_, err := dao.db.Exec("DROP TABLE IF EXISTS " + course.Table())
 		require.NoError(t, err)
 
-		err = dao.Delete(ctx, course, &database.Options{Where: squirrel.Eq{"path": "1234"}})
+		err = dao.Delete(ctx, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_PATH: "1234"}})
 		require.ErrorContains(t, err, "no such table: "+course.Table())
 	})
 }
@@ -611,7 +611,7 @@ func Benchmark_GetById(b *testing.B) {
 		require.NoError(b, dao.CreateCourse(ctx, course))
 
 		courseProgress := &models.CourseProgress{}
-		require.NoError(b, dao.Get(ctx, courseProgress, &database.Options{Where: squirrel.Eq{courseProgress.Table() + ".course_id": course.ID}}))
+		require.NoError(b, dao.Get(ctx, courseProgress, &database.Options{Where: squirrel.Eq{models.COURSE_PROGRESS_TABLE_COURSE_ID: course.ID}}))
 	}
 
 	b.ResetTimer()

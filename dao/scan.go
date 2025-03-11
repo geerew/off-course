@@ -41,15 +41,15 @@ func (dao *DAO) UpdateScan(ctx context.Context, scan *models.Scan) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Next gets the next scan whose status is `waiting“ based upon the created_at column
-func (dao *DAO) NextWaitingScan(ctx context.Context, model models.Modeler) error {
-	if model == nil {
+func (dao *DAO) NextWaitingScan(ctx context.Context, scan *models.Scan) error {
+	if scan == nil {
 		return utils.ErrNilPtr
 	}
 
 	options := &database.Options{
-		Where:   squirrel.Eq{model.Table() + ".status": types.ScanStatusWaiting},
-		OrderBy: []string{model.Table() + "." + models.BASE_CREATED_AT + " ASC"},
+		Where:   squirrel.Eq{models.SCAN_TABLE_STATUS: types.ScanStatusWaiting},
+		OrderBy: []string{models.SCAN_TABLE_CREATED_AT + " ASC"},
 	}
 
-	return dao.Get(ctx, model, options)
+	return dao.Get(ctx, scan, options)
 }

@@ -33,7 +33,7 @@ func (dao *DAO) GetParamByKey(ctx context.Context, param *models.Param) error {
 	}
 
 	options := &database.Options{
-		Where: squirrel.Eq{param.Table() + ".key": param.Key},
+		Where: squirrel.Eq{models.PARAM_TABLE_KEY: param.Key},
 	}
 
 	return dao.Get(ctx, param, options)

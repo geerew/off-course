@@ -124,10 +124,10 @@ func Test_CourseProgressDeleteCascade(t *testing.T) {
 	require.NoError(t, dao.CreateCourse(ctx, course))
 
 	courseProgress := &models.CourseProgress{CourseID: course.ID}
-	require.NoError(t, dao.Get(ctx, courseProgress, &database.Options{Where: squirrel.Eq{courseProgress.Table() + ".course_id": course.ID}}))
+	require.NoError(t, dao.Get(ctx, courseProgress, &database.Options{Where: squirrel.Eq{models.COURSE_PROGRESS_TABLE_COURSE_ID: course.ID}}))
 
 	require.NoError(t, dao.Delete(ctx, courseProgress, nil))
 
-	err := dao.Get(ctx, courseProgress, &database.Options{Where: squirrel.Eq{courseProgress.Table() + ".course_id": course.ID}})
+	err := dao.Get(ctx, courseProgress, &database.Options{Where: squirrel.Eq{models.COURSE_PROGRESS_TABLE_COURSE_ID: course.ID}})
 	require.ErrorIs(t, err, sql.ErrNoRows)
 }

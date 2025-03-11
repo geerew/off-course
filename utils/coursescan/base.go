@@ -86,7 +86,7 @@ func (s *CourseScan) Add(ctx context.Context, courseId string) (*models.Scan, er
 
 		// Get the scan from the db and return that
 		scan := &models.Scan{}
-		err := s.dao.Get(ctx, scan, &database.Options{Where: squirrel.Eq{scan.Table() + ".course_id": courseId}})
+		err := s.dao.Get(ctx, scan, &database.Options{Where: squirrel.Eq{models.SCAN_TABLE_COURSE_ID: courseId}})
 		if err != nil {
 			return nil, err
 		}
@@ -210,7 +210,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 
 	// Get the course for this scan
 	course := &models.Course{}
-	err = s.dao.Get(ctx, course, &database.Options{Where: squirrel.Eq{course.Table() + ".id": scan.CourseID}})
+	err = s.dao.Get(ctx, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: scan.CourseID}})
 	if err != nil {
 		if err == sql.ErrNoRows {
 			s.logger.Debug(

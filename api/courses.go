@@ -518,7 +518,10 @@ func (api coursesAPI) deleteTag(c *fiber.Ctx) error {
 	err := api.dao.Delete(
 		c.UserContext(),
 		&models.CourseTag{},
-		&database.Options{Where: squirrel.And{squirrel.Eq{"course_id": courseId}, squirrel.Eq{"id": tagId}}},
+		&database.Options{Where: squirrel.And{
+			squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courseId},
+			squirrel.Eq{models.COURSE_TAG_TABLE_ID: tagId},
+		}},
 	)
 
 	if err != nil {
