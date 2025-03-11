@@ -78,16 +78,16 @@ func (api *scansAPI) getScan(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api *scansAPI) createScan(c *fiber.Ctx) error {
-	scan := &models.Scan{}
-	if err := c.BodyParser(scan); err != nil {
+	req := &ScanRequest{}
+	if err := c.BodyParser(req); err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
 	}
 
-	if scan.CourseID == "" {
+	if req.CourseID == "" {
 		return errorResponse(c, fiber.StatusBadRequest, "A course ID is required", nil)
 	}
 
-	scan, err := api.courseScan.Add(c.UserContext(), scan.CourseID)
+	scan, err := api.courseScan.Add(c.UserContext(), req.CourseID)
 	if err != nil {
 		if err == utils.ErrInvalidId {
 			return errorResponse(c, fiber.StatusBadRequest, "Invalid course ID", nil)

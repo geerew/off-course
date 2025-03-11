@@ -2,13 +2,12 @@ package api
 
 import (
 	"log/slog"
-	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
-	"github.com/geerew/off-course/utils/pagination"
+	"github.com/geerew/off-course/utils/queryparser"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
 )
@@ -37,57 +36,20 @@ func (r *Router) initLogRoutes() {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api *logsAPI) getLogs(c *fiber.Ctx) error {
-	orderBy := c.Query("orderBy", models.LOG_TABLE+"."+models.BASE_CREATED_AT+" desc")
-	levels := c.Query("levels", "")
-	types := c.Query("types", "")
-	messages := c.Query("messages", "")
-
-	options := &database.Options{
-		OrderBy:    strings.Split(orderBy, ","),
-		Pagination: pagination.NewFromApi(c),
+	builderOptions := builderOptions{
+		DefaultOrderBy: defaultLogsOrderBy,
+		Paginate:       true,
+		AllowedFilters: []string{"level", "type"},
+		AfterParseHook: logsAfterParseHook,
 	}
 
-	whereClause := squirrel.And{}
-
-	// Log levels
-	if levels != "" {
-		filtered, err := filter(levels)
-		if err != nil {
-			return errorResponse(c, fiber.StatusBadRequest, "Invalid levels parameter", err)
-		}
-
-		whereClause = append(whereClause, squirrel.Eq{models.LOG_TABLE + ".level": filtered})
+	options, err := optionsBuilder(c, builderOptions)
+	if err != nil {
+		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
-
-	// Log types
-	if types != "" {
-		filtered, err := filter(types)
-		if err != nil {
-			return errorResponse(c, fiber.StatusBadRequest, "Invalid types parameter", err)
-		}
-
-		whereClause = append(whereClause, squirrel.Eq{"JSON_EXTRACT(data, '$.type')": filtered})
-	}
-
-	// Log message
-	if messages != "" {
-		filtered, err := filter(messages)
-		if err != nil {
-			return errorResponse(c, fiber.StatusBadRequest, "Invalid messages parameter", err)
-		}
-
-		orClause := squirrel.Or{}
-		for _, message := range filtered {
-			orClause = append(orClause, squirrel.Like{models.LOG_TABLE + ".message": "%" + message + "%"})
-		}
-
-		whereClause = append(whereClause, orClause)
-	}
-
-	options.Where = whereClause
 
 	logs := []*models.Log{}
-	err := api.dao.List(c.UserContext(), &logs, options)
+	err = api.dao.List(c.UserContext(), &logs, options)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up logs", err)
 	}
@@ -105,4 +67,46 @@ func (api *logsAPI) getLogs(c *fiber.Ctx) error {
 func (api *logsAPI) getLogTypes(c *fiber.Ctx) error {
 	types := types.AllLogTypes()
 	return c.Status(fiber.StatusOK).JSON(types)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// tagsAfterParseHook builds the database.Options.Where based on the query expression
+func logsAfterParseHook(parsed *queryparser.QueryResult, options *database.Options) {
+	options.Where = logsWhereBuilder(parsed.Expr)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// logsWhereBuilder builds a squirrel.Sqlizer, for use in a WHERE clause, based on a query expression
+func logsWhereBuilder(expr queryparser.QueryExpr) squirrel.Sqlizer {
+	switch node := expr.(type) {
+	case *queryparser.ValueExpr:
+		return squirrel.Like{models.LOG_TABLE + "." + models.LOG_MESSAGE: "%" + node.Value + "%"}
+	case *queryparser.FilterExpr:
+		switch node.Key {
+		case "level":
+			return squirrel.Eq{models.LOG_TABLE + "." + models.LOG_LEVEL: node.Value}
+		case "type":
+			return squirrel.Eq{"JSON_EXTRACT(" + models.LOG_TABLE + "." + models.LOG_DATA + ", '$.type')": node.Value}
+		default:
+			return nil
+		}
+	case *queryparser.AndExpr:
+		var andSlice []squirrel.Sqlizer
+		for _, child := range node.Children {
+			andSlice = append(andSlice, logsWhereBuilder(child))
+		}
+
+		return squirrel.And(andSlice)
+	case *queryparser.OrExpr:
+		var orSlice []squirrel.Sqlizer
+		for _, child := range node.Children {
+			orSlice = append(orSlice, logsWhereBuilder(child))
+		}
+
+		return squirrel.Or(orSlice)
+	default:
+		return nil
+	}
 }

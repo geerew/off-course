@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
-	"sort"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
-	"github.com/geerew/off-course/utils/pagination"
+	"github.com/geerew/off-course/utils/queryparser"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -44,55 +43,21 @@ func (r *Router) initTagRoutes() {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api *tagsAPI) getTags(c *fiber.Ctx) error {
-	filter := c.Query("filter", "")
-	orderBy := c.Query("orderBy", models.TAG_TABLE+".tag asc")
-
-	options := &database.Options{
-		OrderBy:    strings.Split(orderBy, ","),
-		Pagination: pagination.NewFromApi(c),
+	builderOptions := builderOptions{
+		DefaultOrderBy: defaultTagsOrderBy,
+		Paginate:       true,
+		AfterParseHook: tagsAfterParseHook,
 	}
 
-	if filter != "" {
-		options.Where = squirrel.Like{fmt.Sprintf("%s.%s", models.TAG_TABLE, models.TAG_TAG): "%" + filter + "%"}
+	options, err := optionsBuilder(c, builderOptions)
+	if err != nil {
+		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
 	tags := []*models.Tag{}
-	err := api.dao.List(c.UserContext(), &tags, options)
+	err = api.dao.List(c.UserContext(), &tags, options)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tags", err)
-	}
-
-	if filter != "" {
-		sort.SliceStable(tags, func(i, j int) bool {
-			// Convert tags and filter to lower case for case insensitive comparison
-			iTag, jTag := strings.ToLower(tags[i].Tag), strings.ToLower(tags[j].Tag)
-			filterLower := strings.ToLower(filter)
-
-			// Check for exact matches, starts with, and contains in a case insensitive manner
-			iExact, jExact := iTag == filterLower, jTag == filterLower
-			iStarts, jStarts := strings.HasPrefix(iTag, filterLower), strings.HasPrefix(jTag, filterLower)
-			iContains, jContains := strings.Contains(iTag, filterLower), strings.Contains(jTag, filterLower)
-
-			// Prioritize exact matches first
-			if iExact && !jExact {
-				return true
-			} else if !iExact && jExact {
-				return false
-			}
-
-			// Then prioritize tags starting with the filter
-			if iStarts && !jStarts {
-				return true
-			} else if !iStarts && jStarts {
-				return false
-			}
-
-			// Lastly, sort by those that contain the substring, alphabetically
-			if iContains && jContains {
-				return iTag < jTag
-			}
-			return iContains && !jContains
-		})
 	}
 
 	pResult, err := options.Pagination.BuildResult(tagResponseHelper(tags))
@@ -106,53 +71,20 @@ func (api *tagsAPI) getTags(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api *tagsAPI) getTagNames(c *fiber.Ctx) error {
-	filter := c.Query("filter", "")
-	orderBy := c.Query("orderBy", models.TAG_TABLE+".tag asc")
-
-	options := &database.Options{
-		OrderBy: strings.Split(orderBy, ","),
+	builderOptions := builderOptions{
+		DefaultOrderBy: defaultTagsOrderBy,
+		Paginate:       false,
+		AfterParseHook: tagsAfterParseHook,
 	}
 
-	if filter != "" {
-		options.Where = squirrel.Like{fmt.Sprintf("%s.%s", models.TAG_TABLE, models.TAG_TAG): "%" + filter + "%"}
+	options, err := optionsBuilder(c, builderOptions)
+	if err != nil {
+		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
 	tags, err := api.dao.ListPluck(c.UserContext(), &models.Tag{}, options, models.TAG_TAG)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tags", err)
-	}
-
-	if filter != "" {
-		sort.SliceStable(tags, func(i, j int) bool {
-			// Convert tags and filter to lower case for case insensitive comparison
-			iTag, jTag := strings.ToLower(tags[i]), strings.ToLower(tags[j])
-			filterLower := strings.ToLower(filter)
-
-			// Check for exact matches, starts with, and contains in a case insensitive manner
-			iExact, jExact := iTag == filterLower, jTag == filterLower
-			iStarts, jStarts := strings.HasPrefix(iTag, filterLower), strings.HasPrefix(jTag, filterLower)
-			iContains, jContains := strings.Contains(iTag, filterLower), strings.Contains(jTag, filterLower)
-
-			// Prioritize exact matches first
-			if iExact && !jExact {
-				return true
-			} else if !iExact && jExact {
-				return false
-			}
-
-			// Then prioritize tags starting with the filter
-			if iStarts && !jStarts {
-				return true
-			} else if !iStarts && jStarts {
-				return false
-			}
-
-			// Lastly, sort by those that contain the substring, alphabetically
-			if iContains && jContains {
-				return iTag < jTag
-			}
-			return iContains && !jContains
-		})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(tags)
@@ -190,16 +122,16 @@ func (api *tagsAPI) getTag(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api *tagsAPI) createTag(c *fiber.Ctx) error {
-	tagReq := &tagRequest{}
-	if err := c.BodyParser(tagReq); err != nil {
+	req := &tagRequest{}
+	if err := c.BodyParser(req); err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
 	}
 
-	if tagReq.Tag == "" {
+	if req.Tag == "" {
 		return errorResponse(c, fiber.StatusBadRequest, "A tag is required", nil)
 	}
 
-	tag := &models.Tag{Tag: tagReq.Tag}
+	tag := &models.Tag{Tag: req.Tag}
 	err := api.dao.CreateTag(c.UserContext(), tag)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
@@ -258,4 +190,32 @@ func (api *tagsAPI) deleteTag(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusNoContent).Send(nil)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// tagsAfterParseHook builds the database.Options.Where based on the query expression
+func tagsAfterParseHook(parsed *queryparser.QueryResult, options *database.Options) {
+	if len(parsed.FreeText) == 0 {
+		return
+	}
+
+	filter := strings.ToLower(parsed.FreeText[0])
+
+	tagCol := fmt.Sprintf("LOWER(%s.%s)", models.TAG_TABLE, models.TAG_TAG)
+
+	// Always take the first free text filter
+	options.Where = squirrel.Like{tagCol: "%" + filter + "%"}
+
+	// Clear the order y as it will be set in the orderby clause
+	options.OrderBy = []string{}
+
+	// Build the orderby case expression, then suffix with the default orderby
+	caseExpr := squirrel.Case().
+		When(squirrel.Eq{tagCol: filter}, "0").
+		When(squirrel.Like{tagCol: filter + "%"}, "1").
+		When(squirrel.Like{tagCol: "%" + filter + "%"}, "2")
+
+	sql, args, _ := caseExpr.ToSql()
+	options.OrderByClause = squirrel.Expr(fmt.Sprintf("%s, %s", sql, defaultTagsOrderBy[0]), args...)
 }

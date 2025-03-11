@@ -52,21 +52,23 @@ func TestLogs_GetLogs(t *testing.T) {
 		require.Len(t, logResponses, 5)
 	})
 
-	t.Run("200 (min level)", func(t *testing.T) {
+	t.Run("200 (filter)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
-		require.NoError(t, router.logDao.WriteLog(ctx, &models.Log{Data: map[string]any{}, Level: -4, Message: "debug log"}))
+		require.NoError(t, router.logDao.WriteLog(ctx, &models.Log{Data: map[string]any{"type": types.LogTypeRequest.String()}, Level: -4, Message: "log 1"}))
 		time.Sleep(1 * time.Millisecond)
 
-		require.NoError(t, router.logDao.WriteLog(ctx, &models.Log{Data: map[string]any{}, Level: 0, Message: "info log"}))
+		require.NoError(t, router.logDao.WriteLog(ctx, &models.Log{Data: map[string]any{"type": types.LogTypeRequest.String()}, Level: 0, Message: "log 2"}))
 		time.Sleep(1 * time.Millisecond)
 
-		require.NoError(t, router.logDao.WriteLog(ctx, &models.Log{Data: map[string]any{}, Level: 4, Message: "warn log"}))
+		require.NoError(t, router.logDao.WriteLog(ctx, &models.Log{Data: map[string]any{"type": types.LogTypeDB.String()}, Level: 4, Message: "log 3"}))
 		time.Sleep(1 * time.Millisecond)
 
-		require.NoError(t, router.logDao.WriteLog(ctx, &models.Log{Data: map[string]any{}, Level: 8, Message: "error log"}))
+		require.NoError(t, router.logDao.WriteLog(ctx, &models.Log{Data: map[string]any{"type": types.LogTypeCourseScan.String()}, Level: 8, Message: "log 4"}))
 
-		// All
+		defaultSort := " sort:\"" + models.LOG_TABLE + "." + models.BASE_CREATED_AT + " asc\""
+
+		// No query
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/logs/", nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -75,120 +77,40 @@ func TestLogs_GetLogs(t *testing.T) {
 		require.Equal(t, 4, int(paginationResp.TotalItems))
 		require.Len(t, logResponses, 4)
 
-		// Debug
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/logs/?levels=-4", nil))
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
-
-		paginationResp, logResponses = unmarshalHelper[logResponse](t, body)
-		require.Equal(t, 1, int(paginationResp.TotalItems))
-		require.Len(t, logResponses, 1)
-		require.Equal(t, "debug log", logResponses[0].Message)
-
-		// Debug and info
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/logs/?levels=-4,0", nil))
+		// Level
+		q := "level:-4 OR level:8 " + defaultSort
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/logs/?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
 		paginationResp, logResponses = unmarshalHelper[logResponse](t, body)
 		require.Equal(t, 2, int(paginationResp.TotalItems))
 		require.Len(t, logResponses, 2)
-		require.Equal(t, "debug log", logResponses[1].Message)
-		require.Equal(t, "info log", logResponses[0].Message)
-
-		// Warn and error only (with spaces)
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/logs/?levels=4,%20%208", nil))
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
-
-		paginationResp, logResponses = unmarshalHelper[logResponse](t, body)
-		require.Equal(t, 2, int(paginationResp.TotalItems))
-		require.Len(t, logResponses, 2)
-		require.Equal(t, "error log", logResponses[0].Message)
-		require.Equal(t, "warn log", logResponses[1].Message)
-	})
-
-	t.Run("200 (types)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
-
-		require.NoError(t, router.logDao.WriteLog(ctx, &models.Log{Data: map[string]any{"type": types.LogTypeRequest.String()}, Level: -4, Message: "log 1"}))
-		time.Sleep(1 * time.Millisecond)
-
-		require.NoError(t, router.logDao.WriteLog(ctx, &models.Log{Data: map[string]any{"type": types.LogTypeRequest.String()}, Level: 0, Message: "log 2"}))
-		time.Sleep(1 * time.Millisecond)
-
-		require.NoError(t, router.logDao.WriteLog(ctx, &models.Log{Data: map[string]any{"type": types.LogTypeDB.String()}, Level: 4, Message: "log 3"}))
-		time.Sleep(1 * time.Millisecond)
-
-		require.NoError(t, router.logDao.WriteLog(ctx, &models.Log{Data: map[string]any{"type": types.LogTypeCourseScan.String()}, Level: 8, Message: "log 4"}))
-
-		// Request
-		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/logs/?types="+types.LogTypeRequest.String(), nil))
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
-
-		paginationResp, logResponses := unmarshalHelper[logResponse](t, body)
-		require.Equal(t, 2, int(paginationResp.TotalItems))
-		require.Len(t, logResponses, 2)
-		require.Equal(t, "log 2", logResponses[0].Message)
-		require.Equal(t, "log 1", logResponses[1].Message)
-
-		// Database and course scan
-		typesQuery := url.QueryEscape(types.LogTypeDB.String() + ",   " + types.LogTypeCourseScan.String())
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/logs/?types="+typesQuery, nil))
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
-
-		paginationResp, logResponses = unmarshalHelper[logResponse](t, body)
-		require.Equal(t, 2, int(paginationResp.TotalItems))
-		require.Len(t, logResponses, 2)
-		require.Equal(t, "log 4", logResponses[0].Message)
-		require.Equal(t, "log 3", logResponses[1].Message)
-
-		// Database
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/logs/?types="+types.LogTypeDB.String(), nil))
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
-
-		paginationResp, logResponses = unmarshalHelper[logResponse](t, body)
-		require.Equal(t, 1, int(paginationResp.TotalItems))
-		require.Len(t, logResponses, 1)
-		require.Equal(t, "log 3", logResponses[0].Message)
-	})
-
-	t.Run("200 (messages)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
-
-		require.NoError(t, router.logDao.WriteLog(ctx, &models.Log{Data: map[string]any{"type": types.LogTypeRequest.String()}, Level: -4, Message: "log 1"}))
-		time.Sleep(1 * time.Millisecond)
-
-		require.NoError(t, router.logDao.WriteLog(ctx, &models.Log{Data: map[string]any{"type": types.LogTypeRequest.String()}, Level: 0, Message: "log 2"}))
-		time.Sleep(1 * time.Millisecond)
-
-		require.NoError(t, router.logDao.WriteLog(ctx, &models.Log{Data: map[string]any{"type": types.LogTypeDB.String()}, Level: 4, Message: "log 3"}))
-		time.Sleep(1 * time.Millisecond)
-
-		require.NoError(t, router.logDao.WriteLog(ctx, &models.Log{Data: map[string]any{"type": types.LogTypeCourseScan.String()}, Level: 8, Message: "log 4"}))
-
-		// log 1
-		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/logs/?messages=log%201", nil))
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
-
-		paginationResp, logResponses := unmarshalHelper[logResponse](t, body)
-		require.Equal(t, 1, int(paginationResp.TotalItems))
-		require.Len(t, logResponses, 1)
 		require.Equal(t, "log 1", logResponses[0].Message)
+		require.Equal(t, "log 4", logResponses[1].Message)
 
-		// log 2 and log 4
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/logs/?messages=log%202,log%204", nil))
+		// Type
+		q = fmt.Sprintf(`type:"%s" OR type:"%s" %s`, types.LogTypeCourseScan.String(), types.LogTypeDB.String(), defaultSort)
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/logs/?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
 		paginationResp, logResponses = unmarshalHelper[logResponse](t, body)
 		require.Equal(t, 2, int(paginationResp.TotalItems))
 		require.Len(t, logResponses, 2)
-		require.Equal(t, "log 4", logResponses[0].Message)
+		require.Equal(t, "log 3", logResponses[0].Message)
+		require.Equal(t, "log 4", logResponses[1].Message)
+
+		// Message
+		q = "log 2 OR log 1 OR log 7" + defaultSort
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/logs/?q="+url.QueryEscape(q), nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, logResponses = unmarshalHelper[logResponse](t, body)
+		require.Equal(t, 2, int(paginationResp.TotalItems))
+		require.Len(t, logResponses, 2)
+		require.Equal(t, "log 1", logResponses[0].Message)
 		require.Equal(t, "log 2", logResponses[1].Message)
 	})
 

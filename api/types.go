@@ -23,6 +23,13 @@ type fileInfoResponse struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+type courseRequest struct {
+	Title string `json:"title"`
+	Path  string `json:"path"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 type courseProgressResponse struct {
 	Started           bool           `json:"started"`
 	StartedAt         types.DateTime `json:"startedAt"`
@@ -196,6 +203,12 @@ type assetResponse struct {
 	// Relations
 	Progress    *assetProgressResponse `json:"progress"`
 	Attachments []*attachmentResponse  `json:"attachments,omitempty"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+type ScanRequest struct {
+	CourseID string `json:"courseId"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

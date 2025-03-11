@@ -3,18 +3,29 @@ package api
 import (
 	"fmt"
 	"mime"
-	"net/url"
 	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
-	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/appfs"
+	"github.com/geerew/off-course/utils/pagination"
+	"github.com/geerew/off-course/utils/queryparser"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/spf13/afero"
+)
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+var (
+	defaultCoursesOrderBy                = []string{models.COURSE_TABLE + "." + models.BASE_CREATED_AT + " desc"}
+	defaultCourseAssetsOrderBy           = []string{models.ASSET_TABLE + "." + models.ASSET_CHAPTER + " asc", models.ASSET_TABLE + "." + models.ASSET_PREFIX + " asc"}
+	defaultCourseAssetAttachmentsOrderBy = []string{models.ATTACHMENT_TABLE + "." + models.ATTACHMENT_TITLE + " asc"}
+	defaultTagsOrderBy                   = []string{models.TAG_TABLE + "." + models.TAG_TAG + " asc"}
+	defaultUsersOrderBy                  = []string{models.USER_TABLE + "." + models.BASE_CREATED_AT + " desc"}
+	defaultLogsOrderBy                   = []string{models.LOG_TABLE + "." + models.BASE_CREATED_AT + " desc"}
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -34,14 +45,60 @@ func errorResponse(c *fiber.Ctx, status int, message string, err error) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// filter is a helper method to split a string by commas and trim the spaces
-func filter(s string) ([]string, error) {
-	unescaped, err := url.QueryUnescape(s)
+// builderOptions is a struct to hold the options for the optionsBuilder
+type builderOptions struct {
+	// A default order by clause to use if none is found in the query
+	DefaultOrderBy []string
+
+	// A slice of allowed filters to match on in the query
+	AllowedFilters []string
+
+	// Whether to paginate the results
+	Paginate bool
+
+	// A function to run after the query has been parsed. It will only run if the query is not nil
+	AfterParseHook func(*queryparser.QueryResult, *database.Options)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// optionsBuilder builds a database.Options based on a `q` query parameter
+func optionsBuilder(c *fiber.Ctx, builderOptions builderOptions) (*database.Options, error) {
+	options := &database.Options{}
+
+	orderBy := []string{models.BASE_CREATED_AT + " desc"}
+	if len(builderOptions.DefaultOrderBy) > 0 {
+		orderBy = builderOptions.DefaultOrderBy
+	}
+	options.OrderBy = orderBy
+
+	if builderOptions.Paginate {
+		options.Pagination = pagination.NewFromApi(c)
+	}
+
+	q := c.Query("q", "")
+	if q == "" {
+		return options, nil
+	}
+
+	parsed, err := queryparser.Parse(q, builderOptions.AllowedFilters)
 	if err != nil {
 		return nil, err
 	}
 
-	return utils.Map(strings.Split(unescaped, ","), strings.TrimSpace), nil
+	if parsed == nil {
+		return options, nil
+	}
+
+	if len(parsed.Sort) > 0 {
+		options.OrderBy = parsed.Sort
+	}
+
+	if builderOptions.AfterParseHook != nil {
+		builderOptions.AfterParseHook(parsed, options)
+	}
+
+	return options, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
