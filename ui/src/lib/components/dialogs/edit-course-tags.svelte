@@ -32,6 +32,7 @@
 	let toDelete = $state<CourseTagsModel>([]);
 	let existingTags = $state<CourseTagsModel>([]);
 	let availableTags = $state<string[]>([]);
+	let loadingAvailableTags = $state(false);
 	let filteredTags = $state<string[]>([]);
 
 	let inputEl = $state<HTMLInputElement | null>(null);
@@ -87,7 +88,9 @@
 
 	// After the input value has been debounced, filter the tags
 	$effect(() => {
-		filteredTags = filterTags(inputDebounced.current);
+		filterTags(inputDebounced.current).then((tags) => {
+			filteredTags = tags;
+		});
 	});
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -98,18 +101,9 @@
 		const flickerPromise = new Promise((resolve) => setTimeout(resolve, 200));
 
 		try {
-			if (isArray) {
-				const [resp] = await Promise.all([GetTagNames(), flickerPromise]);
-				availableTags = resp;
-			} else {
-				const [resp1, resp2] = await Promise.all([
-					GetCourseTags(value.id),
-					GetTagNames(),
-					flickerPromise
-				]);
-				existingTags = resp1;
-				availableTags = resp2;
-			}
+			if (isArray) return;
+			const [resp] = await Promise.all([GetCourseTags(value.id), flickerPromise]);
+			existingTags = resp;
 		} catch (error) {
 			throw error;
 		}
@@ -118,8 +112,20 @@
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Filter the tags from availableTags based on the input value
-	function filterTags(filterOn: string): string[] {
+	async function filterTags(filterOn: string): Promise<string[]> {
 		if (filterOn === '') return [];
+
+		try {
+			loadingAvailableTags = true;
+			GetTagNames({ q: filterOn }).then((tags) => {
+				availableTags = tags;
+			});
+		} catch (error) {
+			throw error;
+		} finally {
+			if (filterOn !== inputDebounced.current) return [];
+			loadingAvailableTags = false;
+		}
 
 		let selectedTags = availableTags.filter((t) =>
 			t.toLowerCase().includes(filterOn.toLowerCase())
@@ -281,12 +287,18 @@
 					<ScanIcon class="text-foreground-alt-1 size-5" />
 				</Button>
 
+				<div class="absolute top-0 right-2 flex h-full items-center justify-center">
+					{#if loadingAvailableTags}
+						<Spinner class="bg-foreground-alt-2 size-1.5" />
+					{/if}
+				</div>
+
 				<Combobox.Input
 					bind:ref={inputEl}
 					oninput={(e) => (inputValue = e.currentTarget.value)}
 					onkeydown={handleInput}
 					disabled={isPosting}
-					class="bg-background-alt-2 focus:bg-background-alt-3 placeholder:text-foreground-alt-2 h-full w-full rounded-none px-2.5 ps-12 ring-0 duration-250 ease-in-out placeholder:tracking-wide focus:outline-none"
+					class="bg-background-alt-2 focus:bg-background-alt-3 placeholder:text-foreground-alt-2 h-full w-full rounded-none px-2.5 ps-12 pe-12 ring-0 duration-250 ease-in-out placeholder:tracking-wide focus:outline-none"
 					placeholder="Add tag..."
 					aria-label="Add a tag"
 				/>
