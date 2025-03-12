@@ -31,7 +31,6 @@
 	let toAdd = $state<string[]>([]);
 	let toDelete = $state<CourseTagsModel>([]);
 	let existingTags = $state<CourseTagsModel>([]);
-	let availableTags = $state<string[]>([]);
 	let loadingAvailableTags = $state(false);
 	let filteredTags = $state<string[]>([]);
 
@@ -55,7 +54,6 @@
 			toAdd = [];
 			toDelete = [];
 			existingTags = [];
-			availableTags = [];
 			filteredTags = [];
 			inputValue = '';
 			selectedValue = '';
@@ -115,9 +113,10 @@
 	async function filterTags(filterOn: string): Promise<string[]> {
 		if (filterOn === '') return [];
 
+		let availableTags: string[] = [];
 		try {
 			loadingAvailableTags = true;
-			GetTagNames({ q: filterOn }).then((tags) => {
+			await GetTagNames({ q: `${filterOn} sort:special` }).then((tags) => {
 				availableTags = tags;
 			});
 		} catch (error) {
@@ -133,7 +132,7 @@
 
 		if (selectedTags.length === 0) return [];
 
-		// filter out the selected tags that are already existing, in the toAdd list, or in the
+		// Filter out the selected tags that are already existing, in the toAdd list, or in the
 		// toDelete list
 		selectedTags = selectedTags.filter(
 			(tag) =>
