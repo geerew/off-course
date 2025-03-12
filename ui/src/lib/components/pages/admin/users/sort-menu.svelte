@@ -41,7 +41,7 @@
 	});
 </script>
 
-<Dropdown triggerClass="w-36 [&[data-state=open]>svg]:rotate-90" contentClass="min-w-42">
+<Dropdown triggerClass="w-36 [&[data-state=open]>svg]:rotate-90" contentClass="min-w-40">
 	{#snippet trigger()}
 		{#if columns.length === 0}
 			<div class="flex items-center gap-1.5">
@@ -80,7 +80,6 @@
 							value={column.column}
 							onclick={() => {
 								if (selectedColumn === column.column) return;
-								console.log('clicked column', column.column);
 								onUpdate?.();
 							}}
 						>
@@ -105,7 +104,6 @@
 						value="asc"
 						onclick={() => {
 							if (selectedDirection === 'asc') return;
-							console.log('clicked asc');
 							onUpdate?.();
 						}}
 					>
@@ -127,7 +125,6 @@
 						value="desc"
 						onclick={() => {
 							if (selectedDirection === 'desc') return;
-							console.log('clicked desc');
 							onUpdate?.();
 						}}
 					>
