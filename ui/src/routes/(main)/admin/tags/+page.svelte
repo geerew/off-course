@@ -6,8 +6,8 @@
 	import RowActionMenu from '$lib/components/pages/admin/tags/row-action-menu.svelte';
 	import TableActionMenu from '$lib/components/pages/admin/tags/table-action-menu.svelte';
 	import Spinner from '$lib/components/spinner.svelte';
-	import * as Table from '$lib/components/table';
 	import { Checkbox } from '$lib/components/ui';
+	import * as Table from '$lib/components/ui/table';
 	import type { TagModel, TagsModel } from '$lib/models/tag-model';
 	import { toast } from 'svelte-sonner';
 

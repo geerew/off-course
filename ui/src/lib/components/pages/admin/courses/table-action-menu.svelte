@@ -36,7 +36,7 @@
 <Dropdown
 	triggerProps={{ disabled: Object.keys(courses).length === 0 }}
 	triggerClass="w-32 [&[data-state=open]>svg]:rotate-90"
-	contentClass="w-42"
+	contentClass="w-42 p-1"
 >
 	{#snippet trigger()}
 		<div class="flex items-center gap-1.5">

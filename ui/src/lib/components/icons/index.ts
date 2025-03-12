@@ -18,6 +18,8 @@ export { default as RightChevronIcon } from './right-chevron.svelte';
 export { default as ScanIcon } from './scan.svelte';
 export { default as SecureIcon } from './secure.svelte';
 export { default as SessionIcon } from './session.svelte';
+export { default as SortAscendingIcon } from './sort-ascending.svelte';
+export { default as SortDescendingIcon } from './sort-descending.svelte';
 export { default as TagIcon } from './tag.svelte';
 export { default as TickIcon } from './tick.svelte';
 export { default as UndoIcon } from './undo.svelte';

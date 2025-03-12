@@ -35,7 +35,7 @@
 
 <Dropdown
 	triggerClass="hover:bg-background-alt-3 data-[state=open]:bg-background-alt-3 rounded-lg border-none"
-	contentClass="w-42"
+	contentClass="w-42 p-1"
 >
 	{#snippet trigger()}
 		<DotsIcon class="size-5 stroke-[1.5]" />

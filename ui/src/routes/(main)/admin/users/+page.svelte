@@ -1,3 +1,6 @@
+<script module>
+</script>
+
 <script lang="ts">
 	import { GetUsers } from '$lib/api/user-api';
 	import { auth } from '$lib/auth.svelte';
@@ -5,18 +8,32 @@
 	import { AddUserDialog } from '$lib/components/dialogs';
 	import { WarningIcon } from '$lib/components/icons';
 	import RowActionMenu from '$lib/components/pages/admin/users/row-action-menu.svelte';
+	import SortMenu from '$lib/components/pages/admin/users/sort-menu.svelte';
 	import TableActionMenu from '$lib/components/pages/admin/users/table-action-menu.svelte';
 	import Spinner from '$lib/components/spinner.svelte';
-	import * as Table from '$lib/components/table';
-	import { Checkbox } from '$lib/components/ui';
+	import { Checkbox, Filter } from '$lib/components/ui';
+	import * as Table from '$lib/components/ui/table';
 	import type { UserModel, UsersModel } from '$lib/models/user-model';
+	import type { SortColumns, SortDirection } from '$lib/types/sort';
 	import { capitalizeFirstLetter } from '$lib/utils';
+	import { tick } from 'svelte';
 	import { toast } from 'svelte-sonner';
 
 	let users: UsersModel = $state([]);
 
+	let filterValue = $state('');
+
 	let selectedUsers: Record<string, UserModel> = $state({});
 	let selectedUsersCount = $derived(Object.keys(selectedUsers).length);
+
+	let sortColumns = [
+		{ label: 'Username', column: 'users.username', asc: 'Ascending', desc: 'Descending' },
+		{ label: 'Name', column: 'users.display_name', asc: 'Ascending', desc: 'Descending' },
+		{ label: 'Role', column: 'users.role', asc: 'Ascending', desc: 'Descending' },
+		{ label: 'Created At', column: 'users.created_at', asc: 'Newest', desc: 'Oldest' }
+	] as const satisfies SortColumns;
+	let selectedSortColumn = $state<(typeof sortColumns)[number]['column']>('users.username');
+	let selectedSortDirection = $state<SortDirection>('asc');
 
 	let paginationPage = $state(1);
 	let paginationPerPage = $state(10);
@@ -36,8 +53,11 @@
 
 	async function fetchUsers(): Promise<void> {
 		try {
+			const sort = `sort:"${selectedSortColumn} ${selectedSortDirection}"`;
+			const q = filterValue ? `${filterValue} ${sort}` : sort;
+
 			const data = await GetUsers({
-				q: 'sort:"users.username asc"',
+				q,
 				page: paginationPage,
 				perPage: paginationPerPage
 			});
@@ -114,6 +134,18 @@
 					loadPromise = fetchUsers();
 				}}
 			/>
+		</div>
+
+		<div class="flex flex-row gap-3">
+			<div class="flex flex-1 flex-row">
+				<Filter
+					bind:value={filterValue}
+					onUpdate={async () => {
+						await tick();
+						loadPromise = fetchUsers();
+					}}
+				/>
+			</div>
 
 			<div class="flex h-10 items-center gap-3 rounded-lg">
 				<TableActionMenu
@@ -128,8 +160,19 @@
 					}}
 				/>
 			</div>
-		</div>
 
+			<div class="flex h-10 items-center gap-3 rounded-lg">
+				<SortMenu
+					columns={sortColumns}
+					bind:selectedColumn={selectedSortColumn}
+					bind:selectedDirection={selectedSortDirection}
+					onUpdate={async () => {
+						await tick();
+						loadPromise = fetchUsers();
+					}}
+				/>
+			</div>
+		</div>
 		<div class="flex w-full place-content-center">
 			{#await loadPromise}
 				<div class="flex justify-center pt-10">
@@ -155,6 +198,12 @@
 						</Table.Thead>
 
 						<Table.Tbody>
+							{#if users.length === 0}
+								<Table.Tr>
+									<Table.Td class="text-center" colspan={9999}>No users found</Table.Td>
+								</Table.Tr>
+							{/if}
+
 							{#each users as user}
 								<Table.Tr class="hover:bg-background-alt-1 items-center duration-200">
 									<Table.Td>
