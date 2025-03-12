@@ -4,7 +4,7 @@
 	import { UpdateUser } from '$lib/api/user-api';
 	import { auth } from '$lib/auth.svelte';
 	import { Spinner } from '$lib/components';
-	import { Button, Dialog, InputPassword } from '$lib/components/ui';
+	import { Button, Dialog, PasswordInput } from '$lib/components/ui';
 	import type { UserModel } from '$lib/models/user-model';
 	import { Separator } from 'bits-ui';
 	import type { Snippet } from 'svelte';
@@ -90,7 +90,7 @@
 				{#if deletingSelf}
 					<div class="flex flex-col gap-2.5">
 						<div>Current Password:</div>
-						<InputPassword
+						<PasswordInput
 							bind:ref={firstInputEl}
 							bind:value={currentPassword}
 							name="current password"
@@ -101,18 +101,18 @@
 
 					<div class="flex flex-col gap-2.5">
 						<div>New Password:</div>
-						<InputPassword bind:value={newPassword} name="new password" />
+						<PasswordInput bind:value={newPassword} name="new password" />
 					</div>
 				{:else}
 					<div class="flex flex-col gap-2.5">
 						<div>New Password:</div>
-						<InputPassword bind:ref={firstInputEl} bind:value={newPassword} name="new password" />
+						<PasswordInput bind:ref={firstInputEl} bind:value={newPassword} name="new password" />
 					</div>
 				{/if}
 
 				<div class="flex flex-col gap-2.5">
 					<div>Confirm Password:</div>
-					<InputPassword bind:value={confirmPassword} name="confirm password" />
+					<PasswordInput bind:value={confirmPassword} name="confirm password" />
 				</div>
 			</main>
 

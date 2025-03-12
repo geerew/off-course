@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { cn } from '$lib/utils';
-	import { Button, Input } from '.';
-	import { XIcon } from '../icons';
+	import { XIcon } from './icons';
+	import { Button, Input } from './ui';
 
 	type Props = {
 		value: string;

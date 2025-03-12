@@ -4,7 +4,7 @@
 	import { DeleteUser } from '$lib/api/user-api';
 	import { auth } from '$lib/auth.svelte';
 	import { Spinner } from '$lib/components';
-	import { AlertDialog, Button, InputPassword } from '$lib/components/ui';
+	import { AlertDialog, Button, PasswordInput } from '$lib/components/ui';
 	import type { UserModel, UsersModel } from '$lib/models/user-model';
 	import { Separator } from 'bits-ui';
 	import { type Snippet } from 'svelte';
@@ -99,7 +99,7 @@
 
 			<div class="flex flex-col gap-2.5 px-2.5">
 				<div>Confirm Password:</div>
-				<InputPassword
+				<PasswordInput
 					bind:ref={currentInputEl}
 					bind:value={currentPassword}
 					name="current password"

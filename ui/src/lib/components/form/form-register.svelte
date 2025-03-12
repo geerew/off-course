@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Spinner } from '$lib/components';
-	import { Button, Input, InputPassword } from '$lib/components/ui';
+	import { Button, Input, PasswordInput } from '$lib/components/ui';
 	import { toast } from 'svelte-sonner';
 
 	let { endpoint }: { endpoint: string } = $props();
@@ -36,7 +36,7 @@
 
 <form onsubmit={submitForm} class="flex flex-col gap-5">
 	<Input bind:value={username} name="username" type="text" placeholder="Username" />
-	<InputPassword bind:value={password} placeholder="password" />
+	<PasswordInput bind:value={password} placeholder="password" />
 	<Button disabled={!username || !password || posting}>
 		{#if posting}
 			<Spinner class="bg-background-alt-4  size-4" />

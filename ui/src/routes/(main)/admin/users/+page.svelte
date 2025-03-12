@@ -4,14 +4,12 @@
 <script lang="ts">
 	import { GetUsers } from '$lib/api/user-api';
 	import { auth } from '$lib/auth.svelte';
-	import { Pagination } from '$lib/components';
+	import { FilterBar, Pagination, SortMenu, Spinner } from '$lib/components';
 	import { AddUserDialog } from '$lib/components/dialogs';
 	import { WarningIcon } from '$lib/components/icons';
 	import RowActionMenu from '$lib/components/pages/admin/users/row-action-menu.svelte';
-	import SortMenu from '$lib/components/pages/admin/users/sort-menu.svelte';
 	import TableActionMenu from '$lib/components/pages/admin/users/table-action-menu.svelte';
-	import Spinner from '$lib/components/spinner.svelte';
-	import { Checkbox, Filter } from '$lib/components/ui';
+	import { Checkbox } from '$lib/components/ui';
 	import * as Table from '$lib/components/ui/table';
 	import type { UserModel, UsersModel } from '$lib/models/user-model';
 	import type { SortColumns, SortDirection } from '$lib/types/sort';
@@ -138,7 +136,7 @@
 
 		<div class="flex flex-row gap-3">
 			<div class="flex flex-1 flex-row">
-				<Filter
+				<FilterBar
 					bind:value={filterValue}
 					onUpdate={async () => {
 						await tick();

@@ -2,7 +2,7 @@
 	import { CreateUser } from '$lib/api/user-api';
 	import { Spinner } from '$lib/components';
 	import { PlusIcon, UserIcon } from '$lib/components/icons';
-	import { Button, Dialog, Input, InputPassword, Select } from '$lib/components/ui';
+	import { Button, Dialog, Input, PasswordInput, Select } from '$lib/components/ui';
 	import { SelectUserRoles, type UserRole } from '$lib/models/user-model';
 	import { Separator } from 'bits-ui';
 	import { toast } from 'svelte-sonner';
@@ -176,14 +176,14 @@
 				<div class="flex place-content-center">
 					<div class="flex w-xs flex-col gap-3">
 						<div class="text-foreground-alt-2 text-[15px] uppercase">Password</div>
-						<InputPassword bind:value={passwordValue} name="new password" />
+						<PasswordInput bind:value={passwordValue} name="new password" />
 					</div>
 				</div>
 
 				<div class="flex place-content-center">
 					<div class="flex w-xs flex-col gap-3">
 						<div class="text-foreground-alt-2 text-[15px] uppercase">Confirm Password</div>
-						<InputPassword bind:value={confirmPasswordValue} name="confirm password" />
+						<PasswordInput bind:value={confirmPasswordValue} name="confirm password" />
 					</div>
 				</div>
 			</main>
