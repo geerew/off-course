@@ -171,6 +171,7 @@
 				/>
 			</div>
 		</div>
+
 		<div class="flex w-full place-content-center">
 			{#await loadPromise}
 				<div class="flex justify-center pt-10">
@@ -202,7 +203,7 @@
 								</Table.Tr>
 							{/if}
 
-							{#each users as user}
+							{#each users as user (user.id)}
 								<Table.Tr class="hover:bg-background-alt-1 items-center duration-200">
 									<Table.Td>
 										{#if user.id != auth.user?.id}

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { GetCourses } from '$lib/api/course-api';
-	import { NiceDate, Pagination } from '$lib/components';
+	import { FilterBar, NiceDate, Pagination, SortMenu } from '$lib/components';
 	import { AddCoursesDialog } from '$lib/components/dialogs';
 	import { TickIcon, WarningIcon, XIcon } from '$lib/components/icons';
 	import RowActionMenu from '$lib/components/pages/admin/courses/row-action-menu.svelte';
@@ -10,12 +10,25 @@
 	import * as Table from '$lib/components/ui/table';
 	import type { CourseModel, CoursesModel } from '$lib/models/course-model';
 	import { scanMonitor } from '$lib/scans.svelte';
+	import type { SortColumns, SortDirection } from '$lib/types/sort';
+	import { tick } from 'svelte';
 	import { toast } from 'svelte-sonner';
 
 	let courses: CoursesModel = $state([]);
 
+	let filterValue = $state('');
+
 	let selectedCourses: Record<string, CourseModel> = $state({});
 	let selectedCoursesCount = $derived(Object.keys(selectedCourses).length);
+
+	let sortColumns = [
+		{ label: 'Title', column: 'courses.title', asc: 'Ascending', desc: 'Descending' },
+		{ label: 'Available', column: 'courses.available', asc: 'Ascending', desc: 'Descending' },
+		{ label: 'Created', column: 'courses.created_at', asc: 'Newest', desc: 'Oldest' },
+		{ label: 'Updated', column: 'courses.updated_at', asc: 'Newest', desc: 'Oldest' }
+	] as const satisfies SortColumns;
+	let selectedSortColumn = $state<(typeof sortColumns)[number]['column']>('courses.updated_at');
+	let selectedSortDirection = $state<SortDirection>('asc');
 
 	let paginationPage = $state(1);
 	let paginationPerPage = $state(10);
@@ -42,8 +55,11 @@
 		try {
 			if (doScan) await scanMonitor.fetch();
 
+			const sort = `sort:"${selectedSortColumn} ${selectedSortDirection}"`;
+			const q = filterValue ? `${filterValue} ${sort}` : sort;
+
 			const data = await GetCourses({
-				q: 'sort:"courses.created_at desc"',
+				q,
 				page: paginationPage,
 				perPage: paginationPerPage
 			});
@@ -109,6 +125,18 @@
 					loadPromise = fetchCourses(true);
 				}}
 			/>
+		</div>
+
+		<div class="flex flex-row gap-3">
+			<div class="flex flex-1 flex-row">
+				<FilterBar
+					bind:value={filterValue}
+					onUpdate={async () => {
+						await tick();
+						loadPromise = fetchCourses(true);
+					}}
+				/>
+			</div>
 
 			<div class="flex h-10 items-center gap-3 rounded-lg">
 				<TableActionMenu
@@ -120,6 +148,18 @@
 					onDelete={() => {
 						selectedCourses = {};
 						onRowDelete();
+					}}
+				/>
+			</div>
+
+			<div class="flex h-10 items-center gap-3 rounded-lg">
+				<SortMenu
+					columns={sortColumns}
+					bind:selectedColumn={selectedSortColumn}
+					bind:selectedDirection={selectedSortDirection}
+					onUpdate={async () => {
+						await tick();
+						loadPromise = fetchCourses(true);
 					}}
 				/>
 			</div>
@@ -158,7 +198,7 @@
 								</Table.Tr>
 							{/if}
 
-							{#each courses as course}
+							{#each courses as course (course.id)}
 								<Table.Tr class="hover:bg-background-alt-1 items-center duration-200">
 									<Table.Td>
 										<Checkbox

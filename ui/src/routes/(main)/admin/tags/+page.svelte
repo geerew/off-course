@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { GetTags } from '$lib/api/tag-api';
-	import { Pagination } from '$lib/components';
+	import { FilterBar, Pagination, SortMenu } from '$lib/components';
 	import { AddTagsDialog } from '$lib/components/dialogs';
 	import { WarningIcon } from '$lib/components/icons';
 	import RowActionMenu from '$lib/components/pages/admin/tags/row-action-menu.svelte';
@@ -9,9 +9,13 @@
 	import { Checkbox } from '$lib/components/ui';
 	import * as Table from '$lib/components/ui/table';
 	import type { TagModel, TagsModel } from '$lib/models/tag-model';
+	import type { SortColumns, SortDirection } from '$lib/types/sort';
+	import { tick } from 'svelte';
 	import { toast } from 'svelte-sonner';
 
 	let tags: TagsModel = $state([]);
+
+	let filterValue = $state('');
 
 	let selectedTags: Record<string, TagModel> = $state({});
 	let selectedTagsCount = $derived(Object.keys(selectedTags).length);
@@ -19,6 +23,12 @@
 	let paginationPage = $state(1);
 	let paginationPerPage = $state(10);
 	let paginationTotal = $state(0);
+
+	let sortColumns = [
+		{ label: 'Tag', column: 'tags.tag', asc: 'Ascending', desc: 'Descending' }
+	] as const satisfies SortColumns;
+	let selectedSortColumn = $state<(typeof sortColumns)[number]['column']>('tags.tag');
+	let selectedSortDirection = $state<SortDirection>('asc');
 
 	let isIndeterminate = $derived(selectedTagsCount > 0 && selectedTagsCount < paginationTotal);
 	let isChecked = $derived(selectedTagsCount !== 0 && selectedTagsCount === paginationTotal);
@@ -29,8 +39,11 @@
 
 	async function fetchTags(): Promise<void> {
 		try {
+			const sort = `sort:"${selectedSortColumn} ${selectedSortDirection}"`;
+			const q = filterValue ? `${filterValue} ${sort}` : sort;
+
 			const data = await GetTags({
-				q: 'sort:"tags.tag asc"',
+				q,
 				page: paginationPage,
 				perPage: paginationPerPage
 			});
@@ -96,6 +109,17 @@
 					loadPromise = fetchTags();
 				}}
 			/>
+		</div>
+		<div class="flex flex-row gap-3">
+			<div class="flex flex-1 flex-row">
+				<FilterBar
+					bind:value={filterValue}
+					onUpdate={async () => {
+						await tick();
+						loadPromise = fetchTags();
+					}}
+				/>
+			</div>
 
 			<div class="flex h-10 items-center gap-3 rounded-lg">
 				<TableActionMenu
@@ -103,6 +127,18 @@
 					onDelete={() => {
 						selectedTags = {};
 						onRowDelete();
+					}}
+				/>
+			</div>
+
+			<div class="flex h-10 items-center gap-3 rounded-lg">
+				<SortMenu
+					columns={sortColumns}
+					bind:selectedColumn={selectedSortColumn}
+					bind:selectedDirection={selectedSortDirection}
+					onUpdate={async () => {
+						await tick();
+						loadPromise = fetchTags();
 					}}
 				/>
 			</div>
@@ -137,7 +173,7 @@
 									<Table.Td class="text-center" colspan={9999}>No tags found</Table.Td>
 								</Table.Tr>
 							{/if}
-							{#each tags as tag, i}
+							{#each tags as tag, i (tag.id)}
 								<Table.Tr class="hover:bg-background-alt-1 items-center duration-200">
 									<Table.Td>
 										<Checkbox
