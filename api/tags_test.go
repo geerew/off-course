@@ -109,7 +109,7 @@ func TestTags_GetTags(t *testing.T) {
 		}
 
 		// Filter `invalid`
-		q := "invalid"
+		q := "invalid sort:special"
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -119,7 +119,7 @@ func TestTags_GetTags(t *testing.T) {
 		require.Zero(t, tagsResp)
 
 		// Filter by `li`
-		q = "li"
+		q = "li sort:special"
 		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -135,7 +135,7 @@ func TestTags_GetTags(t *testing.T) {
 		require.Equal(t, "slightly", tagsResp[5].Tag)
 
 		// Filter by `gh`
-		q = "gh"
+		q = "gh sort:special"
 		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -152,7 +152,7 @@ func TestTags_GetTags(t *testing.T) {
 		require.Equal(t, "slightly", tagsResp[6].Tag)
 
 		// Filter by `slight`
-		q = "slight"
+		q = "slight sort:special"
 		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -166,7 +166,7 @@ func TestTags_GetTags(t *testing.T) {
 		tag := &models.Tag{Tag: "Slight"}
 		require.Nil(t, router.dao.CreateTag(ctx, tag))
 
-		q = "SLigHt"
+		q = "SLigHt sort:special"
 		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -311,7 +311,7 @@ func TestTags_GetTagNames(t *testing.T) {
 		}
 
 		// Filter `invalid`
-		q := "invalid"
+		q := "invalid sort:special"
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/names?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -321,7 +321,7 @@ func TestTags_GetTagNames(t *testing.T) {
 		require.Empty(t, resp)
 
 		// Filter by `li`
-		q = "li"
+		q = "li sort:special"
 		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/names?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -336,7 +336,7 @@ func TestTags_GetTagNames(t *testing.T) {
 		require.Equal(t, "slightly", resp[5])
 
 		// Filter by `gh`
-		q = "gh"
+		q = "gh sort:special"
 		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/names?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -352,7 +352,7 @@ func TestTags_GetTagNames(t *testing.T) {
 		require.Equal(t, "slightly", resp[6])
 
 		// Filter by `slight`
-		q = "slight"
+		q = "slight sort:special"
 		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/names?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -365,7 +365,7 @@ func TestTags_GetTagNames(t *testing.T) {
 		tag := &models.Tag{Tag: "Slight"}
 		require.Nil(t, router.dao.CreateTag(ctx, tag))
 
-		q = "SLigHt"
+		q = "SLigHt sort:special"
 		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/names?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)

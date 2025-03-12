@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log/slog"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
@@ -203,6 +204,11 @@ func tagsAfterParseHook(parsed *queryparser.QueryResult, options *database.Optio
 
 	// Always take the first free text filter
 	options.Where = squirrel.Like{"LOWER(" + models.TAG_TABLE_TAG + ")": "%" + filter + "%"}
+
+	// If the sort is not special, return
+	if !slices.Contains(parsed.Sort, "special") {
+		return
+	}
 
 	// Clear the order y as it will be set in the orderby clause
 	options.OrderBy = []string{}
