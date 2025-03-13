@@ -28,7 +28,7 @@
 		{ label: 'Username', column: 'users.username', asc: 'Ascending', desc: 'Descending' },
 		{ label: 'Name', column: 'users.display_name', asc: 'Ascending', desc: 'Descending' },
 		{ label: 'Role', column: 'users.role', asc: 'Ascending', desc: 'Descending' },
-		{ label: 'Created At', column: 'users.created_at', asc: 'Newest', desc: 'Oldest' }
+		{ label: 'Created At', column: 'users.created_at', asc: 'Oldest', desc: 'Newest' }
 	] as const satisfies SortColumns;
 	let selectedSortColumn = $state<(typeof sortColumns)[number]['column']>('users.username');
 	let selectedSortDirection = $state<SortDirection>('asc');

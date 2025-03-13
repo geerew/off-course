@@ -24,11 +24,11 @@
 	let sortColumns = [
 		{ label: 'Title', column: 'courses.title', asc: 'Ascending', desc: 'Descending' },
 		{ label: 'Available', column: 'courses.available', asc: 'Ascending', desc: 'Descending' },
-		{ label: 'Created', column: 'courses.created_at', asc: 'Newest', desc: 'Oldest' },
-		{ label: 'Updated', column: 'courses.updated_at', asc: 'Newest', desc: 'Oldest' }
+		{ label: 'Created', column: 'courses.created_at', asc: 'Oldest', desc: 'Newest' },
+		{ label: 'Updated', column: 'courses.updated_at', asc: 'Oldest', desc: 'Newest' }
 	] as const satisfies SortColumns;
 	let selectedSortColumn = $state<(typeof sortColumns)[number]['column']>('courses.updated_at');
-	let selectedSortDirection = $state<SortDirection>('asc');
+	let selectedSortDirection = $state<SortDirection>('desc');
 
 	let paginationPage = $state(1);
 	let paginationPerPage = $state(10);
