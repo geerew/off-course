@@ -20,7 +20,7 @@ func Test_Parse(t *testing.T) {
 		require.NotNil(t, sch)
 
 		require.Equal(t, "users", sch.Table)
-		require.Len(t, sch.Fields, 1)
+		require.Len(t, sch.Fields, 2)
 		require.Len(t, sch.Relations, 3)
 	})
 
@@ -62,11 +62,12 @@ func Test_Select(t *testing.T) {
 		require.NotNil(t, sch)
 
 		u := &TestUser{}
-		err = sch.Select(u, &database.Options{Where: squirrel.Eq{"id": 1}}, db)
+		err = sch.Select(u, &database.Options{Where: squirrel.Eq{"users.id": 1}}, db)
 		require.NoError(t, err)
 
 		require.Equal(t, 1, u.ID)
 		require.Equal(t, 1, u.Profile.ID)
+		require.Equal(t, 2, u.PostCount)
 		require.Len(t, u.Posts, 2)
 		require.Equal(t, "Post 1 by John", u.Posts[0].Title)
 		require.Equal(t, "Post 2 by John", u.Posts[1].Title)
@@ -87,6 +88,7 @@ func Test_Select(t *testing.T) {
 
 		require.Equal(t, 1, u[0].ID)
 		require.Equal(t, 1, u[0].Profile.ID)
+		require.Equal(t, 2, u[0].PostCount)
 		require.Len(t, u[0].Posts, 2)
 		require.Equal(t, "Post 1 by John", u[0].Posts[0].Title)
 		require.Equal(t, "Post 2 by John", u[0].Posts[1].Title)
@@ -94,6 +96,7 @@ func Test_Select(t *testing.T) {
 
 		require.Equal(t, 2, u[1].ID)
 		require.Equal(t, 2, u[1].Profile.ID)
+		require.Equal(t, 1, u[1].PostCount)
 		require.Len(t, u[1].Posts, 1)
 		require.Equal(t, "Post by Jane", u[1].Posts[0].Title)
 		require.Len(t, *u[1].PtrPosts, 1)
@@ -123,11 +126,12 @@ func Test_Select(t *testing.T) {
 		require.NoError(t, err)
 
 		u := &TestUser{}
-		err = userSchema.Select(u, &database.Options{Where: squirrel.Eq{"id": 1}}, db)
+		err = userSchema.Select(u, &database.Options{Where: squirrel.Eq{"users.id": 1}}, db)
 		require.NoError(t, err)
 
 		require.Equal(t, 1, u.ID)
 		require.Equal(t, TestProfile{}, u.Profile)
+		require.Zero(t, u.PostCount)
 		require.Len(t, u.Posts, 0)
 	})
 
@@ -147,11 +151,11 @@ func Test_Select(t *testing.T) {
 		require.NotNil(t, postSchema)
 
 		// Delete Johns profile
-		_, err = profileSchema.Delete(&database.Options{Where: squirrel.Eq{"id": 1}}, db)
+		_, err = profileSchema.Delete(&database.Options{Where: squirrel.Eq{"profiles.id": 1}}, db)
 		require.NoError(t, err)
 
 		// Delete Johns posts
-		_, err = postSchema.Delete(&database.Options{Where: squirrel.Eq{"user_id": 1}}, db)
+		_, err = postSchema.Delete(&database.Options{Where: squirrel.Eq{"posts.user_id": 1}}, db)
 		require.NoError(t, err)
 
 		u := []*TestUser{}
@@ -160,10 +164,12 @@ func Test_Select(t *testing.T) {
 
 		require.Len(t, u, 2)
 		require.Equal(t, 1, u[0].ID)
+		require.Zero(t, u[0].PostCount)
 		require.Equal(t, TestProfile{}, u[0].Profile)
 		require.Len(t, u[0].Posts, 0)
 
 		require.Equal(t, 2, u[1].ID)
+		require.Equal(t, 1, u[1].PostCount)
 		require.Equal(t, 2, u[1].Profile.ID)
 		require.Len(t, u[1].Posts, 1)
 	})
@@ -180,7 +186,7 @@ func Test_Select(t *testing.T) {
 		require.NoError(t, err)
 
 		u := &TestUser{}
-		err = sch.Select(u, &database.Options{Where: squirrel.Eq{"id": 1}}, db)
+		err = sch.Select(u, &database.Options{Where: squirrel.Eq{"users.id": 1}}, db)
 		require.ErrorIs(t, err, sql.ErrNoRows)
 	})
 
@@ -219,7 +225,7 @@ func Test_RawSelect(t *testing.T) {
 		require.NotNil(t, sch)
 
 		u := &TestUser{}
-		err = sch.RawSelect(u, "SELECT * FROM users WHERE id = ?", []any{1}, db)
+		err = sch.RawSelect(u, "SELECT * FROM users WHERE users.id = ?", []any{1}, db)
 		require.NoError(t, err)
 
 		require.Equal(t, 1, u.ID)
@@ -280,7 +286,7 @@ func Test_RawSelect(t *testing.T) {
 		require.NoError(t, err)
 
 		u := &TestUser{}
-		err = userSchema.RawSelect(u, "SELECT * FROM users WHERE id = ?", []any{1}, db)
+		err = userSchema.RawSelect(u, "SELECT * FROM users WHERE users.id = ?", []any{1}, db)
 		require.NoError(t, err)
 
 		require.Equal(t, 1, u.ID)
@@ -304,11 +310,11 @@ func Test_RawSelect(t *testing.T) {
 		require.NotNil(t, postSchema)
 
 		// Delete Johns profile
-		_, err = profileSchema.Delete(&database.Options{Where: squirrel.Eq{"id": 1}}, db)
+		_, err = profileSchema.Delete(&database.Options{Where: squirrel.Eq{"profiles.id": 1}}, db)
 		require.NoError(t, err)
 
 		// Delete Johns posts
-		_, err = postSchema.Delete(&database.Options{Where: squirrel.Eq{"user_id": 1}}, db)
+		_, err = postSchema.Delete(&database.Options{Where: squirrel.Eq{"posts.user_id": 1}}, db)
 		require.NoError(t, err)
 
 		u := []*TestUser{}
@@ -337,7 +343,7 @@ func Test_RawSelect(t *testing.T) {
 		require.NoError(t, err)
 
 		u := &TestUser{}
-		err = sch.RawSelect(u, "SELECT * FROM users WHERE id = ?", []any{1}, db)
+		err = sch.RawSelect(u, "SELECT * FROM users WHERE users.id = ?", []any{1}, db)
 		require.ErrorIs(t, err, sql.ErrNoRows)
 	})
 
@@ -348,7 +354,7 @@ func Test_RawSelect(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, sch)
 
-		err = sch.RawSelect(TestUser{}, "SELECT * FROM users WHERE id = ?", []any{1}, db)
+		err = sch.RawSelect(TestUser{}, "SELECT * FROM users WHERE users.id = ?", []any{1}, db)
 		require.ErrorIs(t, err, utils.ErrNotPtr)
 	})
 
@@ -360,7 +366,7 @@ func Test_RawSelect(t *testing.T) {
 		require.NotNil(t, sch)
 
 		var u *TestUser
-		err = sch.RawSelect(u, "SELECT * FROM users WHERE id = ?", []any{1}, db)
+		err = sch.RawSelect(u, "SELECT * FROM users WHERE users.id = ?", []any{1}, db)
 		require.ErrorIs(t, err, utils.ErrNilPtr)
 	})
 }
@@ -375,7 +381,7 @@ func Test_Count(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, sch)
 
-		count, err := sch.Count(&database.Options{Where: squirrel.Eq{"id": 1}}, db)
+		count, err := sch.Count(&database.Options{Where: squirrel.Eq{"users.id": 1}}, db)
 		require.NoError(t, err)
 		require.Equal(t, 1, count)
 	})
@@ -464,7 +470,7 @@ func Benchmark_Scan(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		u := &TestUser{}
-		err = userSchema.Select(u, &database.Options{Where: squirrel.Eq{"id": (i % 1000)}}, db)
+		err = userSchema.Select(u, &database.Options{Where: squirrel.Eq{"users.id": (i % 1000)}}, db)
 		require.NoError(b, err)
 	}
 }

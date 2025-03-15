@@ -49,6 +49,7 @@ func (p *TestPost) Table() string {
 func (p *TestPost) Define(c *ModelConfig) {
 	c.Embedded("TestBase")
 
+	// Fields
 	c.Field("UserID").NotNull()
 	c.Field("Title").NotNull().Mutable()
 	c.Field("Content").NotNull().Mutable()
@@ -80,6 +81,7 @@ func (p *TestProfile) Table() string {
 func (p *TestProfile) Define(c *ModelConfig) {
 	c.Embedded("TestBase")
 
+	// Fields
 	c.Field("UserID").NotNull()
 	c.Field("Name").NotNull().Mutable()
 	c.Field("Username").NotNull().Mutable()
@@ -92,6 +94,11 @@ func (p *TestProfile) Define(c *ModelConfig) {
 
 type TestUser struct {
 	TestBase
+
+	// Aggregates
+	PostCount int
+
+	// Relations
 	Profile  TestProfile
 	Posts    []TestPost
 	PtrPosts *[]*TestPost
@@ -110,6 +117,16 @@ func (u *TestUser) Table() string {
 func (u *TestUser) Define(c *ModelConfig) {
 	c.Embedded("TestBase")
 
+	// Aggregates
+	c.Field("PostCount").AggregateFn("COUNT").JoinTable("posts").Column("id").Alias("post_count")
+
+	// Left joins
+	c.LeftJoin("posts").On("users.id = posts.user_id")
+
+	// Group by
+	c.GroupBy("users.id")
+
+	// Relations
 	c.Relation("Profile").MatchOn("user_id")
 	c.Relation("Posts").MatchOn("user_id")
 	c.Relation("PtrPosts").MatchOn("user_id")

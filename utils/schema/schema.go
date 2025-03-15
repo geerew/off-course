@@ -31,6 +31,9 @@ type Schema struct {
 
 	// A slice of left joins
 	LeftJoins []string
+
+	// A slice of group by fields
+	GroupBy []string
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -104,6 +107,9 @@ func Parse(model any) (*Schema, error) {
 	for _, join := range config.leftJoins {
 		s.LeftJoins = append(s.LeftJoins, fmt.Sprintf("%s ON %s", join.table, join.on))
 	}
+
+	// Build the group by fields
+	s.GroupBy = config.groupBy
 
 	// Store the schema in the cache
 	if v, loaded := cache.LoadOrStore(rt, s); loaded {
@@ -221,6 +227,8 @@ func (s *Schema) Select(model any, options *database.Options, db database.Querie
 		err = s.loadRelationsMany(concreteRv, db)
 	} else {
 		query, args, _ := s.SelectBuilder(options).Limit(1).ToSql()
+		fmt.Println(query, args)
+
 		rows, err = db.Query(query, args...)
 		if err != nil {
 			return err
@@ -374,15 +382,28 @@ func (s *Schema) SelectBuilder(options *database.Options) squirrel.SelectBuilder
 			table = f.JoinTable
 		}
 
-		if f.Alias != "" {
-			builder = builder.Column(fmt.Sprintf("%s.%s AS %s", table, f.Column, f.Alias))
+		// Build the column string, including the aggregate function if present
+		var col string
+		if f.AggregateFn != "" {
+			col = fmt.Sprintf("%s(%s.%s)", f.AggregateFn, table, f.Column)
 		} else {
-			builder = builder.Column(fmt.Sprintf("%s.%s", table, f.Column))
+			col = fmt.Sprintf("%s.%s", table, f.Column)
+		}
+
+		// Add the column to the builder
+		if f.Alias != "" {
+			builder = builder.Column(fmt.Sprintf("%s AS %s", col, f.Alias))
+		} else {
+			builder = builder.Column(col)
 		}
 	}
 
 	for _, join := range s.LeftJoins {
 		builder = builder.LeftJoin(join)
+	}
+
+	if len(s.GroupBy) > 0 {
+		builder = builder.GroupBy(s.GroupBy...)
 	}
 
 	if options != nil {
@@ -476,8 +497,8 @@ func (s *Schema) InsertBuilder(model any, options *database.Options) squirrel.In
 	data := make(map[string]any, len(s.Fields))
 
 	for _, f := range s.Fields {
-		// Ignore fields that part of a join
-		if f.JoinTable != "" {
+		// Ignore fields that part of a join or an aggregate function
+		if f.JoinTable != "" || f.AggregateFn != "" {
 			continue
 		}
 

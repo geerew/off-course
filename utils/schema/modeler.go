@@ -30,6 +30,9 @@ type ModelConfig struct {
 
 	// A slice of left joins
 	leftJoins []*modelLeftJoinConfig
+
+	// Group by fields
+	groupBy []string
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -56,6 +59,8 @@ type modelFieldConfig struct {
 	name string
 	// Override for the db column name
 	column string
+	// Aggregate function to apply to the field
+	aggregate string
 	// When true, the field cannot be null in the database
 	notNull bool
 	// A db column alias
@@ -87,6 +92,14 @@ func (m *ModelConfig) Field(name string) *modelFieldConfig {
 // Column sets the name of the column in the database
 func (f *modelFieldConfig) Column(name string) *modelFieldConfig {
 	f.column = name
+	return f
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// AggregateFn sets the name of and aggregate function to apply to the field
+func (f *modelFieldConfig) AggregateFn(name string) *modelFieldConfig {
+	f.aggregate = name
 	return f
 }
 
@@ -158,7 +171,7 @@ func (m *ModelConfig) Relation(name string) *modelRelationConfig {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Alias sets the alias for the column
+// MatchOn sets the column on the relation table to match with
 func (r *modelRelationConfig) MatchOn(name string) *modelRelationConfig {
 	r.match = name
 	return r
@@ -192,4 +205,13 @@ func (m *ModelConfig) LeftJoin(table string) *modelLeftJoinConfig {
 func (j *modelLeftJoinConfig) On(condition string) *modelLeftJoinConfig {
 	j.on = condition
 	return j
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Group By
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GroupBy adds a field to the group by clause
+func (m *ModelConfig) GroupBy(field string) {
+	m.groupBy = append(m.groupBy, field)
 }
