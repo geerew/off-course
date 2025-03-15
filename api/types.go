@@ -246,20 +246,12 @@ type tagRequest struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-type tagCourseTagResponse struct {
-	ID    string `json:"id"`
-	Title string `json:"title"`
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 type tagResponse struct {
-	ID          string                  `json:"id"`
-	Tag         string                  `json:"tag"`
-	CourseCount int                     `json:"courseCount"`
-	Courses     []*tagCourseTagResponse `json:"courses,omitempty"`
-	CreatedAt   types.DateTime          `json:"createdAt"`
-	UpdatedAt   types.DateTime          `json:"updatedAt"`
+	ID          string         `json:"id"`
+	Tag         string         `json:"tag"`
+	CourseCount int            `json:"courseCount"`
+	CreatedAt   types.DateTime `json:"createdAt"`
+	UpdatedAt   types.DateTime `json:"updatedAt"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -273,23 +265,10 @@ func tagResponseHelper(tags []*models.Tag) []*tagResponse {
 			Tag:         tag.Tag,
 			CreatedAt:   tag.CreatedAt,
 			UpdatedAt:   tag.UpdatedAt,
-			CourseCount: len(tag.CourseTags),
+			CourseCount: tag.CourseCount,
 		}
 
 		// Add basic course information
-		if len(tag.CourseTags) > 0 {
-			courses := []*tagCourseTagResponse{}
-
-			for _, ct := range tag.CourseTags {
-				courses = append(courses, &tagCourseTagResponse{
-					ID:    ct.CourseID,
-					Title: ct.Course,
-				})
-			}
-
-			t.Courses = courses
-		}
-
 		responses = append(responses, t)
 	}
 

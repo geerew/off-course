@@ -409,8 +409,7 @@ func TestTags_GetTag(t *testing.T) {
 		err = json.Unmarshal(body, &tagResp)
 		require.NoError(t, err)
 		require.Equal(t, tag1.ID, tagResp.ID)
-		require.Zero(t, tagResp.Courses)
-		require.Equal(t, 0, tagResp.CourseCount)
+		require.Zero(t, tagResp.CourseCount)
 
 		// Case insensitive
 		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/pHp", nil))
@@ -420,8 +419,7 @@ func TestTags_GetTag(t *testing.T) {
 		err = json.Unmarshal(body, &tagResp)
 		require.NoError(t, err)
 		require.Equal(t, tag2.ID, tagResp.ID)
-		require.Zero(t, tagResp.Courses)
-		require.Equal(t, 0, tagResp.CourseCount)
+		require.Zero(t, tagResp.CourseCount)
 
 		// Add a course to the tag
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
@@ -437,9 +435,7 @@ func TestTags_GetTag(t *testing.T) {
 		err = json.Unmarshal(body, &tagResp)
 		require.NoError(t, err)
 		require.Equal(t, tag1.ID, tagResp.ID)
-		require.Len(t, tagResp.Courses, 1)
 		require.Equal(t, 1, tagResp.CourseCount)
-		require.Equal(t, course.ID, tagResp.Courses[0].ID)
 	})
 
 	t.Run("404 (not found)", func(t *testing.T) {

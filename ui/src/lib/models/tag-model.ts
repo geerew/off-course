@@ -1,4 +1,4 @@
-import { array, number, object, optional, string, type InferOutput } from 'valibot';
+import { array, number, object, string, type InferOutput } from 'valibot';
 import { BaseSchema } from './base-model';
 import { BasePaginationSchema, type PaginationReqParams } from './pagination-model';
 
@@ -19,8 +19,7 @@ export type TagCourseTagsModel = TagCourseTagModel[];
 export const TagSchema = object({
 	...BaseSchema.entries,
 	tag: string(),
-	courseCount: number(),
-	courses: optional(array(TagCourseTagSchema))
+	courseCount: number()
 });
 
 export type TagModel = InferOutput<typeof TagSchema>;

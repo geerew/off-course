@@ -246,7 +246,7 @@ func Test_Get(t *testing.T) {
 		require.True(t, tagResult.CreatedAt.Equal(tag.CreatedAt))
 		require.True(t, tagResult.UpdatedAt.Equal(tag.UpdatedAt))
 		require.Equal(t, tag.Tag, tagResult.Tag)
-		require.Len(t, tagResult.CourseTags, 0)
+		require.Zero(t, tagResult.CourseCount)
 
 		// Create course tag
 		courseTag := &models.CourseTag{TagID: tag.ID, CourseID: course.ID}
@@ -267,7 +267,7 @@ func Test_Get(t *testing.T) {
 		tagResult = &models.Tag{}
 		require.NoError(t, dao.Get(ctx, tagResult, nil))
 		require.Equal(t, tag.ID, tagResult.ID)
-		require.Len(t, tagResult.CourseTags, 1)
+		require.Equal(t, 1, tagResult.CourseCount)
 
 		// Create user
 		user := &models.User{Username: "user1", DisplayName: "User 1", PasswordHash: "1234", Role: types.UserRoleAdmin}

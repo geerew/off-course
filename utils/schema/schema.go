@@ -227,7 +227,6 @@ func (s *Schema) Select(model any, options *database.Options, db database.Querie
 		err = s.loadRelationsMany(concreteRv, db)
 	} else {
 		query, args, _ := s.SelectBuilder(options).Limit(1).ToSql()
-		fmt.Println(query, args)
 
 		rows, err = db.Query(query, args...)
 		if err != nil {
