@@ -200,25 +200,52 @@ func tagsAfterParseHook(parsed *queryparser.QueryResult, options *database.Optio
 		return
 	}
 
-	filter := strings.ToLower(parsed.FreeText[0])
+	if slices.Contains(parsed.Sort, "special") {
+		// During special ordering, filter by the first filter (there should only be one) and
+		// order by a case expression
+		filter := strings.ToLower(parsed.FreeText[0])
 
-	// Always take the first free text filter
-	options.Where = squirrel.Like{"LOWER(" + models.TAG_TABLE_TAG + ")": "%" + filter + "%"}
+		options.Where = squirrel.Like{models.TAG_TABLE_TAG: "%" + filter + "%"}
 
-	// If the sort is not special, return
-	if !slices.Contains(parsed.Sort, "special") {
-		return
+		caseExpr := squirrel.Case().
+			When(squirrel.Eq{"LOWER(" + models.TAG_TABLE_TAG + ")": filter}, "0").
+			When(squirrel.Like{"LOWER(" + models.TAG_TABLE_TAG + ")": filter + "%"}, "1").
+			When(squirrel.Like{"LOWER(" + models.TAG_TABLE_TAG + ")": "%" + filter + "%"}, "2")
+
+		sql, args, _ := caseExpr.ToSql()
+		options.OrderByClause = squirrel.Expr(sql+", "+defaultTagsOrderBy[0], args...)
+
+		options.OrderBy = []string{}
+	} else {
+		options.Where = tagsWhereBuilder(parsed.Expr)
 	}
 
-	// Clear the order y as it will be set in the orderby clause
-	options.OrderBy = []string{}
+}
 
-	// Build the orderby case expression, then suffix with the default orderby
-	caseExpr := squirrel.Case().
-		When(squirrel.Eq{"LOWER(" + models.TAG_TABLE_TAG + ")": filter}, "0").
-		When(squirrel.Like{"LOWER(" + models.TAG_TABLE_TAG + ")": filter + "%"}, "1").
-		When(squirrel.Like{"LOWER(" + models.TAG_TABLE_TAG + ")": "%" + filter + "%"}, "2")
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	sql, args, _ := caseExpr.ToSql()
-	options.OrderByClause = squirrel.Expr(sql+", "+defaultTagsOrderBy[0], args...)
+// tagsWhereBuilder builds a squirrel.Sqlizer, for use in a WHERE clause
+//
+// TODO: Support count filter (ex HAVING COUNT(courses_tags.id) > 1)
+func tagsWhereBuilder(expr queryparser.QueryExpr) squirrel.Sqlizer {
+	switch node := expr.(type) {
+	case *queryparser.ValueExpr:
+		return squirrel.Like{models.TAG_TABLE_TAG: "%" + node.Value + "%"}
+	case *queryparser.AndExpr:
+		var andSlice []squirrel.Sqlizer
+		for _, child := range node.Children {
+			andSlice = append(andSlice, tagsWhereBuilder(child))
+		}
+
+		return squirrel.And(andSlice)
+	case *queryparser.OrExpr:
+		var orSlice []squirrel.Sqlizer
+		for _, child := range node.Children {
+			orSlice = append(orSlice, tagsWhereBuilder(child))
+		}
+
+		return squirrel.Or(orSlice)
+	default:
+		return nil
+	}
 }
