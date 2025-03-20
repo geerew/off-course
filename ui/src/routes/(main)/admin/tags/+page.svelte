@@ -25,7 +25,8 @@
 	let paginationTotal = $state(0);
 
 	let sortColumns = [
-		{ label: 'Tag', column: 'tags.tag', asc: 'Ascending', desc: 'Descending' }
+		{ label: 'Tag', column: 'tags.tag', asc: 'Ascending', desc: 'Descending' },
+		{ label: 'Courses', column: 'course_count', asc: 'Lowest', desc: 'Highest' }
 	] as const satisfies SortColumns;
 	let selectedSortColumn = $state<(typeof sortColumns)[number]['column']>('tags.tag');
 	let selectedSortDirection = $state<SortDirection>('asc');
