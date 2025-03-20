@@ -173,7 +173,6 @@ func (s *Schema) RawSelect(model any, query string, args []any, db database.Quer
 // Count calls the CountBuilder and executes the query, returning the count
 func (s *Schema) Count(options *database.Options, db database.Querier) (int, error) {
 	query, args, _ := s.CountBuilder(options).ToSql()
-
 	var count int
 	err := db.QueryRow(query, args...).Scan(&count)
 	return count, err
@@ -341,7 +340,6 @@ func (s *Schema) CountBuilder(options *database.Options) squirrel.SelectBuilder 
 		}
 
 		builder = builder.Where(options.Where).
-			OrderBy(options.OrderBy...).
 			GroupBy(options.GroupBy...)
 
 		if options.OrderByClause != nil {
