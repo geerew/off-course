@@ -20,6 +20,7 @@
 	let users: UsersModel = $state([]);
 
 	let filterValue = $state('');
+	let filterAppliedValue = $state('');
 
 	let selectedUsers: Record<string, UserModel> = $state({});
 	let selectedUsersCount = $derived(Object.keys(selectedUsers).length);
@@ -138,9 +139,12 @@
 			<div class="flex flex-1 flex-row">
 				<FilterBar
 					bind:value={filterValue}
-					onUpdate={async () => {
-						await tick();
-						loadPromise = fetchUsers();
+					onApply={async () => {
+						if (filterValue !== filterAppliedValue) {
+							filterAppliedValue = filterValue;
+							paginationPage = 1;
+							loadPromise = fetchUsers();
+						}
 					}}
 				/>
 			</div>

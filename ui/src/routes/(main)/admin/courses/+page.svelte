@@ -17,6 +17,7 @@
 	let courses: CoursesModel = $state([]);
 
 	let filterValue = $state('');
+	let filterAppliedValue = $state('');
 
 	let selectedCourses: Record<string, CourseModel> = $state({});
 	let selectedCoursesCount = $derived(Object.keys(selectedCourses).length);
@@ -131,9 +132,12 @@
 			<div class="flex flex-1 flex-row">
 				<FilterBar
 					bind:value={filterValue}
-					onUpdate={async () => {
-						await tick();
-						loadPromise = fetchCourses(true);
+					onApply={async () => {
+						if (filterValue !== filterAppliedValue) {
+							filterAppliedValue = filterValue;
+							paginationPage = 1;
+							loadPromise = fetchCourses(true);
+						}
 					}}
 				/>
 			</div>

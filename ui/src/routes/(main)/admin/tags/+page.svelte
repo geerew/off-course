@@ -16,6 +16,7 @@
 	let tags: TagsModel = $state([]);
 
 	let filterValue = $state('');
+	let filterAppliedValue = $state('');
 
 	let selectedTags: Record<string, TagModel> = $state({});
 	let selectedTagsCount = $derived(Object.keys(selectedTags).length);
@@ -115,9 +116,12 @@
 			<div class="flex flex-1 flex-row">
 				<FilterBar
 					bind:value={filterValue}
-					onUpdate={async () => {
-						await tick();
-						loadPromise = fetchTags();
+					onApply={async () => {
+						if (filterValue !== filterAppliedValue) {
+							filterAppliedValue = filterValue;
+							paginationPage = 1;
+							loadPromise = fetchTags();
+						}
 					}}
 				/>
 			</div>
