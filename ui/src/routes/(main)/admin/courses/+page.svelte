@@ -18,6 +18,11 @@
 
 	let filterValue = $state('');
 	let filterAppliedValue = $state('');
+	let filterOptions = {
+		available: ['true', 'false'],
+		tag: [],
+		progress: ['not started', 'started', 'completed']
+	};
 
 	let selectedCourses: Record<string, CourseModel> = $state({});
 	let selectedCoursesCount = $derived(Object.keys(selectedCourses).length);
@@ -132,6 +137,7 @@
 			<div class="flex flex-1 flex-row">
 				<FilterBar
 					bind:value={filterValue}
+					{filterOptions}
 					onApply={async () => {
 						if (filterValue !== filterAppliedValue) {
 							filterAppliedValue = filterValue;
@@ -198,7 +204,15 @@
 						<Table.Tbody>
 							{#if courses.length === 0}
 								<Table.Tr>
-									<Table.Td class="text-center" colspan={9999}>No courses found</Table.Td>
+									<Table.Td class="h-auto text-center" colspan={9999}>
+										<div class="flex flex-col items-center gap-2 py-5">
+											<div>No courses</div>
+
+											{#if filterAppliedValue}
+												<div class="text-foreground-alt-2">Try adjusting your filters</div>
+											{/if}
+										</div>
+									</Table.Td>
 								</Table.Tr>
 							{/if}
 

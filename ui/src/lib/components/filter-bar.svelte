@@ -1,14 +1,15 @@
 <script lang="ts">
 	import { cn } from '$lib/utils';
-	import { XIcon } from './icons';
+	import { WarningIcon, XIcon } from './icons';
 	import { Button } from './ui';
 
 	type Props = {
 		value: string;
 		onApply?: () => void;
+		filterOptions?: Record<string, string[]>;
 	};
 
-	let { value = $bindable(''), onApply }: Props = $props();
+	let { value = $bindable(''), onApply, filterOptions = $bindable({}) }: Props = $props();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -23,11 +24,87 @@
 	let paddingTop = $state(0);
 	let paddingBottom = $state(0);
 
+	let filterErrors = $state<string[]>([]);
+	let showErrorDisplay = $state(false);
+
+	let tokens = $state<string[]>([]);
+
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	// Tokenize the input text
+	// Tokenize the input text with support for quoted strings
 	function tokenize(text: string): string[] {
-		return text.match(/(\S+|\s+)/g) || [];
+		const _tokens = [];
+		let i = 0;
+		let currentToken = '';
+		let inQuotes = false;
+		let inWhitespace = false;
+
+		while (i < text.length) {
+			const char = text[i];
+
+			if (char === '"') {
+				const isPrecededByColon =
+					currentToken.length > 0 && currentToken[currentToken.length - 1] === ':';
+
+				if (!inQuotes) {
+					if (inWhitespace) {
+						_tokens.push(currentToken);
+						currentToken = '';
+						inWhitespace = false;
+					}
+
+					if (isPrecededByColon) {
+						currentToken += char;
+					} else {
+						if (currentToken) {
+							_tokens.push(currentToken);
+							currentToken = '';
+						}
+
+						currentToken = char;
+					}
+
+					inQuotes = true;
+				} else {
+					currentToken += char;
+
+					if (!currentToken.includes(':')) {
+						_tokens.push(currentToken);
+						currentToken = '';
+					}
+
+					inQuotes = false;
+				}
+			} else if (char === ' ' && !inQuotes) {
+				if (inWhitespace) {
+					currentToken += char;
+				} else {
+					if (currentToken) {
+						_tokens.push(currentToken);
+					}
+
+					currentToken = ' ';
+					inWhitespace = true;
+				}
+			} else {
+				if (inWhitespace) {
+					_tokens.push(currentToken);
+					currentToken = '';
+					inWhitespace = false;
+				}
+
+				currentToken += char;
+			}
+
+			i++;
+		}
+
+		if (currentToken) {
+			_tokens.push(currentToken);
+		}
+
+		tokens = _tokens;
+		return _tokens;
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -38,17 +115,32 @@
 
 		overlayTextEl.innerHTML = tokenize(value)
 			.map((token) => {
-				let spanClass = '';
-
-				if (token.trim() === 'AND' || token.trim() === 'OR') {
-					spanClass = 'text-blue-500';
-				}
-
-				const whitespace =
+				let whitespaceStyle =
 					textareaFocused && textareaEl && textareaEl.rows > 1
 						? 'whitespace-pre-wrap'
 						: 'whitespace-pre';
-				return `<span class="${spanClass} ${whitespace}">${token}</span>`;
+				let finalToken = token;
+
+				// AND/OR
+				if (token.trim() === 'AND' || token.trim() === 'OR') {
+					return `<span class="text-blue-600 ${whitespaceStyle}">${finalToken}</span>`;
+				}
+
+				// Whitespace
+				if (token.trim() === '') {
+					return `<span class="${whitespaceStyle}">${finalToken}</span>`;
+				}
+
+				// Filter keys
+				const keyMatch = token.match(/^(\w+):/);
+				if (keyMatch && filterOptions && filterOptions[keyMatch[1]]) {
+					const key = keyMatch[0];
+					const rest = token.slice(key.length);
+					return `<span class="text-amber-600 ${whitespaceStyle}">${key}</span><span class="${whitespaceStyle}">${rest}</span>`;
+				}
+
+				// Everything else
+				return `<span class="${whitespaceStyle}">${finalToken}</span>`;
 			})
 			.join('');
 	}
@@ -73,7 +165,6 @@
 
 		textareaEl.rows = count;
 
-		// Update container styles based on the line count and focus state.
 		if (textareaFocused && count > 1) {
 			containerEl.style.position = 'absolute';
 			containerEl.style.zIndex = '10';
@@ -82,6 +173,63 @@
 			containerEl.style.cssText = '';
 			document.body.style.overflow = '';
 		}
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Validate filter and collect all errors
+	function validateFilter(): string[] {
+		const errors: string[] = [];
+
+		// Check for balanced quotes
+		if (!checkQuoteBalance(value)) {
+			errors.push('Unbalanced quotation marks');
+		}
+
+		// Check values against filter options
+		tokens.forEach((token) => {
+			const keyMatch = token.match(/^(\w+):/);
+			if (keyMatch && filterOptions && filterOptions[keyMatch[1]]) {
+				const key = keyMatch[1];
+				const value = token.slice(keyMatch[0].length);
+
+				if (filterOptions[key].length > 0) {
+					if (value.trim() === '') {
+						errors.push(
+							`Missing value for <span class="text-amber-600 font-semibold">${key}</span>`
+						);
+						return;
+					}
+
+					const options = filterOptions[key].map((option) => option.toLowerCase());
+					let restLower = value.toLowerCase();
+
+					// Ignore quotes around the value
+					if (restLower.startsWith('"') && restLower.endsWith('"')) {
+						restLower = restLower.slice(1, -1);
+					}
+
+					if (!options.includes(restLower)) {
+						errors.push(
+							`Invalid value <span class="text-foreground-error">${value}</span> for <span class="text-amber-600 font-semibold">${key}</span>`
+						);
+					}
+				}
+			}
+		});
+
+		return errors;
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Check if quotes are balanced
+	function checkQuoteBalance(text: string): boolean {
+		let count = 0;
+		for (let i = 0; i < text.length; i++) {
+			if (text[i] === '"') count++;
+		}
+		return count % 2 === 0;
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -145,14 +293,25 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	// Handle keydown events
+	// Handle enter key
 	function onKeydown(e: KeyboardEvent) {
 		if (e.key === 'Enter') {
 			e.preventDefault();
-			onApply?.();
 
-			filterApplied = value !== '' ? true : false;
+			// Validate filter and collect all errors
+			filterErrors = validateFilter();
+			showErrorDisplay = filterErrors.length > 0;
+
+			if (!showErrorDisplay) {
+				onApply?.();
+				filterApplied = value !== '' ? true : false;
+			}
 			return;
+		}
+
+		// Clear error display when typing
+		if (showErrorDisplay) {
+			showErrorDisplay = false;
 		}
 
 		requestAnimationFrame(adjustHeight);
@@ -213,13 +372,13 @@
 	});
 </script>
 
-<div class="relative flex flex-1 flex-row">
+<div class="relative flex flex-1 flex-col">
 	<div
 		bind:this={containerEl}
 		class={cn(
-			'border-background-alt-5 bg-background  relative flex min-h-10 w-full flex-row items-center rounded-lg border px-2',
+			'border-background-alt-5 bg-background relative flex min-h-10 w-full flex-row items-start rounded-lg border px-2',
 			filterApplied
-				? 'focus-within:border-background-primary-alt-2 border-background-primary-alt-2 '
+				? 'focus-within:border-background-primary-alt-2 border-background-primary-alt-2'
 				: 'focus-within:border-foreground-alt-2'
 		)}
 	>
@@ -229,11 +388,9 @@
 					bind:this={overlayTextEl}
 					class={cn(
 						'pointer-events-none absolute inset-0 overflow-hidden overflow-y-auto py-[7px]',
-						textareaFocused ? 'whitespace-normal' : 'whitespace-nowrap'
+						textareaFocused ? 'whitespace-normal' : 'whitespace-nowrap',
+						textareaFocused && textareaEl && textareaEl.rows > 1 && 'whitespace-pre-wrap'
 					)}
-					style={textareaFocused && textareaEl && textareaEl.rows > 1
-						? 'white-space: pre-wrap;'
-						: 'white-space: nowrap;'}
 				></div>
 
 				<textarea
@@ -257,16 +414,36 @@
 
 		<Button
 			class={cn(
-				'bg-background-alt-4 text-foreground-alt-2 enabled:hover:text-foreground-alt-1 enabled:hover:bg-background-alt-6 size-6 p-0',
+				'bg-background-alt-4 text-foreground-alt-2 enabled:hover:text-foreground-alt-1 enabled:hover:bg-background-alt-6 mt-[7px] size-6 p-0',
 				!value && !filterApplied && 'cursor-default opacity-0'
 			)}
 			onclick={() => {
 				value = '';
 				filterApplied = false;
+				showErrorDisplay = false;
 				onApply?.();
 			}}
 		>
 			<XIcon class="size-4 stroke-[3]" />
 		</Button>
 	</div>
+
+	{#if showErrorDisplay}
+		<div
+			class="text-foreground-alt-1 bg-background-error/20 mt-2 flex flex-row gap-2.5 rounded-md border border-red-800/50 p-2 text-sm"
+		>
+			<WarningIcon class="text-foreground-error size-6 stroke-[1.5]" />
+			<div class="pt-0.5">
+				Filter contains {filterErrors.length}
+				{filterErrors.length === 1 ? 'issue' : 'issues'}:
+				<ul class="mt-1 ml-4">
+					{#each filterErrors as error}
+						<li class="list-disc">
+							{@html error}
+						</li>
+					{/each}
+				</ul>
+			</div>
+		</div>
+	{/if}
 </div>
