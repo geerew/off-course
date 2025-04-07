@@ -201,12 +201,6 @@
 						</Table.Thead>
 
 						<Table.Tbody>
-							{#if users.length === 0}
-								<Table.Tr>
-									<Table.Td class="text-center" colspan={9999}>No users found</Table.Td>
-								</Table.Tr>
-							{/if}
-
 							{#each users as user (user.id)}
 								<Table.Tr class="hover:bg-background-alt-1 items-center duration-200">
 									<Table.Td>

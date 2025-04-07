@@ -175,7 +175,15 @@
 						<Table.Tbody>
 							{#if tags.length === 0}
 								<Table.Tr>
-									<Table.Td class="text-center" colspan={9999}>No tags found</Table.Td>
+									<Table.Td class="h-auto text-center" colspan={9999}>
+										<div class="flex flex-col items-center gap-2 py-5">
+											<div>No tags</div>
+
+											{#if filterAppliedValue}
+												<div class="text-foreground-alt-2">Try adjusting your filters</div>
+											{/if}
+										</div>
+									</Table.Td>
 								</Table.Tr>
 							{/if}
 							{#each tags as tag, i (tag.id)}
