@@ -631,8 +631,8 @@ func (s *Schema) Scan(rows Rows, model any) error {
 				if field := s.FieldsByColumn[column]; field != nil {
 					v := concreteInstance
 					for _, pos := range field.Position {
-						// TODO - If value is a pointer and nil, initialize it
-						// TODO - If value is a map and nil, initialize it
+						// TODO If value is a pointer and nil, initialize it
+						// TODO If value is a map and nil, initialize it
 						v = reflect.Indirect(v).Field(pos)
 					}
 
@@ -666,8 +666,8 @@ func (s *Schema) Scan(rows Rows, model any) error {
 			if field := s.FieldsByColumn[column]; field != nil {
 				v := rv
 				for _, pos := range field.Position {
-					// TODO - If value is a pointer and nil, initialize it
-					// TODO - If value is a map and nil, initialize it
+					// TODO If value is a pointer and nil, initialize it
+					// TODO If value is a map and nil, initialize it
 					v = reflect.Indirect(v).Field(pos)
 				}
 
@@ -744,8 +744,8 @@ func (s *Schema) ScanMany(rows Rows, rv reflect.Value, pluck bool) error {
 				if field := s.FieldsByColumn[column]; field != nil {
 					v := concreteInstance
 					for _, pos := range field.Position {
-						// TODO - If value is a pointer and nil, initialize it
-						// TODO - If value is a map and nil, initialize it
+						// TODO If value is a pointer and nil, initialize it
+						// TODO If value is a map and nil, initialize it
 						v = reflect.Indirect(v).Field(pos)
 					}
 
@@ -814,8 +814,8 @@ func (s *Schema) ScanOne(rows Rows, rv reflect.Value, pluck bool) error {
 				v := rv
 
 				for _, pos := range field.Position {
-					// TODO - If value is a pointer and nil, initialize it
-					// TODO - If value is a map and nil, initialize it
+					// TODO If value is a pointer and nil, initialize it
+					// TODO If value is a map and nil, initialize it
 					v = reflect.Indirect(v).Field(pos)
 				}
 

@@ -309,7 +309,7 @@ func (api coursesAPI) serveAsset(c *fiber.Ctx) error {
 		return handleHtml(c, api.appFs, asset)
 	}
 
-	// TODO: Handle PDF
+	// TODO Handle PDF
 	return c.Status(fiber.StatusOK).SendString("done")
 }
 
@@ -539,7 +539,7 @@ func coursesAfterParseHook(parsed *queryparser.QueryResult, options *database.Op
 	options.Where = coursesWhereBuilder(parsed.Expr)
 
 	if foundProgress, ok := parsed.FoundFilters["progress"]; ok && foundProgress {
-		// TODO: Make a LEFT JOIN for when courses do not have progress
+		// TODO Make a LEFT JOIN for when courses do not have progress
 		options.AdditionalJoins = append(options.AdditionalJoins,
 			models.COURSE_PROGRESS_TABLE+" ON "+models.COURSE_PROGRESS_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID,
 		)

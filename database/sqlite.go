@@ -213,7 +213,7 @@ func (db *SqliteDb) bootstrap() error {
 		return err
 	}
 
-	// TODO: make this better (use semaphore to block/continue)
+	// TODO make this better (use semaphore to block/continue)
 	conn.SetMaxIdleConns(1)
 	conn.SetMaxOpenConns(1)
 

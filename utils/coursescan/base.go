@@ -585,7 +585,7 @@ func updateAssets(ctx context.Context, dao *dao.DAO, courseId string, assets []*
 	}
 
 	// Add assets
-	// TODO: This could be optimized by using a bulk insert
+	// TODO This could be optimized by using a bulk insert
 	for _, asset := range toAdd {
 		if err := dao.CreateAsset(ctx, asset); err != nil {
 			return err

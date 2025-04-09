@@ -11,7 +11,7 @@ import (
 	"github.com/geerew/off-course/utils/schema"
 )
 
-// TODO Update dao to support raw queries
+// TODO Support raw queries
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

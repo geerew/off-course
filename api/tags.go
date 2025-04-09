@@ -226,7 +226,7 @@ func tagsAfterParseHook(parsed *queryparser.QueryResult, options *database.Optio
 
 // tagsWhereBuilder builds a squirrel.Sqlizer, for use in a WHERE clause
 //
-// TODO: Support count filter (ex HAVING COUNT(courses_tags.id) > 1)
+// TODO Support count filter (ex HAVING COUNT(courses_tags.id) > 1)
 func tagsWhereBuilder(expr queryparser.QueryExpr) squirrel.Sqlizer {
 	switch node := expr.(type) {
 	case *queryparser.ValueExpr:

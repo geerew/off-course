@@ -21,8 +21,6 @@ require (
 	golang.org/x/crypto v0.31.0
 )
 
-require modernc.org/sqlite v1.34.4 // indirect
-
 require (
 	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
