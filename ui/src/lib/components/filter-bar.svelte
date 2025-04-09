@@ -5,11 +5,12 @@
 
 	type Props = {
 		value: string;
+		disabled?: boolean;
 		onApply?: () => void;
 		filterOptions?: Record<string, string[]>;
 	};
 
-	let { value = $bindable(''), onApply, filterOptions = $bindable({}) }: Props = $props();
+	let { value = $bindable(''), disabled = false, onApply, filterOptions = {} }: Props = $props();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -382,7 +383,7 @@
 				: 'focus-within:border-foreground-alt-2'
 		)}
 	>
-		<div class="flex-1 pr-2">
+		<div class={cn('flex-1 pr-2', disabled && 'pr-0')}>
 			<div class="relative">
 				<div
 					bind:this={overlayTextEl}
@@ -396,9 +397,11 @@
 				<textarea
 					bind:this={textareaEl}
 					bind:value
+					{disabled}
 					class={cn(
 						'caret-foreground scrollbar-hide placeholder-foreground-alt-2 flex h-auto w-full resize-none overflow-hidden overflow-y-auto py-[7px] text-transparent ring-0 transition-colors duration-200 focus:outline-none',
-						textareaFocused ? 'whitespace-normal' : 'whitespace-nowrap'
+						textareaFocused ? 'whitespace-normal' : 'whitespace-nowrap',
+						disabled && 'cursor-not-allowed opacity-50'
 					)}
 					onfocus={onFocus}
 					onblur={onBlur}
@@ -412,20 +415,22 @@
 			</div>
 		</div>
 
-		<Button
-			class={cn(
-				'bg-background-alt-4 text-foreground-alt-2 enabled:hover:text-foreground-alt-1 enabled:hover:bg-background-alt-6 mt-[7px] size-6 p-0',
-				!value && !filterApplied && 'cursor-default opacity-0'
-			)}
-			onclick={() => {
-				value = '';
-				filterApplied = false;
-				showErrorDisplay = false;
-				onApply?.();
-			}}
-		>
-			<XIcon class="size-4 stroke-[3]" />
-		</Button>
+		{#if !disabled}
+			<Button
+				class={cn(
+					'bg-background-alt-4 text-foreground-alt-2 enabled:hover:text-foreground-alt-1 enabled:hover:bg-background-alt-6 mt-[7px] size-6 p-0',
+					!value && !filterApplied && 'cursor-default opacity-0'
+				)}
+				onclick={() => {
+					value = '';
+					filterApplied = false;
+					showErrorDisplay = false;
+					onApply?.();
+				}}
+			>
+				<XIcon class="size-4 stroke-[3]" />
+			</Button>
+		{/if}
 	</div>
 
 	{#if showErrorDisplay}

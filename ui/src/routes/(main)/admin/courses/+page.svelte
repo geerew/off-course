@@ -137,6 +137,7 @@
 			<div class="flex flex-1 flex-row">
 				<FilterBar
 					bind:value={filterValue}
+					disabled={courses.length === 0}
 					{filterOptions}
 					onApply={async () => {
 						if (filterValue !== filterAppliedValue) {
