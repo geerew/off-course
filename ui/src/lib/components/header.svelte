@@ -49,7 +49,8 @@
 		{#if auth.user !== null}
 			<div class="flex flex-1 justify-end">
 				<Dropdown
-					triggerClass="bg-background-primary-alt-1 hover:bg-background-primary data-[state=open]:bg-background-primary text-foreground-alt-3 size-10 items-center justify-center rounded-full border-none font-semibold "
+					triggerClass="bg-background-primary-alt-1 hover:bg-background-primary data-[state=open]:bg-background-primary text-foreground-alt-3 size-10 items-center justify-center rounded-full border-none font-semibold"
+					contentClass="w-42 p-1"
 				>
 					{#snippet trigger()}
 						{auth.userLetter}
@@ -69,7 +70,7 @@
 								</span>
 							</div>
 
-							<Separator.Root class="bg-background-alt-3 my-2 h-px w-full shrink-0" />
+							<Separator.Root class="bg-background-alt-3 mb-2 h-px w-full shrink-0" />
 
 							<div class="flex flex-col gap-2">
 								<!-- Profile link -->
