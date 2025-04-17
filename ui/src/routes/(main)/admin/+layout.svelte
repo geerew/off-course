@@ -34,7 +34,7 @@
 	<div class="relative row-span-full">
 		<div class="absolute inset-0">
 			<nav
-				class="container-pl border-foreground-alt-4 sticky top-[calc(var(--height-header)+1px)] left-0 flex h-[calc(100dvh-(var(--height-header)+1px))] w-[--settings-menu-width] flex-col gap-4 border-r py-8"
+				class="container-pl border-foreground-alt-5 sticky top-[calc(var(--height-header)+1px)] left-0 flex h-[calc(100dvh-(var(--height-header)+1px))] w-[--settings-menu-width] flex-col gap-4 border-r py-8"
 			>
 				{#each menu as item}
 					<Button.Root

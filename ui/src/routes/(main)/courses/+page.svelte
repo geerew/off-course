@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { GetCourses } from '$lib/api/course-api';
 	import { FilterBar } from '$lib/components';
-	import { WarningIcon } from '$lib/components/icons';
+	import { LogoIcon, WarningIcon } from '$lib/components/icons';
 	import Spinner from '$lib/components/spinner.svelte';
 	import { Badge, Button } from '$lib/components/ui';
 	import type { CoursesModel } from '$lib/models/course-model';
 	import { scanMonitor } from '$lib/scans.svelte';
-	import { remCalc } from '$lib/utils';
+	import { cn, remCalc } from '$lib/utils';
+	import { Avatar } from 'bits-ui';
 	import theme from 'tailwindcss/defaultTheme';
 
 	let courses: CoursesModel = $state([]);
@@ -47,7 +48,7 @@
 	function setPaginationPerPage(windowWidth: number) {
 		paginationPerPage =
 			windowWidth >= +theme.screens.xl.replace('rem', '')
-				? 18
+				? 16
 				: windowWidth >= +theme.screens.md.replace('rem', '')
 					? 12
 					: 8;
@@ -64,7 +65,7 @@
 		try {
 			if (doScan) await scanMonitor.fetch();
 
-			const sort = 'sort:courses.title';
+			const sort = 'sort:"courses.title asc"';
 			const q = filterValue ? `${filterValue} ${sort}` : sort;
 
 			const data = await GetCourses({
@@ -88,13 +89,9 @@
 <div class="flex w-full place-content-center">
 	<div class="flex w-full max-w-7xl flex-col gap-6 px-5 py-10">
 		<div class="flex w-full place-content-center">
-			{#await loadPromise}
-				<div class="flex justify-center pt-10">
-					<Spinner class="bg-foreground-alt-3 size-4" />
-				</div>
-			{:then _}
-				<div class="flex w-full flex-col gap-8">
-					<div class="flex flex-1 flex-row">
+			<div class="flex w-full flex-col gap-8">
+				<div class="flex w-full flex-row items-center justify-between gap-5">
+					<div class="flex max-w-[40rem] flex-1">
 						<FilterBar
 							bind:value={filterValue}
 							disabled={!filterAppliedValue && courses.length === 0}
@@ -109,6 +106,20 @@
 						/>
 					</div>
 
+					{#if courses.length > 0}
+						<div class="flex flex-row justify-end">
+							<Badge class="text-sm">
+								{paginationTotal} courses
+							</Badge>
+						</div>
+					{/if}
+				</div>
+
+				{#await loadPromise}
+					<div class="flex justify-center pt-10">
+						<Spinner class="bg-foreground-alt-3 size-4" />
+					</div>
+				{:then _}
 					<div>
 						{#if courses.length === 0}
 							<div class="flex w-full flex-col items-center gap-2 pt-5">
@@ -122,24 +133,67 @@
 							</div>
 						{:else}
 							<div class="flex flex-col gap-5">
-								<div class="flex flex-row justify-end">
-									<Badge>
-										{paginationTotal} courses
-									</Badge>
-								</div>
-								<div class="grid-col-1 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+								<div class="grid-col-1 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
 									{#each courses as course}
-										<div
-											class="border-background-alt-3 hover:border-background-alt-5 flex flex-row gap-4 overflow-hidden rounded-lg border duration-200"
+										<Button
+											href={`/course?c=${course.id}`}
+											class={cn(
+												'bg-background-alt-1 text-foreground-alt-1 hover:bg-background-alt-1 group flex h-auto flex-row items-start gap-1.5 overflow-hidden rounded-lg text-start duration-200 md:flex-col',
+												!course.available && 'cursor-default'
+											)}
+											onclick={(e) => {
+												if (!course.available) e.preventDefault();
+											}}
 										>
-											<div class="bg-background-alt-2 h-full min-h-35 w-45"></div>
+											<div class="h-px min-h-40 w-full md:min-h-35">
+												<Avatar.Root class="h-full w-full">
+													<Avatar.Image
+														src={`/api/courses/${course.id}/card`}
+														class="h-full w-full object-cover"
+													/>
 
-											<div class="flex w-full flex-col gap-2 p-2">
-												<div class="flex w-full justify-between">
-													<span class="text-base font-semibold">{course.title}</span>
+													<Avatar.Fallback
+														class="bg-background-alt-2 flex h-full w-full place-content-center"
+													>
+														<LogoIcon class="fill-background-alt-3 w-12" />
+													</Avatar.Fallback>
+												</Avatar.Root>
+											</div>
+
+											<div class="flex h-full w-full flex-col justify-between gap-2 p-2.5">
+												<span
+													class={cn(
+														'font-semibold duration-150',
+														course.available
+															? 'group-hover:text-background-primary'
+															: 'text-foreground-alt-3'
+													)}
+												>
+													{course.title}
+												</span>
+
+												<!-- Progress -->
+												<div class="flex justify-end">
+													{#if course.progress.percent > 0}
+														<Badge
+															class={cn(
+																'text-foreground-alt-2',
+																course.progress.percent === 100 &&
+																	'bg-background-success text-foreground'
+															)}
+														>
+															{course.progress.percent === 100
+																? 'Completed'
+																: course.progress.percent + '%'}
+														</Badge>
+													{/if}
+
+													{#if !course.available}
+														<Badge class="bg-background-error">unavailable</Badge>
+													{/if}
 												</div>
 											</div>
-										</div>
+										</Button>
 									{/each}
 								</div>
 
@@ -166,13 +220,13 @@
 							</div>
 						{/if}
 					</div>
-				</div>
-			{:catch error}
-				<div class="flex w-full flex-col items-center gap-2 pt-10">
-					<WarningIcon class="text-foreground-error size-10" />
-					<span class="text-lg">Failed to fetch courses: {error.message}</span>
-				</div>
-			{/await}
+				{:catch error}
+					<div class="flex w-full flex-col items-center gap-2 pt-10">
+						<WarningIcon class="text-foreground-error size-10" />
+						<span class="text-lg">Failed to fetch courses: {error.message}</span>
+					</div>
+				{/await}
+			</div>
 		</div>
 	</div>
 </div>

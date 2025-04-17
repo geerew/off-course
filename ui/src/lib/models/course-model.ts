@@ -1,4 +1,4 @@
-import { array, boolean, object, picklist, string, type InferOutput } from 'valibot';
+import { array, boolean, number, object, picklist, string, type InferOutput } from 'valibot';
 import { BaseSchema } from './base-model';
 import { BasePaginationSchema, type PaginationReqParams } from './pagination-model';
 import { ScanStatusSchema } from './scan-model';
@@ -17,15 +17,25 @@ export const SelectUserRoles = [
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+export const CourseProgressSchema = object({
+	started: boolean(),
+	startedAt: string(),
+	percent: number(),
+	completedAt: string(),
+	progressUpdatedAt: string()
+});
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // Course schema
-// TODO add progress
 export const CourseSchema = object({
 	...BaseSchema.entries,
 	title: string(),
 	path: string(),
 	hasCard: boolean(),
 	available: boolean(),
-	scanStatus: ScanStatusSchema
+	scanStatus: ScanStatusSchema,
+	progress: CourseProgressSchema
 });
 
 export type CourseModel = InferOutput<typeof CourseSchema>;
