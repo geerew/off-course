@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { GetCourses } from '$lib/api/course-api';
+	import { FilterBar } from '$lib/components';
 	import { WarningIcon } from '$lib/components/icons';
 	import Spinner from '$lib/components/spinner.svelte';
 	import { Badge, Button } from '$lib/components/ui';
@@ -10,13 +11,21 @@
 
 	let courses: CoursesModel = $state([]);
 
+	let filterValue = $state('');
+	let filterAppliedValue = $state('');
+	let filterOptions = {
+		available: ['true', 'false'],
+		tag: [],
+		progress: ['not started', 'started', 'completed']
+	};
+
 	let paginationPage = $state(1);
 	let paginationPerPage = $state<number>();
 	let paginationTotal = $state<number>();
 
 	let loadingMore = $state(false);
 
-	let loadPromise = $state(fetchCourses(false));
+	let loadPromise = $state(fetchCourses(false, true));
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -29,31 +38,47 @@
 
 	// Determine the number of courses to load base on the screen size
 	$effect(() => {
-		const windowWidth = remCalc(window.innerWidth);
-
-		paginationPerPage =
-			windowWidth >= +theme.screens.xl.replace('rem', '')
-				? 24
-				: windowWidth >= +theme.screens.md.replace('rem', '')
-					? 16
-					: 8;
+		setPaginationPerPage(remCalc(window.innerWidth));
 	});
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	// Set the pagination perPage size based on the screen size
+	function setPaginationPerPage(windowWidth: number) {
+		paginationPerPage =
+			windowWidth >= +theme.screens.xl.replace('rem', '')
+				? 18
+				: windowWidth >= +theme.screens.md.replace('rem', '')
+					? 12
+					: 8;
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	// Fetch courses
-	async function fetchCourses(doScan: boolean): Promise<void> {
+	async function fetchCourses(doScan: boolean, append: boolean): Promise<void> {
+		if (!paginationPerPage) {
+			setPaginationPerPage(remCalc(window.innerWidth));
+		}
+
 		try {
 			if (doScan) await scanMonitor.fetch();
 
+			const sort = 'sort:courses.title';
+			const q = filterValue ? `${filterValue} ${sort}` : sort;
+
 			const data = await GetCourses({
-				q: 'sort: courses.title',
+				q,
 				page: paginationPage,
 				perPage: paginationPerPage
 			});
 			paginationTotal = data.totalItems;
 
-			courses.push(...data.items.filter((course) => course.available));
+			if (append) {
+				courses.push(...data.items);
+			} else {
+				courses = data.items;
+			}
 		} catch (error) {
 			throw error;
 		}
@@ -69,10 +94,31 @@
 				</div>
 			{:then _}
 				<div class="flex w-full flex-col gap-8">
+					<div class="flex flex-1 flex-row">
+						<FilterBar
+							bind:value={filterValue}
+							disabled={!filterAppliedValue && courses.length === 0}
+							{filterOptions}
+							onApply={async () => {
+								if (filterValue !== filterAppliedValue) {
+									filterAppliedValue = filterValue;
+									paginationPage = 1;
+									loadPromise = fetchCourses(false, false);
+								}
+							}}
+						/>
+					</div>
+
 					<div>
 						{#if courses.length === 0}
-							<div class="flex w-full flex-col items-center gap-2 pt-10">
-								<span class="text-lg">No courses found</span>
+							<div class="flex w-full flex-col items-center gap-2 pt-5">
+								<div class="flex flex-col items-center gap-2">
+									<div>No courses</div>
+
+									{#if filterAppliedValue}
+										<div class="text-foreground-alt-2">Try adjusting your filters</div>
+									{/if}
+								</div>
 							</div>
 						{:else}
 							<div class="flex flex-col gap-5">
@@ -105,9 +151,7 @@
 											onclick={async () => {
 												paginationPage += 1;
 												loadingMore = true;
-												// sleep for 3 seconds
-												await new Promise((r) => setTimeout(r, 3000));
-												await fetchCourses(false);
+												await fetchCourses(false, true);
 												loadingMore = false;
 											}}
 										>
