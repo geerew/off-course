@@ -56,7 +56,7 @@
 			viewBox="0 0 24 24"
 			stroke-width="1.5"
 			stroke="currentColor"
-			class="text-foreground-alt-2 visible size-5"
+			class="text-foreground-alt-3 visible size-5"
 		>
 			<path
 				stroke-linecap="round"
@@ -72,7 +72,7 @@
 			viewBox="0 0 24 24"
 			stroke-width="1.5"
 			stroke="currentColor"
-			class="text-foreground-alt-2 hidden size-5"
+			class="text-foreground-alt-3 hidden size-5"
 		>
 			<path
 				stroke-linecap="round"

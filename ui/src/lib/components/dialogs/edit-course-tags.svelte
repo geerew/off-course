@@ -288,7 +288,7 @@
 
 				<div class="absolute top-0 right-2 flex h-full items-center justify-center">
 					{#if loadingAvailableTags}
-						<Spinner class="bg-foreground-alt-2 size-1.5" />
+						<Spinner class="bg-foreground-alt-3 size-1.5" />
 					{/if}
 				</div>
 
@@ -297,7 +297,7 @@
 					oninput={(e) => (inputValue = e.currentTarget.value)}
 					onkeydown={handleInput}
 					disabled={isPosting}
-					class="bg-background-alt-2 focus:bg-background-alt-3 placeholder:text-foreground-alt-2 h-full w-full rounded-none px-2.5 ps-12 pe-12 ring-0 duration-250 ease-in-out placeholder:tracking-wide focus:outline-none"
+					class="bg-background-alt-2 focus:bg-background-alt-3 placeholder:text-foreground-alt-3 h-full w-full rounded-none px-2.5 ps-12 pe-12 ring-0 duration-250 ease-in-out placeholder:tracking-wide focus:outline-none"
 					placeholder="Add tag..."
 					aria-label="Add a tag"
 				/>
@@ -332,14 +332,14 @@
 			{#if !isArray}
 				{#await loadTagsPromise}
 					<div class="flex w-full items-center justify-center pt-3">
-						<Spinner class="bg-foreground-alt-2 size-3" />
+						<Spinner class="bg-foreground-alt-3 size-3" />
 					</div>
 				{:then _}
 					{#each existingTags as tag}
 						<Badge
 							class={cn(
 								'bg-background-alt-3 text-foreground h-6 overflow-hidden p-0 text-sm select-none',
-								toDelete.find((t) => t === tag) && 'text-foreground-alt-2'
+								toDelete.find((t) => t === tag) && 'text-foreground-alt-3'
 							)}
 							data-tag={tag.tag}
 						>

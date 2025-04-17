@@ -13,6 +13,7 @@ type QueryResult struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Parse a query string into an AST of sort tokens, free-text and allowed filters
+// TODO support single quotes too
 func Parse(q string, allowedFilters []string) (*QueryResult, error) {
 	allTokens := tokenize(q)
 	remainingTokens, sortTokens := extractSortTokens(allTokens)

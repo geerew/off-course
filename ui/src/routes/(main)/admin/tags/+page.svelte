@@ -153,7 +153,7 @@
 		<div class="flex w-full place-content-center">
 			{#await loadPromise}
 				<div class="flex justify-center pt-10">
-					<Spinner class="bg-foreground-alt-2 size-4" />
+					<Spinner class="bg-foreground-alt-3 size-4" />
 				</div>
 			{:then _}
 				<div class="flex w-full flex-col gap-8">
@@ -181,7 +181,7 @@
 											<div>No tags</div>
 
 											{#if filterAppliedValue}
-												<div class="text-foreground-alt-2">Try adjusting your filters</div>
+												<div class="text-foreground-alt-3">Try adjusting your filters</div>
 											{/if}
 										</div>
 									</Table.Td>

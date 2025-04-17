@@ -43,7 +43,7 @@
 
 	{#snippet content()}
 		<DropdownMenu.Item
-			class="text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-2 data-disabled:text-foreground-alt-2 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none disabled:opacity-50 data-disabled:cursor-default data-disabled:hover:bg-transparent"
+			class="text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-2 data-disabled:text-foreground-alt-3 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none disabled:opacity-50 data-disabled:cursor-default data-disabled:hover:bg-transparent"
 			disabled={!course.available}
 			onclick={async () => {
 				if (!course.available) return;

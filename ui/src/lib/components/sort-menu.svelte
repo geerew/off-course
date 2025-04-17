@@ -48,7 +48,7 @@
 				<WarningIcon class="size-4 stroke-[1.5]" />
 				<span>No columns</span>
 			</div>
-			<RightChevron class="stroke-foreground-alt-2 size-4.5 duration-200" />
+			<RightChevron class="stroke-foreground-alt-3 size-4.5 duration-200" />
 		{:else}
 			<div class="flex items-center gap-1.5">
 				{#if selectedDirection === 'asc'}
@@ -62,14 +62,14 @@
 					<span>Sort</span>
 				{/if}
 			</div>
-			<RightChevron class="stroke-foreground-alt-2 size-4.5 duration-200" />
+			<RightChevron class="stroke-foreground-alt-3 size-4.5 duration-200" />
 		{/if}
 	{/snippet}
 
 	{#snippet content()}
 		{#if columns.length === 0}
 			<div class="flex flex-col gap-1.5 p-1">
-				<p class="text-foreground-alt-2 text-center text-sm">No columns</p>
+				<p class="text-foreground-alt-3 text-center text-sm">No columns</p>
 			</div>
 		{:else}
 			<div class="flex flex-col gap-1.5 p-1">
@@ -85,7 +85,7 @@
 						>
 							{#snippet children({ checked })}
 								{#if checked}
-									<TickIcon class="text-foreground-alt-2 size-3.5 stroke-2" />
+									<TickIcon class="text-foreground-alt-3 size-3.5 stroke-2" />
 								{:else}
 									<span class="size-3.5"></span>
 								{/if}
@@ -109,12 +109,12 @@
 					>
 						{#snippet children({ checked })}
 							{#if checked}
-								<TickIcon class="text-foreground-alt-2 size-3.5 stroke-2" />
+								<TickIcon class="text-foreground-alt-3 size-3.5 stroke-2" />
 							{:else}
 								<span class="size-3.5"></span>
 							{/if}
 
-							<SortAscendingIcon class="text-foreground-alt-2 size-4" />
+							<SortAscendingIcon class="text-foreground-alt-3 size-4" />
 
 							{columns.find((column) => column.column === selectedColumn)?.asc || 'Ascending'}
 						{/snippet}
@@ -130,12 +130,12 @@
 					>
 						{#snippet children({ checked })}
 							{#if checked}
-								<TickIcon class="text-foreground-alt-2 size-3.5 stroke-2" />
+								<TickIcon class="text-foreground-alt-3 size-3.5 stroke-2" />
 							{:else}
 								<span class="size-3.5"></span>
 							{/if}
 
-							<SortDescendingIcon class="text-foreground-alt-2 size-4" />
+							<SortDescendingIcon class="text-foreground-alt-3 size-4" />
 
 							{columns.find((column) => column.column === selectedColumn)?.desc || 'Descending'}
 						{/snippet}

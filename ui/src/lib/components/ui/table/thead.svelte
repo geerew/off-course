@@ -13,7 +13,7 @@
 
 <thead
 	class={cn(
-		'border-background-alt-3 text-foreground-alt-2 border-b text-xs uppercase',
+		'border-background-alt-3 text-foreground-alt-3 border-b text-xs uppercase',
 		containerClass
 	)}
 	{...restProps}

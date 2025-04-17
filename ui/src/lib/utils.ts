@@ -15,7 +15,9 @@ export function capitalizeFirstLetter(str: string) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-export function buildQueryString(params: Record<string, string | number | undefined>): string {
+export function buildQueryString(
+	params: Record<string, string | number | boolean | undefined>
+): string {
 	const searchParams = new URLSearchParams();
 
 	Object.entries(params).forEach(([key, value]) => {

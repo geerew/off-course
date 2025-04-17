@@ -31,7 +31,7 @@
 	{#if trigger}
 		<DropdownMenu.Trigger
 			class={cn(
-				'border-background-alt-4 data-[state=open]:border-foreground-alt-2 hover:border-foreground-alt-2 disabled:text-foreground-alt-2 disabled:hover:border-background-alt-4 inline-flex h-10 items-center justify-between rounded-md border px-2.5 text-sm duration-200 select-none hover:cursor-pointer disabled:cursor-not-allowed',
+				'border-background-alt-4 data-[state=open]:border-foreground-alt-3 hover:border-foreground-alt-3 disabled:text-foreground-alt-3 disabled:hover:border-background-alt-4 inline-flex h-10 items-center justify-between rounded-md border px-2.5 text-sm duration-200 select-none hover:cursor-pointer disabled:cursor-not-allowed',
 				triggerClass
 			)}
 			{...triggerProps}

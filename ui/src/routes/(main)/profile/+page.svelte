@@ -15,7 +15,7 @@
 		<div class="mx-auto flex max-w-2xl flex-col place-content-center items-start gap-5">
 			<!-- Username -->
 			<div class="flex flex-col gap-3">
-				<div class="text-foreground-alt-2 text-[15px] uppercase">Username</div>
+				<div class="text-foreground-alt-3 text-[15px] uppercase">Username</div>
 				<span class="text-background-primary text-2xl">{auth.user.username}</span>
 			</div>
 
@@ -24,11 +24,11 @@
 			<!-- Display name -->
 			<div class="flex flex-col gap-3">
 				<div class="flex flex-row items-center gap-3">
-					<div class="text-foreground-alt-2 text-[15px] uppercase">Display Name</div>
+					<div class="text-foreground-alt-3 text-[15px] uppercase">Display Name</div>
 					<EditUserDisplayNameDialog value={auth.user}>
 						{#snippet trigger()}
 							<Dialog.Trigger
-								class="text-foreground-alt-2 hover:text-foreground-alt-1 mb-0.5 w-4.5 cursor-pointer bg-transparent py-0 duration-200 hover:bg-transparent"
+								class="text-foreground-alt-3 hover:text-foreground-alt-1 mb-0.5 w-4.5 cursor-pointer bg-transparent py-0 duration-200 hover:bg-transparent"
 							>
 								<EditIcon class="size-4.5 stroke-2" />
 							</Dialog.Trigger>
@@ -42,7 +42,7 @@
 
 			<!-- Role -->
 			<div class="flex flex-col gap-3">
-				<div class="text-foreground-alt-2 text-[15px] uppercase">Role</div>
+				<div class="text-foreground-alt-3 text-[15px] uppercase">Role</div>
 				<span class="text-background-primary text-2xl">{auth.isAdmin ? 'Admin' : 'User'}</span>
 			</div>
 
@@ -50,7 +50,7 @@
 
 			<!-- Password -->
 			<div class="flex flex-col gap-3">
-				<div class="text-foreground-alt-2 text-[15px] uppercase">Password</div>
+				<div class="text-foreground-alt-3 text-[15px] uppercase">Password</div>
 				<EditUserPasswordDialog value={auth.user}>
 					{#snippet trigger()}
 						<Dialog.Trigger>Change Password</Dialog.Trigger>
@@ -62,7 +62,7 @@
 
 			<!-- Delete account -->
 			<div class="flex flex-col gap-3">
-				<div class="text-foreground-alt-2 text-[15px] uppercase">Delete Account</div>
+				<div class="text-foreground-alt-3 text-[15px] uppercase">Delete Account</div>
 				<DeleteUserDialog value={auth.user}>
 					{#snippet trigger()}
 						Delete Account

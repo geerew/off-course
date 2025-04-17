@@ -384,7 +384,7 @@
 			'border-background-alt-5 bg-background relative flex min-h-10 w-full flex-row items-start rounded-lg border px-2',
 			filterApplied
 				? 'focus-within:border-background-primary-alt-2 border-background-primary-alt-2'
-				: 'focus-within:border-foreground-alt-2'
+				: 'focus-within:border-foreground-alt-3'
 		)}
 	>
 		<div class={cn('flex-1 pr-2', disabled && 'pr-0')}>
@@ -403,7 +403,7 @@
 					bind:value
 					{disabled}
 					class={cn(
-						'caret-foreground scrollbar-hide placeholder-foreground-alt-2 flex h-auto w-full resize-none overflow-hidden overflow-y-auto py-[7px] text-transparent ring-0 transition-colors duration-200 focus:outline-none',
+						'caret-foreground scrollbar-hide placeholder-foreground-alt-3 flex h-auto w-full resize-none overflow-hidden overflow-y-auto py-[7px] text-transparent ring-0 transition-colors duration-200 focus:outline-none',
 						textareaFocused ? 'whitespace-normal' : 'whitespace-nowrap',
 						disabled && 'cursor-not-allowed opacity-50'
 					)}
@@ -422,7 +422,7 @@
 		{#if !disabled}
 			<Button
 				class={cn(
-					'bg-background-alt-4 text-foreground-alt-2 enabled:hover:text-foreground-alt-1 enabled:hover:bg-background-alt-6 mt-[7px] size-6 p-0',
+					'bg-background-alt-4 text-foreground-alt-3 enabled:hover:text-foreground-alt-1 enabled:hover:bg-background-alt-6 mt-[7px] size-6 p-0',
 					!value && !filterApplied && 'cursor-default opacity-0'
 				)}
 				onclick={() => {

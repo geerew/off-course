@@ -14,7 +14,7 @@
 
 		<FormRegister endpoint="/api/auth/register" />
 
-		<div class="text-foreground-alt-2 text-center">
+		<div class="text-foreground-alt-3 text-center">
 			Already have an account?
 			<Button.Root
 				href="/auth/login/"

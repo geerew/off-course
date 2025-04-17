@@ -128,7 +128,7 @@
 				<!-- Username -->
 				<div class="flex place-content-center">
 					<div class="flex w-xs flex-col gap-3">
-						<div class="text-foreground-alt-2 text-[15px] uppercase">Username</div>
+						<div class="text-foreground-alt-3 text-[15px] uppercase">Username</div>
 						<Input
 							bind:ref={usernameInputEl}
 							bind:value={usernameValue}
@@ -143,7 +143,7 @@
 				<!-- Display name -->
 				<div class="flex place-content-center">
 					<div class="flex w-xs flex-col gap-3">
-						<div class="text-foreground-alt-2 text-[15px] uppercase">Display Name</div>
+						<div class="text-foreground-alt-3 text-[15px] uppercase">Display Name</div>
 						<Input
 							bind:value={displayNameValue}
 							name="display name"
@@ -158,7 +158,7 @@
 				<!-- Role -->
 				<div class="flex place-content-center">
 					<div class="flex w-xs flex-col gap-3">
-						<div class="text-foreground-alt-2 text-[15px] uppercase">Role</div>
+						<div class="text-foreground-alt-3 text-[15px] uppercase">Role</div>
 						<Select
 							type="single"
 							items={SelectUserRoles}
@@ -175,14 +175,14 @@
 				<!-- Password -->
 				<div class="flex place-content-center">
 					<div class="flex w-xs flex-col gap-3">
-						<div class="text-foreground-alt-2 text-[15px] uppercase">Password</div>
+						<div class="text-foreground-alt-3 text-[15px] uppercase">Password</div>
 						<PasswordInput bind:value={passwordValue} name="new password" />
 					</div>
 				</div>
 
 				<div class="flex place-content-center">
 					<div class="flex w-xs flex-col gap-3">
-						<div class="text-foreground-alt-2 text-[15px] uppercase">Confirm Password</div>
+						<div class="text-foreground-alt-3 text-[15px] uppercase">Confirm Password</div>
 						<PasswordInput bind:value={confirmPasswordValue} name="confirm password" />
 					</div>
 				</div>

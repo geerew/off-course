@@ -25,6 +25,6 @@
 
 		<Separator.Root class="bg-background-alt-5 h-px w-[15rem] shrink-0" />
 
-		<div class="text-foreground-alt-2 flex justify-center gap-2.5">Please try again</div>
+		<div class="text-foreground-alt-3 flex justify-center gap-2.5">Please try again</div>
 	</div>
 </div>

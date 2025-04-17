@@ -175,7 +175,7 @@
 		>
 			{#await loadPromise}
 				<div class="flex justify-center pt-10">
-					<Spinner class="bg-foreground-alt-2 size-4" />
+					<Spinner class="bg-foreground-alt-3 size-4" />
 				</div>
 			{:then _}
 				<!-- Back button -->
@@ -183,7 +183,7 @@
 					{#key paths[paths.length - 1]}
 						<div class="border-background-alt-3 flex flex-row items-center border-b">
 							<Button
-								class="text-foreground-alt-1 enabled:hover:bg-background disabled:text-foreground-alt-2 h-14 grow justify-start rounded-none bg-transparent p-0 px-3 text-start whitespace-normal duration-0 disabled:bg-transparent disabled:hover:cursor-default"
+								class="text-foreground-alt-1 enabled:hover:bg-background disabled:text-foreground-alt-3 h-14 grow justify-start rounded-none bg-transparent p-0 px-3 text-start whitespace-normal duration-0 disabled:bg-transparent disabled:hover:cursor-default"
 								disabled={selectedPath !== '' || isPosting || isRefreshing}
 								onclick={async () => {
 									await moveBack();
@@ -196,7 +196,7 @@
 							{#if backId === selectedPath}
 								<div class="flex h-full w-20 shrink-0 justify-center">
 									<div class="flex w-full place-content-center">
-										<Spinner class="bg-foreground-alt-2 size-2.5" />
+										<Spinner class="bg-foreground-alt-3 size-2.5" />
 									</div>
 								</div>
 							{/if}
@@ -208,7 +208,7 @@
 				{#each fs.directories as dir (dir.path)}
 					<div class="border-background-alt-3 flex flex-row items-center border-b">
 						<Button
-							class="text-foreground-alt-1 enabled:hover:bg-background disabled:text-foreground-alt-2 h-full min-h-14 grow justify-start rounded-none bg-transparent p-0 px-3 py-2 text-start whitespace-normal duration-0 disabled:bg-transparent disabled:hover:cursor-default"
+							class="text-foreground-alt-1 enabled:hover:bg-background disabled:text-foreground-alt-3 h-full min-h-14 grow justify-start rounded-none bg-transparent p-0 px-3 py-2 text-start whitespace-normal duration-0 disabled:bg-transparent disabled:hover:cursor-default"
 							disabled={isPosting ||
 								isRefreshing ||
 								selectedPath !== '' ||
@@ -227,19 +227,19 @@
 							{#if dir.classification === FsPathClassification.Course}
 								<div class="flex w-full justify-center place-self-center">
 									<Badge
-										class="border-foreground-alt-2 text-foreground-alt-2 h-auto border bg-transparent text-xs"
+										class="border-foreground-alt-3 text-foreground-alt-3 h-auto border bg-transparent text-xs"
 									>
 										Added
 									</Badge>
 								</div>
 							{:else if dir.path === selectedPath}
 								<div class="flex w-full place-content-center">
-									<Spinner class="bg-foreground-alt-2 size-2.5" />
+									<Spinner class="bg-foreground-alt-3 size-2.5" />
 								</div>
 							{:else}
 								<Button
 									class={cn(
-										'enabled:hover:bg-background group disabled:text-foreground-alt-2 h-full w-full rounded-none bg-transparent p-0 disabled:bg-transparent disabled:hover:cursor-default',
+										'enabled:hover:bg-background group disabled:text-foreground-alt-3 h-full w-full rounded-none bg-transparent p-0 disabled:bg-transparent disabled:hover:cursor-default',
 										dir.classification === FsPathClassification.Ancestor &&
 											'cursor-default hover:bg-transparent'
 									)}
@@ -283,7 +283,7 @@
 		<Dialog.Footer class="flex justify-between">
 			<div class="flex justify-start gap-2">
 				<Button
-					class="border-background-alt-4 text-foreground-alt-1 enabled:hover:bg-background-alt-4 enabled:hover:text-foreground disabled:text-foreground-alt-2 w-24 cursor-pointer rounded-md border bg-transparent py-2 duration-200 select-none disabled:bg-transparent disabled:opacity-70"
+					class="border-background-alt-4 text-foreground-alt-1 enabled:hover:bg-background-alt-4 enabled:hover:text-foreground disabled:text-foreground-alt-3 w-24 cursor-pointer rounded-md border bg-transparent py-2 duration-200 select-none disabled:bg-transparent disabled:opacity-70"
 					disabled={selectAllDisabled}
 					onclick={() => {
 						// Select all courses current not selected (and can be selected)
@@ -300,7 +300,7 @@
 				</Button>
 
 				<Button
-					class="border-background-alt-4 text-foreground-alt-1 enabled:hover:bg-background-alt-4 enabled:hover:text-foreground disabled:text-foreground-alt-2 w-28 cursor-pointer rounded-md border bg-transparent py-2 duration-200 select-none disabled:bg-transparent disabled:opacity-70"
+					class="border-background-alt-4 text-foreground-alt-1 enabled:hover:bg-background-alt-4 enabled:hover:text-foreground disabled:text-foreground-alt-3 w-28 cursor-pointer rounded-md border bg-transparent py-2 duration-200 select-none disabled:bg-transparent disabled:opacity-70"
 					disabled={deselectAllDisabled}
 					onclick={() => {
 						// Remove all selected courses

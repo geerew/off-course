@@ -21,7 +21,7 @@
 	</div>
 {:else if auth.user === null}
 	<div class="flex w-full justify-center pt-14 sm:pt-20">
-		<Spinner class="bg-foreground-alt-2 size-6" />
+		<Spinner class="bg-foreground-alt-3 size-6" />
 	</div>
 {:else}
 	<Header />

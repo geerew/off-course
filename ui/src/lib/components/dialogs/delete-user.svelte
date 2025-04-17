@@ -91,7 +91,7 @@
 			{:else}
 				<span class="text-lg">Are you sure you want to delete this user?</span>
 			{/if}
-			<span class="text-foreground-alt-2">All associated data will be deleted</span>
+			<span class="text-foreground-alt-3">All associated data will be deleted</span>
 		</div>
 
 		{#if deletingSelf}

@@ -39,7 +39,7 @@
 			<ActionIcon class="size-4 stroke-[1.5]" />
 			<span>Actions</span>
 		</div>
-		<RightChevron class="stroke-foreground-alt-2 size-4.5 duration-200" />
+		<RightChevron class="stroke-foreground-alt-3 size-4.5 duration-200" />
 	{/snippet}
 
 	{#snippet content()}

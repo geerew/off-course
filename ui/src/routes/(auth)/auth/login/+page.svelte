@@ -13,7 +13,7 @@
 
 		<FormLogin endpoint="/api/auth/login" />
 
-		<div class="text-foreground-alt-2 text-center">
+		<div class="text-foreground-alt-3 text-center">
 			Don't have an account?
 			<a href="/auth/register/" class="hover:text-background-primary font-semibold duration-200">
 				Sign up
