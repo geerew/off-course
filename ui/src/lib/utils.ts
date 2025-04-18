@@ -1,3 +1,4 @@
+import { goto } from '$app/navigation';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -34,4 +35,15 @@ export function buildQueryString(
 export function remCalc(px: number | string, base: number = 16): number {
 	const tempPx = `${px}`.replace('px', '');
 	return (1 / base) * parseInt(tempPx);
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+export async function UpdateQueryParam(key: string, value: string, replaceState: boolean) {
+	if (typeof window === 'undefined') return;
+
+	const url = new URL(window.location.href);
+	url.searchParams.set(key, value);
+
+	await goto(url.toString(), { replaceState, keepFocus: true, noScroll: true });
 }

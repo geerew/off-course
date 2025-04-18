@@ -2,28 +2,59 @@
 	import { page } from '$app/state';
 	import { GetAllCourseAssets, GetCourseFromParams } from '$lib/api/course-api';
 
-	import { WarningIcon } from '$lib/components/icons';
+	import { PdfIcon, VideoIcon, WarningIcon } from '$lib/components/icons';
 	import Spinner from '$lib/components/spinner.svelte';
+	import Button from '$lib/components/ui/button.svelte';
 	import type { AssetModel, ChapteredAssets } from '$lib/models/asset-model';
 	import type { CourseModel } from '$lib/models/course-model';
+	import { cn, UpdateQueryParam } from '$lib/utils';
 
 	let course = $state<CourseModel>();
-	let chapteredAssets = $state<ChapteredAssets>({});
+	let chapters = $state<ChapteredAssets>({});
+	let selectedAsset = $state<AssetModel>();
 
 	let loadPromise = $state(fetchCourse());
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	// Fetch course
+	// Fetch the course, then the assets for the course, then build a chapter structure from the
+	// assets
 	async function fetchCourse(): Promise<void> {
 		try {
-			course = await GetCourseFromParams(page.url.searchParams);
+			const pageParams = page.url.searchParams;
+			course = await GetCourseFromParams(pageParams);
 
 			const assets = await GetAllCourseAssets(course.id, {
 				q: `sort:"assets.chapter asc" sort:"assets.prefix asc"`
 			});
 
-			chapteredAssets = BuildChapterStructure(assets);
+			chapters = BuildChapterStructure(assets);
+
+			if (!pageParams || !pageParams.get('a')) {
+				let foundAsset: AssetModel | undefined = undefined;
+
+				// If all assets are completed, default to the first asset
+				if (!foundAsset && course.progress.percent === 100) {
+					foundAsset = Object.values(chapters).flat()[0];
+				}
+
+				//Find the first unfinished asset
+				for (const chapterAssets of Object.values(chapters)) {
+					foundAsset = chapterAssets.find((asset) => !asset.progress.completed);
+					if (foundAsset) break;
+				}
+
+				if (foundAsset) {
+					await UpdateQueryParam('a', foundAsset.id, true);
+					selectedAsset = foundAsset;
+				}
+			} else {
+				// If the asset id is in the query params, find it and set it as the selected asset
+				const assetId = pageParams.get('a');
+				if (assetId) {
+					selectedAsset = findAssetById(assetId, chapters);
+				}
+			}
 		} catch (error) {
 			throw error;
 		}
@@ -32,7 +63,7 @@
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Build the course chapter structure
-	export function BuildChapterStructure(courseAssets: AssetModel[]): ChapteredAssets {
+	function BuildChapterStructure(courseAssets: AssetModel[]): ChapteredAssets {
 		const chapters: ChapteredAssets = {};
 
 		for (const courseAsset of courseAssets) {
@@ -44,6 +75,26 @@
 
 		return chapters;
 	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Find an asset  by id
+	function findAssetById(id: string, chapters: ChapteredAssets): AssetModel {
+		const allAssets = Object.values(chapters).flat();
+		const index = allAssets.findIndex((a) => a.id === id);
+		if (index === -1) return chapters[Object.keys(chapters)[0]][0];
+		return allAssets[index];
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// As the query param `a` changes, this will be reactively called to set the selected asset
+	$effect(() => {
+		if (!course || Object.keys(chapters).length === 0) return;
+		const assetId = page.url.searchParams.get('a');
+		if (!assetId) return;
+		selectedAsset = findAssetById(assetId, chapters);
+	});
 </script>
 
 {#await loadPromise}
@@ -66,7 +117,7 @@
 							<span class="container-pl font-semibold">{course.title}</span>
 						</div>
 
-						{#each Object.keys(chapteredAssets) as chapter}
+						{#each Object.keys(chapters) as chapter}
 							<div class="container-pl leading-5">
 								<div class="border-background-alt-6 flex flex-col gap-1.5 border-b py-1.5 pr-2">
 									<span class=" text-background-primary text-sm font-semibold tracking-wide">
@@ -74,18 +125,26 @@
 									</span>
 									<div class="flex flex-row items-center gap-1">
 										<span class="text-foreground-alt-3 text-xs">
-											0 / {chapteredAssets[chapter].length}
+											0 / {chapters[chapter].length}
 										</span>
 									</div>
 								</div>
 
-								<ul class="ml-auto flex flex-col gap-2 pt-4 pb-3">
-									{#each chapteredAssets[chapter] as asset, index}
-										<li class="text-foreground-alt-2">
+								<div class="ml-auto flex flex-col gap-2 pt-4 pb-3">
+									{#each chapters[chapter] as asset, index}
+										<Button
+											class={cn(
+												'text-foreground-alt-2/80 bg-background enabled:hover:bg-background enabled:hover:text-foreground-alt-1 h-auto justify-start text-start duration-50 enabled:hover:underline',
+												selectedAsset?.id === asset.id && 'text-foreground-alt-1'
+											)}
+											onclick={async () => {
+												await UpdateQueryParam('a', asset.id, false);
+											}}
+										>
 											{index + 1}. {asset.title}
-										</li>
+										</Button>
 									{/each}
-								</ul>
+								</div>
 							</div>
 						{/each}
 					</nav>
@@ -93,8 +152,21 @@
 			</div>
 			<main class="container-pr flex w-full py-8">
 				<div class="flex w-full place-content-center">
-					<div class="flex w-full max-w-7xl min-w-4xl flex-col gap-6 pt-1">
-						<div class="flex w-full flex-col gap-8">// video</div>
+					<div class="flex w-full max-w-5xl flex-col gap-6 pt-1">
+						<div class="flex w-full flex-col gap-8">
+							{#if selectedAsset}
+								<div class="flex w-full flex-row items-center justify-baseline gap-2">
+									{#if selectedAsset.assetType === 'video'}
+										<VideoIcon class="fill-foreground-alt-2 size-6 stroke-2" />
+									{:else if selectedAsset.assetType === 'pdf'}
+										<PdfIcon class="fill-foreground-alt-2 size-6 stroke-2" />
+									{/if}
+									<span class="text-lg font-medium">
+										{selectedAsset.title}
+									</span>
+								</div>
+							{/if}
+						</div>
 					</div>
 				</div>
 			</main>

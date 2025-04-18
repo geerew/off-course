@@ -47,10 +47,10 @@
 	// Set the pagination perPage size based on the screen size
 	function setPaginationPerPage(windowWidth: number) {
 		paginationPerPage =
-			windowWidth >= +theme.screens.xl.replace('rem', '')
-				? 16
+			windowWidth >= +theme.screens.lg.replace('rem', '')
+				? 15
 				: windowWidth >= +theme.screens.md.replace('rem', '')
-					? 12
+					? 10
 					: 8;
 	}
 
