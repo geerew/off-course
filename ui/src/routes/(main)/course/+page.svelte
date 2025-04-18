@@ -1,13 +1,20 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { GetAllCourseAssets, GetCourseFromParams } from '$lib/api/course-api';
+	import type { APIError } from '$lib/api-error.svelte';
+	import {
+		GetAllCourseAssets,
+		GetCourseFromParams,
+		UpdateCourseAssetProgress
+	} from '$lib/api/course-api';
 
-	import { PdfIcon, VideoIcon, WarningIcon } from '$lib/components/icons';
+	import { PdfIcon, TickIcon, VideoIcon, WarningIcon } from '$lib/components/icons';
 	import Spinner from '$lib/components/spinner.svelte';
+	import { Tooltip } from '$lib/components/ui';
 	import Button from '$lib/components/ui/button.svelte';
 	import type { AssetModel, ChapteredAssets } from '$lib/models/asset-model';
 	import type { CourseModel } from '$lib/models/course-model';
 	import { cn, UpdateQueryParam } from '$lib/utils';
+	import { toast } from 'svelte-sonner';
 
 	let course = $state<CourseModel>();
 	let chapters = $state<ChapteredAssets>({});
@@ -88,6 +95,17 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	async function updateAssetProgress(asset: AssetModel): Promise<void> {
+		if (!course) return;
+		try {
+			await UpdateCourseAssetProgress(course.id, asset.id, asset.progress);
+		} catch (error) {
+			toast.error((error as APIError).message);
+		}
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	// As the query param `a` changes, this will be reactively called to set the selected asset
 	$effect(() => {
 		if (!course || Object.keys(chapters).length === 0) return;
@@ -106,6 +124,7 @@
 		<div
 			class="grid grid-cols-[var(--course-menu-width)_1fr] grid-rows-1 gap-6 pt-[calc(var(--height-header)+1))]"
 		>
+			<!-- Side navigation -->
 			<div class="relative row-span-full">
 				<div class="absolute inset-0">
 					<nav
@@ -125,12 +144,13 @@
 									</span>
 									<div class="flex flex-row items-center gap-1">
 										<span class="text-foreground-alt-3 text-xs">
-											0 / {chapters[chapter].length}
+											{chapters[chapter].filter((a) => a.progress.completed).length}
+											/ {chapters[chapter].length}
 										</span>
 									</div>
 								</div>
 
-								<div class="ml-auto flex flex-col gap-2 pt-4 pb-3">
+								<div class="ml-auto flex flex-col gap-3 pt-4 pb-3">
 									{#each chapters[chapter] as asset, index}
 										<Button
 											class={cn(
@@ -141,7 +161,29 @@
 												await UpdateQueryParam('a', asset.id, false);
 											}}
 										>
-											{index + 1}. {asset.title}
+											<div class="flex w-full flex-row items-center justify-between gap-2 pr-2.5">
+												<span>
+													{index + 1}. {asset.title}
+												</span>
+												<Button
+													class={cn(
+														' flex size-4 shrink-0 items-center justify-center rounded-full border',
+														asset.progress.completed
+															? 'enabled:bg-background-success enabled:hover:bg-background-success border-background-success '
+															: 'enabled:bg-background enabled:hover:bg-background border-foreground'
+													)}
+													onclick={async (e: MouseEvent) => {
+														e.stopPropagation();
+														asset.progress.completed = !asset?.progress.completed;
+														if (selectedAsset && selectedAsset.id === asset.id) {
+															selectedAsset = asset;
+														}
+														await updateAssetProgress(asset);
+													}}
+												>
+													<TickIcon class="text-foreground size-2 stroke-[3]" />
+												</Button>
+											</div>
 										</Button>
 									{/each}
 								</div>
@@ -150,20 +192,50 @@
 					</nav>
 				</div>
 			</div>
+
+			<!-- Main content -->
 			<main class="container-pr flex w-full py-8">
 				<div class="flex w-full place-content-center">
 					<div class="flex w-full max-w-5xl flex-col gap-6 pt-1">
+						<!-- Header -->
 						<div class="flex w-full flex-col gap-8">
 							{#if selectedAsset}
-								<div class="flex w-full flex-row items-center justify-baseline gap-2">
-									{#if selectedAsset.assetType === 'video'}
-										<VideoIcon class="fill-foreground-alt-2 size-6 stroke-2" />
-									{:else if selectedAsset.assetType === 'pdf'}
-										<PdfIcon class="fill-foreground-alt-2 size-6 stroke-2" />
-									{/if}
-									<span class="text-lg font-medium">
-										{selectedAsset.title}
-									</span>
+								<div class="flex flex-row items-center justify-between">
+									<div class="flex w-full flex-row items-center gap-2">
+										{#if selectedAsset.assetType === 'video'}
+											<VideoIcon class="fill-foreground-alt-2 size-8 stroke-2" />
+										{:else if selectedAsset.assetType === 'pdf'}
+											<PdfIcon class="fill-foreground-alt-2 size-8 stroke-2" />
+										{/if}
+										<span class="text-xl font-medium">
+											{selectedAsset.title}
+										</span>
+									</div>
+
+									<!-- Mark watched/unwatched -->
+									<Tooltip delayDuration={100} contentProps={{ side: 'bottom', sideOffset: 8 }}>
+										{#snippet trigger()}
+											<Button
+												class={cn(
+													' flex size-8 shrink-0 items-center justify-center rounded-full border',
+													selectedAsset?.progress.completed
+														? 'enabled:bg-background-success enabled:hover:bg-background-success border-background-success'
+														: 'enabled:bg-background enabled:hover:bg-background border-foreground'
+												)}
+												onclick={async () => {
+													if (!selectedAsset) return;
+													selectedAsset.progress.completed = !selectedAsset?.progress.completed;
+													await updateAssetProgress(selectedAsset);
+												}}
+											>
+												<TickIcon class="text-foreground size-4 stroke-[3]" />
+											</Button>
+										{/snippet}
+
+										{#snippet content()}
+											Mark as {selectedAsset?.progress.completed ? 'unwatched' : 'watched'}
+										{/snippet}
+									</Tooltip>
 								</div>
 							{/if}
 						</div>

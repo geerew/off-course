@@ -20,6 +20,8 @@ export const AssetProgressSchema = object({
 	completedAt: string()
 });
 
+export type AssetProgressModel = InferOutput<typeof AssetProgressSchema>;
+
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Asset schema

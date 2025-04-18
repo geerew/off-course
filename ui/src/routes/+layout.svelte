@@ -5,6 +5,7 @@
 
 	import { dev } from '$app/environment';
 	import { TailwindIndicator } from '$lib/components';
+	import { Tooltip } from 'bits-ui';
 	import { Toaster } from 'svelte-sonner';
 
 	let { children } = $props();
@@ -13,7 +14,9 @@
 <Toaster theme="dark" richColors />
 
 <main>
-	{@render children()}
+	<Tooltip.Provider>
+		{@render children()}
+	</Tooltip.Provider>
 
 	{#if dev}
 		<TailwindIndicator />

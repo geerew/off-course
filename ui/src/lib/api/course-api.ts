@@ -3,6 +3,7 @@ import {
 	AssetPaginationSchema,
 	type AssetModel,
 	type AssetPaginationModel,
+	type AssetProgressModel,
 	type AssetReqParams
 } from '$lib/models/asset-model';
 import {
@@ -201,4 +202,26 @@ export async function GetAllCourseAssets(
 	} while (page <= totalPages);
 
 	return assets;
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Update a course assets progress
+export async function UpdateCourseAssetProgress(
+	courseId: string,
+	assetId: string,
+	data: AssetProgressModel
+): Promise<void> {
+	const response = await fetch(`/api/courses/${courseId}/assets/${assetId}/progress`, {
+		method: 'PUT',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify(data)
+	});
+
+	if (!response.ok) {
+		const data = await response.json();
+		throw new APIError(response.status, data.message || 'Unknown error');
+	}
 }

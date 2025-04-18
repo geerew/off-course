@@ -6,5 +6,6 @@ export { default as Dropdown } from './dropdown.svelte';
 export { default as PasswordInput } from './input-password.svelte';
 export { default as Input } from './input.svelte';
 export { default as Select } from './select.svelte';
+export { default as Tooltip } from './tooltip.svelte';
 
 export * as Dialog from './dialog';
