@@ -158,6 +158,7 @@
 												selectedAsset?.id === asset.id && 'text-foreground-alt-1'
 											)}
 											onclick={async () => {
+												if (selectedAsset && selectedAsset.id === asset.id) return;
 												await UpdateQueryParam('a', asset.id, false);
 											}}
 										>
