@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/geerew/off-course/ui"
@@ -23,7 +24,12 @@ func (r *Router) bindUi() {
 				return c.Next()
 			}
 
-			uri := "http://localhost:5173" + c.OriginalURL()
+			port := os.Getenv("DEV_UI_PORT")
+			if port == "" {
+				port = "5173"
+			}
+
+			uri := "http://localhost:" + port + c.OriginalURL()
 
 			var err error
 			err = proxy.Do(c, uri)
