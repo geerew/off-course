@@ -136,7 +136,7 @@
 								<div class="grid-col-1 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
 									{#each courses as course}
 										<Button
-											href={`/course?c=${course.id}`}
+											href={`/course/${course.id}`}
 											class={cn(
 												'bg-background-alt-1 text-foreground-alt-1 hover:bg-background-alt-1 group flex h-auto flex-row items-start gap-1.5 overflow-hidden rounded-lg text-start duration-200 md:flex-col',
 												!course.available && 'cursor-default'
