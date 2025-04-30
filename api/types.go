@@ -172,6 +172,10 @@ type attachmentResponse struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func attachmentResponseHelper(attachments []*models.Attachment) []*attachmentResponse {
+	if len(attachments) == 0 {
+		return []*attachmentResponse{} // ← empty slice, not nil
+	}
+
 	responses := []*attachmentResponse{}
 	for _, attachment := range attachments {
 		responses = append(responses, &attachmentResponse{
@@ -202,7 +206,7 @@ type assetResponse struct {
 
 	// Relations
 	Progress    *assetProgressResponse `json:"progress"`
-	Attachments []*attachmentResponse  `json:"attachments,omitempty"`
+	Attachments []*attachmentResponse  `json:"attachments"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
