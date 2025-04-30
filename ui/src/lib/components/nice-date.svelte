@@ -12,10 +12,6 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	console.log('date', date);
-	// ----------------------
-	// Variables
-	// ----------------------
 	const d = new Date(date);
 	const formattedDate = d.toLocaleDateString(undefined, {
 		weekday: 'long',
