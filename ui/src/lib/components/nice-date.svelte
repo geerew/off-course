@@ -12,13 +12,12 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	console.log('date', date);
 	// ----------------------
 	// Variables
 	// ----------------------
 	const d = new Date(date);
-	const utcDate = new Date(d.getTime() + d.getTimezoneOffset() * 60000);
-
-	const formattedDate = utcDate.toLocaleDateString(undefined, {
+	const formattedDate = d.toLocaleDateString(undefined, {
 		weekday: 'long',
 		year: 'numeric',
 		month: 'short',
@@ -31,6 +30,6 @@
 
 <div class={cn('text-muted-foreground', componentClass)}>
 	<span title={prefix !== '' ? `${prefix} ${formattedDate}` : formattedDate}>
-		{ago(utcDate)}
+		{ago(d)}
 	</span>
 </div>
