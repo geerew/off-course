@@ -30,7 +30,7 @@
 	let sortColumns = [
 		{ label: 'Title', column: 'courses.title', asc: 'Ascending', desc: 'Descending' },
 		{ label: 'Available', column: 'courses.available', asc: 'Ascending', desc: 'Descending' },
-		{ label: 'Created', column: 'courses.created_at', asc: 'Oldest', desc: 'Newest' },
+		{ label: 'Added', column: 'courses.created_at', asc: 'Oldest', desc: 'Newest' },
 		{ label: 'Updated', column: 'courses.updated_at', asc: 'Oldest', desc: 'Newest' }
 	] as const satisfies SortColumns;
 	let selectedSortColumn = $state<(typeof sortColumns)[number]['column']>('courses.updated_at');
@@ -196,7 +196,7 @@
 								</Table.Th>
 								<Table.Th class="max-w-[5rem]">Course</Table.Th>
 								<Table.Th class="min-w-[1%]">Available</Table.Th>
-								<Table.Th class="min-w-[1%] text-center">Created</Table.Th>
+								<Table.Th class="min-w-[1%] text-center">Added</Table.Th>
 								<Table.Th class="min-w-[1%] text-center">Updated</Table.Th>
 								<Table.Th class="min-w-[1%]" />
 							</Table.Tr>
