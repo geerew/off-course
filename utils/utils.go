@@ -229,12 +229,12 @@ func DiffSliceOfStructsByKey[T any](left, right []T, key string) ([]T, []T, erro
 // ignore specified keys during the comparison
 //
 // Parameters:
-// - a: The first struct to compare (struct or a pointer to a struct)
-// - b: The second struct to compare (struct or a pointer to a struct)
-// - ignoreKeys: A slice of strings representing the field names to ignore during the comparison
+//   - a: The first struct/struct pointer
+//   - b: The second struct/struct pointer
+//   - ignoreKeys: A slice of strings representing the field names to ignore during the comparison
 //
 // Returns:
-// - true if the structs are equal, false otherwise
+//   - true if the structs are equal, false otherwise
 func CompareStructs(a, b interface{}, ignoreKeys []string) bool {
 	if reflect.TypeOf(a) != reflect.TypeOf(b) {
 		return false

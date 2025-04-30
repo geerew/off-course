@@ -195,7 +195,8 @@ type attachmentMap map[string]map[int][]*models.Attachment
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Processor scans a course to identify assets and attachments
+// Processor scans a course to identify assets and attachments. It should be passed to the
+// Worker method to process the scan jobs
 func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	if scan == nil {
 		return ErrNilScan
@@ -249,19 +250,12 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		return err
 	}
 
+	updatedCourse := false
+
 	// If the course is currently marked as unavailable, set it as available
 	if !course.Available {
 		course.Available = true
-		err := s.dao.UpdateCourse(ctx, course)
-		if err != nil {
-			return err
-		}
-
-		s.logger.Debug(
-			"Setting unavailable course as available",
-			loggerType,
-			slog.String("path", scan.CoursePath),
-		)
+		updatedCourse = true
 	}
 
 	cardPath := ""
@@ -401,7 +395,10 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		}
 	}
 
-	course.CardPath = cardPath
+	if course.CardPath != cardPath {
+		course.CardPath = cardPath
+		updatedCourse = true
+	}
 
 	return s.db.RunInTransaction(ctx, func(txCtx context.Context) error {
 		// Convert the assets map to a slice
@@ -412,12 +409,13 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 			}
 		}
 
+		updatedAssets := false
+		updatedAttachments := false
+
 		// Update the assets in DB
-		if len(assets) > 0 {
-			err = updateAssets(txCtx, s.dao, course.ID, assets)
-			if err != nil {
-				return err
-			}
+		updatedAssets, err = updateAssets(txCtx, s.dao, course.ID, assets)
+		if err != nil {
+			return err
 		}
 
 		ids, err := s.dao.ListPluck(txCtx, &models.Asset{}, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_COURSE_ID: course.ID}}, models.BASE_ID)
@@ -440,16 +438,16 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		}
 
 		// Update the attachments in DB
-		if len(attachments) > 0 {
-			err = updateAttachments(txCtx, s.dao, ids, attachments)
+		updatedAttachments, err = updateAttachments(txCtx, s.dao, ids, attachments)
+		if err != nil {
+			return err
+		}
+
+		if updatedCourse || updatedAssets || updatedAttachments {
+			err = s.dao.UpdateCourse(txCtx, course)
 			if err != nil {
 				return err
 			}
-		}
-
-		err = s.dao.UpdateCourse(txCtx, course)
-		if err != nil {
-			return err
 		}
 
 		return nil
@@ -570,25 +568,27 @@ func isCard(filename string) bool {
 // updateAssets updates the assets in the database based on the assets found on disk. It compares
 // the existing assets in the database with the assets found on disk, and performs the necessary
 // additions, deletions, and updates
-func updateAssets(ctx context.Context, dao *dao.DAO, courseId string, assets []*models.Asset) error {
+func updateAssets(ctx context.Context, dao *dao.DAO, courseId string, assets []*models.Asset) (bool, error) {
+	updated := false
+
 	existingAssets := []*models.Asset{}
 	err := dao.List(ctx, &existingAssets, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_COURSE_ID: courseId}})
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// Compare the assets found on disk to assets found in DB and identify which assets to add and
 	// which assets to delete
 	toAdd, toDelete, err := utils.DiffSliceOfStructsByKey(assets, existingAssets, "Hash")
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// Add assets
 	// TODO This could be optimized by using a bulk insert
 	for _, asset := range toAdd {
 		if err := dao.CreateAsset(ctx, asset); err != nil {
-			return err
+			return false, err
 		}
 	}
 
@@ -596,8 +596,12 @@ func updateAssets(ctx context.Context, dao *dao.DAO, courseId string, assets []*
 	for _, deleteAsset := range toDelete {
 		err := dao.Delete(ctx, deleteAsset, nil)
 		if err != nil {
-			return err
+			return false, err
 		}
+	}
+
+	if len(toAdd) != 0 || len(toDelete) != 0 {
+		updated = true
 	}
 
 	// Identify the existing assets whose information has changed
@@ -625,7 +629,7 @@ func updateAssets(ctx context.Context, dao *dao.DAO, courseId string, assets []*
 				// The assets has been updated to have the existing assets ID, so this will update the
 				// existing asset with the details of the new asset
 				if err := dao.UpdateAsset(ctx, asset); err != nil {
-					return err
+					return false, err
 				}
 			}
 		}
@@ -635,11 +639,15 @@ func updateAssets(ctx context.Context, dao *dao.DAO, courseId string, assets []*
 		asset.Path = asset.Path[:len(asset.Path)-len(randomTempSuffix)]
 
 		if err := dao.UpdateAsset(ctx, asset); err != nil {
-			return err
+			return false, err
 		}
 	}
 
-	return nil
+	if len(updatedAssets) != 0 {
+		updated = true
+	}
+
+	return updated, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -647,23 +655,25 @@ func updateAssets(ctx context.Context, dao *dao.DAO, courseId string, assets []*
 // updateAttachments updates the attachments in the database based on the attachments found on disk.
 // It compares the existing attachments in the database with the attachments found on disk, and performs
 // the necessary additions and deletions
-func updateAttachments(ctx context.Context, dao *dao.DAO, assetIDs []string, attachments []*models.Attachment) error {
+func updateAttachments(ctx context.Context, dao *dao.DAO, assetIDs []string, attachments []*models.Attachment) (bool, error) {
+	updated := false
+
 	existingAttachments := []*models.Attachment{}
 	err := dao.List(ctx, &existingAttachments, &database.Options{Where: squirrel.Eq{models.ATTACHMENT_TABLE_ASSET_ID: assetIDs}})
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// Compare the attachments found on disk to attachments found in DB
 	toAdd, toDelete, err := utils.DiffSliceOfStructsByKey(attachments, existingAttachments, "Path")
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// Add attachments
 	for _, attachment := range toAdd {
 		if err := dao.CreateAttachment(ctx, attachment); err != nil {
-			return err
+			return false, err
 		}
 	}
 
@@ -671,9 +681,13 @@ func updateAttachments(ctx context.Context, dao *dao.DAO, assetIDs []string, att
 	for _, attachment := range toDelete {
 		err := dao.Delete(ctx, attachment, nil)
 		if err != nil {
-			return err
+			return false, err
 		}
 	}
 
-	return nil
+	if len(toAdd) != 0 || len(toDelete) != 0 {
+		updated = true
+	}
+
+	return updated, nil
 }

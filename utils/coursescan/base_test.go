@@ -243,7 +243,7 @@ func TestScanner_Processor(t *testing.T) {
 	})
 
 	t.Run("mark course available", func(t *testing.T) {
-		scanner, ctx, logs := setup(t)
+		scanner, ctx, _ := setup(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: false}
 		require.NoError(t, scanner.dao.CreateCourse(ctx, course))
@@ -256,9 +256,10 @@ func TestScanner_Processor(t *testing.T) {
 		err := Processor(ctx, scanner, scan)
 		require.NoError(t, err)
 
-		require.NotEmpty(t, *logs)
-		require.Equal(t, "Setting unavailable course as available", (*logs)[len(*logs)-1].Message)
-		require.Equal(t, slog.LevelDebug, (*logs)[len(*logs)-1].Level)
+		courseResult := &models.Course{Base: models.Base{ID: course.ID}}
+		err = scanner.dao.GetById(ctx, courseResult)
+		require.NoError(t, err)
+		require.True(t, courseResult.Available)
 	})
 
 	t.Run("card", func(t *testing.T) {
@@ -763,8 +764,9 @@ func TestScanner_UpdateAssets(t *testing.T) {
 			assets = append(assets, asset)
 		}
 
-		err := updateAssets(ctx, scanner.dao, course.ID, assets)
+		updated, err := updateAssets(ctx, scanner.dao, course.ID, assets)
 		require.NoError(t, err)
+		require.False(t, updated)
 
 		count, err := scanner.dao.Count(ctx, &models.Asset{}, nil)
 		require.NoError(t, err)
@@ -795,16 +797,18 @@ func TestScanner_UpdateAssets(t *testing.T) {
 		}
 
 		// Add first 7 assets
-		err := updateAssets(ctx, scanner.dao, course.ID, assets[:7])
+		updated, err := updateAssets(ctx, scanner.dao, course.ID, assets[:7])
 		require.NoError(t, err)
+		require.True(t, updated)
 
 		count, err := scanner.dao.Count(ctx, &models.Asset{}, nil)
 		require.NoError(t, err)
 		require.Equal(t, 7, count)
 
 		// Add remaining assets
-		err = updateAssets(ctx, scanner.dao, course.ID, assets)
+		updated, err = updateAssets(ctx, scanner.dao, course.ID, assets)
 		require.NoError(t, err)
+		require.True(t, updated)
 
 		count, err = scanner.dao.Count(ctx, &models.Asset{}, nil)
 		require.NoError(t, err)
@@ -841,16 +845,18 @@ func TestScanner_UpdateAssets(t *testing.T) {
 		}
 
 		// Delete 2 assets
-		err := updateAssets(ctx, scanner.dao, course.ID, assets[2:])
+		updated, err := updateAssets(ctx, scanner.dao, course.ID, assets[2:])
 		require.NoError(t, err)
+		require.True(t, updated)
 
 		count, err := scanner.dao.Count(ctx, &models.Asset{}, nil)
 		require.NoError(t, err)
 		require.Equal(t, 8, count)
 
 		// Delete another 2 assets
-		err = updateAssets(ctx, scanner.dao, course.ID, assets[4:])
+		updated, err = updateAssets(ctx, scanner.dao, course.ID, assets[4:])
 		require.NoError(t, err)
+		require.True(t, updated)
 
 		count, err = scanner.dao.Count(ctx, &models.Asset{}, nil)
 		require.NoError(t, err)
@@ -881,8 +887,9 @@ func TestScanner_UpdateAssets(t *testing.T) {
 		}
 
 		// Add assets
-		err := updateAssets(ctx, scanner.dao, course.ID, assets)
+		updated, err := updateAssets(ctx, scanner.dao, course.ID, assets)
 		require.NoError(t, err)
+		require.True(t, updated)
 
 		count, err := scanner.dao.Count(ctx, &models.Asset{}, nil)
 		require.NoError(t, err)
@@ -899,8 +906,9 @@ func TestScanner_UpdateAssets(t *testing.T) {
 		assets[4].Chapter = "Chapter 200"
 		assets[4].Path = "/course-1/Chapter 200/200 asset.mp4"
 
-		err = updateAssets(ctx, scanner.dao, course.ID, assets)
+		updated, err = updateAssets(ctx, scanner.dao, course.ID, assets)
 		require.NoError(t, err)
+		require.True(t, updated)
 
 		count, err = scanner.dao.Count(ctx, &models.Asset{}, nil)
 		require.NoError(t, err)
@@ -952,8 +960,9 @@ func TestScanner_UpdateAssets(t *testing.T) {
 		assets[0].Title, assets[1].Title = assets[1].Title, assets[0].Title
 		assets[0].Path, assets[1].Path = assets[1].Path, assets[0].Path
 
-		err := updateAssets(ctx, scanner.dao, course.ID, assets)
+		updated, err := updateAssets(ctx, scanner.dao, course.ID, assets)
 		require.NoError(t, err)
+		require.True(t, updated)
 
 		asset1 := &models.Asset{Base: models.Base{ID: assets[0].ID}}
 		err = scanner.dao.GetById(ctx, asset1)
@@ -1002,8 +1011,9 @@ func TestScanner_UpdateAttachments(t *testing.T) {
 			attachments = append(attachments, attachment)
 		}
 
-		err := updateAttachments(ctx, scanner.dao, []string{asset.ID}, attachments)
+		updated, err := updateAttachments(ctx, scanner.dao, []string{asset.ID}, attachments)
 		require.NoError(t, err)
+		require.False(t, updated)
 
 		count, err := scanner.dao.Count(ctx, &models.Attachment{}, nil)
 		require.NoError(t, err)
@@ -1040,16 +1050,18 @@ func TestScanner_UpdateAttachments(t *testing.T) {
 		}
 
 		// Add first 7 attachments
-		err := updateAttachments(ctx, scanner.dao, []string{asset.ID}, attachments[:7])
+		updated, err := updateAttachments(ctx, scanner.dao, []string{asset.ID}, attachments[:7])
 		require.NoError(t, err)
+		require.True(t, updated)
 
 		count, err := scanner.dao.Count(ctx, &models.Attachment{}, nil)
 		require.NoError(t, err)
 		require.Equal(t, 7, count)
 
 		// Add remaining attachments
-		err = updateAttachments(ctx, scanner.dao, []string{asset.ID}, attachments)
+		updated, err = updateAttachments(ctx, scanner.dao, []string{asset.ID}, attachments)
 		require.NoError(t, err)
+		require.True(t, updated)
 
 		count, err = scanner.dao.Count(ctx, &models.Attachment{}, nil)
 		require.NoError(t, err)
@@ -1087,16 +1099,18 @@ func TestScanner_UpdateAttachments(t *testing.T) {
 		}
 
 		// Delete 2 attachments
-		err := updateAttachments(ctx, scanner.dao, []string{asset.ID}, attachments[2:])
+		updated, err := updateAttachments(ctx, scanner.dao, []string{asset.ID}, attachments[2:])
 		require.NoError(t, err)
+		require.True(t, updated)
 
 		count, err := scanner.dao.Count(ctx, &models.Attachment{}, nil)
 		require.NoError(t, err)
 		require.Equal(t, 8, count)
 
 		// Delete another 2 attachments
-		err = updateAttachments(ctx, scanner.dao, []string{asset.ID}, attachments[4:])
+		updated, err = updateAttachments(ctx, scanner.dao, []string{asset.ID}, attachments[4:])
 		require.NoError(t, err)
+		require.True(t, updated)
 
 		count, err = scanner.dao.Count(ctx, &models.Attachment{}, nil)
 		require.NoError(t, err)
