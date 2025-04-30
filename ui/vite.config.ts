@@ -1,8 +1,10 @@
 import { sveltekit } from '@sveltejs/kit/vite';
+import tailwindcss from '@tailwindcss/vite';
+import { vite as vidstack } from 'vidstack/plugins';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-	plugins: [sveltekit()],
+	plugins: [vidstack(), tailwindcss(), sveltekit()],
 	server: {
 		hmr: {
 			// In dev mode, this forces the socket to use a port other than the default client
