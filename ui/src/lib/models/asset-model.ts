@@ -1,4 +1,5 @@
 import { array, boolean, number, object, picklist, string, type InferOutput } from 'valibot';
+import { AttachmentSchema } from './attachment-model';
 import { BaseSchema } from './base-model';
 import { BasePaginationSchema, type PaginationReqParams } from './pagination-model';
 
@@ -32,6 +33,7 @@ export const AssetSchema = object({
 	chapter: string(),
 	path: string(),
 	assetType: AssetTypeSchema,
+	attachments: array(AttachmentSchema),
 	progress: AssetProgressSchema
 });
 
