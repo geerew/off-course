@@ -23,4 +23,9 @@ var (
 	// Model
 	ErrInvalidId  = errors.New("id cannot be empty")
 	ErrInvalidKey = errors.New("key cannot be empty")
+
+	// Media
+	ErrInvalidFFProbePath = errors.New("ffprobe path is invalid")
+	ErrFFProbeNotFound    = errors.New("ffprobe not found in path")
+	ErrFFProbeUnavailable = errors.New("ffprobe unavailable")
 )

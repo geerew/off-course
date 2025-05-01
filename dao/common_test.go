@@ -142,7 +142,7 @@ func Test_Get(t *testing.T) {
 		dao, ctx := setup(t)
 
 		// Create course
-		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
+		course := &models.Course{Title: "Course 1", Path: "/course 1", Available: true, CardPath: "/course 1/card 1.jpg"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
 		// Get course
@@ -183,38 +183,40 @@ func Test_Get(t *testing.T) {
 		require.Equal(t, course.ID, courseResult.ID)
 		require.True(t, courseResult.ScanStatus.IsWaiting())
 
-		// Create asset
-		asset := &models.Asset{
+		// Create video asset
+		videoAsset := &models.Asset{
 			CourseID: course.ID,
 			Title:    "Asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
-			Path:     "/course-1/01 asset.mp4",
+			Path:     "/course 1/Chapter 1/01 videoAsset.mp4",
 			Hash:     "1234",
 		}
-		require.NoError(t, dao.CreateAsset(ctx, asset))
+		require.NoError(t, dao.CreateAsset(ctx, videoAsset))
 
-		// Get asset
-		assetResult := &models.Asset{}
-		require.NoError(t, dao.Get(ctx, assetResult, nil))
-		require.Equal(t, asset.ID, assetResult.ID)
-		require.True(t, assetResult.CreatedAt.Equal(asset.CreatedAt))
-		require.True(t, assetResult.UpdatedAt.Equal(asset.UpdatedAt))
-		require.Equal(t, asset.CourseID, assetResult.CourseID)
-		require.Equal(t, asset.Title, assetResult.Title)
-		require.Equal(t, asset.Prefix, assetResult.Prefix)
-		require.Equal(t, asset.Chapter, assetResult.Chapter)
-		require.Equal(t, asset.Type, assetResult.Type)
-		require.Equal(t, asset.Path, assetResult.Path)
-		require.Equal(t, asset.Hash, assetResult.Hash)
-		require.Len(t, assetResult.Attachments, 0)
+		// Get video asset
+		videoAssetResult := &models.Asset{}
+		require.NoError(t, dao.Get(ctx, videoAssetResult, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_ID: videoAsset.ID}}))
+		require.Equal(t, videoAsset.ID, videoAssetResult.ID)
+		require.True(t, videoAssetResult.CreatedAt.Equal(videoAsset.CreatedAt))
+		require.True(t, videoAssetResult.UpdatedAt.Equal(videoAsset.UpdatedAt))
+		require.Equal(t, videoAsset.CourseID, videoAssetResult.CourseID)
+		require.Equal(t, videoAsset.Title, videoAssetResult.Title)
+		require.Equal(t, videoAsset.Prefix, videoAssetResult.Prefix)
+		require.Equal(t, videoAsset.Chapter, videoAssetResult.Chapter)
+		require.Equal(t, videoAsset.Type, videoAssetResult.Type)
+		require.Equal(t, videoAsset.Path, videoAssetResult.Path)
+		require.Equal(t, videoAsset.Hash, videoAssetResult.Hash)
+		require.Len(t, videoAssetResult.Attachments, 0)
+		require.Nil(t, videoAssetResult.VideoMetadata)
+		require.Nil(t, videoAssetResult.Progress)
 
 		// Create attachment
 		attachment := &models.Attachment{
-			AssetID: asset.ID,
+			AssetID: videoAsset.ID,
 			Title:   "Attachment 1",
-			Path:    "/course-1/01 Attachment 1.txt",
+			Path:    "/course 1/01 Attachment 1.txt",
 		}
 		require.NoError(t, dao.CreateAttachment(ctx, attachment))
 
@@ -228,12 +230,72 @@ func Test_Get(t *testing.T) {
 		require.Equal(t, attachment.Title, attachmentResult.Title)
 		require.Equal(t, attachment.Path, attachmentResult.Path)
 
-		// Get asset (again)
-		assetResult = &models.Asset{}
-		require.NoError(t, dao.Get(ctx, assetResult, nil))
-		require.Equal(t, asset.ID, assetResult.ID)
-		require.Len(t, assetResult.Attachments, 1)
-		require.Equal(t, attachment.Title, assetResult.Attachments[0].Title)
+		// Get video asset and check attachments
+		videoAssetResult = &models.Asset{}
+		require.NoError(t, dao.Get(ctx, videoAssetResult, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_ID: videoAsset.ID}}))
+		require.Equal(t, videoAsset.ID, videoAssetResult.ID)
+		require.Len(t, videoAssetResult.Attachments, 1)
+		require.Equal(t, attachment.Title, videoAssetResult.Attachments[0].Title)
+
+		// Create video metadata
+		videoMetadata := &models.VideoMetadata{
+			AssetID:    videoAsset.ID,
+			Duration:   120,
+			Width:      1280,
+			Height:     720,
+			Codec:      "h264",
+			Resolution: "720p",
+		}
+		require.NoError(t, dao.CreateVideoMetadata(ctx, videoMetadata))
+
+		// Get video metadata
+		videoMetadataResult := &models.VideoMetadata{}
+		require.NoError(t, dao.Get(ctx, videoMetadataResult, nil))
+		require.Equal(t, videoMetadata.ID, videoMetadataResult.ID)
+		require.True(t, videoMetadataResult.CreatedAt.Equal(videoMetadata.CreatedAt))
+		require.True(t, videoMetadataResult.UpdatedAt.Equal(videoMetadata.UpdatedAt))
+		require.Equal(t, videoMetadata.AssetID, videoMetadataResult.AssetID)
+		require.Equal(t, videoMetadata.Duration, videoMetadataResult.Duration)
+		require.Equal(t, videoMetadata.Width, videoMetadataResult.Width)
+		require.Equal(t, videoMetadata.Height, videoMetadataResult.Height)
+		require.Equal(t, videoMetadata.Codec, videoMetadataResult.Codec)
+		require.Equal(t, videoMetadata.Resolution, videoMetadataResult.Resolution)
+
+		// Get video asset and check video metadata
+		videoAssetResult = &models.Asset{}
+		require.NoError(t, dao.Get(ctx, videoAssetResult, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_ID: videoAsset.ID}}))
+		require.Equal(t, videoAsset.ID, videoAssetResult.ID)
+		require.NotNil(t, videoAssetResult.VideoMetadata)
+		require.Equal(t, videoAssetResult.VideoMetadata.ID, videoMetadata.ID)
+
+		// Create pdf asset
+		pdfAsset := &models.Asset{
+			CourseID: course.ID,
+			Title:    "Asset 2",
+			Prefix:   sql.NullInt16{Int16: 2, Valid: true},
+			Chapter:  "Chapter 1",
+			Type:     *types.NewAsset("pdf"),
+			Path:     "/course 1/Chapter 1/02 pdfAsset.pdf",
+			Hash:     "4321",
+		}
+		require.NoError(t, dao.CreateAsset(ctx, pdfAsset))
+
+		// Get pdf asset
+		pdfAssetResult := &models.Asset{}
+		require.NoError(t, dao.Get(ctx, pdfAssetResult, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_ID: pdfAsset.ID}}))
+		require.Equal(t, pdfAsset.ID, pdfAssetResult.ID)
+		require.True(t, pdfAssetResult.CreatedAt.Equal(pdfAsset.CreatedAt))
+		require.True(t, pdfAssetResult.UpdatedAt.Equal(pdfAsset.UpdatedAt))
+		require.Equal(t, pdfAsset.CourseID, pdfAssetResult.CourseID)
+		require.Equal(t, pdfAsset.Title, pdfAssetResult.Title)
+		require.Equal(t, pdfAsset.Prefix, pdfAssetResult.Prefix)
+		require.Equal(t, pdfAsset.Chapter, pdfAssetResult.Chapter)
+		require.Equal(t, pdfAsset.Type, pdfAssetResult.Type)
+		require.Equal(t, pdfAsset.Path, pdfAssetResult.Path)
+		require.Equal(t, pdfAsset.Hash, pdfAssetResult.Hash)
+		require.Len(t, pdfAssetResult.Attachments, 0)
+		require.Nil(t, pdfAssetResult.VideoMetadata)
+		require.Nil(t, videoAssetResult.Progress)
 
 		// Create tag
 		tag := &models.Tag{Tag: "Tag 1"}

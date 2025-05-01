@@ -41,6 +41,21 @@ CREATE TABLE assets (
 	FOREIGN KEY (course_id) REFERENCES courses (id) ON DELETE CASCADE
 );
 
+--- Asset metadata
+CREATE TABLE asset_video_metadata (
+	id            TEXT PRIMARY KEY NOT NULL,
+	asset_id      TEXT NOT NULL UNIQUE,
+	duration      INTEGER NOT NULL DEFAULT 0,
+	width         INTEGER NOT NULL DEFAULT 0,
+	height        INTEGER NOT NULL DEFAULT 0,
+	resolution    TEXT NOT NULL DEFAULT '',
+	codec         TEXT NOT NULL DEFAULT '',
+	created_at    TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+	updated_at    TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+	--
+	FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE
+);
+
 --- Progress of assets
 CREATE TABLE assets_progress (
 	id           TEXT PRIMARY KEY NOT NULL,

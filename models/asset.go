@@ -23,8 +23,9 @@ type Asset struct {
 	Hash     string
 
 	// Relations
-	Progress    *AssetProgress
-	Attachments []*Attachment
+	VideoMetadata *VideoMetadata
+	Progress      *AssetProgress
+	Attachments   []*Attachment
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -80,6 +81,7 @@ func (a *Asset) Define(s *schema.ModelConfig) {
 	s.Field("Hash").Column(ASSET_HASH).NotNull().Mutable()
 
 	// Relation fields
+	s.Relation("VideoMetadata").MatchOn(VIDEO_METADATA_ASSET_ID)
 	s.Relation("Progress").MatchOn(ASSET_PROGRESS_ASSET_ID)
 	s.Relation("Attachments").MatchOn(ATTACHMENT_ASSET_ID)
 }
