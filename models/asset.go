@@ -20,6 +20,8 @@ type Asset struct {
 	Chapter  string
 	Type     types.Asset
 	Path     string
+	FileSize int
+	ModTime  string
 	Hash     string
 
 	// Relations
@@ -38,6 +40,8 @@ var (
 	ASSET_CHAPTER        = "chapter"
 	ASSET_TYPE           = "type"
 	ASSET_PATH           = "path"
+	ASSET_FILE_SIZE      = "file_size"
+	ASSET_MOD_TIME       = "mod_time"
 	ASSET_HASH           = "hash"
 	ASSET_VIDEO_POSITION = "video_pos"
 	ASSET_COMPLETED      = "completed"
@@ -78,6 +82,8 @@ func (a *Asset) Define(s *schema.ModelConfig) {
 	s.Field("Chapter").Column(ASSET_CHAPTER).Mutable()
 	s.Field("Type").Column(ASSET_TYPE).NotNull().Mutable()
 	s.Field("Path").Column(ASSET_PATH).NotNull().Mutable()
+	s.Field("FileSize").Column(ASSET_FILE_SIZE).NotNull().Mutable()
+	s.Field("ModTime").Column(ASSET_MOD_TIME).NotNull().Mutable()
 	s.Field("Hash").Column(ASSET_HASH).NotNull().Mutable()
 
 	// Relation fields

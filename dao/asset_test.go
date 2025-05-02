@@ -27,6 +27,8 @@ func Test_CreateAsset(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     "/course-1/01 asset.mp4",
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     "1234",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
@@ -54,6 +56,8 @@ func Test_UpdateAsset(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     "/course-1/01 asset.mp4",
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     "1234",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, originalAsset))
@@ -61,13 +65,15 @@ func Test_UpdateAsset(t *testing.T) {
 		time.Sleep(1 * time.Millisecond)
 
 		newAsset := &models.Asset{
-			Base:    originalAsset.Base,
-			Title:   "Asset 2",                            // Mutable
-			Prefix:  sql.NullInt16{Int16: 2, Valid: true}, // Mutable
-			Chapter: "Chapter 2",                          // Mutable
-			Type:    *types.NewAsset("html"),              // Mutable
-			Path:    "/course-1/02 asset.html",            // Mutable
-			Hash:    "5678",                               // Mutable
+			Base:     originalAsset.Base,
+			Title:    "Asset 2",                            // Mutable
+			Prefix:   sql.NullInt16{Int16: 2, Valid: true}, // Mutable
+			Chapter:  "Chapter 2",                          // Mutable
+			Type:     *types.NewAsset("html"),              // Mutable
+			Path:     "/course-1/02 asset.html",            // Mutable
+			FileSize: 2048,                                 // Mutable
+			ModTime:  time.Now().Format(time.RFC3339Nano),  // Mutable
+			Hash:     "5678",                               // Mutable
 		}
 		require.NoError(t, dao.UpdateAsset(ctx, newAsset))
 
@@ -80,6 +86,8 @@ func Test_UpdateAsset(t *testing.T) {
 		require.Equal(t, newAsset.Chapter, assertResult.Chapter)                // Changed
 		require.Equal(t, newAsset.Type, assertResult.Type)                      // Changed
 		require.Equal(t, newAsset.Path, assertResult.Path)                      // Changed
+		require.Equal(t, newAsset.FileSize, assertResult.FileSize)              // Changed
+		require.Equal(t, newAsset.ModTime, assertResult.ModTime)                // Changed
 		require.Equal(t, newAsset.Hash, assertResult.Hash)                      // Changed
 		require.False(t, assertResult.UpdatedAt.Equal(originalAsset.UpdatedAt)) // Changed
 	})
@@ -97,6 +105,8 @@ func Test_UpdateAsset(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     "/course-1/01 asset.mp4",
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     "1234",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
@@ -125,6 +135,8 @@ func Test_AssetDeleteCascade(t *testing.T) {
 		Chapter:  "Chapter 1",
 		Type:     *types.NewAsset("mp4"),
 		Path:     "/course-1/01 asset.mp4",
+		FileSize: 1024,
+		ModTime:  time.Now().Format(time.RFC3339Nano),
 		Hash:     "1234",
 	}
 	require.NoError(t, dao.CreateAsset(ctx, asset))

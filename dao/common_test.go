@@ -191,6 +191,8 @@ func Test_Get(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     "/course 1/Chapter 1/01 videoAsset.mp4",
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     "1234",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, videoAsset))
@@ -207,6 +209,8 @@ func Test_Get(t *testing.T) {
 		require.Equal(t, videoAsset.Chapter, videoAssetResult.Chapter)
 		require.Equal(t, videoAsset.Type, videoAssetResult.Type)
 		require.Equal(t, videoAsset.Path, videoAssetResult.Path)
+		require.Equal(t, videoAsset.FileSize, videoAssetResult.FileSize)
+		require.Equal(t, videoAsset.ModTime, videoAssetResult.ModTime)
 		require.Equal(t, videoAsset.Hash, videoAssetResult.Hash)
 		require.Len(t, videoAssetResult.Attachments, 0)
 		require.Nil(t, videoAssetResult.VideoMetadata)
@@ -276,6 +280,8 @@ func Test_Get(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("pdf"),
 			Path:     "/course 1/Chapter 1/02 pdfAsset.pdf",
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     "4321",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, pdfAsset))
@@ -292,6 +298,8 @@ func Test_Get(t *testing.T) {
 		require.Equal(t, pdfAsset.Chapter, pdfAssetResult.Chapter)
 		require.Equal(t, pdfAsset.Type, pdfAssetResult.Type)
 		require.Equal(t, pdfAsset.Path, pdfAssetResult.Path)
+		require.Equal(t, pdfAsset.FileSize, pdfAssetResult.FileSize)
+		require.Equal(t, pdfAsset.ModTime, pdfAssetResult.ModTime)
 		require.Equal(t, pdfAsset.Hash, pdfAssetResult.Hash)
 		require.Len(t, pdfAssetResult.Attachments, 0)
 		require.Nil(t, pdfAssetResult.VideoMetadata)

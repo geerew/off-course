@@ -34,6 +34,8 @@ CREATE TABLE assets (
 	chapter      TEXT,
 	type         TEXT NOT NULL,
 	path         TEXT UNIQUE NOT NULL,
+	file_size    INTEGER NOT NULL DEFAULT 0,
+	mod_time     TEST NOT NULL DEFAULT '',
 	hash	     TEXT NOT NULL,
 	created_at   TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	updated_at   TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),

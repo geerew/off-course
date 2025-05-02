@@ -27,6 +27,8 @@ func Test_CreateAttachment(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     "/course-1/01 asset.mp4",
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     "1234",
 		}
 
@@ -62,6 +64,8 @@ func Test_UpdateAttachment(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     "/course-1/01 asset.mp4",
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     "1234",
 		}
 
@@ -107,6 +111,8 @@ func Test_UpdateAttachment(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     "/course-1/01 asset.mp4",
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     "1234",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
@@ -142,6 +148,8 @@ func Test_AttachmentDeleteCascade(t *testing.T) {
 		Chapter:  "Chapter 1",
 		Type:     *types.NewAsset("mp4"),
 		Path:     "/course-1/01 asset.mp4",
+		FileSize: 1024,
+		ModTime:  time.Now().Format(time.RFC3339Nano),
 		Hash:     "1234",
 	}
 	require.NoError(t, dao.CreateAsset(ctx, asset))

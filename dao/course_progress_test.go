@@ -3,6 +3,7 @@ package dao
 import (
 	"database/sql"
 	"testing"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/database"
@@ -55,6 +56,8 @@ func Test_RefreshCourseProgress(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     "/course-1/01 asset.mp4",
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     "1234",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset1))
@@ -97,6 +100,8 @@ func Test_RefreshCourseProgress(t *testing.T) {
 			Chapter:  "Chapter 2",
 			Type:     *types.NewAsset("mp4"),
 			Path:     "/course-1/02 asset.mp4",
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     "5678",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset2))

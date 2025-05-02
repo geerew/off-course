@@ -127,10 +127,52 @@ type assetProgressResponse struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+type assetVideoMetadataResponse struct {
+	Duration   int    `json:"duration"`
+	Width      int    `json:"width"`
+	Height     int    `json:"height"`
+	Codec      string `json:"codec"`
+	Resolution string `json:"resolution"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+type assetResponse struct {
+	ID        string         `json:"id"`
+	CourseID  string         `json:"courseId"`
+	Title     string         `json:"title"`
+	Prefix    int            `json:"prefix"`
+	Chapter   string         `json:"chapter"`
+	Path      string         `json:"path"`
+	Type      types.Asset    `json:"assetType"`
+	CreatedAt types.DateTime `json:"createdAt"`
+	UpdatedAt types.DateTime `json:"updatedAt"`
+
+	// Relations
+	VideoMetadata *assetVideoMetadataResponse `json:"videoMetadata,omitempty"`
+	Progress      *assetProgressResponse      `json:"progress"`
+	Attachments   []*attachmentResponse       `json:"attachments"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 	responses := []*assetResponse{}
 	for _, asset := range assets {
 
+		// Video metadata
+		var videoMetadata *assetVideoMetadataResponse
+		if asset.VideoMetadata != nil {
+			videoMetadata = &assetVideoMetadataResponse{
+				Duration:   asset.VideoMetadata.Duration,
+				Width:      asset.VideoMetadata.Width,
+				Height:     asset.VideoMetadata.Height,
+				Codec:      asset.VideoMetadata.Codec,
+				Resolution: asset.VideoMetadata.Resolution,
+			}
+		}
+
+		// Asset progress
 		progress := &assetProgressResponse{}
 		if asset.Progress != nil {
 			progress.VideoPos = asset.Progress.VideoPos
@@ -149,8 +191,9 @@ func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 			CreatedAt: asset.CreatedAt,
 			UpdatedAt: asset.UpdatedAt,
 
-			Progress:    progress,
-			Attachments: attachmentResponseHelper(asset.Attachments),
+			VideoMetadata: videoMetadata,
+			Progress:      progress,
+			Attachments:   attachmentResponseHelper(asset.Attachments),
 		})
 
 	}
@@ -189,24 +232,6 @@ func attachmentResponseHelper(attachments []*models.Attachment) []*attachmentRes
 	}
 
 	return responses
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-type assetResponse struct {
-	ID        string         `json:"id"`
-	CourseID  string         `json:"courseId"`
-	Title     string         `json:"title"`
-	Prefix    int            `json:"prefix"`
-	Chapter   string         `json:"chapter"`
-	Path      string         `json:"path"`
-	Type      types.Asset    `json:"assetType"`
-	CreatedAt types.DateTime `json:"createdAt"`
-	UpdatedAt types.DateTime `json:"updatedAt"`
-
-	// Relations
-	Progress    *assetProgressResponse `json:"progress"`
-	Attachments []*attachmentResponse  `json:"attachments"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

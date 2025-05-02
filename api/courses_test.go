@@ -172,6 +172,8 @@ func TestCourses_GetCourses(t *testing.T) {
 				Chapter:  "Chapter 1",
 				Type:     *types.NewAsset("mp4"),
 				Path:     fmt.Sprintf("/course %d/chapter 1/01 asset 1.mp4", i+1),
+				FileSize: 1024,
+				ModTime:  time.Now().Format(time.RFC3339Nano),
 				Hash:     security.RandomString(64),
 			}
 			require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -608,6 +610,8 @@ func TestCourses_GetAssets(t *testing.T) {
 					Chapter:  fmt.Sprintf("Chapter %d", j+1),
 					Type:     *types.NewAsset("mp4"),
 					Path:     fmt.Sprintf("/%s/asset %d", security.RandomString(4), j+1),
+					FileSize: 1024,
+					ModTime:  time.Now().Format(time.RFC3339Nano),
 					Hash:     security.RandomString(64),
 				}
 				require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -662,6 +666,8 @@ func TestCourses_GetAssets(t *testing.T) {
 					Chapter:  fmt.Sprintf("Chapter %d", j+1),
 					Type:     *types.NewAsset("mp4"),
 					Path:     fmt.Sprintf("/course %d/chapter %d/01 asset %d.mp4", i+1, j+1, j+1),
+					FileSize: 1024,
+					ModTime:  time.Now().Format(time.RFC3339Nano),
 					Hash:     security.RandomString(64),
 				}
 				require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -710,6 +716,8 @@ func TestCourses_GetAssets(t *testing.T) {
 				Chapter:  fmt.Sprintf("Chapter %d", i+1),
 				Type:     *types.NewAsset("mp4"),
 				Path:     fmt.Sprintf("/%s/asset %d", security.RandomString(4), i+1),
+				FileSize: 1024,
+				ModTime:  time.Now().Format(time.RFC3339Nano),
 				Hash:     security.RandomString(64),
 			}
 			require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -789,6 +797,8 @@ func TestCourses_GetAsset(t *testing.T) {
 				Chapter:  fmt.Sprintf("Chapter %d", j+1),
 				Type:     *types.NewAsset("mp4"),
 				Path:     fmt.Sprintf("/%s/asset %d", security.RandomString(4), j+1),
+				FileSize: 1024,
+				ModTime:  time.Now().Format(time.RFC3339Nano),
 				Hash:     security.RandomString(64),
 			}
 			require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -840,6 +850,8 @@ func TestCourses_GetAsset(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     "/course 1/Chapter 1/01 Asset 1.mp4",
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
 		require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -896,6 +908,8 @@ func TestCourses_ServeAsset(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
 		require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -923,6 +937,8 @@ func TestCourses_ServeAsset(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
 		require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -952,6 +968,8 @@ func TestCourses_ServeAsset(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("html"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
 		require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -979,6 +997,8 @@ func TestCourses_ServeAsset(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
 		require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -1003,6 +1023,8 @@ func TestCourses_ServeAsset(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
 		require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -1035,6 +1057,8 @@ func TestCourses_ServeAsset(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
 		require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -1088,6 +1112,8 @@ func TestCourses_UpdateAssetProgress(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
 		require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -1191,6 +1217,8 @@ func TestCourses_UpdateAssetProgress(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
 		require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -1221,6 +1249,8 @@ func TestCourses_GetAttachments(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
 		require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -1248,6 +1278,8 @@ func TestCourses_GetAttachments(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
 		require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -1288,6 +1320,8 @@ func TestCourses_GetAttachments(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
 		require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -1343,6 +1377,8 @@ func TestCourses_GetAttachments(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
 		require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -1428,6 +1464,8 @@ func TestCourses_GetAttachments(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
 		require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -1459,6 +1497,8 @@ func TestCourses_GetAttachment(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
 		require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -1497,6 +1537,8 @@ func TestCourses_GetAttachment(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
 		require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -1521,6 +1563,8 @@ func TestCourses_GetAttachment(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
 		require.NoError(t, router.dao.CreateAsset(ctx, asset1))
@@ -1532,6 +1576,8 @@ func TestCourses_GetAttachment(t *testing.T) {
 			Chapter:  "Chapter 2",
 			Type:     *types.NewAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 2", security.RandomString(4)),
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
 		require.NoError(t, router.dao.CreateAsset(ctx, asset2))
@@ -1585,6 +1631,8 @@ func TestCourses_GetAttachment(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
 		require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -1613,6 +1661,8 @@ func TestCourses_ServeAttachment(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
 		require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -1647,6 +1697,8 @@ func TestCourses_ServeAttachment(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
 		require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -1681,6 +1733,8 @@ func TestCourses_ServeAttachment(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
 		require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -1707,6 +1761,8 @@ func TestCourses_ServeAttachment(t *testing.T) {
 				Chapter:  fmt.Sprintf("Chapter %d", j+1),
 				Type:     *types.NewAsset("mp4"),
 				Path:     fmt.Sprintf("/%s/asset %d", security.RandomString(4), j+1),
+				FileSize: 1024,
+				ModTime:  time.Now().Format(time.RFC3339Nano),
 				Hash:     security.RandomString(64),
 			}
 			require.NoError(t, router.dao.CreateAsset(ctx, asset))
@@ -1753,6 +1809,8 @@ func TestCourses_ServeAttachment(t *testing.T) {
 			Chapter:  "Chapter 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
 		require.NoError(t, router.dao.CreateAsset(ctx, asset))
