@@ -258,7 +258,9 @@ func scanCourseFiles(s *CourseScan, coursePath string, courseID string) (AssetsC
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // applyAssetChanges applies the changes to the assets in the database by creating, renaming,
-// replacing, swapping or deleting them as needed
+// replacing, swapping or deleting them as needed. It will return true if any changes were made
+// and false if no changes were made. Additionally, it will update the course duration for
+// video assets
 func applyAssetChanges(
 	ctx context.Context,
 	s *CourseScan,
@@ -308,12 +310,12 @@ func applyAssetChanges(
 			if err := s.dao.UpdateAsset(ctx, v.New); err != nil {
 				return false, err
 			}
-			// TODO: Updating video metadata here if needed
 
 		case ReplaceAssetOp:
 			if err := s.dao.Delete(ctx, v.Existing, nil); err != nil {
 				return false, err
 			}
+			course.Duration -= v.Existing.VideoMetadata.Duration
 
 			if err := s.dao.CreateAsset(ctx, v.New); err != nil {
 				return false, err
@@ -329,16 +331,14 @@ func applyAssetChanges(
 			if err := s.dao.Delete(ctx, v.ExistingA, nil); err != nil {
 				return false, err
 			}
+			course.Duration -= v.ExistingA.VideoMetadata.Duration
 
 			if err := s.dao.Delete(ctx, v.ExistingB, nil); err != nil {
 				return false, err
 			}
+			course.Duration -= v.ExistingB.VideoMetadata.Duration
 
 			if err := s.dao.CreateAsset(ctx, v.NewA); err != nil {
-				return false, err
-			}
-
-			if err := s.dao.CreateAsset(ctx, v.NewB); err != nil {
 				return false, err
 			}
 
@@ -347,6 +347,10 @@ func applyAssetChanges(
 				return false, err
 			}
 			course.Duration += duration
+
+			if err := s.dao.CreateAsset(ctx, v.NewB); err != nil {
+				return false, err
+			}
 
 			duration, err = createVideoMetadata(ctx, mediaProbe, v.NewB, s.dao)
 			if err != nil {
@@ -358,6 +362,8 @@ func applyAssetChanges(
 			if err := s.dao.Delete(ctx, v.Asset, nil); err != nil {
 				return false, err
 			}
+
+			course.Duration -= v.Asset.VideoMetadata.Duration
 		}
 	}
 
