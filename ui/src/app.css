@@ -91,3 +91,29 @@
 		@apply pr-6 lg:pr-8;
 	}
 }
+
+/* 
+* Custom variants for media player states
+*/
+@custom-variant media-playing {
+	&:where(media-player[data-playing] *) {
+		@slot;
+	}
+}
+
+@custom-variant media-paused {
+	&:where(media-player[data-paused] *) {
+		@slot;
+	}
+}
+
+@custom-variant media-ended {
+	&:where(media-player[data-ended] *) {
+		@slot;
+	}
+}
+@custom-variant media-fullscreen {
+	&:where(media-player[data-fullscreen] *) {
+		@slot;
+	}
+}
