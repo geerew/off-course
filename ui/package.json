@@ -32,6 +32,7 @@
 		"bits-ui": "1.3.19",
 		"clsx": "^2.1.1",
 		"lucide-svelte": "^0.503.0",
+		"pretty-ms": "^9.2.0",
 		"runed": "^0.25.0",
 		"s-ago": "^2.2.0",
 		"svelte-sonner": "^0.3.28",

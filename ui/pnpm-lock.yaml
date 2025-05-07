@@ -20,6 +20,9 @@ importers:
       lucide-svelte:
         specifier: ^0.503.0
         version: 0.503.0(svelte@5.27.0)
+      pretty-ms:
+        specifier: ^9.2.0
+        version: 9.2.0
       runed:
         specifier: ^0.25.0
         version: 0.25.0(svelte@5.27.0)
@@ -715,6 +718,10 @@ packages:
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
+  parse-ms@4.0.0:
+    resolution: {integrity: sha512-TXfryirbmq34y8QBwgqCVLi+8oA3oWx2eAnSn62ITyEhEYaWRlVZ2DvMM9eZbMs/RfxPu/PK/aBLyGj4IrqMHw==}
+    engines: {node: '>=18'}
+
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
 
@@ -791,6 +798,10 @@ packages:
     resolution: {integrity: sha512-G+YdqtITVZmOJje6QkXQWzl3fSfMxFwm1tjTyo9exhkmWSqC4Yhd1+lug++IlR2mvRVAxEDDWYkQdeSztajqgg==}
     engines: {node: '>=14'}
     hasBin: true
+
+  pretty-ms@9.2.0:
+    resolution: {integrity: sha512-4yf0QO/sllf/1zbZWYnvWw3NxCQwLXKzIj0G849LSufP15BXKM0rbD2Z3wVnkMfjdn/CB0Dpp444gYAACdsplg==}
+    engines: {node: '>=18'}
 
   readdirp@4.0.2:
     resolution: {integrity: sha512-yDMz9g+VaZkqBYS/ozoBJwaBhTbZo3UNYQHNRw1D3UFQB8oHB4uS/tAODO+ZLjGWmUbKnIlOWO+aaIiAxrUWHA==}
@@ -1432,6 +1443,8 @@ snapshots:
 
   nanoid@3.3.8: {}
 
+  parse-ms@4.0.0: {}
+
   picocolors@1.1.1: {}
 
   picomatch@4.0.2: {}
@@ -1454,6 +1467,10 @@ snapshots:
       prettier-plugin-svelte: 3.3.3(prettier@3.4.1)(svelte@5.27.0)
 
   prettier@3.4.1: {}
+
+  pretty-ms@9.2.0:
+    dependencies:
+      parse-ms: 4.0.0
 
   readdirp@4.0.2: {}
 
