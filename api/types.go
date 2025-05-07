@@ -46,6 +46,7 @@ type courseResponse struct {
 	Path      string         `json:"path"`
 	HasCard   bool           `json:"hasCard"`
 	Available bool           `json:"available"`
+	Duration  int            `json:"duration"`
 	CreatedAt types.DateTime `json:"createdAt"`
 	UpdatedAt types.DateTime `json:"updatedAt"`
 
@@ -67,6 +68,7 @@ func courseResponseHelper(courses []*models.Course) []*courseResponse {
 			Path:      course.Path,
 			HasCard:   course.CardPath != "",
 			Available: course.Available,
+			Duration:  course.Duration,
 			CreatedAt: course.CreatedAt,
 			UpdatedAt: course.UpdatedAt,
 

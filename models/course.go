@@ -14,6 +14,7 @@ type Course struct {
 	Path      string
 	CardPath  string
 	Available bool
+	Duration  int
 
 	// Joins
 	ScanStatus types.ScanStatus
@@ -30,6 +31,7 @@ var (
 	COURSE_PATH        = "path"
 	COURSE_CARD_PATH   = "card_path"
 	COURSE_AVAILABLE   = "available"
+	COURSE_DURATION    = "duration"
 	COURSE_SCAN_STATUS = "status"
 
 	COURSE_TABLE_ID          = COURSE_TABLE + "." + BASE_ID
@@ -39,6 +41,7 @@ var (
 	COURSE_TABLE_PATH        = COURSE_TABLE + "." + COURSE_PATH
 	COURSE_TABLE_CARD_PATH   = COURSE_TABLE + "." + COURSE_CARD_PATH
 	COURSE_TABLE_AVAILABLE   = COURSE_TABLE + "." + COURSE_AVAILABLE
+	COURSE_TABLE_DURATION    = COURSE_TABLE + "." + COURSE_DURATION
 	COURSE_TABLE_SCAN_STATUS = COURSE_TABLE + "." + COURSE_SCAN_STATUS
 )
 
@@ -60,6 +63,7 @@ func (c *Course) Define(s *schema.ModelConfig) {
 	s.Field("Path").Column(COURSE_PATH).NotNull()
 	s.Field("CardPath").Column(COURSE_CARD_PATH).Mutable()
 	s.Field("Available").Column(COURSE_AVAILABLE).Mutable()
+	s.Field("Duration").Column(COURSE_DURATION).Mutable()
 
 	// Join fields
 	s.Field("ScanStatus").JoinTable(SCAN_TABLE).Column(COURSE_SCAN_STATUS).Alias("scan_status")

@@ -7,6 +7,7 @@ CREATE TABLE courses (
 	path         TEXT UNIQUE NOT NULL,
 	card_path    TEXT,
 	available    BOOLEAN NOT NULL DEFAULT FALSE,
+	duration     INTEGER NOT NULL DEFAULT 0,
 	created_at   TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	updated_at   TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW'))
 );

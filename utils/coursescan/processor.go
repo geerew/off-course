@@ -67,7 +67,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	}
 
 	return s.db.RunInTransaction(ctx, func(txCtx context.Context) error {
-		updatedAssets, err := applyAssetChanges(txCtx, s, course.ID, assetsByChapterPrefix)
+		updatedAssets, err := applyAssetChanges(txCtx, s, course, assetsByChapterPrefix)
 		if err != nil {
 			return err
 		}
@@ -262,12 +262,12 @@ func scanCourseFiles(s *CourseScan, coursePath string, courseID string) (AssetsC
 func applyAssetChanges(
 	ctx context.Context,
 	s *CourseScan,
-	courseID string,
+	course *models.Course,
 	assetsByChapterPrefix AssetsChapterPrefix,
 ) (bool, error) {
 	existing := []*models.Asset{}
 	if err := s.dao.List(ctx, &existing, &database.Options{
-		Where: squirrel.Eq{models.ASSET_TABLE_COURSE_ID: courseID},
+		Where: squirrel.Eq{models.ASSET_TABLE_COURSE_ID: course.ID},
 	}); err != nil {
 		return false, err
 	}
@@ -296,9 +296,12 @@ func applyAssetChanges(
 			if err := s.dao.CreateAsset(ctx, v.New); err != nil {
 				return false, err
 			}
-			if err := createVideoMetadata(ctx, mediaProbe, v.New, s.dao); err != nil {
+
+			duration, err := createVideoMetadata(ctx, mediaProbe, v.New, s.dao)
+			if err != nil {
 				return false, err
 			}
+			course.Duration += duration
 
 		case RenameAssetOp:
 			v.New.ID = v.Existing.ID
@@ -311,32 +314,45 @@ func applyAssetChanges(
 			if err := s.dao.Delete(ctx, v.Existing, nil); err != nil {
 				return false, err
 			}
+
 			if err := s.dao.CreateAsset(ctx, v.New); err != nil {
 				return false, err
 			}
-			if err := createVideoMetadata(ctx, mediaProbe, v.New, s.dao); err != nil {
+
+			duration, err := createVideoMetadata(ctx, mediaProbe, v.New, s.dao)
+			if err != nil {
 				return false, err
 			}
+			course.Duration += duration
 
 		case SwapAssetOp:
 			if err := s.dao.Delete(ctx, v.ExistingA, nil); err != nil {
 				return false, err
 			}
+
 			if err := s.dao.Delete(ctx, v.ExistingB, nil); err != nil {
 				return false, err
 			}
+
 			if err := s.dao.CreateAsset(ctx, v.NewA); err != nil {
 				return false, err
 			}
+
 			if err := s.dao.CreateAsset(ctx, v.NewB); err != nil {
 				return false, err
 			}
-			if err := createVideoMetadata(ctx, mediaProbe, v.NewA, s.dao); err != nil {
+
+			duration, err := createVideoMetadata(ctx, mediaProbe, v.NewA, s.dao)
+			if err != nil {
 				return false, err
 			}
-			if err := createVideoMetadata(ctx, mediaProbe, v.NewB, s.dao); err != nil {
+			course.Duration += duration
+
+			duration, err = createVideoMetadata(ctx, mediaProbe, v.NewB, s.dao)
+			if err != nil {
 				return false, err
 			}
+			course.Duration += duration
 
 		case DeleteAssetOp:
 			if err := s.dao.Delete(ctx, v.Asset, nil); err != nil {
@@ -409,15 +425,15 @@ func applyAttachmentChanges(
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // createVideoMetadata creates or updated video metadata for the given asset
-func createVideoMetadata(ctx context.Context, mediaProbe media.MediaProbe, asset *models.Asset, dao *dao.DAO) error {
+func createVideoMetadata(ctx context.Context, mediaProbe media.MediaProbe, asset *models.Asset, dao *dao.DAO) (int, error) {
 	if !asset.Type.IsVideo() {
-		return nil
+		return 0, nil
 	}
 
 	info, err := mediaProbe.ProbeVideo(asset.Path)
 	if err != nil {
 		// TODO Update to use the logger
-		return nil
+		return 0, nil
 	}
 
 	videoMetadata := &models.VideoMetadata{
@@ -430,9 +446,10 @@ func createVideoMetadata(ctx context.Context, mediaProbe media.MediaProbe, asset
 	}
 
 	if err := dao.CreateVideoMetadata(ctx, videoMetadata); err != nil {
-		return err
+		return 0, err
 	}
-	return nil
+
+	return info.Duration, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
