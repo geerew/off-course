@@ -1,3 +1,4 @@
+<!-- TODO fix scan. Updated is not changing when it should -->
 <script lang="ts">
 	import { GetCourses } from '$lib/api/course-api';
 	import { FilterBar, NiceDate, Pagination, SortMenu } from '$lib/components';
