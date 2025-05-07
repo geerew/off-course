@@ -235,6 +235,8 @@ func DiffSliceOfStructsByKey[T any](left, right []T, key string) ([]T, []T, erro
 //
 // Returns:
 //   - true if the structs are equal, false otherwise
+//
+// TODO Change ignoreKeys to onKeys, as in only compare these keys
 func CompareStructs(a, b interface{}, ignoreKeys []string) bool {
 	if reflect.TypeOf(a) != reflect.TypeOf(b) {
 		return false

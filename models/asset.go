@@ -20,7 +20,7 @@ type Asset struct {
 	Chapter  string
 	Type     types.Asset
 	Path     string
-	FileSize int
+	FileSize int64
 	ModTime  string
 	Hash     string
 
