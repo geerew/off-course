@@ -26,8 +26,8 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-type assetMap map[string]map[int]*models.Asset
-type attachmentMap map[string]map[int][]*models.Attachment
+type AssetsByChapterPrefix map[string]map[int]*models.Asset
+type AttachmentsByChapterPrefix map[string]map[int][]*models.Attachment
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -136,19 +136,16 @@ func checkAndSetAvailability(ctx context.Context, s *CourseScan, course *models.
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-type AssetsChapterPrefix map[string]map[int]*models.Asset
-type AttachmentsChapterPrefix map[string]map[int][]*models.Attachment
-
 // scanCourseFiles scans the course directory for files. It will return a list of assets,
 // attachments and a card path, if found.
-func scanCourseFiles(s *CourseScan, coursePath string, courseID string) (AssetsChapterPrefix, AttachmentsChapterPrefix, string, error) {
+func scanCourseFiles(s *CourseScan, coursePath string, courseID string) (AssetsByChapterPrefix, AttachmentsByChapterPrefix, string, error) {
 	files, err := s.appFs.ReadDirFlat(coursePath, 2)
 	if err != nil {
 		return nil, nil, "", err
 	}
 
-	assetsByChapterPrefix := make(AssetsChapterPrefix)
-	attachmentsByChapterPrefix := make(AttachmentsChapterPrefix)
+	assetsByChapterPrefix := make(AssetsByChapterPrefix)
+	attachmentsByChapterPrefix := make(AttachmentsByChapterPrefix)
 	cardPath := ""
 
 	for _, fp := range files {
@@ -265,7 +262,7 @@ func applyAssetChanges(
 	ctx context.Context,
 	s *CourseScan,
 	course *models.Course,
-	assetsByChapterPrefix AssetsChapterPrefix,
+	assetsByChapterPrefix AssetsByChapterPrefix,
 ) (bool, error) {
 	existing := []*models.Asset{}
 	if err := s.dao.List(ctx, &existing, &database.Options{
@@ -377,8 +374,8 @@ func applyAssetChanges(
 func applyAttachmentChanges(
 	ctx context.Context,
 	s *CourseScan,
-	assetsByChapterPrefix AssetsChapterPrefix,
-	attachmentsByChapterPrefix AttachmentsChapterPrefix,
+	assetsByChapterPrefix AssetsByChapterPrefix,
+	attachmentsByChapterPrefix AttachmentsByChapterPrefix,
 ) (bool, error) {
 	attachmentsFlat := []*models.Attachment{}
 	for chapter, attachmentMap := range attachmentsByChapterPrefix {
