@@ -93,16 +93,6 @@ export async function GetCourse(id: string): Promise<CourseModel> {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Get a course based on the value of `c` in the URL query params
-export async function GetCourseFromParams(params: URLSearchParams): Promise<CourseModel> {
-	const id = params && params.get('c');
-	if (!id) throw new APIError(-1, 'Course ID not set');
-
-	return GetCourse(id);
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 // Get all course tags
 export async function GetCourseTags(id: string): Promise<CourseTagsModel> {
 	const response = await fetch(`/api/courses/${id}/tags`);

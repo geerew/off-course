@@ -1,3 +1,4 @@
+<!-- TODO Fix selecting and unselecting courses -->
 <script lang="ts">
 	import type { APIError } from '$lib/api-error.svelte';
 	import { CreateCourse } from '$lib/api/course-api';
@@ -9,8 +10,6 @@
 	import { cn } from '$lib/utils';
 	import { Separator } from 'bits-ui';
 	import { toast } from 'svelte-sonner';
-
-	// TODO Fix selecting and unselecting courses
 
 	type Props = {
 		successFn?: () => void;
