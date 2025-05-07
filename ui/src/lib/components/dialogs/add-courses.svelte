@@ -10,6 +10,8 @@
 	import { Separator } from 'bits-ui';
 	import { toast } from 'svelte-sonner';
 
+	// TODO Fix selecting and unselecting courses
+
 	type Props = {
 		successFn?: () => void;
 	};

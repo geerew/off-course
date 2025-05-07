@@ -34,6 +34,7 @@ export const CourseSchema = object({
 	path: string(),
 	hasCard: boolean(),
 	available: boolean(),
+	duration: number(),
 	scanStatus: ScanStatusSchema,
 	progress: CourseProgressSchema
 });

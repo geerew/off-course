@@ -1,4 +1,13 @@
-import { array, boolean, number, object, picklist, string, type InferOutput } from 'valibot';
+import {
+	array,
+	boolean,
+	number,
+	object,
+	optional,
+	picklist,
+	string,
+	type InferOutput
+} from 'valibot';
 import { AttachmentSchema } from './attachment-model';
 import { BaseSchema } from './base-model';
 import { BasePaginationSchema, type PaginationReqParams } from './pagination-model';
@@ -12,6 +21,18 @@ export type AssetType = InferOutput<typeof AssetTypeSchema>;
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export type ChapteredAssets = Record<string, AssetsModel>;
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+export const AssetVideoMetadataSchema = object({
+	duration: number(),
+	width: number(),
+	height: number(),
+	codec: string(),
+	resolution: string()
+});
+
+export type AssetVideoMetadataModel = InferOutput<typeof AssetVideoMetadataSchema>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -33,6 +54,7 @@ export const AssetSchema = object({
 	chapter: string(),
 	path: string(),
 	assetType: AssetTypeSchema,
+	videoMetadata: optional(AssetVideoMetadataSchema),
 	attachments: array(AttachmentSchema),
 	progress: AssetProgressSchema
 });
