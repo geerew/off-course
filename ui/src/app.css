@@ -117,3 +117,9 @@
 		@slot;
 	}
 }
+
+@custom-variant media-buffering {
+	&:where(media-player[data-buffering] *) {
+		@slot;
+	}
+}

@@ -4,12 +4,13 @@
 	import type { APIError } from '$lib/api-error.svelte';
 	import { GetAllCourseAssets, GetCourse, UpdateCourseAssetProgress } from '$lib/api/course-api';
 	import { Spinner } from '$lib/components';
-	import { PdfIcon, TickIcon, VideoIcon, WarningIcon } from '$lib/components/icons';
-	import { Button, Tooltip } from '$lib/components/ui';
+	import { HtmlIcon, PdfIcon, TickIcon, VideoIcon, WarningIcon } from '$lib/components/icons';
+	import { Button, Checkbox, Tooltip } from '$lib/components/ui';
 	import { VideoPlayer } from '$lib/components/ui/media';
 	import type { AssetModel, ChapteredAssets } from '$lib/models/asset-model';
 	import type { CourseModel } from '$lib/models/course-model';
 	import { cn } from '$lib/utils';
+	import prettyMs from 'pretty-ms';
 	import { toast } from 'svelte-sonner';
 
 	let course = $state<CourseModel>();
@@ -132,12 +133,13 @@
 									</div>
 								</div>
 
-								<div class="ml-auto flex flex-col gap-3 pt-4 pb-3">
+								<div class="ml-auto flex flex-col pt-4 pb-3">
 									{#each chapters[chapter] as asset, index}
 										<Button
 											class={cn(
-												'text-foreground-alt-2/80 bg-background enabled:hover:bg-background enabled:hover:text-foreground-alt-1 h-auto justify-start text-start duration-50 enabled:hover:underline',
-												selectedAsset?.id === asset.id && 'text-foreground-alt-1'
+												'text-foreground-alt-2 bg-background enabled:hover:bg-background-alt-2 enabled:hover:text-foreground-alt-1 h-auto justify-start rounded-none text-start duration-50',
+												selectedAsset?.id === asset.id &&
+													'text-foreground-alt-1 bg-background-alt-2'
 											)}
 											onclick={() => {
 												if (!course || asset.id === selectedAsset?.id) return;
@@ -145,28 +147,39 @@
 												selectedAsset = asset;
 											}}
 										>
-											<div class="flex w-full flex-row items-center justify-between gap-3 pr-2.5">
-												<span>
-													{index + 1}. {asset.title}
-												</span>
-												<Button
-													class={cn(
-														' flex size-4 shrink-0 items-center justify-center rounded-full border',
-														asset.progress.completed
-															? 'enabled:bg-background-success enabled:hover:bg-background-success border-background-success '
-															: 'enabled:bg-background enabled:hover:bg-background border-foreground'
-													)}
+											<div class="flex w-full flex-row gap-3 py-2 pr-2.5 pl-1.5">
+												<Checkbox
+													class="hover:border-background-primary-alt-1 mt-px shrink-0 border-2"
+													checked={asset.progress.completed}
 													onclick={async (e: MouseEvent) => {
 														e.stopPropagation();
-														asset.progress.completed = !asset?.progress.completed;
-														if (selectedAsset && selectedAsset.id === asset.id) {
-															selectedAsset = asset;
-														}
+														e.preventDefault();
+														asset.progress.completed = !asset.progress.completed;
 														await updateAssetProgress(asset);
 													}}
-												>
-													<TickIcon class="text-foreground size-2 stroke-[3]" />
-												</Button>
+												/>
+
+												<div class="flex flex-col gap-2.5">
+													<span>
+														{index + 1}. {asset.title}
+													</span>
+
+													<div class="flex flex-row items-center gap-2">
+														{#if selectedAsset.assetType === 'video'}
+															<VideoIcon class="fill-foreground-alt-3 size-4 stroke-2" />
+														{:else if selectedAsset.assetType === 'pdf'}
+															<PdfIcon class="fill-foreground-alt-3 size-4 stroke-2" />
+														{:else if selectedAsset.assetType === 'html'}
+															<HtmlIcon class="fill-foreground-alt-3 size-4 stroke-2" />
+														{/if}
+
+														{#if asset.videoMetadata}
+															<span class="text-foreground-alt-3 text-sm">
+																{prettyMs(asset.videoMetadata.duration * 1000)}
+															</span>
+														{/if}
+													</div>
+												</div>
 											</div>
 										</Button>
 									{/each}

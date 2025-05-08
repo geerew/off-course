@@ -1,3 +1,5 @@
+<!-- TODO open on asset when the course is ongoing -->
+
 <script lang="ts">
 	import { GetCourses } from '$lib/api/course-api';
 	import { FilterBar } from '$lib/components';
