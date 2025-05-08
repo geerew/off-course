@@ -5,6 +5,7 @@
 <media-tooltip showDelay={300} class="contents">
 	<media-tooltip-trigger>
 		<media-fullscreen-button
+			target="provider"
 			class="group relative inline-flex cursor-pointer items-center justify-center rounded-md ring-sky-400 outline-none ring-inset data-[focus]:ring-4"
 		>
 			<MediaMaximizeIcon

@@ -1,4 +1,9 @@
 <script lang="ts">
+	import type {
+		MediaDurationChangeEvent,
+		MediaSourceChangeEvent,
+		MediaTimeUpdateEvent
+	} from 'vidstack';
 	import 'vidstack/bundle';
 	import type { MediaPlayerElement } from 'vidstack/elements';
 	import Buffering from './ui/buffering.svelte';
@@ -13,20 +18,92 @@
 
 	type Props = {
 		src: string;
+		startTime: number;
+		onTimeChange: (time: number) => void;
+		onCompleted: (time: number) => void;
 	};
 
-	let { src: videoSrc = $bindable() }: Props = $props();
+	let { src: videoSrc = $bindable(), startTime, onTimeChange, onCompleted }: Props = $props();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let player: MediaPlayerElement;
+	let duration = -1;
+	let currentTime = -1;
+	let lastLoggedSecond = -1;
+	let completeDispatched = false;
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// SourceChange is called when the source of the player changes, allowing us to reset values and
+	// set the current time to the start time
+	function sourceChange(e: MediaSourceChangeEvent) {
+		if (!e.detail) return;
+
+		lastLoggedSecond = -1;
+		completeDispatched = false;
+
+		if (!player) return;
+
+		if (Math.floor(startTime) == Math.floor(duration)) {
+			player.currentTime = 0;
+		} else {
+			player.currentTime = startTime ?? 0;
+		}
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// TimeChange is called when the current time of the player changes
+	function timeChange(e: MediaTimeUpdateEvent) {
+		if (duration === -1) return;
+
+		const currentSecond = Math.floor(e.detail.currentTime);
+		if (currentSecond === 0 || currentSecond === lastLoggedSecond) return;
+
+		lastLoggedSecond = currentSecond;
+
+		if (currentSecond >= duration - 5) {
+			if (completeDispatched) return;
+			completeDispatched = true;
+			onCompleted(duration);
+		} else {
+			completeDispatched = false;
+			onTimeChange(currentSecond);
+		}
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Set the currentTime when the video can play
+	function canPlay() {
+		if (!player) return;
+
+		player.currentTime = Math.floor(startTime) == Math.floor(duration) ? 0 : startTime;
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Set the duration. This will be called when the src changes
+	function durationChange(e: MediaDurationChangeEvent) {
+		duration = e.detail;
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	$effect(() => {
 		if (!player) return;
-		// player.addEventListener('source-change', (e) => {});
+
+		player.addEventListener('source-change', sourceChange);
+		player.addEventListener('can-play', canPlay);
+		player.addEventListener('time-update', timeChange);
+		player.addEventListener('duration-change', durationChange);
 
 		return () => {
-			player.removeEventListener('source-change', (e) => {});
+			player.removeEventListener('source-change', sourceChange);
+			player.removeEventListener('can-play', canPlay);
+			player.removeEventListener('time-update', timeChange);
+			player.removeEventListener('duration-change', durationChange);
 		};
 	});
 </script>
@@ -64,14 +141,9 @@
 			<Timestamp />
 			<div class="flex-1"></div>
 			<Fullscreen />
-			<!-- 
-
-
-			<Settings isMobile={false} />
- -->
+			<!--<Settings isMobile={false} /> -->
 		</media-controls-group>
 
-		<!-- Gradient bottom -->
 		<div
 			class="pointer-events-none absolute bottom-0 left-0 z-[-1] h-[99px] w-full [background-image:_url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAADGCAYAAAAT+OqFAAAAdklEQVQoz42QQQ7AIAgEF/T/D+kbq/RWAlnQyyazA4aoAB4FsBSA/bFjuF1EOL7VbrIrBuusmrt4ZZORfb6ehbWdnRHEIiITaEUKa5EJqUakRSaEYBJSCY2dEstQY7AuxahwXFrvZmWl2rh4JZ07z9dLtesfNj5q0FU3A5ObbwAAAABJRU5ErkJggg==)] bg-bottom bg-repeat-x"
 		></div>

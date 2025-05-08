@@ -199,11 +199,6 @@
 							{#if selectedAsset}
 								<div class="flex flex-row items-center justify-between">
 									<div class="flex w-full flex-row items-center gap-2">
-										{#if selectedAsset.assetType === 'video'}
-											<VideoIcon class="fill-foreground-alt-2 size-8 stroke-2" />
-										{:else if selectedAsset.assetType === 'pdf'}
-											<PdfIcon class="fill-foreground-alt-2 size-8 stroke-2" />
-										{/if}
 										<span class="text-xl font-medium">
 											{selectedAsset.title}
 										</span>
@@ -239,7 +234,21 @@
 
 						{#if selectedAsset}
 							{#if selectedAsset.assetType === 'video'}
-								<VideoPlayer src={`/api/courses/${course.id}/assets/${selectedAsset.id}/serve`} />
+								<VideoPlayer
+									src={`/api/courses/${course.id}/assets/${selectedAsset.id}/serve`}
+									startTime={selectedAsset.progress.videoPos}
+									onTimeChange={(time: number) => {
+										if (!selectedAsset) return;
+										selectedAsset.progress.videoPos = time;
+										updateAssetProgress(selectedAsset);
+									}}
+									onCompleted={(time: number) => {
+										if (!selectedAsset) return;
+										selectedAsset.progress.videoPos = time;
+										selectedAsset.progress.completed = true;
+										updateAssetProgress(selectedAsset);
+									}}
+								/>
 							{/if}
 						{/if}
 					</div>
