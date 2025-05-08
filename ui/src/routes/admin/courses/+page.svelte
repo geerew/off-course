@@ -1,4 +1,3 @@
-<!-- TODO fix scan. Updated is not changing when it should -->
 <script lang="ts">
 	import { GetCourses } from '$lib/api/course-api';
 	import { FilterBar, NiceDate, Pagination, SortMenu } from '$lib/components';
@@ -50,7 +49,7 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	// Stop the scan monitor when the component is destroyed
+	// Stop the scan monitor when the component is destroyed (if running)
 	$effect(() => {
 		return () => scanMonitor.stop();
 	});

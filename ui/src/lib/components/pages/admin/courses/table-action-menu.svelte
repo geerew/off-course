@@ -6,6 +6,7 @@
 	import RightChevron from '$lib/components/icons/right-chevron.svelte';
 	import { Dropdown } from '$lib/components/ui';
 	import type { CourseModel } from '$lib/models/course-model';
+	import { scanMonitor } from '$lib/scans.svelte';
 	import { DropdownMenu } from 'bits-ui';
 	import { toast } from 'svelte-sonner';
 
@@ -24,7 +25,9 @@
 
 	async function doScan() {
 		try {
-			await Promise.all(Object.values(courses).map((c) => StartScan({ courseId: c.id })));
+			const coursesToScan = Object.values(courses);
+			await Promise.all(coursesToScan.map((c) => StartScan({ courseId: c.id })));
+			scanMonitor.trackCourses(coursesToScan);
 			toast.success('Scanning started for selected courses');
 			onScan();
 		} catch (error) {

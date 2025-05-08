@@ -1,4 +1,5 @@
 <!-- TODO show attachments dropdown -->
+<!-- TODO show a progress bar -->
 <script lang="ts">
 	import { page } from '$app/state';
 	import { GetAllCourseAssets, GetCourse, GetCourseTags } from '$lib/api/course-api';
@@ -147,7 +148,6 @@
 								</div>
 
 								<!-- Progress -->
-								<!-- TODO make a progress bar -->
 								{#if course.progress.started}
 									<div class="grid grid-cols-[6.5rem_1fr]">
 										<span class="text-foreground-alt-3 font-medium">PROGRESS</span>

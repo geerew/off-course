@@ -6,6 +6,7 @@
 	import { DeleteIcon, DotsIcon, OverviewIcon, ScanIcon, TagIcon } from '$lib/components/icons';
 	import Dropdown from '$lib/components/ui/dropdown.svelte';
 	import type { CourseModel } from '$lib/models/course-model';
+	import { scanMonitor } from '$lib/scans.svelte';
 	import { DropdownMenu } from 'bits-ui';
 	import { toast } from 'svelte-sonner';
 
@@ -27,6 +28,7 @@
 	async function doScan() {
 		try {
 			await StartScan({ courseId: course.id });
+			scanMonitor.trackCourses(course);
 			onScan();
 		} catch (error) {
 			toast.error('Failed to start the scan ' + (error as APIError).message);

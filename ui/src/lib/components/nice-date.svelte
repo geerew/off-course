@@ -12,16 +12,18 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	const d = new Date(date);
-	const formattedDate = d.toLocaleDateString(undefined, {
-		weekday: 'long',
-		year: 'numeric',
-		month: 'short',
-		day: 'numeric',
-		hour: 'numeric',
-		minute: 'numeric',
-		second: 'numeric'
-	});
+	const d = $derived(new Date(date));
+	const formattedDate = $derived(
+		d.toLocaleDateString(undefined, {
+			weekday: 'long',
+			year: 'numeric',
+			month: 'short',
+			day: 'numeric',
+			hour: 'numeric',
+			minute: 'numeric',
+			second: 'numeric'
+		})
+	);
 </script>
 
 <div class={cn('text-muted-foreground', componentClass)}>

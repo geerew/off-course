@@ -1,7 +1,4 @@
-<!-- 
- 	TODO Support dropdown for filter options and values (if supported) 
- -->
-
+<!-- TODO Support dropdown for filter options and values (if supported) -->
 <script lang="ts">
 	import { cn } from '$lib/utils';
 	import { WarningIcon, XIcon } from './icons';
