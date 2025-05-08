@@ -1,3 +1,5 @@
+<!-- TODO show attachments downdown -->
+<!-- TODO allow clicking on course title to go to course -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
