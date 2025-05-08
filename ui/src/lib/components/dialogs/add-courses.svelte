@@ -1,4 +1,3 @@
-<!-- TODO Fix selecting and unselecting courses -->
 <script lang="ts">
 	import type { APIError } from '$lib/api-error.svelte';
 	import { CreateCourse } from '$lib/api/course-api';
@@ -247,8 +246,11 @@
 									disabled={isPosting ||
 										isRefreshing ||
 										selectedPath !== '' ||
-										dir.classification !== FsPathClassification.None ||
-										Object.keys(selectedCourses).some((path) => path.startsWith(dir.path))}
+										(dir.classification !== FsPathClassification.None &&
+											!(dir.path in selectedCourses)) ||
+										(!!(dir.path in selectedCourses)
+											? false
+											: Object.keys(selectedCourses).some((path) => path.startsWith(dir.path)))}
 									onclick={() => {
 										dir.path in selectedCourses
 											? delete selectedCourses[dir.path]
@@ -262,7 +264,9 @@
 										class="group-hover:border-foreground-alt-1 border-2 duration-200 data-[state=indeterminate]:cursor-default"
 										checked={selectedCourses[dir.path] !== undefined}
 										indeterminate={dir.classification === FsPathClassification.Ancestor ||
-											Object.keys(selectedCourses).some((path) => path.startsWith(dir.path))}
+											(!!(dir.path in selectedCourses)
+												? false
+												: Object.keys(selectedCourses).some((path) => path.startsWith(dir.path)))}
 										onclick={(e) => {
 											e.preventDefault();
 										}}
