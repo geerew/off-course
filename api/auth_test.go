@@ -149,8 +149,8 @@ func TestAuth_Login(t *testing.T) {
 		}
 		require.NoError(t, router.dao.CreateUser(ctx, user))
 
-		u := &models.User{Base: models.Base{ID: user.ID}}
-		require.NoError(t, router.dao.GetById(ctx, u))
+		u := &models.User{}
+		require.NoError(t, router.dao.Get(ctx, u, &database.Options{Where: squirrel.Eq{models.USER_TABLE_ID: user.ID}}))
 
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"username": "test", "password": "abcd1234" }`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)

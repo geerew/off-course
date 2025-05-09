@@ -15,7 +15,8 @@ CREATE TABLE courses (
 --- Progress of courses
 CREATE TABLE courses_progress (
 	id           TEXT PRIMARY KEY NOT NULL,
-	course_id    TEXT NOT NULL UNIQUE,
+	course_id    TEXT NOT NULL,
+	user_id 	 TEXT NOT NULL ,
 	started      BOOLEAN NOT NULL DEFAULT FALSE,
 	started_at   TEXT,
 	percent      INTEGER NOT NULL DEFAULT 0,
@@ -23,7 +24,10 @@ CREATE TABLE courses_progress (
 	created_at   TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	updated_at   TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	---
-	FOREIGN KEY (course_id) REFERENCES courses (id) ON DELETE CASCADE
+	FOREIGN KEY (course_id) REFERENCES courses (id) ON DELETE CASCADE,
+	FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+	---
+	UNIQUE(course_id, user_id)
 );
 
 --- Assets
@@ -62,14 +66,18 @@ CREATE TABLE asset_video_metadata (
 --- Progress of assets
 CREATE TABLE assets_progress (
 	id           TEXT PRIMARY KEY NOT NULL,
-	asset_id     TEXT NOT NULL UNIQUE,
+	asset_id     TEXT NOT NULL,
+	user_id      TEXT NOT NULL,
 	video_pos    INTEGER NOT NULL DEFAULT 0,
 	completed	 BOOLEAN NOT NULL DEFAULT FALSE,
 	completed_at TEXT,
 	created_at   TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	updated_at   TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	---
-	FOREIGN KEY (asset_id) REFERENCES assets (id) ON DELETE CASCADE
+	FOREIGN KEY (asset_id) REFERENCES assets (id) ON DELETE CASCADE,
+	FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+	---
+	UNIQUE(asset_id, user_id)
 );
 
 --- Attachments

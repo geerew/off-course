@@ -46,7 +46,10 @@ func (api userAPI) getUsers(c *fiber.Ctx) error {
 		AllowedFilters: []string{"role"},
 		AfterParseHook: usersAfterParseHook,
 	}
-	options, err := optionsBuilder(c, builderOptions)
+
+	userId := c.Locals(types.UserContextKey).(string)
+
+	options, err := optionsBuilder(c, builderOptions, userId)
 	if err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
@@ -121,8 +124,8 @@ func (api userAPI) updateUser(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "No data to update", nil)
 	}
 
-	user := &models.User{Base: models.Base{ID: id}}
-	err := api.r.dao.GetById(c.UserContext(), user)
+	user := &models.User{}
+	err := api.r.dao.Get(c.UserContext(), user, &database.Options{Where: squirrel.Eq{models.USER_TABLE_ID: id}})
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "User not found", nil)
@@ -206,7 +209,7 @@ func (api userAPI) deleteUserSession(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // usersAfterParseHook builds the database.Options.Where based on the query expression
-func usersAfterParseHook(parsed *queryparser.QueryResult, options *database.Options) {
+func usersAfterParseHook(parsed *queryparser.QueryResult, options *database.Options, _ string) {
 	options.Where = usersWhereBuilder(parsed.Expr)
 }
 

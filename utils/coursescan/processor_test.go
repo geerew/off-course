@@ -72,8 +72,8 @@ func TestScanner_Processor(t *testing.T) {
 		err := Processor(ctx, scanner, scan)
 		require.NoError(t, err)
 
-		courseResult := &models.Course{Base: models.Base{ID: course.ID}}
-		err = scanner.dao.GetById(ctx, courseResult)
+		courseResult := &models.Course{}
+		err = scanner.dao.Get(ctx, courseResult, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: course.ID}})
 		require.NoError(t, err)
 		require.True(t, courseResult.Available)
 	})
@@ -93,8 +93,8 @@ func TestScanner_Processor(t *testing.T) {
 		err := Processor(ctx, scanner, scan)
 		require.NoError(t, err)
 
-		courseResult := &models.Course{Base: models.Base{ID: course.ID}}
-		err = scanner.dao.GetById(ctx, courseResult)
+		courseResult := &models.Course{}
+		err = scanner.dao.Get(ctx, courseResult, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: course.ID}})
 		require.NoError(t, err)
 		require.Equal(t, filepath.Join(course.Path, "card.jpg"), courseResult.CardPath)
 
@@ -106,7 +106,7 @@ func TestScanner_Processor(t *testing.T) {
 		require.NoError(t, err)
 
 		courseResult = &models.Course{Base: models.Base{ID: course.ID}}
-		err = scanner.dao.GetById(ctx, courseResult)
+		err = scanner.dao.Get(ctx, courseResult, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: course.ID}})
 		require.NoError(t, err)
 		require.Empty(t, courseResult.CardPath)
 
@@ -118,7 +118,7 @@ func TestScanner_Processor(t *testing.T) {
 		require.NoError(t, err)
 
 		courseResult = &models.Course{Base: models.Base{ID: course.ID}}
-		err = scanner.dao.GetById(ctx, courseResult)
+		err = scanner.dao.Get(ctx, courseResult, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: course.ID}})
 		require.NoError(t, err)
 		require.Equal(t, filepath.Join(course.Path, "card.jpg"), courseResult.CardPath)
 	})

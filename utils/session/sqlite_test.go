@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Masterminds/squirrel"
+	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/stretchr/testify/require"
 )
@@ -69,8 +71,8 @@ func TestSqlite_SetUser(t *testing.T) {
 		err = storage.SetUser("key", "1234")
 		require.NoError(t, err)
 
-		session := &models.Session{ID: "key"}
-		err = storage.dao.GetById(ctx, session)
+		session := &models.Session{}
+		err = storage.dao.Get(ctx, session, &database.Options{Where: squirrel.Eq{models.SESSION_TABLE_ID: "key"}})
 		require.NoError(t, err)
 		require.Equal(t, "1234", session.UserId)
 	})

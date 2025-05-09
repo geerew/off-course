@@ -43,7 +43,9 @@ func (api *logsAPI) getLogs(c *fiber.Ctx) error {
 		AfterParseHook: logsAfterParseHook,
 	}
 
-	options, err := optionsBuilder(c, builderOptions)
+	userId := c.Locals(types.UserContextKey).(string)
+
+	options, err := optionsBuilder(c, builderOptions, userId)
 	if err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
@@ -72,7 +74,7 @@ func (api *logsAPI) getLogTypes(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // tagsAfterParseHook builds the database.Options.Where based on the query expression
-func logsAfterParseHook(parsed *queryparser.QueryResult, options *database.Options) {
+func logsAfterParseHook(parsed *queryparser.QueryResult, options *database.Options, _ string) {
 	options.Where = logsWhereBuilder(parsed.Expr)
 }
 

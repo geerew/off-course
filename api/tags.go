@@ -49,7 +49,7 @@ func (api *tagsAPI) getTags(c *fiber.Ctx) error {
 		AfterParseHook: tagsAfterParseHook,
 	}
 
-	options, err := optionsBuilder(c, builderOptions)
+	options, err := optionsBuilder(c, builderOptions, "")
 	if err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
@@ -77,7 +77,7 @@ func (api *tagsAPI) getTagNames(c *fiber.Ctx) error {
 		AfterParseHook: tagsAfterParseHook,
 	}
 
-	options, err := optionsBuilder(c, builderOptions)
+	options, err := optionsBuilder(c, builderOptions, "")
 	if err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
@@ -154,8 +154,8 @@ func (api *tagsAPI) updateTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
 	}
 
-	tag := &models.Tag{Base: models.Base{ID: id}}
-	err := api.dao.GetById(c.UserContext(), tag)
+	tag := &models.Tag{}
+	err := api.dao.Get(c.UserContext(), tag, &database.Options{Where: squirrel.Eq{models.TAG_TABLE_ID: id}})
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Tag not found", nil)
@@ -195,7 +195,7 @@ func (api *tagsAPI) deleteTag(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // tagsAfterParseHook builds the database.Options.Where based on the query expression
-func tagsAfterParseHook(parsed *queryparser.QueryResult, options *database.Options) {
+func tagsAfterParseHook(parsed *queryparser.QueryResult, options *database.Options, _ string) {
 	if len(parsed.FreeText) == 0 {
 		return
 	}

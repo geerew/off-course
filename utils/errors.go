@@ -18,7 +18,8 @@ var (
 	ErrNoTable       = errors.New("table name cannot be empty")
 
 	// DB
-	ErrInvalidWhere = errors.New("where clause cannot be empty")
+	ErrInvalidWhere  = errors.New("where clause cannot be empty")
+	ErrMissingUserId = errors.New("user id not found in context")
 
 	// Model
 	ErrInvalidId  = errors.New("id cannot be empty")

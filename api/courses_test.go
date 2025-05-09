@@ -479,8 +479,8 @@ func TestCourses_DeleteCourse(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, status)
 
-		course := &models.Course{Base: models.Base{ID: courses[1].ID}}
-		err = router.dao.GetById(ctx, course)
+		course := &models.Course{}
+		err = router.dao.GetCourse(ctx, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: courses[1].ID}})
 		require.ErrorIs(t, err, sql.ErrNoRows)
 	})
 
@@ -1145,8 +1145,8 @@ func TestCourses_UpdateAssetProgress(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, status)
 
-		assetResult := &models.Asset{Base: models.Base{ID: asset.ID}}
-		require.NoError(t, router.dao.GetById(ctx, assetResult))
+		assetResult := &models.Asset{}
+		require.NoError(t, router.dao.GetAsset(ctx, assetResult, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_ID: asset.ID}}))
 		require.Equal(t, 45, assetResult.Progress.VideoPos)
 		require.False(t, assetResult.Progress.Completed)
 		require.True(t, assetResult.Progress.CompletedAt.IsZero())
@@ -1164,7 +1164,7 @@ func TestCourses_UpdateAssetProgress(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, status)
 
-		require.NoError(t, router.dao.GetById(ctx, assetResult))
+		require.NoError(t, router.dao.GetAsset(ctx, assetResult, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_ID: asset.ID}}))
 		require.Equal(t, 45, assetResult.Progress.VideoPos)
 		require.True(t, assetResult.Progress.Completed)
 		require.False(t, assetResult.Progress.CompletedAt.IsZero())
@@ -1183,7 +1183,7 @@ func TestCourses_UpdateAssetProgress(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, status)
 
-		require.NoError(t, router.dao.GetById(ctx, assetResult))
+		require.NoError(t, router.dao.GetAsset(ctx, assetResult, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_ID: asset.ID}}))
 		require.Equal(t, 10, assetResult.Progress.VideoPos)
 		require.False(t, assetResult.Progress.Completed)
 		require.True(t, assetResult.Progress.CompletedAt.IsZero())
@@ -2061,8 +2061,8 @@ func TestCourses_DeleteTag(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, status)
 
-		require.NoError(t, router.dao.GetById(ctx, tag1))
-		require.NoError(t, router.dao.GetById(ctx, tag2))
+		require.NoError(t, router.dao.Get(ctx, tag1, &database.Options{Where: squirrel.Eq{models.COURSE_TAG_TABLE_ID: tag1.ID}}))
+		require.NoError(t, router.dao.Get(ctx, tag2, &database.Options{Where: squirrel.Eq{models.COURSE_TAG_TABLE_ID: tag2.ID}}))
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {

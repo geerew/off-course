@@ -5,9 +5,7 @@ import (
 	"database/sql"
 	"log/slog"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/utils/appfs"
-	"github.com/geerew/off-course/utils/pagination"
 	"github.com/geerew/off-course/utils/types"
 )
 
@@ -67,54 +65,6 @@ type Querier interface {
 	Exec(query string, args ...any) (sql.Result, error)
 	Query(query string, args ...any) (*sql.Rows, error)
 	QueryRow(query string, args ...any) *sql.Row
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// Options defines optional params for a database query
-type Options struct {
-	// ORDER BY
-	//
-	// Example: []string{"id DESC", "title ASC"}
-	OrderBy []string
-
-	// ORDER BY (clause)
-	//
-	// Example: []string{"id DESC", "title ASC"}
-	OrderByClause squirrel.Sqlizer
-
-	// Any valid squirrel WHERE expression
-	//
-	// Examples:
-	//
-	//   EQ:   squirrel.Eq{"id": "123"}
-	//   IN:   squirrel.Eq{"id": []string{"123", "456"}}
-	//   OR:   squirrel.Or{squirrel.Expr("id = ?", "123"), squirrel.Expr("id = ?", "456")}
-	//   AND:  squirrel.And{squirrel.Eq{"id": "123"}, squirrel.Eq{"title": "devops"}}
-	//   LIKE: squirrel.Like{"title": "%dev%"}
-	//   NOT:  squirrel.NotEq{"id": "123"}
-	Where squirrel.Sqlizer
-
-	// GROUP BY
-	//
-	// Example: []string{table1.id}
-	GroupBy []string
-
-	// HAVING (used with GROUP BY)
-	//
-	// Example: squirrel.Eq{"COUNT(table1.id)": 1}
-	Having squirrel.Sqlizer
-
-	// Additional joins to use in SELECT queries
-	//
-	// Example: []string{"table1 ON table1.id = table2.id"}
-	AdditionalJoins []string
-
-	// Used to paginate the results
-	Pagination *pagination.Pagination
-
-	// Use REPLACE instead of INSERT
-	Replace bool
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

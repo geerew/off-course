@@ -139,13 +139,13 @@ func (api authAPI) logout(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api authAPI) getMe(c *fiber.Ctx) error {
-	userId, ok := c.Locals("user.id").(string)
+	userId, ok := c.Locals(types.UserContextKey).(string)
 	if !ok {
 		return errorResponse(c, fiber.StatusUnauthorized, "Invalid user", nil)
 	}
 
-	user := &models.User{Base: models.Base{ID: userId}}
-	err := api.r.dao.GetById(c.UserContext(), user)
+	user := &models.User{}
+	err := api.r.dao.Get(c.UserContext(), user, &database.Options{Where: squirrel.Eq{models.USER_TABLE_ID: userId}})
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error getting user information", err)
 	}
@@ -161,13 +161,13 @@ func (api authAPI) getMe(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api authAPI) updateMe(c *fiber.Ctx) error {
-	userId, ok := c.Locals("user.id").(string)
+	userId, ok := c.Locals(types.UserContextKey).(string)
 	if !ok {
 		return errorResponse(c, fiber.StatusUnauthorized, "Invalid user", nil)
 	}
 
-	user := &models.User{Base: models.Base{ID: userId}}
-	err := api.r.dao.GetById(c.UserContext(), user)
+	user := &models.User{}
+	err := api.r.dao.Get(c.UserContext(), user, &database.Options{Where: squirrel.Eq{models.USER_TABLE_ID: userId}})
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error getting user information", err)
 	}
@@ -209,13 +209,13 @@ func (api authAPI) updateMe(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api authAPI) deleteMe(c *fiber.Ctx) error {
-	userId, ok := c.Locals("user.id").(string)
+	userId, ok := c.Locals(types.UserContextKey).(string)
 	if !ok {
 		return errorResponse(c, fiber.StatusUnauthorized, "Invalid user", nil)
 	}
 
-	user := &models.User{Base: models.Base{ID: userId}}
-	err := api.r.dao.GetById(c.UserContext(), user)
+	user := &models.User{}
+	err := api.r.dao.Get(c.UserContext(), user, &database.Options{Where: squirrel.Eq{models.USER_TABLE_ID: userId}})
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error getting user information", err)
 	}

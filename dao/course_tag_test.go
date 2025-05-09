@@ -1,7 +1,6 @@
 package dao
 
 import (
-	"database/sql"
 	"fmt"
 	"testing"
 
@@ -87,6 +86,7 @@ func Test_CourseTagDeleteCascade(t *testing.T) {
 
 	require.Nil(t, dao.Delete(ctx, course, nil))
 
-	err := dao.GetById(ctx, courseTag)
-	require.ErrorIs(t, err, sql.ErrNoRows)
+	count, err := dao.Count(ctx, &models.CourseTag{}, nil)
+	require.NoError(t, err)
+	require.Zero(t, count)
 }

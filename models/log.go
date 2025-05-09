@@ -17,7 +17,7 @@ type Log struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-var (
+const (
 	LOG_TABLE   = "logs"
 	LOG_LEVEL   = "level"
 	LOG_MESSAGE = "message"

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
@@ -15,6 +16,7 @@ import (
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/queryparser"
+	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/spf13/afero"
@@ -80,13 +82,17 @@ func (api coursesAPI) getCourses(c *fiber.Ctx) error {
 		AfterParseHook: coursesAfterParseHook,
 	}
 
-	options, err := optionsBuilder(c, builderOptions)
+	userId := c.Locals(types.UserContextKey).(string)
+
+	options, err := optionsBuilder(c, builderOptions, userId)
 	if err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
+	ctx := context.WithValue(c.UserContext(), types.UserContextKey, userId)
+
 	courses := []*models.Course{}
-	err = api.dao.List(c.UserContext(), &courses, options)
+	err = api.dao.ListCourses(ctx, &courses, options)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up courses", err)
 	}
@@ -104,8 +110,11 @@ func (api coursesAPI) getCourses(c *fiber.Ctx) error {
 func (api coursesAPI) getCourse(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	course := &models.Course{Base: models.Base{ID: id}}
-	err := api.dao.GetById(c.UserContext(), course)
+	userId := c.Locals(types.UserContextKey).(string)
+	ctx := context.WithValue(c.UserContext(), types.UserContextKey, userId)
+
+	course := &models.Course{}
+	err := api.dao.GetCourse(ctx, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: id}})
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -181,8 +190,11 @@ func (api coursesAPI) deleteCourse(c *fiber.Ctx) error {
 func (api coursesAPI) getCard(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	course := &models.Course{Base: models.Base{ID: id}}
-	err := api.dao.GetById(c.UserContext(), course)
+	userId := c.Locals(types.UserContextKey).(string)
+	ctx := context.WithValue(c.UserContext(), types.UserContextKey, userId)
+
+	course := &models.Course{}
+	err := api.dao.GetCourse(ctx, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: id}})
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -216,7 +228,9 @@ func (api coursesAPI) getAssets(c *fiber.Ctx) error {
 		Paginate:       true,
 	}
 
-	options, err := optionsBuilder(c, builderOptions)
+	userId := c.Locals(types.UserContextKey).(string)
+
+	options, err := optionsBuilder(c, builderOptions, userId)
 	if err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
@@ -246,18 +260,18 @@ func (api coursesAPI) getAsset(c *fiber.Ctx) error {
 	options := &database.Options{}
 
 	// Join the course table
-	options.AdditionalJoins = append(
-		options.AdditionalJoins,
-		models.COURSE_TABLE+" ON "+models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID,
-	)
+	options.AddJoin(models.COURSE_TABLE, models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
 
 	options.Where = squirrel.And{
 		squirrel.Eq{models.ASSET_TABLE_ID: assetId},
 		squirrel.Eq{models.COURSE_TABLE_ID: id},
 	}
 
+	userId := c.Locals(types.UserContextKey).(string)
+	ctx := context.WithValue(c.UserContext(), types.UserContextKey, userId)
+
 	asset := &models.Asset{}
-	err := api.dao.Get(c.UserContext(), asset, options)
+	err := api.dao.GetAsset(ctx, asset, options)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Asset not found", nil)
@@ -278,18 +292,18 @@ func (api coursesAPI) serveAsset(c *fiber.Ctx) error {
 	options := &database.Options{}
 
 	// Join the course table
-	options.AdditionalJoins = append(
-		options.AdditionalJoins,
-		models.COURSE_TABLE+" ON "+models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID,
-	)
+	options.AddJoin(models.COURSE_TABLE, models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
 
 	options.Where = squirrel.And{
 		squirrel.Eq{models.ASSET_TABLE_ID: assetId},
 		squirrel.Eq{models.COURSE_TABLE_ID: id},
 	}
 
+	userId := c.Locals(types.UserContextKey).(string)
+	ctx := context.WithValue(c.UserContext(), types.UserContextKey, userId)
+
 	asset := &models.Asset{}
-	err := api.dao.Get(c.UserContext(), asset, options)
+	err := api.dao.GetAsset(ctx, asset, options)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Asset not found", nil)
@@ -330,7 +344,10 @@ func (api coursesAPI) updateAssetProgress(c *fiber.Ctx) error {
 		Completed: req.Completed,
 	}
 
-	err := api.dao.CreateOrUpdateAssetProgress(c.UserContext(), courseId, assetProgress)
+	userId := c.Locals(types.UserContextKey).(string)
+	ctx := context.WithValue(c.UserContext(), types.UserContextKey, userId)
+
+	err := api.dao.CreateOrUpdateAssetProgress(ctx, courseId, assetProgress)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Asset not found", nil)
@@ -353,17 +370,17 @@ func (api coursesAPI) getAttachments(c *fiber.Ctx) error {
 		Paginate:       true,
 	}
 
-	options, err := optionsBuilder(c, builderOptions)
+	userId := c.Locals(types.UserContextKey).(string)
+
+	options, err := optionsBuilder(c, builderOptions, userId)
 	if err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
 	// Join the asset and course tables to ensure the asset belongs to the course
-	options.AdditionalJoins = append(
-		options.AdditionalJoins,
-		models.ASSET_TABLE+" ON "+models.ATTACHMENT_TABLE_ASSET_ID+" = "+models.ASSET_TABLE_ID,
-		models.COURSE_TABLE+" ON "+models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID,
-	)
+	// Join the asset and course tables
+	options.AddJoin(models.ASSET_TABLE, models.ATTACHMENT_TABLE_ASSET_ID+" = "+models.ASSET_TABLE_ID)
+	options.AddJoin(models.COURSE_TABLE, models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
 
 	options.Where = squirrel.And{
 		squirrel.Eq{models.ATTACHMENT_TABLE_ASSET_ID: assetId},
@@ -394,11 +411,9 @@ func (api coursesAPI) getAttachment(c *fiber.Ctx) error {
 	options := &database.Options{}
 
 	// Join the asset and course tables
-	options.AdditionalJoins = append(
-		options.AdditionalJoins,
-		models.ASSET_TABLE+" ON "+models.ATTACHMENT_TABLE_ASSET_ID+" = "+models.ASSET_TABLE_ID,
-		models.COURSE_TABLE+" ON "+models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID,
-	)
+	// Join the asset and course tables
+	options.AddJoin(models.ASSET_TABLE, models.ATTACHMENT_TABLE_ASSET_ID+" = "+models.ASSET_TABLE_ID)
+	options.AddJoin(models.COURSE_TABLE, models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
 
 	options.Where = squirrel.And{
 		squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachmentId},
@@ -429,11 +444,8 @@ func (api coursesAPI) serveAttachment(c *fiber.Ctx) error {
 	options := &database.Options{}
 
 	// Join the asset and course tables
-	options.AdditionalJoins = append(
-		options.AdditionalJoins,
-		models.ASSET_TABLE+" ON "+models.ATTACHMENT_TABLE_ASSET_ID+" = "+models.ASSET_TABLE_ID,
-		models.COURSE_TABLE+" ON "+models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID,
-	)
+	options.AddJoin(models.ASSET_TABLE, models.ATTACHMENT_TABLE_ASSET_ID+" = "+models.ASSET_TABLE_ID)
+	options.AddJoin(models.COURSE_TABLE, models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
 
 	options.Where = squirrel.And{
 		squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachmentId},
@@ -535,13 +547,17 @@ func (api coursesAPI) deleteTag(c *fiber.Ctx) error {
 
 // coursesAfterParseHook runs after parsing the query expression and is used to build the
 // WHERE/JOIN clauses
-func coursesAfterParseHook(parsed *queryparser.QueryResult, options *database.Options) {
+func coursesAfterParseHook(parsed *queryparser.QueryResult, options *database.Options, userID string) {
 	options.Where = coursesWhereBuilder(parsed.Expr)
 
 	if foundProgress, ok := parsed.FoundFilters["progress"]; ok && foundProgress {
-		// TODO Make a LEFT JOIN for when courses do not have progress
-		options.AdditionalJoins = append(options.AdditionalJoins,
-			models.COURSE_PROGRESS_TABLE+" ON "+models.COURSE_PROGRESS_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID,
+		options.AddLeftJoin(
+			models.COURSE_PROGRESS_TABLE,
+			fmt.Sprintf("%s = %s AND %s = '%s'",
+				models.COURSE_PROGRESS_TABLE_COURSE_ID,
+				models.COURSE_TABLE_ID,
+				models.COURSE_PROGRESS_TABLE_USER_ID,
+				userID),
 		)
 	}
 }
@@ -566,14 +582,31 @@ func coursesWhereBuilder(expr queryparser.QueryExpr) squirrel.Sqlizer {
 		case "progress":
 			switch strings.ToLower(node.Value) {
 			case "not started":
-				return squirrel.Eq{models.COURSE_PROGRESS_TABLE_STARTED: false}
+				// For "not started", we need:
+				// 1. Either no progress record exists (IS NULL after LEFT JOIN)
+				// 2. Or the progress record exists but started=false
+				return squirrel.Or{
+					// No progress record exists
+					squirrel.Expr(models.COURSE_PROGRESS_TABLE_ID + " IS NULL"),
+					// Or started is false
+					squirrel.Eq{models.COURSE_PROGRESS_TABLE_STARTED: false},
+				}
 			case "started":
 				return squirrel.And{
+					// Must have a progress record
+					squirrel.Expr(models.COURSE_PROGRESS_TABLE_ID + " IS NOT NULL"),
+					// Started must be true
 					squirrel.Eq{models.COURSE_PROGRESS_TABLE_STARTED: true},
+					// But not 100% complete
 					squirrel.NotEq{models.COURSE_PROGRESS_TABLE_PERCENT: 100},
 				}
 			case "completed":
-				return squirrel.Eq{models.COURSE_PROGRESS_TABLE_PERCENT: 100}
+				return squirrel.And{
+					// Must have a progress record
+					squirrel.Expr(models.COURSE_PROGRESS_TABLE_ID + " IS NOT NULL"),
+					// And must be 100% complete
+					squirrel.Eq{models.COURSE_PROGRESS_TABLE_PERCENT: 100},
+				}
 			default:
 				return nil
 			}

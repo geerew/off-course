@@ -2,6 +2,7 @@ package dao
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/database"
@@ -18,6 +19,15 @@ func (dao *DAO) CreateOrUpdateAssetProgress(ctx context.Context, courseId string
 		return utils.ErrNilPtr
 	}
 
+	// Extract user ID from context
+	userId, ok := ctx.Value(types.UserContextKey).(string)
+	if !ok || userId == "" {
+		return utils.ErrMissingUserId
+	}
+
+	// Set the user ID in the progress object
+	assetProgress.UserID = userId
+
 	return dao.db.RunInTransaction(ctx, func(txCtx context.Context) error {
 		if assetProgress.VideoPos < 0 {
 			assetProgress.VideoPos = 0
@@ -26,9 +36,8 @@ func (dao *DAO) CreateOrUpdateAssetProgress(ctx context.Context, courseId string
 		options := &database.Options{}
 
 		// Join the course table
-		options.AdditionalJoins = append(
-			options.AdditionalJoins,
-			models.COURSE_TABLE+" ON "+models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID,
+		options.AddJoin(
+			models.COURSE_TABLE, models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID,
 		)
 
 		options.Where = squirrel.And{
@@ -37,12 +46,26 @@ func (dao *DAO) CreateOrUpdateAssetProgress(ctx context.Context, courseId string
 		}
 
 		asset := &models.Asset{}
-		if err := dao.Get(txCtx, asset, options); err != nil {
+		err := dao.Get(txCtx, asset, options)
+		if err != nil {
 			return err
 		}
 
-		if asset.Progress == nil {
-			// Create
+		// Use both asset_id and user_id to look up the existing progress
+		existingProgress := &models.AssetProgress{}
+		err = dao.Get(txCtx, existingProgress, &database.Options{
+			Where: squirrel.And{
+				squirrel.Eq{models.ASSET_PROGRESS_TABLE_ASSET_ID: assetProgress.AssetID},
+				squirrel.Eq{models.ASSET_PROGRESS_TABLE_USER_ID: userId},
+			},
+		})
+
+		if err != nil && err != sql.ErrNoRows {
+			return err
+		}
+
+		if err == sql.ErrNoRows {
+			// Create new progress record
 			if assetProgress.Completed {
 				assetProgress.CompletedAt = types.NowDateTime()
 			}
@@ -52,11 +75,11 @@ func (dao *DAO) CreateOrUpdateAssetProgress(ctx context.Context, courseId string
 				return err
 			}
 		} else {
-			// Update
-			assetProgress.ID = asset.Progress.ID
+			// Update existing progress
+			assetProgress.ID = existingProgress.ID
 			if assetProgress.Completed {
-				if asset.Progress.Completed {
-					assetProgress.CompletedAt = asset.Progress.CompletedAt
+				if existingProgress.Completed {
+					assetProgress.CompletedAt = existingProgress.CompletedAt
 				} else {
 					assetProgress.CompletedAt = types.NowDateTime()
 				}
@@ -64,12 +87,13 @@ func (dao *DAO) CreateOrUpdateAssetProgress(ctx context.Context, courseId string
 				assetProgress.CompletedAt = types.DateTime{}
 			}
 
-			if _, err := dao.Update(txCtx, assetProgress); err != nil {
+			_, err = dao.Update(txCtx, assetProgress)
+			if err != nil {
 				return err
 			}
 		}
 
-		// Refresh course progress
+		// Pass user ID to RefreshCourseProgress
 		return dao.RefreshCourseProgress(txCtx, asset.CourseID)
 	})
 }

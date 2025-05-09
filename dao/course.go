@@ -20,15 +20,52 @@ func (dao *DAO) CreateCourse(ctx context.Context, course *models.Course) error {
 		return utils.ErrNilPtr
 	}
 
-	return dao.db.RunInTransaction(ctx, func(txCtx context.Context) error {
-		err := dao.Create(txCtx, course)
-		if err != nil {
-			return err
-		}
+	return dao.Create(ctx, course)
 
-		courseProgress := &models.CourseProgress{CourseID: course.Id()}
-		return dao.CreateCourseProgress(txCtx, courseProgress)
-	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetCourse retrieves a course
+func (dao *DAO) GetCourse(ctx context.Context, course *models.Course, options *database.Options) error {
+	if course == nil {
+		return utils.ErrNilPtr
+	}
+
+	userId, ok := ctx.Value(types.UserContextKey).(string)
+	if !ok || userId == "" {
+		return utils.ErrMissingUserId
+	}
+
+	if options == nil {
+		options = &database.Options{}
+	}
+
+	options.AddRelationFilter("Progress", models.COURSE_PROGRESS_USER_ID, userId)
+
+	return dao.Get(ctx, course, options)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ListCourses retrieves a list of courses
+func (dao *DAO) ListCourses(ctx context.Context, courses *[]*models.Course, options *database.Options) error {
+	if courses == nil {
+		return utils.ErrNilPtr
+	}
+
+	userId, ok := ctx.Value(types.UserContextKey).(string)
+	if !ok || userId == "" {
+		return utils.ErrMissingUserId
+	}
+
+	if options == nil {
+		options = &database.Options{}
+	}
+
+	options.AddRelationFilter("Progress", models.COURSE_PROGRESS_USER_ID, userId)
+
+	return dao.List(ctx, courses, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

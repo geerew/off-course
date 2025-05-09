@@ -57,13 +57,13 @@ type builderOptions struct {
 	Paginate bool
 
 	// A function to run after the query has been parsed. It will only run if the query is not nil
-	AfterParseHook func(*queryparser.QueryResult, *database.Options)
+	AfterParseHook func(*queryparser.QueryResult, *database.Options, string)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // optionsBuilder builds a database.Options based on a `q` query parameter
-func optionsBuilder(c *fiber.Ctx, builderOptions builderOptions) (*database.Options, error) {
+func optionsBuilder(c *fiber.Ctx, builderOptions builderOptions, userId string) (*database.Options, error) {
 	options := &database.Options{}
 
 	orderBy := []string{models.BASE_CREATED_AT + " desc"}
@@ -95,7 +95,7 @@ func optionsBuilder(c *fiber.Ctx, builderOptions builderOptions) (*database.Opti
 	}
 
 	if builderOptions.AfterParseHook != nil {
-		builderOptions.AfterParseHook(parsed, options)
+		builderOptions.AfterParseHook(parsed, options, userId)
 	}
 
 	return options, nil
@@ -209,7 +209,7 @@ func handleHtml(c *fiber.Ctx, appFs *appfs.AppFs, asset *models.Asset) error {
 //
 //	group.Get("/my-route", protectedRoute, myHandler)
 func protectedRoute(c *fiber.Ctx) error {
-	userRole, ok := c.Locals("user.role").(string)
+	userRole, ok := c.Locals(types.RoleContextKey).(string)
 	if !ok {
 		return errorResponse(c, fiber.StatusUnauthorized, "Invalid user", nil)
 	}

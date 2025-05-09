@@ -14,7 +14,7 @@ type Attachment struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-var (
+const (
 	ATTACHMENT_TABLE    = "attachments"
 	ATTACHMENT_ASSET_ID = "asset_id"
 	ATTACHMENT_TITLE    = "title"

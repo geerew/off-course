@@ -194,8 +194,8 @@ func authMiddleware(r *Router) fiber.Handler {
 			return c.Redirect("/")
 		}
 
-		c.Locals("user.id", userId)
-		c.Locals("user.role", userRole)
+		c.Locals(types.UserContextKey, userId)
+		c.Locals(types.RoleContextKey, userRole)
 
 		return c.Next()
 	}
@@ -206,8 +206,8 @@ func authMiddleware(r *Router) fiber.Handler {
 // devAuthMiddleware sets the id, role (for use in development only)
 func devAuthMiddleware(id string, role types.UserRole) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		c.Locals("user.id", id)
-		c.Locals("user.role", role.String())
+		c.Locals(types.UserContextKey, id)
+		c.Locals(types.RoleContextKey, role.String())
 		return c.Next()
 	}
 }

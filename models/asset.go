@@ -32,7 +32,7 @@ type Asset struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-var (
+const (
 	ASSET_TABLE          = "assets"
 	ASSET_COURSE_ID      = "course_id"
 	ASSET_TITLE          = "title"

@@ -21,7 +21,7 @@ type Scan struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-var (
+const (
 	SCAN_TABLE       = "scans"
 	SCAN_COURSE_ID   = "course_id"
 	SCAN_STATUS      = "status"

@@ -1,11 +1,12 @@
 package cron
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/dao"
+	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/mocks"
@@ -17,10 +18,9 @@ import (
 
 func TestCourseAvailability_Run(t *testing.T) {
 	t.Run("update", func(t *testing.T) {
-		db, appFs, logger, _ := setup(t)
+		db, appFs, ctx, logger, _ := setup(t)
 
 		dao := dao.New(db)
-		ctx := context.Background()
 
 		courses := []*models.Course{}
 		for i := range 3 {
@@ -48,17 +48,16 @@ func TestCourseAvailability_Run(t *testing.T) {
 		require.NoError(t, err)
 
 		for _, course := range courses {
-			err := dao.GetById(ctx, course)
+			err := dao.GetCourse(ctx, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: course.ID}})
 			require.NoError(t, err)
 			require.True(t, course.Available)
 		}
 	})
 
 	t.Run("stat error", func(t *testing.T) {
-		db, _, logger, logs := setup(t)
+		db, _, ctx, logger, logs := setup(t)
 
 		dao := dao.New(db)
-		ctx := context.Background()
 
 		course := &models.Course{Title: "course 1", Path: "/course-1", Available: false}
 		require.NoError(t, dao.CreateCourse(ctx, course))
@@ -85,7 +84,7 @@ func TestCourseAvailability_Run(t *testing.T) {
 	})
 
 	t.Run("db error", func(t *testing.T) {
-		db, appFs, logger, logs := setup(t)
+		db, appFs, _, logger, logs := setup(t)
 
 		_, err := db.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)

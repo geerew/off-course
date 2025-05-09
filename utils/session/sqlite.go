@@ -91,8 +91,8 @@ func (s *SqliteStorage) SetUser(key, userId string) error {
 		return nil
 	}
 
-	session := &models.Session{ID: key}
-	err := s.dao.GetById(context.Background(), session)
+	session := &models.Session{}
+	err := s.dao.Get(context.Background(), session, &database.Options{Where: squirrel.Eq{models.SESSION_TABLE_ID: key}})
 	if err != nil {
 		return err
 	}

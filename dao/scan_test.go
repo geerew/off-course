@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Masterminds/squirrel"
+	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/types"
@@ -60,8 +62,8 @@ func Test_Update(t *testing.T) {
 		time.Sleep(1 * time.Millisecond)
 		require.NoError(t, dao.UpdateScan(ctx, newS))
 
-		scanResult := &models.Scan{Base: models.Base{ID: originalScan.ID}}
-		require.Nil(t, dao.GetById(ctx, scanResult))
+		scanResult := &models.Scan{}
+		require.Nil(t, dao.Get(ctx, scanResult, &database.Options{Where: squirrel.Eq{models.SCAN_TABLE_ID: originalScan.ID}}))
 		require.Equal(t, originalScan.ID, scanResult.ID)                     // No change
 		require.Equal(t, originalScan.CourseID, scanResult.CourseID)         // No change
 		require.True(t, scanResult.CreatedAt.Equal(originalScan.CreatedAt))  // No change
@@ -158,6 +160,7 @@ func Test_ScanDeleteCascade(t *testing.T) {
 
 	require.Nil(t, dao.Delete(ctx, course, nil))
 
-	err := dao.GetById(ctx, scan)
-	require.ErrorIs(t, err, sql.ErrNoRows)
+	count, err := dao.Count(ctx, &models.Scan{}, nil)
+	require.NoError(t, err)
+	require.Zero(t, count)
 }

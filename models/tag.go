@@ -15,7 +15,7 @@ type Tag struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-var (
+const (
 	TAG_TABLE        = "tags"
 	TAG_TAG          = "tag"
 	TAG_COURSE_COUNT = "course_count"

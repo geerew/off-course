@@ -11,6 +11,8 @@ import (
 	"github.com/geerew/off-course/utils/schema"
 )
 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // TODO Support raw queries
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -94,25 +96,6 @@ func (dao *DAO) Get(ctx context.Context, model any, options *database.Options) e
 
 	q := database.QuerierFromContext(ctx, dao.db)
 	return sch.Select(model, options, q)
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// GetById is a generic function to get a model (row) based on the ID of the model
-func (dao *DAO) GetById(ctx context.Context, model models.Modeler) error {
-	if model == nil {
-		return utils.ErrNilPtr
-	}
-
-	if model.Id() == "" {
-		return utils.ErrInvalidId
-	}
-
-	options := &database.Options{
-		Where: squirrel.Eq{model.Table() + "." + models.BASE_ID: model.Id()},
-	}
-
-	return dao.Get(ctx, model, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

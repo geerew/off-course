@@ -20,19 +20,15 @@ func (dao *DAO) CreateCourseProgress(ctx context.Context, courseProgress *models
 		return utils.ErrNilPtr
 	}
 
-	return dao.Create(ctx, courseProgress)
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// UpdateCourseProgress update a course progress
-func (dao *DAO) UpdateCourseProgress(ctx context.Context, courseProgress *models.CourseProgress) error {
-	if courseProgress == nil {
-		return utils.ErrNilPtr
+	if courseProgress.UserID == "" {
+		userId, ok := ctx.Value(types.UserContextKey).(string)
+		if !ok || userId == "" {
+			return utils.ErrMissingUserId
+		}
+		courseProgress.UserID = userId
 	}
 
-	_, err := dao.Update(ctx, courseProgress)
-	return err
+	return dao.Create(ctx, courseProgress)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -83,6 +79,12 @@ func (dao *DAO) RefreshCourseProgress(ctx context.Context, courseID string) erro
 		return utils.ErrInvalidId
 	}
 
+	// Extract user ID from context
+	userId, ok := ctx.Value(types.UserContextKey).(string)
+	if !ok || userId == "" {
+		return utils.ErrMissingUserId
+	}
+
 	// Count video and non-video assets separately
 	assetCountQuery, assetCountArgs, _ := squirrel.
 		StatementBuilder.
@@ -103,7 +105,7 @@ func (dao *DAO) RefreshCourseProgress(ctx context.Context, courseID string) erro
 		return err
 	}
 
-	// Calculate progress metrics
+	// Calculate progress metrics - include user_id in the join conditions
 	progressQuery, progressArgs, _ := squirrel.
 		StatementBuilder.
 		PlaceholderFormat(squirrel.Question).
@@ -126,10 +128,15 @@ func (dao *DAO) RefreshCourseProgress(ctx context.Context, courseID string) erro
 			// Count started assets
 			"SUM(CASE WHEN "+models.ASSET_PROGRESS_TABLE_VIDEO_POS+" > 0 OR "+models.ASSET_PROGRESS_TABLE_COMPLETED+" THEN 1 ELSE 0 END) AS started_count").
 		From(models.ASSET_TABLE).
-		LeftJoin(models.ASSET_PROGRESS_TABLE + " ON " + models.ASSET_TABLE_ID + " = " + models.ASSET_PROGRESS_TABLE_ASSET_ID).
+		// Include user_id in the join condition
+		LeftJoin(models.ASSET_PROGRESS_TABLE + " ON " + models.ASSET_TABLE_ID + " = " + models.ASSET_PROGRESS_TABLE_ASSET_ID +
+			" AND " + models.ASSET_PROGRESS_TABLE_USER_ID + " = ?").
 		LeftJoin(models.VIDEO_METADATA_TABLE + " ON " + models.ASSET_TABLE_ID + " = " + models.VIDEO_METADATA_TABLE_ASSET_ID).
 		Where(squirrel.Eq{models.ASSET_TABLE_COURSE_ID: courseID}).
 		ToSql()
+
+	// Add userID as the first parameter
+	progressArgs = append([]interface{}{userId}, progressArgs...)
 
 	var videosWithMetadata sql.NullInt32
 	var totalVideoDuration sql.NullInt64
@@ -152,10 +159,26 @@ func (dao *DAO) RefreshCourseProgress(ctx context.Context, courseID string) erro
 		return err
 	}
 
-	// Get the course progress
+	// Get the course progress for this specific user
 	courseProgress := &models.CourseProgress{}
-	err = dao.Get(ctx, courseProgress, &database.Options{Where: squirrel.Eq{models.COURSE_PROGRESS_TABLE_COURSE_ID: courseID}})
-	if err != nil {
+	err = dao.Get(ctx, courseProgress, &database.Options{
+		Where: squirrel.And{
+			squirrel.Eq{models.COURSE_PROGRESS_TABLE_COURSE_ID: courseID},
+			squirrel.Eq{models.COURSE_PROGRESS_TABLE_USER_ID: userId},
+		},
+	})
+
+	// If no progress record exists for this user, create one
+	if err == sql.ErrNoRows {
+		courseProgress = &models.CourseProgress{
+			CourseID: courseID,
+			UserID:   userId,
+		}
+
+		if err = dao.Create(ctx, courseProgress); err != nil {
+			return err
+		}
+	} else if err != nil {
 		return err
 	}
 

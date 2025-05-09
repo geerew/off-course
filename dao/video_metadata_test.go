@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Masterminds/squirrel"
+	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/types"
@@ -95,8 +97,8 @@ func Test_UpdateVideoMetadata(t *testing.T) {
 		}
 		require.NoError(t, dao.UpdateVideoMetadata(ctx, newVideoMetadata))
 
-		assertResult := &models.VideoMetadata{Base: models.Base{ID: originalVideoMetadata.ID}}
-		require.NoError(t, dao.GetById(ctx, assertResult))
+		assertResult := &models.VideoMetadata{}
+		require.NoError(t, dao.Get(ctx, assertResult, &database.Options{Where: squirrel.Eq{models.VIDEO_METADATA_TABLE_ID: originalVideoMetadata.ID}}))
 		require.Equal(t, newVideoMetadata.ID, assertResult.ID)                             // No change
 		require.True(t, newVideoMetadata.CreatedAt.Equal(originalVideoMetadata.CreatedAt)) // No change
 		require.Equal(t, newVideoMetadata.AssetID, assertResult.AssetID)                   // No change
@@ -179,6 +181,7 @@ func Test_VideoMetadataDeleteCascade(t *testing.T) {
 
 	require.Nil(t, dao.Delete(ctx, asset, nil))
 
-	err := dao.GetById(ctx, videoMetadata)
-	require.ErrorIs(t, err, sql.ErrNoRows)
+	count, err := dao.Count(ctx, &models.VideoMetadata{}, nil)
+	require.NoError(t, err)
+	require.Zero(t, count)
 }

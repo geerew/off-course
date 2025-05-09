@@ -155,14 +155,14 @@ func (s *Schema) RawSelect(model any, query string, args []any, db database.Quer
 			return err
 		}
 
-		err = s.loadRelationsMany(concreteRv, db)
+		err = s.loadRelationsMany(concreteRv, nil, db)
 	} else {
 		err = s.ScanOne(rows, rv, false)
 		if err != nil {
 			return err
 		}
 
-		err = s.loadRelationsOne(concreteRv, db)
+		err = s.loadRelationsOne(concreteRv, nil, db)
 	}
 
 	return err
@@ -223,7 +223,7 @@ func (s *Schema) Select(model any, options *database.Options, db database.Querie
 			return err
 		}
 
-		err = s.loadRelationsMany(concreteRv, db)
+		err = s.loadRelationsMany(concreteRv, options, db)
 	} else {
 		query, args, _ := s.SelectBuilder(options).Limit(1).ToSql()
 
@@ -238,7 +238,7 @@ func (s *Schema) Select(model any, options *database.Options, db database.Querie
 			return err
 		}
 
-		err = s.loadRelationsOne(concreteRv, db)
+		err = s.loadRelationsOne(concreteRv, options, db)
 	}
 
 	return err
@@ -335,8 +335,15 @@ func (s *Schema) CountBuilder(options *database.Options) squirrel.SelectBuilder 
 		From(s.Table)
 
 	if options != nil {
-		for _, j := range options.AdditionalJoins {
-			builder = builder.Join(j)
+		for _, join := range options.Joins {
+			switch join.Type {
+			case "LEFT JOIN":
+				builder = builder.LeftJoin(fmt.Sprintf("%s ON %s", join.Table, join.Condition))
+			case "RIGHT JOIN":
+				builder = builder.RightJoin(fmt.Sprintf("%s ON %s", join.Table, join.Condition))
+			case "JOIN", "INNER JOIN", "":
+				builder = builder.Join(fmt.Sprintf("%s ON %s", join.Table, join.Condition))
+			}
 		}
 
 		builder = builder.Where(options.Where).
@@ -404,8 +411,15 @@ func (s *Schema) SelectBuilder(options *database.Options) squirrel.SelectBuilder
 	}
 
 	if options != nil {
-		for _, j := range options.AdditionalJoins {
-			builder = builder.Join(j)
+		for _, join := range options.Joins {
+			switch join.Type {
+			case "LEFT JOIN":
+				builder = builder.LeftJoin(fmt.Sprintf("%s ON %s", join.Table, join.Condition))
+			case "RIGHT JOIN":
+				builder = builder.RightJoin(fmt.Sprintf("%s ON %s", join.Table, join.Condition))
+			case "JOIN", "INNER JOIN", "":
+				builder = builder.Join(fmt.Sprintf("%s ON %s", join.Table, join.Condition))
+			}
 		}
 
 		builder = builder.Where(options.Where).
@@ -844,7 +858,7 @@ func (s *Schema) ScanOne(rows Rows, rv reflect.Value, pluck bool) error {
 
 // loadRelationsOne loads the relations for a single model, handling both one-to-one and
 // one-to-many relationships
-func (s *Schema) loadRelationsOne(concreteRv reflect.Value, db database.Querier) error {
+func (s *Schema) loadRelationsOne(concreteRv reflect.Value, options *database.Options, db database.Querier) error {
 	if concreteRv.Kind() != reflect.Struct {
 		return utils.ErrNotStruct
 	}
@@ -864,8 +878,17 @@ func (s *Schema) loadRelationsOne(concreteRv reflect.Value, db database.Querier)
 		// Get the field in the struct to set the related model on
 		structField := getStructField(concreteRv, rel.Position)
 
-		// Create the options to select related rows
-		options := &database.Options{Where: squirrel.Eq{rel.MatchOn: id}}
+		whereConditions := squirrel.Eq{rel.MatchOn: id}
+
+		if options != nil && options.RelationFilters != nil {
+			if filters, exists := options.RelationFilters[rel.Name]; exists {
+				for field, value := range filters {
+					whereConditions[field] = value
+				}
+			}
+		}
+
+		relationOptions := &database.Options{Where: whereConditions}
 
 		if rel.HasMany {
 			structFieldType := structField.Type()
@@ -883,12 +906,12 @@ func (s *Schema) loadRelationsOne(concreteRv reflect.Value, db database.Querier)
 				structFieldPtr = structField.Addr()
 			}
 
-			err = relatedSchema.Select(structFieldPtr.Interface(), options, db)
+			err = relatedSchema.Select(structFieldPtr.Interface(), relationOptions, db)
 			if err != nil && err != sql.ErrNoRows {
 				return err
 			}
 		} else {
-			err = relatedSchema.Select(relatedModelPtr.Interface(), options, db)
+			err = relatedSchema.Select(relatedModelPtr.Interface(), relationOptions, db)
 			if err != nil {
 				if err == sql.ErrNoRows {
 					continue
@@ -908,7 +931,7 @@ func (s *Schema) loadRelationsOne(concreteRv reflect.Value, db database.Querier)
 
 // loadRelationsMany loads the relations for a slice of models, handling both many-to-one and
 // many-to-many relationships
-func (s *Schema) loadRelationsMany(concreteRv reflect.Value, db database.Querier) error {
+func (s *Schema) loadRelationsMany(concreteRv reflect.Value, options *database.Options, db database.Querier) error {
 	if concreteRv.Kind() != reflect.Slice {
 		return utils.ErrNotSlice
 	}
@@ -938,9 +961,19 @@ func (s *Schema) loadRelationsMany(concreteRv reflect.Value, db database.Querier
 		relatedSlicePtr := reflect.New(reflect.SliceOf(rel.RelatedType))
 		relatedSlice := relatedSlicePtr.Interface()
 
-		// Create the options to select related rows
-		options := &database.Options{Where: squirrel.Eq{rel.MatchOn: ids}}
-		err = relatedSchema.Select(relatedSlice, options, db)
+		whereConditions := squirrel.Eq{rel.MatchOn: ids}
+
+		if options != nil && options.RelationFilters != nil {
+			if filters, exists := options.RelationFilters[rel.Name]; exists {
+				for field, value := range filters {
+					whereConditions[field] = value
+				}
+			}
+		}
+
+		relationOptions := &database.Options{Where: whereConditions}
+
+		err = relatedSchema.Select(relatedSlice, relationOptions, db)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				return nil

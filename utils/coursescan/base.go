@@ -61,8 +61,8 @@ func New(config *CourseScanConfig) *CourseScan {
 // Add inserts a course scan job into the db
 func (s *CourseScan) Add(ctx context.Context, courseId string) (*models.Scan, error) {
 	// Check if the course exists
-	course := &models.Course{Base: models.Base{ID: courseId}}
-	err := s.dao.GetById(ctx, course)
+	course := &models.Course{}
+	err := s.dao.Get(ctx, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: courseId}})
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, utils.ErrInvalidId

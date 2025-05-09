@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/geerew/off-course/database"
+	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/logger"
@@ -59,7 +60,21 @@ func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Conte
 
 	router := devRouter(config, id, role)
 
-	return router, context.Background()
+	// create the user
+	user := models.User{
+		Base: models.Base{
+			ID: id,
+		},
+		Username:     id,
+		Role:         role,
+		PasswordHash: "password",
+		DisplayName:  "Test User",
+	}
+	require.NoError(t, router.dao.CreateUser(context.Background(), &user))
+
+	ctx := context.WithValue(context.Background(), types.UserContextKey, id)
+
+	return router, ctx
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

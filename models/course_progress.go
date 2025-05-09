@@ -11,6 +11,7 @@ import (
 type CourseProgress struct {
 	Base
 	CourseID    string
+	UserID      string
 	Started     bool
 	StartedAt   types.DateTime
 	Percent     int
@@ -19,9 +20,10 @@ type CourseProgress struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-var (
+const (
 	COURSE_PROGRESS_TABLE        = "courses_progress"
 	COURSE_PROGRESS_COURSE_ID    = "course_id"
+	COURSE_PROGRESS_USER_ID      = "user_id"
 	COURSE_PROGRESS_STARTED      = "started"
 	COURSE_PROGRESS_STARTED_AT   = "started_at"
 	COURSE_PROGRESS_PERCENT      = "percent"
@@ -31,6 +33,7 @@ var (
 	COURSE_PROGRESS_TABLE_CREATED_AT   = COURSE_PROGRESS_TABLE + "." + BASE_CREATED_AT
 	COURSE_PROGRESS_TABLE_UPDATED_AT   = COURSE_PROGRESS_TABLE + "." + BASE_UPDATED_AT
 	COURSE_PROGRESS_TABLE_COURSE_ID    = COURSE_PROGRESS_TABLE + "." + COURSE_PROGRESS_COURSE_ID
+	COURSE_PROGRESS_TABLE_USER_ID      = COURSE_PROGRESS_TABLE + "." + COURSE_PROGRESS_USER_ID
 	COURSE_PROGRESS_TABLE_STARTED      = COURSE_PROGRESS_TABLE + "." + COURSE_PROGRESS_STARTED
 	COURSE_PROGRESS_TABLE_STARTED_AT   = COURSE_PROGRESS_TABLE + "." + COURSE_PROGRESS_STARTED_AT
 	COURSE_PROGRESS_TABLE_PERCENT      = COURSE_PROGRESS_TABLE + "." + COURSE_PROGRESS_PERCENT
@@ -52,6 +55,7 @@ func (cp *CourseProgress) Define(s *schema.ModelConfig) {
 
 	// Common fields
 	s.Field("CourseID").Column(COURSE_PROGRESS_COURSE_ID).NotNull()
+	s.Field("UserID").Column(COURSE_PROGRESS_USER_ID).NotNull()
 	s.Field("Started").Column(COURSE_PROGRESS_STARTED).Mutable()
 	s.Field("StartedAt").Column(COURSE_PROGRESS_STARTED_AT).Mutable()
 	s.Field("Percent").Column(COURSE_PROGRESS_PERCENT).Mutable()

@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Masterminds/squirrel"
+	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/types"
@@ -88,8 +90,8 @@ func Test_UpdateAttachment(t *testing.T) {
 		}
 		require.NoError(t, dao.UpdateAttachment(ctx, newAttachment))
 
-		attachmentResult := &models.Attachment{Base: models.Base{ID: originalAttachment.ID}}
-		require.NoError(t, dao.GetById(ctx, attachmentResult))
+		attachmentResult := &models.Attachment{}
+		require.NoError(t, dao.Get(ctx, attachmentResult, &database.Options{Where: squirrel.Eq{models.ATTACHMENT_TABLE_ID: originalAttachment.ID}}))
 		require.Equal(t, newAttachment.ID, attachmentResult.ID)                          // No change
 		require.Equal(t, newAttachment.AssetID, attachmentResult.AssetID)                // No change
 		require.True(t, newAttachment.CreatedAt.Equal(originalAttachment.CreatedAt))     // No change
@@ -163,6 +165,7 @@ func Test_AttachmentDeleteCascade(t *testing.T) {
 
 	require.Nil(t, dao.Delete(ctx, asset, nil))
 
-	err := dao.GetById(ctx, attachment)
-	require.ErrorIs(t, err, sql.ErrNoRows)
+	count, err := dao.Count(ctx, &models.Attachment{}, nil)
+	require.NoError(t, err)
+	require.Zero(t, count)
 }

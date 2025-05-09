@@ -20,12 +20,12 @@ type Course struct {
 	ScanStatus types.ScanStatus
 
 	// Relations
-	Progress CourseProgress
+	Progress *CourseProgress
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-var (
+const (
 	COURSE_TABLE       = "courses"
 	COURSE_TITLE       = "title"
 	COURSE_PATH        = "path"

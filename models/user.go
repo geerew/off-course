@@ -19,7 +19,7 @@ type User struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-var (
+const (
 	USER_TABLE         = "users"
 	USER_USERNAME      = "username"
 	USER_DISPLAY_NAME  = "display_name"

@@ -54,7 +54,7 @@ type courseResponse struct {
 	ScanStatus string `json:"scanStatus"`
 
 	// Progress
-	Progress courseProgressResponse `json:"progress"`
+	Progress *courseProgressResponse `json:"progress,omitempty"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -63,7 +63,17 @@ func courseResponseHelper(courses []*models.Course) []*courseResponse {
 	responses := []*courseResponse{}
 
 	for _, course := range courses {
-		c := &courseResponse{
+		// Course progress
+		progress := &courseProgressResponse{}
+		if course.Progress != nil {
+			progress.Started = course.Progress.Started
+			progress.StartedAt = course.Progress.StartedAt
+			progress.Percent = course.Progress.Percent
+			progress.CompletedAt = course.Progress.CompletedAt
+			progress.ProgressUpdatedAt = course.Progress.UpdatedAt
+		}
+
+		responses = append(responses, &courseResponse{
 			ID:        course.ID,
 			Title:     course.Title,
 			Path:      course.Path,
@@ -77,16 +87,8 @@ func courseResponseHelper(courses []*models.Course) []*courseResponse {
 			ScanStatus: course.ScanStatus.String(),
 
 			// Progress
-			Progress: courseProgressResponse{
-				Started:           course.Progress.Started,
-				StartedAt:         course.Progress.StartedAt,
-				Percent:           course.Progress.Percent,
-				CompletedAt:       course.Progress.CompletedAt,
-				ProgressUpdatedAt: course.Progress.UpdatedAt,
-			},
-		}
-
-		responses = append(responses, c)
+			Progress: progress,
+		})
 	}
 
 	return responses
@@ -162,7 +164,6 @@ type assetResponse struct {
 func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 	responses := []*assetResponse{}
 	for _, asset := range assets {
-
 		// Video metadata
 		var videoMetadata *assetVideoMetadataResponse
 		if asset.VideoMetadata != nil {

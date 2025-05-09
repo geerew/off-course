@@ -19,7 +19,7 @@ type CourseTag struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-var (
+const (
 	COURSE_TAG_TABLE     = "courses_tags"
 	COURSE_TAG_TAG_ID    = "tag_id"
 	COURSE_TAG_COURSE_ID = "course_id"

@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Masterminds/squirrel"
+	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/stretchr/testify/require"
@@ -81,8 +83,8 @@ func Test_UpdateParam(t *testing.T) {
 		}
 		require.NoError(t, dao.UpdateParam(ctx, newParam))
 
-		paramResult := &models.Param{Base: models.Base{ID: originalParam.ID}}
-		require.NoError(t, dao.GetById(ctx, paramResult))
+		paramResult := &models.Param{}
+		require.NoError(t, dao.Get(ctx, paramResult, &database.Options{Where: squirrel.Eq{models.PARAM_TABLE_ID: originalParam.ID}}))
 		require.Equal(t, originalParam.ID, paramResult.ID)                     // No change
 		require.Equal(t, originalParam.Key, paramResult.Key)                   // No change
 		require.True(t, paramResult.CreatedAt.Equal(originalParam.CreatedAt))  // No change

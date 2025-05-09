@@ -13,7 +13,7 @@ type Param struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-var (
+const (
 	PARAM_TABLE = "params"
 	PARAM_KEY   = "key"
 	PARAM_VALUE = "value"

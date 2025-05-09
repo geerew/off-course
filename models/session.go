@@ -16,7 +16,7 @@ type Session struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-var (
+const (
 	SESSION_TABLE   = "sessions"
 	SESSION_ID      = "id"
 	SESSION_DATA    = "data"

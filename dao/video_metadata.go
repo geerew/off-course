@@ -10,6 +10,7 @@ import (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // CreateVideoMetadata creates video metadata for an asset
+// TODO Change to CreateOrReplace
 func (dao *DAO) CreateVideoMetadata(ctx context.Context, metadata *models.VideoMetadata) error {
 	if metadata == nil {
 		return utils.ErrNilPtr

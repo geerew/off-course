@@ -1,20 +1,24 @@
 package cron
 
 import (
+	"context"
 	"log/slog"
 	"sync"
 	"testing"
 
+	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
+	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/logger"
+	"github.com/geerew/off-course/utils/types"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func setup(t *testing.T) (database.Database, *appfs.AppFs, *slog.Logger, *[]*logger.Log) {
+func setup(t *testing.T) (database.Database, *appfs.AppFs, context.Context, *slog.Logger, *[]*logger.Log) {
 	t.Helper()
 
 	// Logger
@@ -37,6 +41,18 @@ func setup(t *testing.T) (database.Database, *appfs.AppFs, *slog.Logger, *[]*log
 	require.NoError(t, err)
 	require.NotNil(t, dbManager)
 
-	// teardown
-	return dbManager.DataDb, appFs, logger, &logs
+	dao := dao.New(dbManager.DataDb)
+
+	// User
+	user := &models.User{
+		Username:     "test-user",
+		DisplayName:  "Test User",
+		PasswordHash: "test-password",
+		Role:         types.UserRoleAdmin,
+	}
+	require.NoError(t, dao.CreateUser(context.Background(), user))
+
+	ctx := context.WithValue(context.Background(), types.UserContextKey, user.ID)
+
+	return dbManager.DataDb, appFs, ctx, logger, &logs
 }

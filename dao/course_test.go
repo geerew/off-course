@@ -1,10 +1,14 @@
 package dao
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/Masterminds/squirrel"
+	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/types"
@@ -43,6 +47,104 @@ func Test_CreateCourse(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+func Test_GetCourse(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		courseResult := &models.Course{}
+		require.NoError(t, dao.GetCourse(ctx, courseResult, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: course.ID}}))
+		require.Equal(t, course.ID, courseResult.ID)
+		require.Nil(t, courseResult.Progress)
+
+		// Create Asset
+		asset := &models.Asset{
+			CourseID: course.ID,
+			Title:    "Asset 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Chapter:  "Chapter 1",
+			Type:     *types.NewAsset("mp4"),
+			Path:     "/course-1/01 asset.mp4",
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
+			Hash:     "1234",
+		}
+		require.NoError(t, dao.CreateAsset(ctx, asset))
+
+		// Create asset progress the user in the current context
+		assetProgress := &models.AssetProgress{AssetID: asset.ID}
+		require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, course.ID, assetProgress))
+
+		// Create another user
+		user2 := &models.User{
+			Username:     "user2",
+			DisplayName:  "User 2",
+			PasswordHash: "hash",
+			Role:         types.UserRoleUser,
+		}
+		require.NoError(t, dao.CreateUser(ctx, user2))
+
+		// Create asset progress for user 2
+		ctx = context.WithValue(context.Background(), types.UserContextKey, user2.ID)
+		assetProgress2 := &models.AssetProgress{AssetID: asset.ID}
+		require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, course.ID, assetProgress2))
+
+		// Confirm there are 2 asset progress records
+		count, err := dao.Count(ctx, &models.AssetProgress{}, nil)
+		require.NoError(t, err)
+		require.Equal(t, 2, count)
+
+		// Get course with progress and assert the progress is for user 2
+		courseResult = &models.Course{}
+		require.NoError(t, dao.GetCourse(ctx, courseResult, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: course.ID}}))
+		require.Equal(t, course.ID, courseResult.ID)
+		require.NotNil(t, courseResult.Progress)
+		require.Equal(t, user2.ID, courseResult.Progress.UserID)
+	})
+
+	t.Run("nil", func(t *testing.T) {
+		dao, ctx := setup(t)
+		require.ErrorIs(t, dao.GetCourse(ctx, nil, nil), utils.ErrNilPtr)
+	})
+
+	t.Run("missing user id", func(t *testing.T) {
+		dao, _ := setup(t)
+		require.ErrorIs(t, dao.GetCourse(context.Background(), &models.Course{}, nil), utils.ErrMissingUserId)
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func Test_ListCourses(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course1 := &models.Course{Title: "Course 1", Path: "/course-1"}
+		require.NoError(t, dao.CreateCourse(ctx, course1))
+
+		course2 := &models.Course{Title: "Course 2", Path: "/course-2"}
+		require.NoError(t, dao.CreateCourse(ctx, course2))
+
+		courses := []*models.Course{}
+		require.NoError(t, dao.ListCourses(ctx, &courses, nil))
+		require.Len(t, courses, 2)
+	})
+
+	t.Run("nil", func(t *testing.T) {
+		dao, ctx := setup(t)
+		require.ErrorIs(t, dao.ListCourses(ctx, nil, nil), utils.ErrNilPtr)
+	})
+
+	t.Run("missing user id", func(t *testing.T) {
+		dao, _ := setup(t)
+		require.ErrorIs(t, dao.ListCourses(context.Background(), &[]*models.Course{}, nil), utils.ErrMissingUserId)
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 func Test_UpdateCourse(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		dao, ctx := setup(t)
@@ -61,8 +163,8 @@ func Test_UpdateCourse(t *testing.T) {
 		}
 		require.NoError(t, dao.UpdateCourse(ctx, newCourse))
 
-		courseResult := &models.Course{Base: models.Base{ID: originalCourse.ID}}
-		require.NoError(t, dao.GetById(ctx, courseResult))
+		courseResult := &models.Course{}
+		require.NoError(t, dao.GetCourse(ctx, courseResult, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: originalCourse.ID}}))
 		require.Equal(t, originalCourse.ID, courseResult.ID)                     // No change
 		require.Equal(t, originalCourse.Title, courseResult.Title)               // No change
 		require.Equal(t, originalCourse.Path, courseResult.Path)                 // No change
