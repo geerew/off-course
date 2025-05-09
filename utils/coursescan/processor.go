@@ -312,7 +312,10 @@ func applyAssetChanges(
 			if err := s.dao.Delete(ctx, v.Existing, nil); err != nil {
 				return false, err
 			}
-			course.Duration -= v.Existing.VideoMetadata.Duration
+
+			if v.Existing.VideoMetadata != nil {
+				course.Duration -= v.Existing.VideoMetadata.Duration
+			}
 
 			if err := s.dao.CreateAsset(ctx, v.New); err != nil {
 				return false, err
@@ -328,12 +331,18 @@ func applyAssetChanges(
 			if err := s.dao.Delete(ctx, v.ExistingA, nil); err != nil {
 				return false, err
 			}
-			course.Duration -= v.ExistingA.VideoMetadata.Duration
+
+			if v.ExistingA.VideoMetadata != nil {
+				course.Duration -= v.ExistingA.VideoMetadata.Duration
+			}
 
 			if err := s.dao.Delete(ctx, v.ExistingB, nil); err != nil {
 				return false, err
 			}
-			course.Duration -= v.ExistingB.VideoMetadata.Duration
+
+			if v.ExistingB.VideoMetadata != nil {
+				course.Duration -= v.ExistingB.VideoMetadata.Duration
+			}
 
 			if err := s.dao.CreateAsset(ctx, v.NewA); err != nil {
 				return false, err
@@ -360,7 +369,9 @@ func applyAssetChanges(
 				return false, err
 			}
 
-			course.Duration -= v.Asset.VideoMetadata.Duration
+			if v.Asset.VideoMetadata != nil {
+				course.Duration -= v.Asset.VideoMetadata.Duration
+			}
 		}
 	}
 
