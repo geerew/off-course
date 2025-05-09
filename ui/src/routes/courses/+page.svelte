@@ -174,7 +174,7 @@
 												</span>
 
 												<!-- Progress -->
-												<div class="flex justify-end">
+												<div class="flex justify-end gap-2">
 													{#if course.progress.percent > 0}
 														<Badge
 															class={cn(

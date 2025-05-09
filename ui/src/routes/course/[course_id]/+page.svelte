@@ -151,7 +151,8 @@
 								{#if course.progress.started}
 									<div class="grid grid-cols-[6.5rem_1fr]">
 										<span class="text-foreground-alt-3 font-medium">PROGRESS</span>
-										<span class="text-foreground-alt-1">-</span>
+										<!-- TODO Make a progress bar -->
+										<span class="text-foreground-alt-1">{course.progress.percent}%</span>
 									</div>
 								{/if}
 							</div>
@@ -246,6 +247,15 @@
 																	{:else if asset.progress.videoPos > 0}
 																		<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
 																		<span class="text-amber-600">in-progress</span>
+																	{/if}
+
+																	<!-- TODO TEMP -->
+																	{#if asset.attachments.length > 0}
+																		<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
+																		<span class="text-foreground-alt-3">
+																			{asset.attachments.length} attachment
+																			{asset.attachments.length > 1 ? 's' : ''}
+																		</span>
 																	{/if}
 																</div>
 															</div>
