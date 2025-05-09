@@ -439,6 +439,8 @@ func applyAttachmentChanges(
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // createVideoMetadata creates or updated video metadata for the given asset
+//
+// TODO: handle an asset marked as a video but ffprobe fails to probe it because it is not a video
 func createVideoMetadata(ctx context.Context, mediaProbe media.MediaProbe, asset *models.Asset, dao *dao.DAO) (int, error) {
 	if !asset.Type.IsVideo() {
 		return 0, nil

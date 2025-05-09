@@ -61,6 +61,7 @@ type courseResponse struct {
 
 func courseResponseHelper(courses []*models.Course) []*courseResponse {
 	responses := []*courseResponse{}
+
 	for _, course := range courses {
 		c := &courseResponse{
 			ID:        course.ID,

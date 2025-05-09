@@ -62,14 +62,25 @@ func Test_RefreshCourseProgress(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset1))
 
-		// Set asset1 progress (video_pos > 0)
-		assetProgress := &models.AssetProgress{AssetID: asset1.ID, VideoPos: 1}
+		// Create video metadata
+		videoMetadata := &models.VideoMetadata{
+			AssetID:    asset1.ID,
+			Duration:   10,
+			Width:      1920,
+			Height:     1080,
+			Resolution: "1080p",
+			Codec:      "h264",
+		}
+		require.NoError(t, dao.CreateVideoMetadata(ctx, videoMetadata))
+
+		// Set asset1 progress
+		assetProgress := &models.AssetProgress{AssetID: asset1.ID, VideoPos: 5}
 		require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, course.ID, assetProgress))
 
 		require.NoError(t, dao.GetById(ctx, course))
 		require.True(t, course.Progress.Started)
 		require.False(t, course.Progress.StartedAt.IsZero())
-		require.Zero(t, 0, course.Progress.Percent)
+		require.Equal(t, 50, course.Progress.Percent)
 		require.True(t, course.Progress.CompletedAt.IsZero())
 
 		// Set asset progress (video_pos = 0)
@@ -79,7 +90,7 @@ func Test_RefreshCourseProgress(t *testing.T) {
 		require.NoError(t, dao.GetById(ctx, course))
 		require.False(t, course.Progress.Started)
 		require.True(t, course.Progress.StartedAt.IsZero())
-		require.Zero(t, 0, course.Progress.Percent)
+		require.Zero(t, course.Progress.Percent)
 		require.True(t, course.Progress.CompletedAt.IsZero())
 
 		// Set asset progress (completed = true)
@@ -105,6 +116,21 @@ func Test_RefreshCourseProgress(t *testing.T) {
 			Hash:     "5678",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset2))
+
+		// Create video metadata for asset2
+		videoMetadata2 := &models.VideoMetadata{
+			AssetID:    asset2.ID,
+			Duration:   10,
+			Width:      1920,
+			Height:     1080,
+			Resolution: "1080p",
+			Codec:      "h264",
+		}
+		require.NoError(t, dao.CreateVideoMetadata(ctx, videoMetadata2))
+
+		// Set asset2 progress
+		assetProgress2 := &models.AssetProgress{AssetID: asset2.ID, VideoPos: 0}
+		require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, course.ID, assetProgress2))
 
 		// Check course progress
 		require.NoError(t, dao.GetById(ctx, course))

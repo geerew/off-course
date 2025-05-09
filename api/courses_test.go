@@ -204,74 +204,86 @@ func TestCourses_GetCourses(t *testing.T) {
 		require.NoError(t, router.dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[3].ID, Tag: "tag4"}))
 
 		// No filter
-		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/", nil))
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
+		{
+			status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/", nil))
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, status)
 
-		paginationResp, _ := unmarshalHelper[courseResponse](t, body)
-		require.Equal(t, 6, int(paginationResp.TotalItems))
-		require.Len(t, paginationResp.Items, 6)
+			paginationResp, _ := unmarshalHelper[courseResponse](t, body)
+			require.Equal(t, 6, int(paginationResp.TotalItems))
+			require.Len(t, paginationResp.Items, 6)
+		}
 
 		// Title
-		q := "course AND (1 OR 2) OR course 5" + defaultSort
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?q="+url.QueryEscape(q), nil))
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
+		{
+			q := "course AND (1 OR 2) OR course 5" + defaultSort
+			status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?q="+url.QueryEscape(q), nil))
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, status)
 
-		paginationResp, coursesResp := unmarshalHelper[courseResponse](t, body)
-		require.Equal(t, 3, int(paginationResp.TotalItems))
-		require.Len(t, paginationResp.Items, 3)
-		require.Equal(t, courses[0].ID, coursesResp[0].ID)
-		require.Equal(t, courses[1].ID, coursesResp[1].ID)
-		require.Equal(t, courses[4].ID, coursesResp[2].ID)
+			paginationResp, coursesResp := unmarshalHelper[courseResponse](t, body)
+			require.Equal(t, 3, int(paginationResp.TotalItems))
+			require.Len(t, paginationResp.Items, 3)
+			require.Equal(t, courses[0].ID, coursesResp[0].ID)
+			require.Equal(t, courses[1].ID, coursesResp[1].ID)
+			require.Equal(t, courses[4].ID, coursesResp[2].ID)
+		}
 
 		// Tags
-		q = "(tag:tag1 AND (tag:tag2 OR tag:tag3)) OR tag:tag4" + defaultSort
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?q="+url.QueryEscape(q), nil))
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
+		{
+			q := "(tag:tag1 AND (tag:tag2 OR tag:tag3)) OR tag:tag4" + defaultSort
+			status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?q="+url.QueryEscape(q), nil))
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, status)
 
-		paginationResp, coursesResp = unmarshalHelper[courseResponse](t, body)
-		require.Equal(t, 3, int(paginationResp.TotalItems))
-		require.Len(t, paginationResp.Items, 3)
-		require.Equal(t, courses[0].ID, coursesResp[0].ID)
-		require.Equal(t, courses[1].ID, coursesResp[1].ID)
-		require.Equal(t, courses[3].ID, coursesResp[2].ID)
+			paginationResp, coursesResp := unmarshalHelper[courseResponse](t, body)
+			require.Equal(t, 3, int(paginationResp.TotalItems))
+			require.Len(t, paginationResp.Items, 3)
+			require.Equal(t, courses[0].ID, coursesResp[0].ID)
+			require.Equal(t, courses[1].ID, coursesResp[1].ID)
+			require.Equal(t, courses[3].ID, coursesResp[2].ID)
+		}
 
 		// Available
-		q = "available:true" + defaultSort
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?q="+url.QueryEscape(q), nil))
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
+		{
+			q := "available:true" + defaultSort
+			status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?q="+url.QueryEscape(q), nil))
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, status)
 
-		paginationResp, coursesResp = unmarshalHelper[courseResponse](t, body)
-		require.Equal(t, 3, int(paginationResp.TotalItems))
-		require.Len(t, paginationResp.Items, 3)
-		require.Equal(t, courses[0].ID, coursesResp[0].ID)
-		require.Equal(t, courses[2].ID, coursesResp[1].ID)
-		require.Equal(t, courses[4].ID, coursesResp[2].ID)
+			paginationResp, coursesResp := unmarshalHelper[courseResponse](t, body)
+			require.Equal(t, 3, int(paginationResp.TotalItems))
+			require.Len(t, paginationResp.Items, 3)
+			require.Equal(t, courses[0].ID, coursesResp[0].ID)
+			require.Equal(t, courses[2].ID, coursesResp[1].ID)
+			require.Equal(t, courses[4].ID, coursesResp[2].ID)
+		}
 
 		// Progress
-		q = `progress:started OR progress:completed OR progress:"not started"` + defaultSort
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?q="+url.QueryEscape(q), nil))
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
+		{
+			q := `progress:started OR progress:completed OR progress:"not started"` + defaultSort
+			status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?q="+url.QueryEscape(q), nil))
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, status)
 
-		paginationResp, _ = unmarshalHelper[courseResponse](t, body)
-		require.Equal(t, 6, int(paginationResp.TotalItems))
-		require.Len(t, paginationResp.Items, 6)
+			paginationResp, _ := unmarshalHelper[courseResponse](t, body)
+			require.Equal(t, 6, int(paginationResp.TotalItems))
+			require.Len(t, paginationResp.Items, 6)
+		}
 
 		// Complex filter
-		q = "(course AND (1 OR 2) OR course 4) AND available:true AND (tag:tag1 OR tag:tag4) OR progress:completed" + defaultSort
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?q="+url.QueryEscape(q), nil))
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
+		{
+			q := "(course AND (1 OR 2) OR course 4) AND available:true AND (tag:tag1 OR tag:tag4) OR progress:completed" + defaultSort
+			status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?q="+url.QueryEscape(q), nil))
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, status)
 
-		paginationResp, coursesResp = unmarshalHelper[courseResponse](t, body)
-		require.Equal(t, 2, int(paginationResp.TotalItems))
-		require.Len(t, paginationResp.Items, 2)
-		require.Equal(t, courses[0].ID, coursesResp[0].ID)
-		require.Equal(t, courses[4].ID, coursesResp[1].ID)
+			paginationResp, coursesResp := unmarshalHelper[courseResponse](t, body)
+			require.Equal(t, 2, int(paginationResp.TotalItems))
+			require.Len(t, paginationResp.Items, 2)
+			require.Equal(t, courses[0].ID, coursesResp[0].ID)
+			require.Equal(t, courses[4].ID, coursesResp[1].ID)
+		}
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {

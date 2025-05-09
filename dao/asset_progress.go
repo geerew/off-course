@@ -37,13 +37,7 @@ func (dao *DAO) CreateOrUpdateAssetProgress(ctx context.Context, courseId string
 		}
 
 		asset := &models.Asset{}
-		err := dao.Get(
-			txCtx,
-			asset,
-			options,
-		)
-
-		if err != nil {
+		if err := dao.Get(txCtx, asset, options); err != nil {
 			return err
 		}
 
@@ -70,8 +64,7 @@ func (dao *DAO) CreateOrUpdateAssetProgress(ctx context.Context, courseId string
 				assetProgress.CompletedAt = types.DateTime{}
 			}
 
-			_, err = dao.Update(txCtx, assetProgress)
-			if err != nil {
+			if _, err := dao.Update(txCtx, assetProgress); err != nil {
 				return err
 			}
 		}
