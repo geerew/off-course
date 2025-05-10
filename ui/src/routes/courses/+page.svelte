@@ -175,18 +175,20 @@
 
 												<!-- Progress -->
 												<div class="flex justify-end gap-2">
-													{#if course.progress.percent > 0}
-														<Badge
-															class={cn(
-																'text-foreground-alt-2',
-																course.progress.percent === 100 &&
-																	'bg-background-success text-foreground'
-															)}
-														>
-															{course.progress.percent === 100
-																? 'Completed'
-																: course.progress.percent + '%'}
-														</Badge>
+													{#if course.progress}
+														{#if course.progress.percent > 0}
+															<Badge
+																class={cn(
+																	'text-foreground-alt-2',
+																	course.progress.percent === 100 &&
+																		'bg-background-success text-foreground'
+																)}
+															>
+																{course.progress.percent === 100
+																	? 'Completed'
+																	: course.progress.percent + '%'}
+															</Badge>
+														{/if}
 													{/if}
 
 													{#if !course.available}

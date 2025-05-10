@@ -148,13 +148,15 @@
 								</div>
 
 								<!-- Progress -->
-								{#if course.progress.started}
-									<div class="grid grid-cols-[6.5rem_1fr]">
-										<span class="text-foreground-alt-3 font-medium">PROGRESS</span>
+								<div class="grid grid-cols-[6.5rem_1fr]">
+									<span class="text-foreground-alt-3 font-medium">PROGRESS</span>
+									{#if course.progress}
 										<!-- TODO Make a progress bar -->
-										<span class="text-foreground-alt-1">{course.progress.percent}%</span>
-									</div>
-								{/if}
+										<span class="text-foreground-alt-1">{JSON.stringify(course.progress)}</span>
+									{:else}
+										<span class="text-foreground-alt-1">Not Started</span>
+									{/if}
+								</div>
 							</div>
 						</div>
 					</div>
