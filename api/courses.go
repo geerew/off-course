@@ -229,6 +229,7 @@ func (api coursesAPI) getAssets(c *fiber.Ctx) error {
 	}
 
 	userId := c.Locals(types.UserContextKey).(string)
+	ctx := context.WithValue(c.UserContext(), types.UserContextKey, userId)
 
 	options, err := optionsBuilder(c, builderOptions, userId)
 	if err != nil {
@@ -238,7 +239,7 @@ func (api coursesAPI) getAssets(c *fiber.Ctx) error {
 	options.Where = squirrel.Eq{models.ASSET_TABLE_COURSE_ID: id}
 
 	assets := []*models.Asset{}
-	err = api.dao.List(c.UserContext(), &assets, options)
+	err = api.dao.ListAssets(ctx, &assets, options)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up assets", err)
 	}

@@ -64,13 +64,15 @@ func courseResponseHelper(courses []*models.Course) []*courseResponse {
 
 	for _, course := range courses {
 		// Course progress
-		progress := &courseProgressResponse{}
+		var progress *courseProgressResponse
 		if course.Progress != nil {
-			progress.Started = course.Progress.Started
-			progress.StartedAt = course.Progress.StartedAt
-			progress.Percent = course.Progress.Percent
-			progress.CompletedAt = course.Progress.CompletedAt
-			progress.ProgressUpdatedAt = course.Progress.UpdatedAt
+			progress = &courseProgressResponse{
+				Started:           course.Progress.Started,
+				StartedAt:         course.Progress.StartedAt,
+				Percent:           course.Progress.Percent,
+				CompletedAt:       course.Progress.CompletedAt,
+				ProgressUpdatedAt: course.Progress.UpdatedAt,
+			}
 		}
 
 		responses = append(responses, &courseResponse{
