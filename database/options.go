@@ -61,12 +61,17 @@ type Options struct {
 	//   },
 	RelationFilters map[string]map[string]interface{}
 
+	// Exclude relations from the query
+	ExcludeRelations []string
+
 	// Used to paginate the results
 	Pagination *pagination.Pagination
 
 	// Use REPLACE instead of INSERT
 	Replace bool
 }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Helper methods to add different types of joins
 func (o *Options) AddJoin(table, condition string) *Options {

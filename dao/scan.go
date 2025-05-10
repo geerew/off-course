@@ -30,7 +30,7 @@ func (dao *DAO) CreateScan(ctx context.Context, scan *models.Scan) error {
 
 // GetScan retrieves a scan
 //
-// When options is nil or options.Where is nil, the function will use the ID to filter scans
+// When options is nil or options.Where is nil, the models ID will be used
 func (dao *DAO) GetScan(ctx context.Context, scan *models.Scan, options *database.Options) error {
 	if scan == nil {
 		return utils.ErrNilPtr
@@ -50,6 +50,17 @@ func (dao *DAO) GetScan(ctx context.Context, scan *models.Scan, options *databas
 	}
 
 	return dao.Get(ctx, scan, options)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ListScans retrieves a list of scans
+func (dao *DAO) ListScans(ctx context.Context, scans *[]*models.Scan, options *database.Options) error {
+	if scans == nil {
+		return utils.ErrNilPtr
+	}
+
+	return dao.List(ctx, scans, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

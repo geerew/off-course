@@ -111,7 +111,7 @@ func Test_GetCourse(t *testing.T) {
 
 	t.Run("missing user id", func(t *testing.T) {
 		dao, _ := setup(t)
-		require.ErrorIs(t, dao.GetCourse(context.Background(), &models.Course{}, nil), utils.ErrMissingUserId)
+		require.ErrorIs(t, dao.GetCourse(context.Background(), &models.Course{Base: models.Base{ID: "1234"}}, nil), utils.ErrMissingUserId)
 	})
 }
 

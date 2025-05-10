@@ -2,6 +2,7 @@ package dao
 
 import (
 	"context"
+	"slices"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/database"
@@ -25,15 +26,10 @@ func (dao *DAO) CreateAsset(ctx context.Context, asset *models.Asset) error {
 
 // GetAsset retrieves an asset
 //
-// When options is nil or options.Where is nil, the function will use the ID to filter assets
+// When options is nil or options.Where is nil, the models ID will be used
 func (dao *DAO) GetAsset(ctx context.Context, asset *models.Asset, options *database.Options) error {
 	if asset == nil {
 		return utils.ErrNilPtr
-	}
-
-	userId, ok := ctx.Value(types.UserContextKey).(string)
-	if !ok || userId == "" {
-		return utils.ErrMissingUserId
 	}
 
 	if options == nil {
@@ -50,7 +46,14 @@ func (dao *DAO) GetAsset(ctx context.Context, asset *models.Asset, options *data
 		}
 	}
 
-	options.AddRelationFilter("Progress", models.ASSET_PROGRESS_USER_ID, userId)
+	if !slices.Contains(options.ExcludeRelations, models.ASSET_RELATION_PROGRESS) {
+		userId, ok := ctx.Value(types.UserContextKey).(string)
+		if !ok || userId == "" {
+			return utils.ErrMissingUserId
+		}
+
+		options.AddRelationFilter(models.ASSET_RELATION_PROGRESS, models.ASSET_PROGRESS_USER_ID, userId)
+	}
 
 	return dao.Get(ctx, asset, options)
 }
@@ -63,16 +66,18 @@ func (dao *DAO) ListAssets(ctx context.Context, assets *[]*models.Asset, options
 		return utils.ErrNilPtr
 	}
 
-	userId, ok := ctx.Value(types.UserContextKey).(string)
-	if !ok || userId == "" {
-		return utils.ErrMissingUserId
-	}
-
 	if options == nil {
 		options = &database.Options{}
 	}
 
-	options.AddRelationFilter("Progress", models.ASSET_PROGRESS_USER_ID, userId)
+	if !slices.Contains(options.ExcludeRelations, models.ASSET_RELATION_PROGRESS) {
+		userId, ok := ctx.Value(types.UserContextKey).(string)
+		if !ok || userId == "" {
+			return utils.ErrMissingUserId
+		}
+
+		options.AddRelationFilter(models.ASSET_RELATION_PROGRESS, models.ASSET_PROGRESS_USER_ID, userId)
+	}
 
 	return dao.List(ctx, assets, options)
 }

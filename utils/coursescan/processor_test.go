@@ -163,8 +163,9 @@ func TestScanner_Processor(t *testing.T) {
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
 		options := &database.Options{
-			OrderBy: []string{models.ASSET_TABLE_CHAPTER + " asc", models.ASSET_TABLE_PREFIX + " asc"},
-			Where:   squirrel.Eq{models.ASSET_TABLE_COURSE_ID: course.ID},
+			OrderBy:          []string{models.ASSET_TABLE_CHAPTER + " asc", models.ASSET_TABLE_PREFIX + " asc"},
+			Where:            squirrel.Eq{models.ASSET_TABLE_COURSE_ID: course.ID},
+			ExcludeRelations: []string{models.ASSET_RELATION_PROGRESS},
 		}
 
 		assets := []*models.Asset{}
@@ -179,7 +180,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.List(ctx, &assets, options)
+			err = scanner.dao.ListAssets(ctx, &assets, options)
 			require.NoError(t, err)
 			require.Len(t, assets, 3)
 
@@ -212,7 +213,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.List(ctx, &assets, options)
+			err = scanner.dao.ListAssets(ctx, &assets, options)
 			require.NoError(t, err)
 			require.Len(t, assets, 4)
 
@@ -231,7 +232,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.List(ctx, &assets, options)
+			err = scanner.dao.ListAssets(ctx, &assets, options)
 			require.NoError(t, err)
 			require.Len(t, assets, 3)
 
@@ -248,7 +249,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.List(ctx, &assets, options)
+			err = scanner.dao.ListAssets(ctx, &assets, options)
 			require.NoError(t, err)
 			require.Len(t, assets, 3)
 
@@ -265,7 +266,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.List(ctx, &assets, options)
+			err = scanner.dao.ListAssets(ctx, &assets, options)
 			require.NoError(t, err)
 			require.Len(t, assets, 3)
 
@@ -290,7 +291,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.List(ctx, &assets, options)
+			err = scanner.dao.ListAssets(ctx, &assets, options)
 			require.NoError(t, err)
 			require.Len(t, assets, 3)
 
@@ -316,8 +317,9 @@ func TestScanner_Processor(t *testing.T) {
 		attachments := []*models.Attachment{}
 
 		assetOptions := &database.Options{
-			OrderBy: []string{models.ASSET_TABLE_CHAPTER + " asc", models.ASSET_TABLE_PREFIX + " asc"},
-			Where:   squirrel.Eq{models.ASSET_TABLE_COURSE_ID: course.ID},
+			OrderBy:          []string{models.ASSET_TABLE_CHAPTER + " asc", models.ASSET_TABLE_PREFIX + " asc"},
+			Where:            squirrel.Eq{models.ASSET_TABLE_COURSE_ID: course.ID},
+			ExcludeRelations: []string{models.ASSET_RELATION_PROGRESS},
 		}
 
 		// Add file 1
@@ -328,7 +330,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.List(ctx, &assets, assetOptions)
+			err = scanner.dao.ListAssets(ctx, &assets, assetOptions)
 			require.NoError(t, err)
 			require.Len(t, assets, 1)
 
@@ -352,7 +354,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.List(ctx, &attachments, attachmentOptions)
+			err = scanner.dao.ListAttachments(ctx, &attachments, attachmentOptions)
 			require.NoError(t, err)
 			require.Len(t, attachments, 1)
 
@@ -368,7 +370,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.List(ctx, &attachments, attachmentOptions)
+			err = scanner.dao.ListAttachments(ctx, &attachments, attachmentOptions)
 			require.NoError(t, err)
 			require.Len(t, attachments, 2)
 
@@ -388,7 +390,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.List(ctx, &attachments, attachmentOptions)
+			err = scanner.dao.ListAttachments(ctx, &attachments, attachmentOptions)
 			require.NoError(t, err)
 			require.Len(t, attachments, 1)
 
@@ -417,12 +419,13 @@ func TestScanner_Processor(t *testing.T) {
 		require.NoError(t, err)
 
 		assetOptions := &database.Options{
-			OrderBy: []string{models.ASSET_TABLE_CHAPTER + " asc", models.ASSET_TABLE_PREFIX + " asc"},
-			Where:   squirrel.Eq{models.ASSET_TABLE_COURSE_ID: course.ID},
+			OrderBy:          []string{models.ASSET_TABLE_CHAPTER + " asc", models.ASSET_TABLE_PREFIX + " asc"},
+			Where:            squirrel.Eq{models.ASSET_TABLE_COURSE_ID: course.ID},
+			ExcludeRelations: []string{models.ASSET_RELATION_PROGRESS},
 		}
 
 		assets := []*models.Asset{}
-		err = scanner.dao.List(ctx, &assets, assetOptions)
+		err = scanner.dao.ListAssets(ctx, &assets, assetOptions)
 		require.NoError(t, err)
 		require.Len(t, assets, 1)
 
@@ -440,7 +443,7 @@ func TestScanner_Processor(t *testing.T) {
 		err = Processor(ctx, scanner, scan)
 		require.NoError(t, err)
 
-		err = scanner.dao.List(ctx, &assets, assetOptions)
+		err = scanner.dao.ListAssets(ctx, &assets, assetOptions)
 		require.NoError(t, err)
 		require.Len(t, assets, 1)
 
@@ -457,7 +460,7 @@ func TestScanner_Processor(t *testing.T) {
 		}
 
 		attachments := []*models.Attachment{}
-		err = scanner.dao.List(ctx, &attachments, attachmentOptions)
+		err = scanner.dao.ListAttachments(ctx, &attachments, attachmentOptions)
 		require.NoError(t, err)
 		require.Len(t, attachments, 1)
 		require.Equal(t, filepath.Join(course.Path, "01 doc 1.pdf"), attachments[0].Path)
@@ -468,7 +471,7 @@ func TestScanner_Processor(t *testing.T) {
 		err = Processor(ctx, scanner, scan)
 		require.NoError(t, err)
 
-		err = scanner.dao.List(ctx, &assets, assetOptions)
+		err = scanner.dao.ListAssets(ctx, &assets, assetOptions)
 		require.NoError(t, err)
 		require.Len(t, assets, 1)
 
@@ -480,7 +483,7 @@ func TestScanner_Processor(t *testing.T) {
 		require.Equal(t, "0cab1c9617404faf2b24e221e189ca5945813e14d3f766345b09ca13bbe28ffc", assets[0].Hash)
 		require.Len(t, assets[0].Attachments, 2)
 
-		err = scanner.dao.List(ctx, &attachments, attachmentOptions)
+		err = scanner.dao.ListAttachments(ctx, &attachments, attachmentOptions)
 		require.NoError(t, err)
 		require.Len(t, attachments, 2)
 		require.Equal(t, filepath.Join(course.Path, "01 doc 1.pdf"), attachments[0].Path)
@@ -492,7 +495,7 @@ func TestScanner_Processor(t *testing.T) {
 		err = Processor(ctx, scanner, scan)
 		require.NoError(t, err)
 
-		err = scanner.dao.List(ctx, &assets, assetOptions)
+		err = scanner.dao.ListAssets(ctx, &assets, assetOptions)
 		require.NoError(t, err)
 		require.Len(t, assets, 1)
 
@@ -504,7 +507,7 @@ func TestScanner_Processor(t *testing.T) {
 		require.Equal(t, "0cab1c9617404faf2b24e221e189ca5945813e14d3f766345b09ca13bbe28ffc", assets[0].Hash)
 		require.Len(t, assets[0].Attachments, 3)
 
-		err = scanner.dao.List(ctx, &attachments, attachmentOptions)
+		err = scanner.dao.ListAttachments(ctx, &attachments, attachmentOptions)
 		require.NoError(t, err)
 		require.Len(t, attachments, 3)
 		require.Equal(t, filepath.Join(course.Path, "01 doc 1.pdf"), attachments[0].Path)

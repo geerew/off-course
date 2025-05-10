@@ -36,7 +36,7 @@ func (dao *DAO) UpdateAttachment(ctx context.Context, attachment *models.Attachm
 
 // GetAttachment retrieves an attachment
 //
-// When options is nil or options.Where is nil, the function will use the ID to filter attachments
+// When options is nil or options.Where is nil, the models ID will be used
 func (dao *DAO) GetAttachment(ctx context.Context, attachment *models.Attachment, options *database.Options) error {
 	if attachment == nil {
 		return utils.ErrNilPtr
@@ -56,4 +56,15 @@ func (dao *DAO) GetAttachment(ctx context.Context, attachment *models.Attachment
 	}
 
 	return dao.Get(ctx, attachment, options)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ListAttachments retrieves a list of attachments
+func (dao *DAO) ListAttachments(ctx context.Context, attachments *[]*models.Attachment, options *database.Options) error {
+	if attachments == nil {
+		return utils.ErrNilPtr
+	}
+
+	return dao.List(ctx, attachments, options)
 }

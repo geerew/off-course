@@ -55,7 +55,7 @@ func (api *tagsAPI) getTags(c *fiber.Ctx) error {
 	}
 
 	tags := []*models.Tag{}
-	err = api.dao.List(c.UserContext(), &tags, options)
+	err = api.dao.ListTags(c.UserContext(), &tags, options)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tags", err)
 	}

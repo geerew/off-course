@@ -51,7 +51,7 @@ func (api *logsAPI) getLogs(c *fiber.Ctx) error {
 	}
 
 	logs := []*models.Log{}
-	err = api.dao.List(c.UserContext(), &logs, options)
+	err = api.dao.ListLogs(c.UserContext(), &logs, options)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up logs", err)
 	}

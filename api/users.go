@@ -55,7 +55,7 @@ func (api userAPI) getUsers(c *fiber.Ctx) error {
 	}
 
 	users := []*models.User{}
-	err = api.r.dao.List(c.UserContext(), &users, options)
+	err = api.r.dao.ListUsers(c.UserContext(), &users, options)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up users", err)
 	}

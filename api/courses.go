@@ -389,7 +389,7 @@ func (api coursesAPI) getAttachments(c *fiber.Ctx) error {
 	}
 
 	attachments := []*models.Attachment{}
-	err = api.dao.List(c.UserContext(), &attachments, options)
+	err = api.dao.ListAttachments(c.UserContext(), &attachments, options)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up attachments", err)
 	}
@@ -483,7 +483,7 @@ func (api coursesAPI) getTags(c *fiber.Ctx) error {
 	}
 
 	tags := []*models.CourseTag{}
-	err := api.dao.List(c.UserContext(), &tags, options)
+	err := api.dao.ListCourseTags(c.UserContext(), &tags, options)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up course tags", err)
 	}

@@ -44,7 +44,7 @@ func (r *Router) initScanRoutes() {
 
 func (api *scansAPI) getScans(c *fiber.Ctx) error {
 	scans := []*models.Scan{}
-	err := api.dao.List(c.UserContext(), &scans, nil)
+	err := api.dao.ListScans(c.UserContext(), &scans, nil)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up scan", err)
 	}

@@ -59,7 +59,7 @@ func (dao *DAO) CreateCourseTag(ctx context.Context, courseTag *models.CourseTag
 
 // GetCourseTag retrieves a course tag
 //
-// When options is nil or options.Where is nil, the function will use the ID to filter course tags
+// When options is nil or options.Where is nil, the models ID will be used
 func (dao *DAO) GetCourseTag(ctx context.Context, courseTag *models.CourseTag, options *database.Options) error {
 	if courseTag == nil {
 		return utils.ErrNilPtr
@@ -79,4 +79,15 @@ func (dao *DAO) GetCourseTag(ctx context.Context, courseTag *models.CourseTag, o
 	}
 
 	return dao.Get(ctx, courseTag, options)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ListCourseTags retrieves a list of course tags
+func (dao *DAO) ListCourseTags(ctx context.Context, courseTags *[]*models.CourseTag, options *database.Options) error {
+	if courseTags == nil {
+		return utils.ErrNilPtr
+	}
+
+	return dao.List(ctx, courseTags, options)
 }

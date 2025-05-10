@@ -102,7 +102,7 @@ func (dao *DAO) CreateOrUpdateAssetProgress(ctx context.Context, courseId string
 
 // GetAssetProgress retrieves an asset progress
 //
-// When options is nil or options.Where is nil, the function will use the ID to filter asset progress
+// When options is nil or options.Where is nil, the models ID will be used
 func (dao *DAO) GetAssetProgress(ctx context.Context, assetProgress *models.AssetProgress, options *database.Options) error {
 	if assetProgress == nil {
 		return utils.ErrNilPtr
@@ -122,4 +122,15 @@ func (dao *DAO) GetAssetProgress(ctx context.Context, assetProgress *models.Asse
 	}
 
 	return dao.Get(ctx, assetProgress, options)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ListAssetProgress retrieves a list of asset progress
+func (dao *DAO) ListAssetProgress(ctx context.Context, assetProgress *[]*models.AssetProgress, options *database.Options) error {
+	if assetProgress == nil {
+		return utils.ErrNilPtr
+	}
+
+	return dao.List(ctx, assetProgress, options)
 }

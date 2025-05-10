@@ -2023,14 +2023,14 @@ func TestCourses_DeleteTag(t *testing.T) {
 		}
 
 		tags := []*models.CourseTag{}
-		require.NoError(t, router.dao.List(ctx, &tags, &database.Options{Where: squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courses[1].ID}}))
+		require.NoError(t, router.dao.ListCourseTags(ctx, &tags, &database.Options{Where: squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courses[1].ID}}))
 		require.Len(t, tags, 3)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/courses/"+courses[1].ID+"/tags/"+tags[1].ID, nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, status)
 
-		require.NoError(t, router.dao.List(ctx, &tags, &database.Options{Where: squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courses[1].ID}}))
+		require.NoError(t, router.dao.ListCourseTags(ctx, &tags, &database.Options{Where: squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courses[1].ID}}))
 		require.Len(t, tags, 2)
 	})
 

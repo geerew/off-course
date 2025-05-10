@@ -41,11 +41,11 @@ func Test_CreateCourseTag(t *testing.T) {
 
 		// Asset 4 course tags and 2 tags
 		courseTags := []*models.CourseTag{}
-		require.NoError(t, dao.List(ctx, &courseTags, nil))
+		require.NoError(t, dao.ListCourseTags(ctx, &courseTags, nil))
 		require.Len(t, courseTags, 4)
 
 		tags := []*models.Tag{}
-		require.NoError(t, dao.List(ctx, &tags, nil))
+		require.NoError(t, dao.ListTags(ctx, &tags, nil))
 		require.Len(t, tags, 2)
 	})
 

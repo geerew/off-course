@@ -265,9 +265,11 @@ func applyAssetChanges(
 	assetsByChapterPrefix AssetsByChapterPrefix,
 ) (bool, error) {
 	existing := []*models.Asset{}
-	if err := s.dao.List(ctx, &existing, &database.Options{
-		Where: squirrel.Eq{models.ASSET_TABLE_COURSE_ID: course.ID},
-	}); err != nil {
+	options := &database.Options{
+		Where:            squirrel.Eq{models.ASSET_TABLE_COURSE_ID: course.ID},
+		ExcludeRelations: []string{models.ASSET_RELATION_PROGRESS},
+	}
+	if err := s.dao.ListAssets(ctx, &existing, options); err != nil {
 		return false, err
 	}
 
@@ -409,7 +411,7 @@ func applyAttachmentChanges(
 	}
 
 	existing := []*models.Attachment{}
-	if err := s.dao.List(ctx, &existing, &database.Options{
+	if err := s.dao.ListAttachments(ctx, &existing, &database.Options{
 		Where: squirrel.Eq{models.ATTACHMENT_TABLE_ASSET_ID: assetIDs},
 	}); err != nil {
 		return false, err

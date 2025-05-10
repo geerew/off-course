@@ -34,11 +34,14 @@ func (ca *courseAvailability) run() error {
 
 	for page <= totalPages {
 		p := pagination.New(page, perPage)
-		options := &database.Options{Pagination: p}
+		options := &database.Options{
+			Pagination:       p,
+			ExcludeRelations: []string{models.COURSE_RELATION_PROGRESS},
+		}
 
 		// Fetch a batch of courses
 		courses := []*models.Course{}
-		err := ca.dao.List(ctx, &courses, options)
+		err := ca.dao.ListCourses(ctx, &courses, options)
 		if err != nil {
 			attrs := []any{
 				loggerType,

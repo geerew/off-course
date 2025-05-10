@@ -60,6 +60,8 @@ const (
 	ASSET_TABLE_VIDEO_POS    = ASSET_TABLE + "." + ASSET_VIDEO_POSITION
 	ASSET_TABLE_COMPLETED    = ASSET_TABLE + "." + ASSET_COMPLETED
 	ASSET_TABLE_COMPLETED_AT = ASSET_TABLE + "." + ASSET_COMPLETED_AT
+
+	ASSET_RELATION_PROGRESS = "Progress"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

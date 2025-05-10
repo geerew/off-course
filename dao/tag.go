@@ -45,7 +45,7 @@ func (dao *DAO) CreateTag(ctx context.Context, tag *models.Tag) error {
 
 // GetTag retrieves a tag
 //
-// When options is nil or options.Where is nil, the function will use the ID to filter tags
+// When options is nil or options.Where is nil, the models ID will be used
 func (dao *DAO) GetTag(ctx context.Context, tag *models.Tag, options *database.Options) error {
 	if tag == nil {
 		return utils.ErrNilPtr
@@ -65,6 +65,17 @@ func (dao *DAO) GetTag(ctx context.Context, tag *models.Tag, options *database.O
 	}
 
 	return dao.Get(ctx, tag, options)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ListTags retrieves a list of tags
+func (dao *DAO) ListTags(ctx context.Context, tags *[]*models.Tag, options *database.Options) error {
+	if tags == nil {
+		return utils.ErrNilPtr
+	}
+
+	return dao.List(ctx, tags, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

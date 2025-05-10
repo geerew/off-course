@@ -28,15 +28,10 @@ func (dao *DAO) CreateCourse(ctx context.Context, course *models.Course) error {
 
 // GetCourse retrieves a course
 //
-// When options is nil or options.Where is nil, the function will use the ID to filter courses
+// When options is nil or options.Where is nil, the models ID will be used
 func (dao *DAO) GetCourse(ctx context.Context, course *models.Course, options *database.Options) error {
 	if course == nil {
 		return utils.ErrNilPtr
-	}
-
-	userId, ok := ctx.Value(types.UserContextKey).(string)
-	if !ok || userId == "" {
-		return utils.ErrMissingUserId
 	}
 
 	if options == nil {
@@ -51,8 +46,14 @@ func (dao *DAO) GetCourse(ctx context.Context, course *models.Course, options *d
 		options = &database.Options{Where: squirrel.Eq{course.Table() + "." + models.BASE_ID: course.Id()}}
 	}
 
-	options.AddRelationFilter("Progress", models.COURSE_PROGRESS_USER_ID, userId)
+	if !slices.Contains(options.ExcludeRelations, models.COURSE_RELATION_PROGRESS) {
+		userId, ok := ctx.Value(types.UserContextKey).(string)
+		if !ok || userId == "" {
+			return utils.ErrMissingUserId
+		}
 
+		options.AddRelationFilter(models.COURSE_RELATION_PROGRESS, models.COURSE_PROGRESS_USER_ID, userId)
+	}
 	return dao.Get(ctx, course, options)
 }
 
@@ -64,16 +65,18 @@ func (dao *DAO) ListCourses(ctx context.Context, courses *[]*models.Course, opti
 		return utils.ErrNilPtr
 	}
 
-	userId, ok := ctx.Value(types.UserContextKey).(string)
-	if !ok || userId == "" {
-		return utils.ErrMissingUserId
-	}
-
 	if options == nil {
 		options = &database.Options{}
 	}
 
-	options.AddRelationFilter("Progress", models.COURSE_PROGRESS_USER_ID, userId)
+	if !slices.Contains(options.ExcludeRelations, models.COURSE_RELATION_PROGRESS) {
+		userId, ok := ctx.Value(types.UserContextKey).(string)
+		if !ok || userId == "" {
+			return utils.ErrMissingUserId
+		}
+
+		options.AddRelationFilter(models.COURSE_RELATION_PROGRESS, models.COURSE_PROGRESS_USER_ID, userId)
+	}
 
 	return dao.List(ctx, courses, options)
 }

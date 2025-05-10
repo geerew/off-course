@@ -24,7 +24,7 @@ func (dao *DAO) CreateUser(ctx context.Context, user *models.User) error {
 
 // GetUser retrieves a tag
 //
-// When options is nil or options.Where is nil, the function will use the ID to filter users
+// When options is nil or options.Where is nil, the models ID will be used
 func (dao *DAO) GetUser(ctx context.Context, user *models.User, options *database.Options) error {
 	if user == nil {
 		return utils.ErrNilPtr
@@ -44,6 +44,17 @@ func (dao *DAO) GetUser(ctx context.Context, user *models.User, options *databas
 	}
 
 	return dao.Get(ctx, user, options)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ListUsers retrieves a list of users
+func (dao *DAO) ListUsers(ctx context.Context, users *[]*models.User, options *database.Options) error {
+	if users == nil {
+		return utils.ErrNilPtr
+	}
+
+	return dao.List(ctx, users, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

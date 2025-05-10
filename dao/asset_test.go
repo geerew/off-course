@@ -101,7 +101,7 @@ func Test_GetAsset(t *testing.T) {
 
 	t.Run("missing user id", func(t *testing.T) {
 		dao, _ := setup(t)
-		require.ErrorIs(t, dao.GetAsset(context.Background(), &models.Asset{}, nil), utils.ErrMissingUserId)
+		require.ErrorIs(t, dao.GetAsset(context.Background(), &models.Asset{Base: models.Base{ID: "1234"}}, nil), utils.ErrMissingUserId)
 	})
 }
 

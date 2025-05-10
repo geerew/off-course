@@ -39,7 +39,7 @@ var listCmd = &cobra.Command{
 		dao := dao.New(dbManager.DataDb)
 
 		users := []*models.User{}
-		err = dao.List(ctx, &users, nil)
+		err = dao.ListUsers(ctx, &users, nil)
 		if err != nil {
 			errorMessage("Failed to list users: %s", err)
 			os.Exit(1)

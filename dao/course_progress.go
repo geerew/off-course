@@ -35,7 +35,7 @@ func (dao *DAO) CreateCourseProgress(ctx context.Context, courseProgress *models
 
 // GetCourseProgress retrieves an course progress
 //
-// When options is nil or options.Where is nil, the function will use the ID to filter course progress
+// When options is nil or options.Where is nil, the models ID will be used
 func (dao *DAO) GetCourseProgress(ctx context.Context, courseProgress *models.CourseProgress, options *database.Options) error {
 	if courseProgress == nil {
 		return utils.ErrNilPtr
@@ -55,6 +55,17 @@ func (dao *DAO) GetCourseProgress(ctx context.Context, courseProgress *models.Co
 	}
 
 	return dao.Get(ctx, courseProgress, options)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ListCourseProgress retrieves a list of courseProgress
+func (dao *DAO) ListCourseProgress(ctx context.Context, courseProgress *[]*models.CourseProgress, options *database.Options) error {
+	if courseProgress == nil {
+		return utils.ErrNilPtr
+	}
+
+	return dao.List(ctx, courseProgress, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
