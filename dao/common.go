@@ -128,6 +128,8 @@ func (dao *DAO) List(ctx context.Context, model any, options *database.Options) 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // ListPluck is a generic function to get a list of values from a column in the database
+//
+// TODO Make this a generic function
 func (dao *DAO) ListPluck(ctx context.Context, model any, options *database.Options, column string) ([]string, error) {
 	sch, err := schema.Parse(model)
 	if err != nil {
