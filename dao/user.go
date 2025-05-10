@@ -3,6 +3,8 @@ package dao
 import (
 	"context"
 
+	"github.com/Masterminds/squirrel"
+	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 )
@@ -16,6 +18,32 @@ func (dao *DAO) CreateUser(ctx context.Context, user *models.User) error {
 	}
 
 	return dao.Create(ctx, user)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetUser retrieves a tag
+//
+// When options is nil or options.Where is nil, the function will use the ID to filter users
+func (dao *DAO) GetUser(ctx context.Context, user *models.User, options *database.Options) error {
+	if user == nil {
+		return utils.ErrNilPtr
+	}
+
+	if options == nil || options.Where == nil {
+		if user.Id() == "" {
+			return utils.ErrInvalidId
+		}
+
+		options = &database.Options{
+			Where: squirrel.Eq{user.Table() + "." + models.BASE_ID: user.Id()},
+		}
+	}
+
+	if options.Where == nil {
+	}
+
+	return dao.Get(ctx, user, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -27,6 +27,8 @@ func (dao *DAO) CreateCourse(ctx context.Context, course *models.Course) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // GetCourse retrieves a course
+//
+// When options is nil or options.Where is nil, the function will use the ID to filter courses
 func (dao *DAO) GetCourse(ctx context.Context, course *models.Course, options *database.Options) error {
 	if course == nil {
 		return utils.ErrNilPtr
@@ -39,6 +41,14 @@ func (dao *DAO) GetCourse(ctx context.Context, course *models.Course, options *d
 
 	if options == nil {
 		options = &database.Options{}
+	}
+
+	if options.Where == nil {
+		if course.Id() == "" {
+			return utils.ErrInvalidId
+		}
+
+		options = &database.Options{Where: squirrel.Eq{course.Table() + "." + models.BASE_ID: course.Id()}}
 	}
 
 	options.AddRelationFilter("Progress", models.COURSE_PROGRESS_USER_ID, userId)

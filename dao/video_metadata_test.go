@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/types"
@@ -97,8 +95,8 @@ func Test_UpdateVideoMetadata(t *testing.T) {
 		}
 		require.NoError(t, dao.UpdateVideoMetadata(ctx, newVideoMetadata))
 
-		assertResult := &models.VideoMetadata{}
-		require.NoError(t, dao.Get(ctx, assertResult, &database.Options{Where: squirrel.Eq{models.VIDEO_METADATA_TABLE_ID: originalVideoMetadata.ID}}))
+		assertResult := &models.VideoMetadata{Base: models.Base{ID: originalVideoMetadata.ID}}
+		require.NoError(t, dao.GetVideoMetadata(ctx, assertResult, nil))
 		require.Equal(t, newVideoMetadata.ID, assertResult.ID)                             // No change
 		require.True(t, newVideoMetadata.CreatedAt.Equal(originalVideoMetadata.CreatedAt)) // No change
 		require.Equal(t, newVideoMetadata.AssetID, assertResult.AssetID)                   // No change

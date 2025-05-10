@@ -22,18 +22,22 @@ func (dao *DAO) CreateParam(ctx context.Context, param *models.Param) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetParam gets a parameter by its key
-func (dao *DAO) GetParamByKey(ctx context.Context, param *models.Param) error {
+// GetParam retrieves a parameter
+//
+// When options is nil or options.Where is nil, the function will use the key to filter parameters
+func (dao *DAO) GetParam(ctx context.Context, param *models.Param, options *database.Options) error {
 	if param == nil {
 		return utils.ErrNilPtr
 	}
 
-	if param.Key == "" {
-		return utils.ErrInvalidKey
-	}
+	if options == nil || options.Where == nil {
+		if param.Key == "" {
+			return utils.ErrInvalidKey
+		}
 
-	options := &database.Options{
-		Where: squirrel.Eq{models.PARAM_TABLE_KEY: param.Key},
+		options = &database.Options{
+			Where: squirrel.Eq{models.PARAM_TABLE_KEY: param.Key},
+		}
 	}
 
 	return dao.Get(ctx, param, options)

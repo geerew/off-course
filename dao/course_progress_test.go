@@ -83,7 +83,7 @@ func Test_RefreshCourseProgress(t *testing.T) {
 			assetProgress = &models.AssetProgress{AssetID: asset1.ID, VideoPos: 5}
 			require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, course.ID, assetProgress))
 
-			require.NoError(t, dao.Get(ctx, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: course.ID}}))
+			require.NoError(t, dao.GetCourse(ctx, course, nil))
 			require.NotNil(t, course.Progress)
 			require.True(t, course.Progress.Started)
 			require.False(t, course.Progress.StartedAt.IsZero())
@@ -96,7 +96,7 @@ func Test_RefreshCourseProgress(t *testing.T) {
 			assetProgress.VideoPos = 0
 			require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, course.ID, assetProgress))
 
-			require.NoError(t, dao.Get(ctx, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: course.ID}}))
+			require.NoError(t, dao.GetCourse(ctx, course, nil))
 			require.NotNil(t, course.Progress)
 			require.False(t, course.Progress.Started)
 			require.True(t, course.Progress.StartedAt.IsZero())
@@ -109,7 +109,7 @@ func Test_RefreshCourseProgress(t *testing.T) {
 			assetProgress.Completed = true
 			require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, course.ID, assetProgress))
 
-			require.NoError(t, dao.Get(ctx, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: course.ID}}))
+			require.NoError(t, dao.GetCourse(ctx, course, nil))
 			require.NotNil(t, course.Progress)
 			require.True(t, course.Progress.Started)
 			require.False(t, course.Progress.StartedAt.IsZero())
@@ -148,7 +148,7 @@ func Test_RefreshCourseProgress(t *testing.T) {
 
 		// Check course progress
 		{
-			require.NoError(t, dao.Get(ctx, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: course.ID}}))
+			require.NoError(t, dao.GetCourse(ctx, course, nil))
 			require.NotNil(t, course.Progress)
 			require.True(t, course.Progress.Started)
 			require.False(t, course.Progress.StartedAt.IsZero())
@@ -178,8 +178,8 @@ func Test_CourseProgressDeleteCascade(t *testing.T) {
 
 	require.NoError(t, dao.RefreshCourseProgress(ctx, course.ID))
 
-	courseProgress := &models.CourseProgress{CourseID: course.ID}
-	require.NoError(t, dao.Get(ctx, courseProgress, &database.Options{Where: squirrel.Eq{models.COURSE_PROGRESS_COURSE_ID: course.ID}}))
+	courseProgress := &models.CourseProgress{}
+	require.NoError(t, dao.GetCourseProgress(ctx, courseProgress, &database.Options{Where: squirrel.Eq{models.COURSE_PROGRESS_COURSE_ID: course.ID}}))
 
 	require.NoError(t, dao.Delete(ctx, courseProgress, nil))
 

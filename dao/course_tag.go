@@ -34,7 +34,7 @@ func (dao *DAO) CreateCourseTag(ctx context.Context, courseTag *models.CourseTag
 			Where: squirrel.Eq{models.TAG_TABLE_TAG: courseTag.Tag},
 		}
 
-		err := dao.Get(txCtx, &tag, options)
+		err := dao.GetTag(txCtx, &tag, options)
 		if err != nil && err != sql.ErrNoRows {
 			return err
 		}
@@ -53,4 +53,30 @@ func (dao *DAO) CreateCourseTag(ctx context.Context, courseTag *models.CourseTag
 		return dao.Create(txCtx, courseTag)
 
 	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetCourseTag retrieves a course tag
+//
+// When options is nil or options.Where is nil, the function will use the ID to filter course tags
+func (dao *DAO) GetCourseTag(ctx context.Context, courseTag *models.CourseTag, options *database.Options) error {
+	if courseTag == nil {
+		return utils.ErrNilPtr
+	}
+
+	if options == nil || options.Where == nil {
+		if courseTag.Id() == "" {
+			return utils.ErrInvalidId
+		}
+
+		options = &database.Options{
+			Where: squirrel.Eq{courseTag.Table() + "." + models.BASE_ID: courseTag.Id()},
+		}
+	}
+
+	if options.Where == nil {
+	}
+
+	return dao.Get(ctx, courseTag, options)
 }

@@ -195,8 +195,8 @@ func Test_UpdateAsset(t *testing.T) {
 		}
 		require.NoError(t, dao.UpdateAsset(ctx, newAsset))
 
-		assertResult := &models.Asset{}
-		require.NoError(t, dao.Get(ctx, assertResult, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_ID: originalAsset.ID}}))
+		assertResult := &models.Asset{Base: models.Base{ID: originalAsset.ID}}
+		require.NoError(t, dao.GetAsset(ctx, assertResult, nil))
 		require.Equal(t, newAsset.ID, assertResult.ID)                          // No change
 		require.True(t, newAsset.CreatedAt.Equal(originalAsset.CreatedAt))      // No change
 		require.Equal(t, newAsset.Title, assertResult.Title)                    // Changed

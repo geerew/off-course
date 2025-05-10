@@ -3,6 +3,7 @@ package dao
 import (
 	"context"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
@@ -23,6 +24,8 @@ func (dao *DAO) CreateAsset(ctx context.Context, asset *models.Asset) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // GetAsset retrieves an asset
+//
+// When options is nil or options.Where is nil, the function will use the ID to filter assets
 func (dao *DAO) GetAsset(ctx context.Context, asset *models.Asset, options *database.Options) error {
 	if asset == nil {
 		return utils.ErrNilPtr
@@ -35,6 +38,16 @@ func (dao *DAO) GetAsset(ctx context.Context, asset *models.Asset, options *data
 
 	if options == nil {
 		options = &database.Options{}
+	}
+
+	if options.Where == nil {
+		if asset.Id() == "" {
+			return utils.ErrInvalidId
+		}
+
+		options = &database.Options{
+			Where: squirrel.Eq{asset.Table() + "." + models.BASE_ID: asset.Id()},
+		}
 	}
 
 	options.AddRelationFilter("Progress", models.ASSET_PROGRESS_USER_ID, userId)

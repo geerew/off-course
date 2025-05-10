@@ -47,7 +47,7 @@ func Test_CreateOrUpdateAssetProgress(t *testing.T) {
 				squirrel.Eq{models.COURSE_PROGRESS_TABLE_USER_ID: ctx.Value(types.UserContextKey)},
 			},
 		}
-		require.NoError(t, dao.Get(ctx, courseProgress, options))
+		require.NoError(t, dao.GetCourseProgress(ctx, courseProgress, options))
 		require.Equal(t, courseProgress.CourseID, course.ID)
 	})
 
@@ -93,7 +93,7 @@ func Test_CreateOrUpdateAssetProgress(t *testing.T) {
 			require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, course.ID, assetProgress))
 
 			courseProgress := &models.CourseProgress{}
-			require.NoError(t, dao.Get(ctx, courseProgress, courseProgressOptions))
+			require.NoError(t, dao.GetCourseProgress(ctx, courseProgress, courseProgressOptions))
 			require.Equal(t, course.ID, courseProgress.CourseID)
 			require.Equal(t, 0, courseProgress.Percent)
 
@@ -105,7 +105,7 @@ func Test_CreateOrUpdateAssetProgress(t *testing.T) {
 			require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, course.ID, assetProgress))
 
 			courseProgress := &models.CourseProgress{}
-			require.NoError(t, dao.Get(ctx, courseProgress, courseProgressOptions))
+			require.NoError(t, dao.GetCourseProgress(ctx, courseProgress, courseProgressOptions))
 			require.Equal(t, course.ID, courseProgress.CourseID)
 			require.Equal(t, 20, courseProgress.Percent)
 		}
@@ -116,7 +116,7 @@ func Test_CreateOrUpdateAssetProgress(t *testing.T) {
 			require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, course.ID, assetProgress))
 
 			courseProgress := &models.CourseProgress{}
-			require.NoError(t, dao.Get(ctx, courseProgress, courseProgressOptions))
+			require.NoError(t, dao.GetCourseProgress(ctx, courseProgress, courseProgressOptions))
 			require.Equal(t, course.ID, courseProgress.CourseID)
 			require.Equal(t, 100, courseProgress.Percent)
 		}
@@ -161,6 +161,6 @@ func Test_AssetProgressDeleteCascade(t *testing.T) {
 
 	require.NoError(t, dao.Delete(ctx, asset, nil))
 
-	err := dao.Get(ctx, assetProgress, &database.Options{Where: squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: assetProgress.ID}})
+	err := dao.GetAssetProgress(ctx, assetProgress, &database.Options{Where: squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: assetProgress.ID}})
 	require.ErrorIs(t, err, sql.ErrNoRows)
 }

@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/types"
@@ -90,8 +88,8 @@ func Test_UpdateAttachment(t *testing.T) {
 		}
 		require.NoError(t, dao.UpdateAttachment(ctx, newAttachment))
 
-		attachmentResult := &models.Attachment{}
-		require.NoError(t, dao.Get(ctx, attachmentResult, &database.Options{Where: squirrel.Eq{models.ATTACHMENT_TABLE_ID: originalAttachment.ID}}))
+		attachmentResult := &models.Attachment{Base: models.Base{ID: originalAttachment.ID}}
+		require.NoError(t, dao.GetAttachment(ctx, attachmentResult, nil))
 		require.Equal(t, newAttachment.ID, attachmentResult.ID)                          // No change
 		require.Equal(t, newAttachment.AssetID, attachmentResult.AssetID)                // No change
 		require.True(t, newAttachment.CreatedAt.Equal(originalAttachment.CreatedAt))     // No change

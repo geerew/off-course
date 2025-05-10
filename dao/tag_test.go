@@ -4,8 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/stretchr/testify/require"
@@ -62,8 +60,8 @@ func Test_UpdateTag(t *testing.T) {
 		}
 		require.NoError(t, dao.UpdateTag(ctx, newTag))
 
-		tagResult := &models.Tag{}
-		require.NoError(t, dao.Get(ctx, tagResult, &database.Options{Where: squirrel.Eq{models.TAG_TABLE_ID: originalTag.ID}}))
+		tagResult := &models.Tag{Base: models.Base{ID: originalTag.ID}}
+		require.NoError(t, dao.GetTag(ctx, tagResult, nil))
 		require.Equal(t, originalTag.ID, tagResult.ID)                     // No change
 		require.True(t, tagResult.CreatedAt.Equal(originalTag.CreatedAt))  // No change
 		require.False(t, tagResult.UpdatedAt.Equal(originalTag.UpdatedAt)) // Changed

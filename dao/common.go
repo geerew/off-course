@@ -177,7 +177,6 @@ func (dao *DAO) Update(ctx context.Context, model models.Modeler) (bool, error) 
 
 // Delete is a generic function to delete a model (row)
 //
-// If options is nil or options.Where is nil, the function will delete the model based on the ID
 // of the model
 func (dao *DAO) Delete(ctx context.Context, model models.Modeler, options *database.Options) error {
 	sch, err := schema.Parse(model)

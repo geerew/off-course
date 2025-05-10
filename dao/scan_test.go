@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/types"
@@ -62,8 +60,8 @@ func Test_Update(t *testing.T) {
 		time.Sleep(1 * time.Millisecond)
 		require.NoError(t, dao.UpdateScan(ctx, newS))
 
-		scanResult := &models.Scan{}
-		require.Nil(t, dao.Get(ctx, scanResult, &database.Options{Where: squirrel.Eq{models.SCAN_TABLE_ID: originalScan.ID}}))
+		scanResult := &models.Scan{Base: models.Base{ID: originalScan.ID}}
+		require.Nil(t, dao.GetScan(ctx, scanResult, nil))
 		require.Equal(t, originalScan.ID, scanResult.ID)                     // No change
 		require.Equal(t, originalScan.CourseID, scanResult.CourseID)         // No change
 		require.True(t, scanResult.CreatedAt.Equal(originalScan.CreatedAt))  // No change

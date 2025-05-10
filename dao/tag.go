@@ -27,7 +27,7 @@ func (dao *DAO) CreateTag(ctx context.Context, tag *models.Tag) error {
 		),
 	}
 	existingTag := &models.Tag{}
-	err := dao.Get(ctx, existingTag, options)
+	err := dao.GetTag(ctx, existingTag, options)
 	if err != nil && err != sql.ErrNoRows {
 		return err
 	}
@@ -39,6 +39,32 @@ func (dao *DAO) CreateTag(ctx context.Context, tag *models.Tag) error {
 	}
 
 	return dao.Create(ctx, tag)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetTag retrieves a tag
+//
+// When options is nil or options.Where is nil, the function will use the ID to filter tags
+func (dao *DAO) GetTag(ctx context.Context, tag *models.Tag, options *database.Options) error {
+	if tag == nil {
+		return utils.ErrNilPtr
+	}
+
+	if options == nil || options.Where == nil {
+		if tag.Id() == "" {
+			return utils.ErrInvalidId
+		}
+
+		options = &database.Options{
+			Where: squirrel.Eq{tag.Table() + "." + models.BASE_ID: tag.Id()},
+		}
+	}
+
+	if options.Where == nil {
+	}
+
+	return dao.Get(ctx, tag, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

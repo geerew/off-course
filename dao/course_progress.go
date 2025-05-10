@@ -33,6 +33,32 @@ func (dao *DAO) CreateCourseProgress(ctx context.Context, courseProgress *models
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// GetCourseProgress retrieves an course progress
+//
+// When options is nil or options.Where is nil, the function will use the ID to filter course progress
+func (dao *DAO) GetCourseProgress(ctx context.Context, courseProgress *models.CourseProgress, options *database.Options) error {
+	if courseProgress == nil {
+		return utils.ErrNilPtr
+	}
+
+	if options == nil || options.Where == nil {
+		if courseProgress.Id() == "" {
+			return utils.ErrInvalidId
+		}
+
+		options = &database.Options{
+			Where: squirrel.Eq{courseProgress.Table() + "." + models.BASE_ID: courseProgress.Id()},
+		}
+	}
+
+	if options.Where == nil {
+	}
+
+	return dao.Get(ctx, courseProgress, options)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // RefreshCourseProgress calculates and updates the progress for a course
 //
 // This function calculates the overall course progress by:
@@ -161,7 +187,7 @@ func (dao *DAO) RefreshCourseProgress(ctx context.Context, courseID string) erro
 
 	// Get the course progress for this specific user
 	courseProgress := &models.CourseProgress{}
-	err = dao.Get(ctx, courseProgress, &database.Options{
+	err = dao.GetCourseProgress(ctx, courseProgress, &database.Options{
 		Where: squirrel.And{
 			squirrel.Eq{models.COURSE_PROGRESS_TABLE_COURSE_ID: courseID},
 			squirrel.Eq{models.COURSE_PROGRESS_TABLE_USER_ID: userId},

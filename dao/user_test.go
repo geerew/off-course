@@ -4,8 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/types"
@@ -47,8 +45,8 @@ func Test_UpdateUser(t *testing.T) {
 		}
 		require.NoError(t, dao.UpdateUser(ctx, newUser))
 
-		userResult := &models.User{}
-		require.NoError(t, dao.Get(ctx, userResult, &database.Options{Where: squirrel.Eq{models.USER_TABLE_ID: OriginalUser.ID}}))
+		userResult := &models.User{Base: models.Base{ID: OriginalUser.ID}}
+		require.NoError(t, dao.GetUser(ctx, userResult, nil))
 		require.Equal(t, OriginalUser.ID, userResult.ID)                     // No change
 		require.Equal(t, OriginalUser.Username, userResult.Username)         // No change
 		require.True(t, userResult.CreatedAt.Equal(OriginalUser.CreatedAt))  // No change

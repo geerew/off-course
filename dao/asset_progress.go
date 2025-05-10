@@ -46,14 +46,14 @@ func (dao *DAO) CreateOrUpdateAssetProgress(ctx context.Context, courseId string
 		}
 
 		asset := &models.Asset{}
-		err := dao.Get(txCtx, asset, options)
+		err := dao.GetAsset(txCtx, asset, options)
 		if err != nil {
 			return err
 		}
 
 		// Use both asset_id and user_id to look up the existing progress
 		existingProgress := &models.AssetProgress{}
-		err = dao.Get(txCtx, existingProgress, &database.Options{
+		err = dao.GetAssetProgress(txCtx, existingProgress, &database.Options{
 			Where: squirrel.And{
 				squirrel.Eq{models.ASSET_PROGRESS_TABLE_ASSET_ID: assetProgress.AssetID},
 				squirrel.Eq{models.ASSET_PROGRESS_TABLE_USER_ID: userId},
@@ -96,4 +96,30 @@ func (dao *DAO) CreateOrUpdateAssetProgress(ctx context.Context, courseId string
 		// Pass user ID to RefreshCourseProgress
 		return dao.RefreshCourseProgress(txCtx, asset.CourseID)
 	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetAssetProgress retrieves an asset progress
+//
+// When options is nil or options.Where is nil, the function will use the ID to filter asset progress
+func (dao *DAO) GetAssetProgress(ctx context.Context, assetProgress *models.AssetProgress, options *database.Options) error {
+	if assetProgress == nil {
+		return utils.ErrNilPtr
+	}
+
+	if options == nil || options.Where == nil {
+		if assetProgress.Id() == "" {
+			return utils.ErrInvalidId
+		}
+
+		options = &database.Options{
+			Where: squirrel.Eq{assetProgress.Table() + "." + models.BASE_ID: assetProgress.Id()},
+		}
+	}
+
+	if options.Where == nil {
+	}
+
+	return dao.Get(ctx, assetProgress, options)
 }
