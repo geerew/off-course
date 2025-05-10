@@ -57,7 +57,7 @@ var deleteCmd = &cobra.Command{
 
 		user := &models.User{}
 
-		err = dao.Get(ctx, user, options)
+		err = dao.GetUser(ctx, user, options)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				errorMessage("User '%s' not found\n", username)

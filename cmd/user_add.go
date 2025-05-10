@@ -104,7 +104,7 @@ var addCmd = &cobra.Command{
 			Where: squirrel.Eq{models.USER_TABLE_USERNAME: username},
 		}
 
-		err = dao.Get(ctx, user, options)
+		err = dao.GetUser(ctx, user, options)
 		if err != nil && err != sql.ErrNoRows {
 			errorMessage("Failed to lookup user: %s", err)
 			os.Exit(1)

@@ -108,7 +108,7 @@ func (api authAPI) login(c *fiber.Ctx) error {
 	}
 
 	user := &models.User{}
-	err := api.r.dao.Get(c.UserContext(), user, &database.Options{Where: squirrel.Eq{models.USER_TABLE_USERNAME: userReq.Username}})
+	err := api.r.dao.GetUser(c.UserContext(), user, &database.Options{Where: squirrel.Eq{models.USER_TABLE_USERNAME: userReq.Username}})
 	if err != nil {
 		return errorResponse(c, fiber.StatusUnauthorized, "Invalid username and/or password", nil)
 	}
@@ -145,7 +145,7 @@ func (api authAPI) getMe(c *fiber.Ctx) error {
 	}
 
 	user := &models.User{}
-	err := api.r.dao.Get(c.UserContext(), user, &database.Options{Where: squirrel.Eq{models.USER_TABLE_ID: userId}})
+	err := api.r.dao.GetUser(c.UserContext(), user, &database.Options{Where: squirrel.Eq{models.USER_TABLE_ID: userId}})
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error getting user information", err)
 	}
@@ -167,7 +167,7 @@ func (api authAPI) updateMe(c *fiber.Ctx) error {
 	}
 
 	user := &models.User{}
-	err := api.r.dao.Get(c.UserContext(), user, &database.Options{Where: squirrel.Eq{models.USER_TABLE_ID: userId}})
+	err := api.r.dao.GetUser(c.UserContext(), user, &database.Options{Where: squirrel.Eq{models.USER_TABLE_ID: userId}})
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error getting user information", err)
 	}
@@ -215,7 +215,7 @@ func (api authAPI) deleteMe(c *fiber.Ctx) error {
 	}
 
 	user := &models.User{}
-	err := api.r.dao.Get(c.UserContext(), user, &database.Options{Where: squirrel.Eq{models.USER_TABLE_ID: userId}})
+	err := api.r.dao.GetUser(c.UserContext(), user, &database.Options{Where: squirrel.Eq{models.USER_TABLE_ID: userId}})
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error getting user information", err)
 	}

@@ -107,7 +107,7 @@ func (api *tagsAPI) getTag(c *fiber.Ctx) error {
 	}
 
 	tag := &models.Tag{}
-	err = api.dao.Get(c.UserContext(), tag, options)
+	err = api.dao.GetTag(c.UserContext(), tag, options)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Tag not found", nil)
@@ -154,8 +154,8 @@ func (api *tagsAPI) updateTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
 	}
 
-	tag := &models.Tag{}
-	err := api.dao.Get(c.UserContext(), tag, &database.Options{Where: squirrel.Eq{models.TAG_TABLE_ID: id}})
+	tag := &models.Tag{Base: models.Base{ID: id}}
+	err := api.dao.GetTag(c.UserContext(), tag, nil)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Tag not found", nil)

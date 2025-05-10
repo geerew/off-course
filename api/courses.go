@@ -423,7 +423,7 @@ func (api coursesAPI) getAttachment(c *fiber.Ctx) error {
 	}
 
 	attachment := &models.Attachment{}
-	err := api.dao.Get(c.UserContext(), attachment, options)
+	err := api.dao.GetAttachment(c.UserContext(), attachment, options)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Attachment not found", nil)
@@ -455,7 +455,7 @@ func (api coursesAPI) serveAttachment(c *fiber.Ctx) error {
 	}
 
 	attachment := &models.Attachment{}
-	err := api.dao.Get(c.UserContext(), attachment, options)
+	err := api.dao.GetAttachment(c.UserContext(), attachment, options)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Attachment not found", nil)

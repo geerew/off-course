@@ -124,8 +124,8 @@ func (api userAPI) updateUser(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "No data to update", nil)
 	}
 
-	user := &models.User{}
-	err := api.r.dao.Get(c.UserContext(), user, &database.Options{Where: squirrel.Eq{models.USER_TABLE_ID: id}})
+	user := &models.User{Base: models.Base{ID: id}}
+	err := api.r.dao.GetUser(c.UserContext(), user, nil)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "User not found", nil)

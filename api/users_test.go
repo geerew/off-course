@@ -10,8 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/auth"
 	"github.com/geerew/off-course/utils/pagination"
@@ -368,8 +366,8 @@ func TestUsers_UpdateUser(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
-		userResult := &models.User{}
-		require.NoError(t, router.dao.Get(ctx, userResult, &database.Options{Where: squirrel.Eq{models.USER_TABLE_ID: user.ID}}))
+		userResult := &models.User{Base: models.Base{ID: user.ID}}
+		require.NoError(t, router.dao.GetUser(ctx, userResult, nil))
 		require.Equal(t, "Bob", userResult.DisplayName)
 
 		// Update password
@@ -380,7 +378,7 @@ func TestUsers_UpdateUser(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
-		require.NoError(t, router.dao.Get(ctx, userResult, &database.Options{Where: squirrel.Eq{models.USER_TABLE_ID: user.ID}}))
+		require.NoError(t, router.dao.GetUser(ctx, userResult, nil))
 		require.Equal(t, "Bob", userResult.DisplayName)
 		require.True(t, auth.ComparePassword(userResult.PasswordHash, "1234"))
 
@@ -392,7 +390,7 @@ func TestUsers_UpdateUser(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
-		require.NoError(t, router.dao.Get(ctx, userResult, &database.Options{Where: squirrel.Eq{models.USER_TABLE_ID: user.ID}}))
+		require.NoError(t, router.dao.GetUser(ctx, userResult, nil))
 		require.Equal(t, "Bob", userResult.DisplayName)
 		require.True(t, auth.ComparePassword(userResult.PasswordHash, "1234"))
 		require.Equal(t, types.UserRoleAdmin, userResult.Role)
@@ -472,8 +470,8 @@ func TestUsers_DeleteUser(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, status)
 
-		user := &models.User{}
-		err = router.dao.Get(ctx, user, &database.Options{Where: squirrel.Eq{models.USER_TABLE_ID: users[1].ID}})
+		user := &models.User{Base: models.Base{ID: users[1].ID}}
+		err = router.dao.GetUser(ctx, user, nil)
 		require.ErrorIs(t, err, sql.ErrNoRows)
 	})
 

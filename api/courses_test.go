@@ -2061,8 +2061,8 @@ func TestCourses_DeleteTag(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, status)
 
-		require.NoError(t, router.dao.Get(ctx, tag1, &database.Options{Where: squirrel.Eq{models.COURSE_TAG_TABLE_ID: tag1.ID}}))
-		require.NoError(t, router.dao.Get(ctx, tag2, &database.Options{Where: squirrel.Eq{models.COURSE_TAG_TABLE_ID: tag2.ID}}))
+		require.NoError(t, router.dao.GetCourseTag(ctx, tag1, nil))
+		require.NoError(t, router.dao.GetCourseTag(ctx, tag2, nil))
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {

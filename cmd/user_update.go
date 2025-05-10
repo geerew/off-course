@@ -57,7 +57,7 @@ var updateCmd = &cobra.Command{
 		}
 
 		user := &models.User{}
-		err = dao.Get(ctx, user, options)
+		err = dao.GetUser(ctx, user, options)
 		if err != nil {
 			fmt.Println()
 

@@ -62,7 +62,7 @@ func (api *scansAPI) getScan(c *fiber.Ctx) error {
 		Where: squirrel.Eq{models.SCAN_TABLE_COURSE_ID: courseId},
 	}
 
-	err := api.dao.Get(c.UserContext(), scan, options)
+	err := api.dao.GetScan(c.UserContext(), scan, options)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Scan not found", nil)

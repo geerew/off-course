@@ -30,7 +30,7 @@ func TestAuth_Register(t *testing.T) {
 
 		user := &models.User{}
 		options := &database.Options{Where: squirrel.Eq{models.USER_TABLE_USERNAME: "test"}}
-		require.NoError(t, router.dao.Get(ctx, user, options))
+		require.NoError(t, router.dao.GetUser(ctx, user, options))
 		require.NotEqual(t, "password", user.PasswordHash)
 		require.Equal(t, types.UserRoleUser, user.Role)
 	})
@@ -128,7 +128,7 @@ func TestAuth_Bootstrap(t *testing.T) {
 
 		user := &models.User{}
 		options := &database.Options{Where: squirrel.Eq{models.USER_TABLE_USERNAME: "test"}}
-		require.NoError(t, router.dao.Get(ctx, user, options))
+		require.NoError(t, router.dao.GetUser(ctx, user, options))
 		require.NotEqual(t, "password", user.PasswordHash)
 		require.Equal(t, types.UserRoleAdmin, user.Role)
 		require.True(t, router.isBootstrapped())
@@ -150,7 +150,7 @@ func TestAuth_Login(t *testing.T) {
 		require.NoError(t, router.dao.CreateUser(ctx, user))
 
 		u := &models.User{}
-		require.NoError(t, router.dao.Get(ctx, u, &database.Options{Where: squirrel.Eq{models.USER_TABLE_ID: user.ID}}))
+		require.NoError(t, router.dao.GetUser(ctx, u, &database.Options{Where: squirrel.Eq{models.USER_TABLE_ID: user.ID}}))
 
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"username": "test", "password": "abcd1234" }`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
