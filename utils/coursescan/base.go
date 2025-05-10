@@ -62,8 +62,11 @@ func New(config *CourseScanConfig) *CourseScan {
 func (s *CourseScan) Add(ctx context.Context, courseId string) (*models.Scan, error) {
 	// Check if the course exists
 	course := &models.Course{}
-	err := s.dao.Get(ctx, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: courseId}})
-	if err != nil {
+	options := &database.Options{
+		Where:            squirrel.Eq{models.COURSE_TABLE_ID: courseId},
+		ExcludeRelations: []string{models.COURSE_RELATION_PROGRESS},
+	}
+	if err := s.dao.GetCourse(ctx, course, options); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, utils.ErrInvalidId
 		}
@@ -81,7 +84,7 @@ func (s *CourseScan) Add(ctx context.Context, courseId string) (*models.Scan, er
 
 		// Get the scan from the db and return that
 		scan := &models.Scan{}
-		err := s.dao.Get(ctx, scan, &database.Options{Where: squirrel.Eq{models.SCAN_TABLE_COURSE_ID: courseId}})
+		err := s.dao.GetScan(ctx, scan, &database.Options{Where: squirrel.Eq{models.SCAN_TABLE_COURSE_ID: courseId}})
 		if err != nil {
 			return nil, err
 		}

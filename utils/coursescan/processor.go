@@ -90,10 +90,11 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 func fetchCourse(ctx context.Context, s *CourseScan, courseID string) (*models.Course, error) {
 	course := &models.Course{}
 	options := &database.Options{
-		Where: squirrel.Eq{models.COURSE_TABLE_ID: courseID},
+		Where:            squirrel.Eq{models.COURSE_TABLE_ID: courseID},
+		ExcludeRelations: []string{models.COURSE_RELATION_PROGRESS},
 	}
 
-	err := s.dao.Get(ctx, course, options)
+	err := s.dao.GetCourse(ctx, course, options)
 	if err == sql.ErrNoRows {
 		s.logger.Debug("Ignoring scan job as the course no longer exists",
 			loggerType,
