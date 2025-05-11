@@ -1,5 +1,3 @@
-<!-- TODO show attachments dropdown -->
-<!-- TODO show a progress bar -->
 <script lang="ts">
 	import { page } from '$app/state';
 	import { GetAllCourseAssets, GetCourse, GetCourseTags } from '$lib/api/course-api';
@@ -12,16 +10,19 @@
 		RightChevronIcon,
 		WarningIcon
 	} from '$lib/components/icons';
-	import { Badge, Button } from '$lib/components/ui';
+	import { Badge } from '$lib/components/ui';
+	import Attachments from '$lib/components/ui/attachments.svelte';
 	import type { AssetModel, ChapteredAssets } from '$lib/models/asset-model';
 	import type { CourseModel, CourseTagsModel } from '$lib/models/course-model';
-	import { Accordion, Avatar } from 'bits-ui';
+	import { Accordion, Avatar, Progress, useId } from 'bits-ui';
 	import prettyMs from 'pretty-ms';
 	import { slide } from 'svelte/transition';
 
 	let course = $state<CourseModel>();
 	let chapters = $state<ChapteredAssets>({});
 	let tags = $state<CourseTagsModel>([]);
+
+	const labelId = useId();
 
 	let chapterCount = $derived(Object.keys(chapters).length);
 	let assetCount = $derived.by(() => {
@@ -151,8 +152,24 @@
 								<div class="grid grid-cols-[6.5rem_1fr]">
 									<span class="text-foreground-alt-3 font-medium">PROGRESS</span>
 									{#if course.progress}
-										<!-- TODO Make a progress bar -->
-										<span class="text-foreground-alt-1">{JSON.stringify(course.progress)}</span>
+										<div class="flex flex-row gap-2">
+											<div class="relative flex w-30 items-center">
+												<Progress.Root
+													aria-labelledby={labelId}
+													value={course.progress.percent}
+													max={100}
+													class="bg-background-alt-3 relative h-2.5 w-full overflow-hidden rounded-full"
+												>
+													<div
+														class="bg-background-primary-alt-1 h-full w-full flex-1 rounded-full transition-all duration-1000 ease-in-out"
+														style={`transform: translateX(-${100 - (100 * (course.progress.percent ?? 0)) / 100}%)`}
+													></div>
+												</Progress.Root>
+											</div>
+											<span id={labelId} class="text-foreground-alt-1 text-sm">
+												{course.progress.percent}%
+											</span>
+										</div>
 									{:else}
 										<span class="text-foreground-alt-1">Not Started</span>
 									{/if}
@@ -209,11 +226,10 @@
 											</span>
 
 											<div class="flex shrink-0 flex-row items-center gap-2.5">
-												<span class="text-foreground-alt-3"
-													>{chapters[chapter].length} asset{chapters[chapter].length > 1
-														? 's'
-														: ''}</span
-												>
+												<span class="text-foreground-alt-3">
+													{chapters[chapter].filter((a) => a.progress.completed).length}
+													/ {chapters[chapter].length}
+												</span>
 												<RightChevronIcon
 													class="size-[18px] rotate-90 stroke-2 transition-transform duration-200 group-data-[state=open]/trigger:-rotate-90"
 												/>
@@ -229,9 +245,8 @@
 											{#if open}
 												<div {...props} transition:slide={{ duration: 200 }}>
 													{#each chapters[chapter] as asset}
-														<Button
-															href={`/course/${course?.id}/${asset.id}`}
-															class="border-background-alt-2 bg-background enabled:hover:bg-background-alt-1/60 text-foreground-alt-1 group flex h-auto flex-row items-center justify-between gap-2 rounded-none border-b px-5 py-2 last:border-none "
+														<div
+															class="border-background-alt-2 text-foreground-alt-1 group flex flex-row items-center justify-between gap-2 rounded-none border-b px-5 py-2 last:border-none"
 														>
 															<div class="flex w-full flex-col items-center py-2 text-sm">
 																<span class="w-full text-left">{asset.prefix}. {asset.title}</span>
@@ -251,23 +266,24 @@
 																		<span class="text-amber-600">in-progress</span>
 																	{/if}
 
-																	<!-- TODO TEMP -->
 																	{#if asset.attachments.length > 0}
 																		<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
-																		<span class="text-foreground-alt-3">
-																			{asset.attachments.length} attachment
-																			{asset.attachments.length > 1 ? 's' : ''}
-																		</span>
+																		<Attachments
+																			attachments={asset.attachments}
+																			courseId={course?.id ?? ''}
+																			assetId={asset.id}
+																		/>
 																	{/if}
 																</div>
 															</div>
 
-															<div
-																class="bg-background-alt-2 flex items-center justify-center rounded-full p-2 opacity-0 transition-opacity duration-150 ease-in group-hover:opacity-100"
+															<a
+																href={`/course/${course?.id}/${asset.id}`}
+																class="bg-background-alt-2 fill-foreground-alt-1 hover:fill-background-primary flex h-auto items-center justify-center rounded-full p-3 opacity-0 transition-opacity duration-150 ease-in group-hover:opacity-100"
 															>
-																<MediaPlayIcon class="fill-foreground-alt-1 size-3.5" />
-															</div>
-														</Button>
+																<MediaPlayIcon class="size-4" />
+															</a>
+														</div>
 													{/each}
 												</div>
 											{/if}

@@ -1,4 +1,3 @@
-<!-- TODO show attachments downdown -->
 <!-- TODO allow clicking on course title to go to course -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
@@ -8,6 +7,7 @@
 	import { Spinner } from '$lib/components';
 	import { HtmlIcon, PdfIcon, TickIcon, VideoIcon, WarningIcon } from '$lib/components/icons';
 	import { Button, Checkbox, Tooltip } from '$lib/components/ui';
+	import Attachments from '$lib/components/ui/attachments.svelte';
 	import { VideoPlayer } from '$lib/components/ui/media';
 	import type { AssetModel, ChapteredAssets } from '$lib/models/asset-model';
 	import type { CourseModel } from '$lib/models/course-model';
@@ -161,24 +161,36 @@
 													}}
 												/>
 
-												<div class="flex flex-col gap-2.5">
+												<div class="flex w-full flex-col gap-2.5">
 													<span>
 														{index + 1}. {asset.title}
 													</span>
 
-													<div class="flex flex-row items-center gap-2">
-														{#if selectedAsset.assetType === 'video'}
-															<VideoIcon class="fill-foreground-alt-3 size-4 stroke-2" />
-														{:else if selectedAsset.assetType === 'pdf'}
-															<PdfIcon class="fill-foreground-alt-3 size-4 stroke-2" />
-														{:else if selectedAsset.assetType === 'html'}
-															<HtmlIcon class="fill-foreground-alt-3 size-4 stroke-2" />
-														{/if}
+													<div
+														class="bg-red-400items-center flex w-full flex-row justify-between gap-2"
+													>
+														<div class="flex flex-row items-center gap-2">
+															{#if asset.assetType === 'video'}
+																<VideoIcon class="fill-foreground-alt-3 size-4 stroke-2" />
+															{:else if asset.assetType === 'pdf'}
+																<PdfIcon class="fill-foreground-alt-3 size-4 stroke-2" />
+															{:else if asset.assetType === 'html'}
+																<HtmlIcon class="fill-foreground-alt-3 size-4 stroke-2" />
+															{/if}
 
-														{#if asset.videoMetadata}
-															<span class="text-foreground-alt-3 text-sm">
-																{prettyMs(asset.videoMetadata.duration * 1000)}
-															</span>
+															{#if asset.videoMetadata}
+																<span class="text-foreground-alt-3 text-sm">
+																	{prettyMs(asset.videoMetadata.duration * 1000)}
+																</span>
+															{/if}
+														</div>
+
+														{#if asset.attachments.length > 0}
+															<Attachments
+																attachments={asset.attachments}
+																courseId={course?.id ?? ''}
+																assetId={asset.id}
+															/>
 														{/if}
 													</div>
 												</div>

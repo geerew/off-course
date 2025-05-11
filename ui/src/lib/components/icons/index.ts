@@ -5,6 +5,7 @@ export { default as DeleteIcon } from './delete.svelte';
 export { default as DeselectIcon } from './deselect.svelte';
 export { default as DotIcon } from './dot.svelte';
 export { default as DotsIcon } from './dots.svelte';
+export { default as DownloadIcon } from './download.svelte';
 export { default as EditIcon } from './edit.svelte';
 export { default as FlagIcon } from './flag.svelte';
 export { default as HtmlIcon } from './html.svelte';
