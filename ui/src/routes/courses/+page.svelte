@@ -139,13 +139,10 @@
 										<Button
 											href={`/course/${course.id}`}
 											class={cn(
-												'bg-background-alt-1 text-foreground-alt-1 hover:bg-background-alt-1 group flex h-auto flex-row items-start gap-1.5 overflow-hidden rounded-lg text-start duration-200 md:flex-col',
-												!course.available && 'cursor-default'
+												'bg-background-alt-1 text-foreground-alt-1 hover:bg-background-alt-1 group flex h-auto flex-row items-start gap-1.5 overflow-hidden rounded-lg text-start duration-200 md:flex-col'
 											)}
-											onclick={(e) => {
-												if (!course.available) e.preventDefault();
-											}}
 										>
+											<!-- Card -->
 											<div class="h-px min-h-40 w-full md:min-h-35">
 												<Avatar.Root class="h-full w-full">
 													<Avatar.Image
@@ -162,6 +159,7 @@
 											</div>
 
 											<div class="flex h-full w-full flex-col justify-between gap-2 p-2.5">
+												<!-- Course Title -->
 												<span
 													class={cn(
 														'font-semibold duration-150',
@@ -173,10 +171,10 @@
 													{course.title}
 												</span>
 
-												<!-- Progress -->
-												<div class="flex justify-end gap-2">
-													{#if course.progress}
-														{#if course.progress.percent > 0}
+												<div class="flex justify-between">
+													<div class="flex gap-2">
+														<!-- Progress -->
+														{#if course.progress}
 															<Badge
 																class={cn(
 																	'text-foreground-alt-2',
@@ -189,11 +187,14 @@
 																	: course.progress.percent + '%'}
 															</Badge>
 														{/if}
-													{/if}
+													</div>
 
-													{#if !course.available}
-														<Badge class="bg-background-error">unavailable</Badge>
-													{/if}
+													<div class="flex gap-2">
+														<!-- Unavailable -->
+														{#if !course.available}
+															<Badge class="bg-background-error">unavailable</Badge>
+														{/if}
+													</div>
 												</div>
 											</div>
 										</Button>

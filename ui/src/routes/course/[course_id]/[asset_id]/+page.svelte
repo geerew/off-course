@@ -1,11 +1,10 @@
-<!-- TODO allow clicking on course title to go to course -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import type { APIError } from '$lib/api-error.svelte';
 	import { GetAllCourseAssets, GetCourse, UpdateCourseAssetProgress } from '$lib/api/course-api';
 	import { Spinner } from '$lib/components';
-	import { HtmlIcon, PdfIcon, TickIcon, VideoIcon, WarningIcon } from '$lib/components/icons';
+	import { DotIcon, TickIcon, WarningIcon } from '$lib/components/icons';
 	import { Button, Checkbox, Tooltip } from '$lib/components/ui';
 	import Attachments from '$lib/components/ui/attachments.svelte';
 	import { VideoPlayer } from '$lib/components/ui/media';
@@ -116,9 +115,16 @@
 						class="border-foreground-alt-4 sticky top-[calc(var(--height-header)+1px)] left-0 flex h-[calc(100dvh-(var(--height-header)+1px))] w-[--course-menu-width] flex-col gap-2 overflow-x-hidden overflow-y-auto border-r pb-8"
 					>
 						<div
-							class="bg-background border-background-alt-4 sticky top-0 z-[1] flex flex-row gap-3 border-b py-5 pr-3"
+							class="bg-background border-background-alt-4 sticky top-0 z-[1] flex flex-row gap-3 border-b"
 						>
-							<span class="container-pl font-semibold">{course.title}</span>
+							<Button
+								href={`/course/${course.id}`}
+								class={cn(
+									'bg-background text-foreground-alt-1 hover:text-background-primary-alt-1 flex h-auto items-start justify-start py-5 pr-3 text-start duration-200'
+								)}
+							>
+								<span class="container-pl font-semibold">{course.title}</span>
+							</Button>
 						</div>
 
 						{#each Object.keys(chapters) as chapter}
@@ -161,31 +167,23 @@
 													}}
 												/>
 
-												<div class="flex w-full flex-col gap-2.5">
+												<div class="flex w-full flex-col gap-2.5 text-sm">
 													<span>
 														{index + 1}. {asset.title}
 													</span>
 
-													<div
-														class="bg-red-400items-center flex w-full flex-row justify-between gap-2"
-													>
-														<div class="flex flex-row items-center gap-2">
-															{#if asset.assetType === 'video'}
-																<VideoIcon class="fill-foreground-alt-3 size-4 stroke-2" />
-															{:else if asset.assetType === 'pdf'}
-																<PdfIcon class="fill-foreground-alt-3 size-4 stroke-2" />
-															{:else if asset.assetType === 'html'}
-																<HtmlIcon class="fill-foreground-alt-3 size-4 stroke-2" />
-															{/if}
+													<div class="flex w-full flex-row items-center">
+														<span class="text-foreground-alt-3">{asset.assetType}</span>
 
-															{#if asset.videoMetadata}
-																<span class="text-foreground-alt-3 text-sm">
-																	{prettyMs(asset.videoMetadata.duration * 1000)}
-																</span>
-															{/if}
-														</div>
+														{#if asset.videoMetadata}
+															<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
+															<span class="text-foreground-alt-3">
+																{prettyMs(asset.videoMetadata.duration * 1000)}
+															</span>
+														{/if}
 
 														{#if asset.attachments.length > 0}
+															<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
 															<Attachments
 																attachments={asset.attachments}
 																courseId={course?.id ?? ''}

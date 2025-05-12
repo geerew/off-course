@@ -12,6 +12,7 @@
 	} from '$lib/components/icons';
 	import { Badge } from '$lib/components/ui';
 	import Attachments from '$lib/components/ui/attachments.svelte';
+	import Button from '$lib/components/ui/button.svelte';
 	import type { AssetModel, ChapteredAssets } from '$lib/models/asset-model';
 	import type { CourseModel, CourseTagsModel } from '$lib/models/course-model';
 	import { Accordion, Avatar, Progress, useId } from 'bits-ui';
@@ -40,6 +41,26 @@
 			}
 		}
 		return count;
+	});
+
+	let assetToResume = $derived.by(() => {
+		const assets = Object.values(chapters);
+
+		// Find the first asset that is not completed
+		for (const chapterAssets of assets) {
+			for (const asset of chapterAssets) {
+				if (!asset.progress.completed) {
+					return asset;
+				}
+			}
+		}
+
+		// If all assets are completed, return the first asset
+		if (assets.length > 0 && assets[0].length > 0) {
+			return assets[0][0];
+		}
+
+		return null;
 	});
 
 	let loadPromise = $state(fetchCourse());
@@ -126,6 +147,14 @@
 									</div>
 								{/if}
 
+								<!-- Status -->
+								{#if !course.available}
+									<div class="grid grid-cols-[6.5rem_1fr]">
+										<span class="text-foreground-alt-3 font-medium">STATUS</span>
+										<span class="text-foreground-error">unavailable</span>
+									</div>
+								{/if}
+
 								<!-- Created At -->
 								<div class="grid grid-cols-[6.5rem_1fr]">
 									<span class="text-foreground-alt-3 font-medium">ADDED</span>
@@ -193,6 +222,21 @@
 							{/if}
 						</div>
 					</div>
+
+					{#if assetCount > 0}
+						<div class="flex flex-row gap-2.5">
+							<Button
+								href={`/course/${course.id}/${assetToResume?.id}`}
+								class="hover:bg-background-primary w-24 font-semibold"
+							>
+								{#if course.progress}
+									Resume
+								{:else}
+									Start
+								{/if}
+							</Button>
+						</div>
+					{/if}
 				</div>
 			</div>
 
@@ -252,12 +296,14 @@
 																<span class="w-full text-left">{asset.prefix}. {asset.title}</span>
 																<div class="flex w-full flex-row items-center">
 																	<span class="text-foreground-alt-3">{asset.assetType}</span>
+
 																	{#if asset.videoMetadata}
 																		<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
 																		<span class="text-foreground-alt-3">
 																			{prettyMs(asset.videoMetadata.duration * 1000)}
 																		</span>
 																	{/if}
+
 																	{#if asset.progress.completed}
 																		<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
 																		<span class="text-background-success">completed</span>
@@ -279,9 +325,9 @@
 
 															<a
 																href={`/course/${course?.id}/${asset.id}`}
-																class="bg-background-alt-2 fill-foreground-alt-1 hover:fill-background-primary flex h-auto items-center justify-center rounded-full p-3 opacity-0 transition-opacity duration-150 ease-in group-hover:opacity-100"
+																class="bg-background-alt-2 fill-foreground-alt-1 hover:bg-background-primary-alt-1 flex h-auto items-center justify-center rounded-full p-3 opacity-0 duration-150 ease-in group-hover:opacity-100"
 															>
-																<MediaPlayIcon class="size-4" />
+																<MediaPlayIcon class="size-5" />
 															</a>
 														</div>
 													{/each}

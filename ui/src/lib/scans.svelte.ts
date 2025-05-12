@@ -1,3 +1,4 @@
+// TODO Test issue with frontend hanging when scans are running
 import { toast } from 'svelte-sonner';
 import type { APIError } from './api-error.svelte';
 import { GetCourse } from './api/course-api';
