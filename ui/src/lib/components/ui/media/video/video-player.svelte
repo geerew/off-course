@@ -1,3 +1,5 @@
+<!-- TODO Add settings menu -->
+<!-- TODO Persist things from the settings menu, volume, muted in local storage -->
 <script lang="ts">
 	import type {
 		MediaDurationChangeEvent,
