@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
@@ -49,25 +48,59 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		return err
 	}
 
-	if available, err := checkAndSetAvailability(ctx, s, course); err != nil {
+	available, err := checkAndSetCourseAvailability(ctx, s, course)
+	if err != nil || !available {
 		return err
-	} else if !available {
-		return nil
 	}
 
-	assetsByChapterPrefix, attachmentsByChapterPrefix, cardPath, err := scanCourseFiles(s, course.Path, course.ID)
+	assetsByChapterPrefix, attachmentsByChapterPrefix, cardPath, err := scanFiles(s, course.Path, course.ID)
 	if err != nil {
 		return err
 	}
 
-	updatedCourse := false
-	if course.CardPath != cardPath {
+	scannedAssets := flattenAssets(assetsByChapterPrefix)
+
+	var existingAssets []*models.Asset
+	assetOptions := &database.Options{
+		Where:            squirrel.Eq{models.ASSET_TABLE_COURSE_ID: course.ID},
+		ExcludeRelations: []string{models.ASSET_RELATION_PROGRESS},
+	}
+	if err = s.dao.ListAssets(ctx, &existingAssets, assetOptions); err != nil {
+		return err
+	}
+
+	// Populate hashes if changed
+	if err := populateHashesIfChanged(s.appFs.Fs, scannedAssets, existingAssets); err != nil {
+		return err
+	}
+
+	// Reconcile assets
+	assetOps := reconcileAssets(scannedAssets, existingAssets)
+
+	// FFprobe only assets that need it
+	videoMetadataByPath := map[string]*models.VideoMetadata{}
+	mediaProbe := media.MediaProbe{}
+	for _, asset := range collectFFProbeTargets(assetOps) {
+		if info, err := mediaProbe.ProbeVideo(asset.Path); err == nil {
+			videoMetadataByPath[asset.Path] = &models.VideoMetadata{
+				Duration:   info.Duration,
+				Width:      info.Width,
+				Height:     info.Height,
+				Codec:      info.Codec,
+				Resolution: info.Resolution,
+			}
+		} else {
+			// TODO handle error properly
+		}
+	}
+
+	updatedCourse := course.CardPath != cardPath
+	if updatedCourse {
 		course.CardPath = cardPath
-		updatedCourse = true
 	}
 
 	return s.db.RunInTransaction(ctx, func(txCtx context.Context) error {
-		updatedAssets, err := applyAssetChanges(txCtx, s, course, assetsByChapterPrefix)
+		updatedAssets, err := applyAssetChanges(txCtx, s, course, assetOps, videoMetadataByPath)
 		if err != nil {
 			return err
 		}
@@ -80,6 +113,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		if updatedCourse || updatedAssets || updatedAttachments {
 			return s.dao.UpdateCourse(txCtx, course)
 		}
+
 		return nil
 	})
 }
@@ -108,9 +142,9 @@ func fetchCourse(ctx context.Context, s *CourseScan, courseID string) (*models.C
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// checkAndSetAvailability checks if the course is available and updates its status
+// checkAndSetCourseAvailability checks if the course is available and updates its status
 // accordingly
-func checkAndSetAvailability(ctx context.Context, s *CourseScan, course *models.Course) (bool, error) {
+func checkAndSetCourseAvailability(ctx context.Context, s *CourseScan, course *models.Course) (bool, error) {
 	_, err := s.appFs.Fs.Stat(course.Path)
 	if os.IsNotExist(err) {
 		s.logger.Debug("Skipping unavailable course", loggerType, slog.String("path", course.Path))
@@ -137,9 +171,9 @@ func checkAndSetAvailability(ctx context.Context, s *CourseScan, course *models.
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// scanCourseFiles scans the course directory for files. It will return a list of assets,
+// scanFiles scans the course directory for files. It will return a list of assets,
 // attachments and a card path, if found.
-func scanCourseFiles(s *CourseScan, coursePath string, courseID string) (AssetsByChapterPrefix, AttachmentsByChapterPrefix, string, error) {
+func scanFiles(s *CourseScan, coursePath string, courseID string) (AssetsByChapterPrefix, AttachmentsByChapterPrefix, string, error) {
 	files, err := s.appFs.ReadDirFlat(coursePath, 2)
 	if err != nil {
 		return nil, nil, "", err
@@ -255,63 +289,92 @@ func scanCourseFiles(s *CourseScan, coursePath string, courseID string) (AssetsB
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+func flattenAssets(assetsByChapterPrefix AssetsByChapterPrefix) []*models.Asset {
+	var out []*models.Asset
+	for _, chapterMap := range assetsByChapterPrefix {
+		for _, asset := range chapterMap {
+			out = append(out, asset)
+		}
+	}
+	return out
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// collectFFProbeTargets collects the assets that need to be probed by ffprobe based on the
+// operations performed on them
+func collectFFProbeTargets(ops []Op) []*models.Asset {
+	var targets []*models.Asset
+	for _, op := range ops {
+		switch v := op.(type) {
+		case CreateAssetOp:
+			if v.New.Type.IsVideo() {
+				targets = append(targets, v.New)
+			}
+		case ReplaceAssetOp:
+			if v.New.Type.IsVideo() {
+				targets = append(targets, v.New)
+			}
+		case SwapAssetOp:
+			if v.NewA.Type.IsVideo() {
+				targets = append(targets, v.NewA)
+			}
+			if v.NewB.Type.IsVideo() {
+				targets = append(targets, v.NewB)
+			}
+		}
+	}
+	return targets
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // applyAssetChanges applies the changes to the assets in the database by creating, renaming,
-// replacing, swapping or deleting them as needed. It will return true if any changes were made
-// and false if no changes were made. Additionally, it will update the course duration for
-// video assets
+// replacing, swapping, or deleting them as needed
 func applyAssetChanges(
 	ctx context.Context,
 	s *CourseScan,
 	course *models.Course,
-	assetsByChapterPrefix AssetsByChapterPrefix,
+	ops []Op,
+	videoMetadataByPath map[string]*models.VideoMetadata,
 ) (bool, error) {
-	existing := []*models.Asset{}
-	options := &database.Options{
-		Where:            squirrel.Eq{models.ASSET_TABLE_COURSE_ID: course.ID},
-		ExcludeRelations: []string{models.ASSET_RELATION_PROGRESS},
-	}
-	if err := s.dao.ListAssets(ctx, &existing, options); err != nil {
-		return false, err
-	}
-
-	assetsFlat := []*models.Asset{}
-	for _, chapterMap := range assetsByChapterPrefix {
-		for _, asset := range chapterMap {
-			assetsFlat = append(assetsFlat, asset)
-		}
-	}
-
-	if err := populateHashesIfChanged(s.appFs.Fs, assetsFlat, existing); err != nil {
-		return false, err
-	}
-
-	ops := reconcileAssets(assetsFlat, existing)
 	if len(ops) == 0 {
 		return false, nil
 	}
 
-	mediaProbe := media.MediaProbe{}
-
 	for _, op := range ops {
 		switch v := op.(type) {
 		case CreateAssetOp:
+			// Create an asset that was found on disk
+			fmt.Println("Creating asset", v.New.Path)
 			if err := s.dao.CreateAsset(ctx, v.New); err != nil {
 				return false, err
 			}
 
-			duration, err := createVideoMetadata(ctx, mediaProbe, v.New, s.dao)
-			if err != nil {
-				return false, err
+			if metadata := videoMetadataByPath[v.New.Path]; metadata != nil && v.New.Type.IsVideo() {
+				metadata.AssetID = v.New.ID
+				if err := s.dao.CreateVideoMetadata(ctx, metadata); err != nil {
+					return false, err
+				}
+				course.Duration += metadata.Duration
 			}
-			course.Duration += duration
 
 		case RenameAssetOp:
+			// Rename an existing asset by giving the new asset the ID of the existing one then call
+			// update. This will result in the existing asset being updated with the new prefix, title,
+			// path, etc. It also means existing progress will be preserved
+			fmt.Println("Renaming asset", v.Existing.Path, "to", v.New.Path)
 			v.New.ID = v.Existing.ID
 			if err := s.dao.UpdateAsset(ctx, v.New); err != nil {
 				return false, err
 			}
 
 		case ReplaceAssetOp:
+			// Replace an existing asset with a new one by first deleting the existing one, then
+			// creating the new one. This happens with an existing asset has been updated, for
+			// example a better quality video. Existing progress will be lost, which is perfect
+			// because the duration may have changed as well
+			fmt.Println("Replacing asset", v.Existing.Path, "with", v.New.Path)
 			if err := s.dao.Delete(ctx, v.Existing, nil); err != nil {
 				return false, err
 			}
@@ -324,50 +387,59 @@ func applyAssetChanges(
 				return false, err
 			}
 
-			duration, err := createVideoMetadata(ctx, mediaProbe, v.New, s.dao)
-			if err != nil {
+			if metadata := videoMetadataByPath[v.New.Path]; metadata != nil && v.New.Type.IsVideo() {
+				metadata.AssetID = v.New.ID
+				if err := s.dao.CreateVideoMetadata(ctx, metadata); err != nil {
+					return false, err
+				}
+				course.Duration += metadata.Duration
+			}
+
+		case OverwriteRenameOp:
+			// Overwrite an existing asset with a new one by first deleting the existing one, then
+			// renaming the new one. This happens when a file has been renamed to that of another
+			// (existing) asset. The existing asset will be deleted and the new one will take its place.
+			// Progress for the rename asset will be preserved
+			fmt.Println("Overwriting asset", v.Renamed.Path, "with", v.Deleted.Path)
+			if err := s.dao.Delete(ctx, v.Deleted, nil); err != nil {
 				return false, err
 			}
-			course.Duration += duration
+
+			if err := s.dao.UpdateAsset(ctx, v.Renamed); err != nil {
+				return false, err
+			}
 
 		case SwapAssetOp:
-			if err := s.dao.Delete(ctx, v.ExistingA, nil); err != nil {
-				return false, err
+			// Swap two assets by first deleting the existing ones, then creating the new ones. This
+			// happens when two files have swapped paths on disk. Existing progress will be lost
+			fmt.Println("Swapping assets", v.ExistingA.Path, "and", v.ExistingB.Path)
+			for _, existing := range []*models.Asset{v.ExistingA, v.ExistingB} {
+				if err := s.dao.Delete(ctx, existing, nil); err != nil {
+					return false, err
+				}
+
+				if existing.VideoMetadata != nil {
+					course.Duration -= existing.VideoMetadata.Duration
+				}
 			}
 
-			if v.ExistingA.VideoMetadata != nil {
-				course.Duration -= v.ExistingA.VideoMetadata.Duration
-			}
+			for _, newAsset := range []*models.Asset{v.NewA, v.NewB} {
+				if err := s.dao.CreateAsset(ctx, newAsset); err != nil {
+					return false, err
+				}
 
-			if err := s.dao.Delete(ctx, v.ExistingB, nil); err != nil {
-				return false, err
+				if metadata := videoMetadataByPath[newAsset.Path]; metadata != nil && newAsset.Type.IsVideo() {
+					metadata.AssetID = newAsset.ID
+					if err := s.dao.CreateVideoMetadata(ctx, metadata); err != nil {
+						return false, err
+					}
+					course.Duration += metadata.Duration
+				}
 			}
-
-			if v.ExistingB.VideoMetadata != nil {
-				course.Duration -= v.ExistingB.VideoMetadata.Duration
-			}
-
-			if err := s.dao.CreateAsset(ctx, v.NewA); err != nil {
-				return false, err
-			}
-
-			duration, err := createVideoMetadata(ctx, mediaProbe, v.NewA, s.dao)
-			if err != nil {
-				return false, err
-			}
-			course.Duration += duration
-
-			if err := s.dao.CreateAsset(ctx, v.NewB); err != nil {
-				return false, err
-			}
-
-			duration, err = createVideoMetadata(ctx, mediaProbe, v.NewB, s.dao)
-			if err != nil {
-				return false, err
-			}
-			course.Duration += duration
 
 		case DeleteAssetOp:
+			// Delete an asset that no longer exists on disk
+			fmt.Println("Deleting asset", v.Asset.Path)
 			if err := s.dao.Delete(ctx, v.Asset, nil); err != nil {
 				return false, err
 			}
@@ -437,38 +509,6 @@ func applyAttachmentChanges(
 	}
 
 	return true, nil
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// createVideoMetadata creates or updated video metadata for the given asset
-//
-// TODO: handle an asset marked as a video but ffprobe fails to probe it because it is not a video
-func createVideoMetadata(ctx context.Context, mediaProbe media.MediaProbe, asset *models.Asset, dao *dao.DAO) (int, error) {
-	if !asset.Type.IsVideo() {
-		return 0, nil
-	}
-
-	info, err := mediaProbe.ProbeVideo(asset.Path)
-	if err != nil {
-		// TODO Update to use the logger
-		return 0, nil
-	}
-
-	videoMetadata := &models.VideoMetadata{
-		AssetID:    asset.ID,
-		Duration:   info.Duration,
-		Width:      info.Width,
-		Height:     info.Height,
-		Codec:      info.Codec,
-		Resolution: info.Resolution,
-	}
-
-	if err := dao.CreateVideoMetadata(ctx, videoMetadata); err != nil {
-		return 0, err
-	}
-
-	return info.Duration, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

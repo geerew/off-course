@@ -91,45 +91,52 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		scanner.appFs.Fs.Mkdir(course.Path, os.ModePerm)
-		scanner.appFs.Fs.Create(filepath.Join(course.Path, "card.jpg"))
-
-		err := Processor(ctx, scanner, scan)
-		require.NoError(t, err)
-
 		options := &database.Options{
 			Where:            squirrel.Eq{models.COURSE_TABLE_ID: course.ID},
 			ExcludeRelations: []string{models.COURSE_RELATION_PROGRESS},
 		}
 
-		courseResult := &models.Course{}
-		err = scanner.dao.GetCourse(ctx, courseResult, options)
-		require.NoError(t, err)
-		require.Equal(t, filepath.Join(course.Path, "card.jpg"), courseResult.CardPath)
+		// Add card at the root
+		{
+			scanner.appFs.Fs.Mkdir(course.Path, os.ModePerm)
+			scanner.appFs.Fs.Create(filepath.Join(course.Path, "card.jpg"))
+
+			err := Processor(ctx, scanner, scan)
+			require.NoError(t, err)
+
+			courseResult := &models.Course{}
+			err = scanner.dao.GetCourse(ctx, courseResult, options)
+			require.NoError(t, err)
+			require.Equal(t, filepath.Join(course.Path, "card.jpg"), courseResult.CardPath)
+		}
 
 		// Ignore card in chapter
-		scanner.appFs.Fs.Remove(filepath.Join(course.Path, "card.jpg"))
-		scanner.appFs.Fs.Create(filepath.Join(course.Path, "01 Chapter 1", "card.jpg"))
+		{
+			scanner.appFs.Fs.Remove(filepath.Join(course.Path, "card.jpg"))
+			scanner.appFs.Fs.Create(filepath.Join(course.Path, "01 Chapter 1", "card.jpg"))
 
-		err = Processor(ctx, scanner, scan)
-		require.NoError(t, err)
+			err := Processor(ctx, scanner, scan)
+			require.NoError(t, err)
 
-		courseResult = &models.Course{}
-		err = scanner.dao.GetCourse(ctx, courseResult, options)
-		require.NoError(t, err)
-		require.Empty(t, courseResult.CardPath)
+			courseResult := &models.Course{}
+			err = scanner.dao.GetCourse(ctx, courseResult, options)
+			require.NoError(t, err)
+			require.Empty(t, courseResult.CardPath)
+		}
 
 		// Ignore additional cards at the root
-		scanner.appFs.Fs.Create(filepath.Join(course.Path, "card.jpg"))
-		scanner.appFs.Fs.Create(filepath.Join(course.Path, "card.png"))
+		{
+			scanner.appFs.Fs.Create(filepath.Join(course.Path, "card.jpg"))
+			scanner.appFs.Fs.Create(filepath.Join(course.Path, "card.png"))
 
-		err = Processor(ctx, scanner, scan)
-		require.NoError(t, err)
+			err := Processor(ctx, scanner, scan)
+			require.NoError(t, err)
 
-		courseResult = &models.Course{}
-		err = scanner.dao.GetCourse(ctx, courseResult, options)
-		require.NoError(t, err)
-		require.Equal(t, filepath.Join(course.Path, "card.jpg"), courseResult.CardPath)
+			courseResult := &models.Course{}
+			err = scanner.dao.GetCourse(ctx, courseResult, options)
+			require.NoError(t, err)
+			require.Equal(t, filepath.Join(course.Path, "card.jpg"), courseResult.CardPath)
+		}
 	})
 
 	t.Run("ignore files", func(t *testing.T) {
@@ -311,6 +318,28 @@ func TestScanner_Processor(t *testing.T) {
 			require.Equal(t, "ac4f5d7f5ca1f7b2a9e8107ca793b5ead43a1d04afdafabc9488e93b5d738b41", assets[0].Hash)
 			require.Equal(t, "0657190350cbea662b6c15d703d9c7482308e511504d3308306d0f1ede153a34", assets[1].Hash)
 		}
+
+		// Overwrite: delete file 1 and move file 2 to file 1
+		{
+			require.NoError(t, scanner.appFs.Fs.Remove(fmt.Sprintf("%s/01 file 1.mkv", course.Path)))
+
+			require.NoError(t, scanner.appFs.Fs.Rename(
+				fmt.Sprintf("%s/02 file 2.html", course.Path),
+				fmt.Sprintf("%s/01 file 1.mkv", course.Path),
+			))
+
+			err := Processor(ctx, scanner, scan)
+			require.NoError(t, err)
+
+			err = scanner.dao.ListAssets(ctx, &assets, options)
+			require.NoError(t, err)
+			require.Len(t, assets, 2)
+
+			require.Equal(t, fmt.Sprintf("%s/01 file 1.mkv", course.Path), assets[0].Path)
+			require.Equal(t, fmt.Sprintf("%s/04 file 4.pdf", course.Path), assets[1].Path)
+
+			require.Equal(t, "0657190350cbea662b6c15d703d9c7482308e511504d3308306d0f1ede153a34", assets[0].Hash)
+		}
 	})
 
 	t.Run("attachments", func(t *testing.T) {
@@ -420,108 +449,117 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		// Add PDF asset
-		scanner.appFs.Fs.Mkdir(course.Path, os.ModePerm)
-		afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 doc 1.pdf", course.Path), []byte("doc 1"), os.ModePerm)
-
-		err := Processor(ctx, scanner, scan)
-		require.NoError(t, err)
-
 		assetOptions := &database.Options{
 			OrderBy:          []string{models.ASSET_TABLE_CHAPTER + " asc", models.ASSET_TABLE_PREFIX + " asc"},
 			Where:            squirrel.Eq{models.ASSET_TABLE_COURSE_ID: course.ID},
 			ExcludeRelations: []string{models.ASSET_RELATION_PROGRESS},
 		}
 
-		assets := []*models.Asset{}
-		err = scanner.dao.ListAssets(ctx, &assets, assetOptions)
-		require.NoError(t, err)
-		require.Len(t, assets, 1)
-
-		require.Equal(t, "doc 1", assets[0].Title)
-		require.Equal(t, course.ID, assets[0].CourseID)
-		require.Equal(t, 1, int(assets[0].Prefix.Int16))
-		require.Empty(t, assets[0].Chapter)
-		require.True(t, assets[0].Type.IsPDF())
-		require.Equal(t, "a41a06f389aa3855fa07fa764b96cac08ff558978f10d9bb027299a85a6677c6", assets[0].Hash)
-		require.Len(t, assets[0].Attachments, 0)
-
-		// Add HTML asset
-		afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 index.html", course.Path), []byte("index"), os.ModePerm)
-
-		err = Processor(ctx, scanner, scan)
-		require.NoError(t, err)
-
-		err = scanner.dao.ListAssets(ctx, &assets, assetOptions)
-		require.NoError(t, err)
-		require.Len(t, assets, 1)
-
-		require.Equal(t, "index", assets[0].Title)
-		require.Equal(t, course.ID, assets[0].CourseID)
-		require.Equal(t, 1, int(assets[0].Prefix.Int16))
-		require.Empty(t, assets[0].Chapter)
-		require.True(t, assets[0].Type.IsHTML())
-		require.Equal(t, "1bc04b5291c26a46d918139138b992d2de976d6851d0893b0476b85bfbdfc6e6", assets[0].Hash)
-		require.Len(t, assets[0].Attachments, 1)
-
 		attachmentOptions := &database.Options{
 			OrderBy: []string{models.ATTACHMENT_TABLE_CREATED_AT + " asc"},
 		}
 
+		assets := []*models.Asset{}
 		attachments := []*models.Attachment{}
-		err = scanner.dao.ListAttachments(ctx, &attachments, attachmentOptions)
-		require.NoError(t, err)
-		require.Len(t, attachments, 1)
-		require.Equal(t, filepath.Join(course.Path, "01 doc 1.pdf"), attachments[0].Path)
+
+		// Add PDF asset
+		{
+			scanner.appFs.Fs.Mkdir(course.Path, os.ModePerm)
+			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 doc 1.pdf", course.Path), []byte("doc 1"), os.ModePerm)
+
+			err := Processor(ctx, scanner, scan)
+			require.NoError(t, err)
+
+			err = scanner.dao.ListAssets(ctx, &assets, assetOptions)
+			require.NoError(t, err)
+			require.Len(t, assets, 1)
+
+			require.Equal(t, "doc 1", assets[0].Title)
+			require.Equal(t, course.ID, assets[0].CourseID)
+			require.Equal(t, 1, int(assets[0].Prefix.Int16))
+			require.Empty(t, assets[0].Chapter)
+			require.True(t, assets[0].Type.IsPDF())
+			require.Equal(t, "a41a06f389aa3855fa07fa764b96cac08ff558978f10d9bb027299a85a6677c6", assets[0].Hash)
+			require.Len(t, assets[0].Attachments, 0)
+		}
+
+		// Add HTML asset
+		{
+			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 index.html", course.Path), []byte("index"), os.ModePerm)
+
+			err := Processor(ctx, scanner, scan)
+			require.NoError(t, err)
+
+			err = scanner.dao.ListAssets(ctx, &assets, assetOptions)
+			require.NoError(t, err)
+			require.Len(t, assets, 1)
+
+			require.Equal(t, "index", assets[0].Title)
+			require.Equal(t, course.ID, assets[0].CourseID)
+			require.Equal(t, 1, int(assets[0].Prefix.Int16))
+			require.Empty(t, assets[0].Chapter)
+			require.True(t, assets[0].Type.IsHTML())
+			require.Equal(t, "1bc04b5291c26a46d918139138b992d2de976d6851d0893b0476b85bfbdfc6e6", assets[0].Hash)
+			require.Len(t, assets[0].Attachments, 1)
+
+			err = scanner.dao.ListAttachments(ctx, &attachments, attachmentOptions)
+			require.NoError(t, err)
+			require.Len(t, attachments, 1)
+			require.Equal(t, filepath.Join(course.Path, "01 doc 1.pdf"), attachments[0].Path)
+		}
 
 		// Add VIDEO asset
-		afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 video.mp4", course.Path), []byte("video"), os.ModePerm)
+		{
+			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 video.mp4", course.Path), []byte("video"), os.ModePerm)
 
-		err = Processor(ctx, scanner, scan)
-		require.NoError(t, err)
+			err := Processor(ctx, scanner, scan)
+			require.NoError(t, err)
 
-		err = scanner.dao.ListAssets(ctx, &assets, assetOptions)
-		require.NoError(t, err)
-		require.Len(t, assets, 1)
+			err = scanner.dao.ListAssets(ctx, &assets, assetOptions)
+			require.NoError(t, err)
+			require.Len(t, assets, 1)
 
-		require.Equal(t, "video", assets[0].Title)
-		require.Equal(t, course.ID, assets[0].CourseID)
-		require.Equal(t, 1, int(assets[0].Prefix.Int16))
-		require.Empty(t, assets[0].Chapter)
-		require.True(t, assets[0].Type.IsVideo())
-		require.Equal(t, "0cab1c9617404faf2b24e221e189ca5945813e14d3f766345b09ca13bbe28ffc", assets[0].Hash)
-		require.Len(t, assets[0].Attachments, 2)
+			require.Equal(t, "video", assets[0].Title)
+			require.Equal(t, course.ID, assets[0].CourseID)
+			require.Equal(t, 1, int(assets[0].Prefix.Int16))
+			require.Empty(t, assets[0].Chapter)
+			require.True(t, assets[0].Type.IsVideo())
+			require.Equal(t, "0cab1c9617404faf2b24e221e189ca5945813e14d3f766345b09ca13bbe28ffc", assets[0].Hash)
+			require.Len(t, assets[0].Attachments, 2)
 
-		err = scanner.dao.ListAttachments(ctx, &attachments, attachmentOptions)
-		require.NoError(t, err)
-		require.Len(t, attachments, 2)
-		require.Equal(t, filepath.Join(course.Path, "01 doc 1.pdf"), attachments[0].Path)
-		require.Equal(t, filepath.Join(course.Path, "01 index.html"), attachments[1].Path)
+			err = scanner.dao.ListAttachments(ctx, &attachments, attachmentOptions)
+			require.NoError(t, err)
+			require.Len(t, attachments, 2)
+			require.Equal(t, filepath.Join(course.Path, "01 doc 1.pdf"), attachments[0].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 index.html"), attachments[1].Path)
+		}
 
 		// Add another PDF asset
-		afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 doc 2.pdf", course.Path), []byte("doc 2"), os.ModePerm)
+		{
+			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 doc 2.pdf", course.Path), []byte("doc 2"), os.ModePerm)
 
-		err = Processor(ctx, scanner, scan)
-		require.NoError(t, err)
+			err := Processor(ctx, scanner, scan)
+			require.NoError(t, err)
 
-		err = scanner.dao.ListAssets(ctx, &assets, assetOptions)
-		require.NoError(t, err)
-		require.Len(t, assets, 1)
+			err = scanner.dao.ListAssets(ctx, &assets, assetOptions)
+			require.NoError(t, err)
+			require.Len(t, assets, 1)
 
-		require.Equal(t, "video", assets[0].Title)
-		require.Equal(t, course.ID, assets[0].CourseID)
-		require.Equal(t, 1, int(assets[0].Prefix.Int16))
-		require.Empty(t, assets[0].Chapter)
-		require.True(t, assets[0].Type.IsVideo())
-		require.Equal(t, "0cab1c9617404faf2b24e221e189ca5945813e14d3f766345b09ca13bbe28ffc", assets[0].Hash)
-		require.Len(t, assets[0].Attachments, 3)
+			require.Equal(t, "video", assets[0].Title)
+			require.Equal(t, course.ID, assets[0].CourseID)
+			require.Equal(t, 1, int(assets[0].Prefix.Int16))
+			require.Empty(t, assets[0].Chapter)
+			require.True(t, assets[0].Type.IsVideo())
+			require.Equal(t, "0cab1c9617404faf2b24e221e189ca5945813e14d3f766345b09ca13bbe28ffc", assets[0].Hash)
+			require.Len(t, assets[0].Attachments, 3)
 
-		err = scanner.dao.ListAttachments(ctx, &attachments, attachmentOptions)
-		require.NoError(t, err)
-		require.Len(t, attachments, 3)
-		require.Equal(t, filepath.Join(course.Path, "01 doc 1.pdf"), attachments[0].Path)
-		require.Equal(t, filepath.Join(course.Path, "01 index.html"), attachments[1].Path)
-		require.Equal(t, filepath.Join(course.Path, "01 doc 2.pdf"), attachments[2].Path)
+			err = scanner.dao.ListAttachments(ctx, &attachments, attachmentOptions)
+			require.NoError(t, err)
+			require.Len(t, attachments, 3)
+			require.Equal(t, filepath.Join(course.Path, "01 doc 1.pdf"), attachments[0].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 index.html"), attachments[1].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 doc 2.pdf"), attachments[2].Path)
+		}
 	})
 }
 

@@ -58,12 +58,57 @@ func TestReconcileAssets_Create(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+func TestReconcileAssets_OverwriteRename(t *testing.T) {
+	t.Run("forward", func(t *testing.T) {
+		existing := []*models.Asset{
+			newAsset("a1", "/01 file 1.mp4", 1024, "t1", "hash-abc"),
+			newAsset("a2", "/02 file 2.mp4", 1024, "t1", "hash-def"),
+		}
+		scanned := []*models.Asset{
+			newAsset("", "/02 file 2.mp4", 1024, "t2", "hash-abc"),
+		}
+
+		ops := reconcileAssets(scanned, existing)
+		require.Len(t, ops, 1)
+
+		op, ok := ops[0].(OverwriteRenameOp)
+		require.True(t, ok, "expected OverwriteRenameOp")
+
+		assert.Equal(t, "a2", op.Deleted.ID)
+		assert.Equal(t, "a1", op.Renamed.ID)
+		assert.Equal(t, "/02 file 2.mp4", op.Renamed.Path)
+	})
+
+	t.Run("reverse", func(t *testing.T) {
+		existing := []*models.Asset{
+			newAsset("a1", "/01 file 1.mp4", 1024, "t1", "hash-abc"),
+			newAsset("a2", "/02 file 2.mp4", 1024, "t1", "hash-def"),
+		}
+		scanned := []*models.Asset{
+			newAsset("", "/01 file 1.mp4", 1024, "t2", "hash-def"),
+		}
+
+		ops := reconcileAssets(scanned, existing)
+		require.Len(t, ops, 1)
+
+		op, ok := ops[0].(OverwriteRenameOp)
+		require.True(t, ok, "expected OverwriteRenameOp")
+
+		assert.Equal(t, "a1", op.Deleted.ID)
+		assert.Equal(t, "a2", op.Renamed.ID)
+		assert.Equal(t, "/01 file 1.mp4", op.Renamed.Path)
+	})
+
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 func TestReconcileAssets_Rename(t *testing.T) {
 	existing := []*models.Asset{
 		newAsset("a1", "/old.mp4", 1024, "t1", "hash123"),
 	}
 	scanned := []*models.Asset{
-		newAsset("", "/new.mp4", 1024, "t2", "hash123"), // different modTime is fine
+		newAsset("", "/new.mp4", 1024, "t2", "hash123"),
 	}
 
 	ops := reconcileAssets(scanned, existing)
