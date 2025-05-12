@@ -14,7 +14,7 @@
 </script>
 
 <Dropdown
-	triggerClass="group text-foreground-alt-3 data-[state=open]:text-foreground-alt-1 hover:text-foreground-alt-1 h-auto rounded-lg border-none"
+	triggerClass="group text-foreground-alt-3 data-[state=open]:text-foreground-alt-1 hover:text-foreground-alt-1 h-auto rounded-lg border-none p-0"
 	contentClass="text-foreground-alt-3 flex max-h-[10rem] w-auto max-w-xs overflow-y-scroll px-1.5 py-1"
 	portalProps={{ disabled: false }}
 >
