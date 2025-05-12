@@ -26,8 +26,8 @@
 	--color-foreground-alt-3: hsl(249, 6%, 52%);
 	--color-foreground-alt-4: hsl(249, 6%, 37%);
 	--color-foreground-alt-5: hsl(240, 2%, 21%);
-	--color-foreground-error: hsl(5, 100%, 45%);
-	--color-foreground-error-alt-1: hsl(5, 100%, 35%);
+	--color-foreground-error: hsl(5, 70%, 45%);
+	--color-foreground-error-alt-1: hsl(5, 70%, 35%);
 
 	--height-header: 4.5rem;
 

@@ -20,7 +20,8 @@
 
 <Dropdown
 	triggerClass="hover:bg-background-alt-3 data-[state=open]:bg-background-alt-3 rounded-lg border-none"
-	contentClass="w-42 p-1"
+	contentClass="w-38 p-1 text-sm"
+	portalProps={{ disabled: false }}
 >
 	{#snippet trigger()}
 		<DotsIcon class="size-5 stroke-[1.5]" />
@@ -46,7 +47,7 @@
 			}}
 		>
 			<DeleteIcon class="size-4 stroke-[1.5]" />
-			<span>Delete</span>
+			<span>Delete tag</span>
 		</DropdownMenu.Item>
 	{/snippet}
 </Dropdown>
