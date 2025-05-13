@@ -16,6 +16,7 @@
 	const isAuthPath = $derived(page.url.pathname.startsWith('/auth'));
 
 	$effect(() => {
+		page.url.pathname;
 		if (isAuthPath) return;
 		auth.me();
 	});
