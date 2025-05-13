@@ -19,7 +19,7 @@ func (dao *DAO) CreateAsset(ctx context.Context, asset *models.Asset) error {
 		return utils.ErrNilPtr
 	}
 
-	return dao.Create(ctx, asset)
+	return Create(ctx, dao, asset)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -42,7 +42,7 @@ func (dao *DAO) GetAsset(ctx context.Context, asset *models.Asset, options *data
 		}
 
 		options = &database.Options{
-			Where: squirrel.Eq{asset.Table() + "." + models.BASE_ID: asset.Id()},
+			Where: squirrel.Eq{models.ASSET_TABLE_ID: asset.Id()},
 		}
 	}
 
@@ -55,7 +55,7 @@ func (dao *DAO) GetAsset(ctx context.Context, asset *models.Asset, options *data
 		options.AddRelationFilter(models.ASSET_RELATION_PROGRESS, models.ASSET_PROGRESS_USER_ID, userId)
 	}
 
-	return dao.Get(ctx, asset, options)
+	return Get(ctx, dao, asset, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -79,7 +79,7 @@ func (dao *DAO) ListAssets(ctx context.Context, assets *[]*models.Asset, options
 		options.AddRelationFilter(models.ASSET_RELATION_PROGRESS, models.ASSET_PROGRESS_USER_ID, userId)
 	}
 
-	return dao.List(ctx, assets, options)
+	return List(ctx, dao, assets, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -90,6 +90,6 @@ func (dao *DAO) UpdateAsset(ctx context.Context, asset *models.Asset) error {
 		return utils.ErrNilPtr
 	}
 
-	_, err := dao.Update(ctx, asset)
+	_, err := Update(ctx, dao, asset)
 	return err
 }

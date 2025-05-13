@@ -32,7 +32,7 @@ func New(db database.Database) *DAO {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Create is a generic function to create a model in the database
-func (dao *DAO) Create(ctx context.Context, model models.Modeler) error {
+func Create(ctx context.Context, dao *DAO, model models.Modeler) error {
 	sch, err := schema.Parse(model)
 	if err != nil {
 		return err
@@ -53,7 +53,7 @@ func (dao *DAO) Create(ctx context.Context, model models.Modeler) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // CreateOrReplace is a generic function to create or replace a model in the database
-func (dao *DAO) CreateOrReplace(ctx context.Context, model models.Modeler) error {
+func CreateOrReplace(ctx context.Context, dao *DAO, model models.Modeler) error {
 	sch, err := schema.Parse(model)
 	if err != nil {
 		return err
@@ -75,7 +75,7 @@ func (dao *DAO) CreateOrReplace(ctx context.Context, model models.Modeler) error
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Count is a generic function to count the number of rows in a table as determined by the model
-func (dao *DAO) Count(ctx context.Context, model any, options *database.Options) (int, error) {
+func Count(ctx context.Context, dao *DAO, model any, options *database.Options) (int, error) {
 	sch, err := schema.Parse(model)
 	if err != nil {
 		return 0, err
@@ -88,7 +88,7 @@ func (dao *DAO) Count(ctx context.Context, model any, options *database.Options)
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Get is a generic function to get a model (row)
-func (dao *DAO) Get(ctx context.Context, model any, options *database.Options) error {
+func Get(ctx context.Context, dao *DAO, model any, options *database.Options) error {
 	sch, err := schema.Parse(model)
 	if err != nil {
 		return err
@@ -101,14 +101,14 @@ func (dao *DAO) Get(ctx context.Context, model any, options *database.Options) e
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // List is a generic function to list models (rows)
-func (dao *DAO) List(ctx context.Context, model any, options *database.Options) error {
+func List(ctx context.Context, dao *DAO, model any, options *database.Options) error {
 	sch, err := schema.Parse(model)
 	if err != nil {
 		return err
 	}
 
 	if options != nil && options.Pagination != nil {
-		count, err := dao.Count(ctx, model, options)
+		count, err := Count(ctx, dao, model, options)
 		if err != nil {
 			return err
 		}
@@ -145,7 +145,7 @@ func ListPluck[T any](ctx context.Context, dao *DAO, model any, options *databas
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Update is a generic function to update a model in the database
-func (dao *DAO) Update(ctx context.Context, model models.Modeler) (bool, error) {
+func Update(ctx context.Context, dao *DAO, model models.Modeler) (bool, error) {
 	sch, err := schema.Parse(model)
 	if err != nil {
 		return false, err

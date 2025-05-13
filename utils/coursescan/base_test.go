@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
@@ -133,7 +134,7 @@ func TestScanner_Worker(t *testing.T) {
 		// Sometimes the delete is slow to happen
 		time.Sleep(20 * time.Millisecond)
 
-		count, err := scanner.dao.Count(ctx, &models.Scan{}, nil)
+		count, err := dao.Count(ctx, scanner.dao, &models.Scan{}, nil)
 		require.NoError(t, err)
 		require.Zero(t, count)
 
@@ -151,7 +152,7 @@ func TestScanner_Worker(t *testing.T) {
 		// Wait for the worker to finish
 		<-processingDone
 
-		count, err = scanner.dao.Count(ctx, &models.Scan{}, nil)
+		count, err = dao.Count(ctx, scanner.dao, &models.Scan{}, nil)
 		require.NoError(t, err)
 		require.Zero(t, count)
 

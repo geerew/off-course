@@ -36,11 +36,11 @@ func Test_CreateAsset(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
 
-		count, err := dao.Count(ctx, &models.AssetProgress{}, nil)
+		count, err := Count(ctx, dao, &models.AssetProgress{}, nil)
 		require.NoError(t, err)
 		require.Equal(t, 0, count)
 
-		count, err = dao.Count(ctx, &models.CourseProgress{}, nil)
+		count, err = Count(ctx, dao, &models.CourseProgress{}, nil)
 		require.NoError(t, err)
 		require.Equal(t, 0, count)
 	})
@@ -209,11 +209,11 @@ func Test_UpdateAsset(t *testing.T) {
 		require.Equal(t, newAsset.Hash, assertResult.Hash)                      // Changed
 		require.False(t, assertResult.UpdatedAt.Equal(originalAsset.UpdatedAt)) // Changed
 
-		count, err := dao.Count(ctx, &models.AssetProgress{}, nil)
+		count, err := Count(ctx, dao, &models.AssetProgress{}, nil)
 		require.NoError(t, err)
 		require.Equal(t, 0, count)
 
-		count, err = dao.Count(ctx, &models.CourseProgress{}, nil)
+		count, err = Count(ctx, dao, &models.CourseProgress{}, nil)
 		require.NoError(t, err)
 		require.Equal(t, 0, count)
 	})
@@ -269,7 +269,7 @@ func Test_AssetDeleteCascade(t *testing.T) {
 
 	require.Nil(t, Delete(ctx, dao, course, nil))
 
-	count, err := dao.Count(ctx, &models.Asset{}, nil)
+	count, err := Count(ctx, dao, &models.Asset{}, nil)
 	require.NoError(t, err)
 	require.Zero(t, count)
 }

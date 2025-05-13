@@ -5,8 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
+	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/models"
 	"github.com/stretchr/testify/require"
 )
@@ -22,7 +21,7 @@ func TestSqlite_Set(t *testing.T) {
 		err := storage.Set("key", []byte("value"), 1*time.Second)
 		require.NoError(t, err)
 
-		count, err := storage.dao.Count(ctx, &models.Session{}, nil)
+		count, err := dao.Count(ctx, storage.dao, &models.Session{}, nil)
 		require.NoError(t, err)
 		require.Equal(t, 1, count)
 	})
@@ -38,7 +37,7 @@ func TestSqlite_Set(t *testing.T) {
 		err = storage.Set("key", []byte("new value"), 1*time.Second)
 		require.NoError(t, err)
 
-		count, err := storage.dao.Count(ctx, &models.Session{}, nil)
+		count, err := dao.Count(ctx, storage.dao, &models.Session{}, nil)
 		require.NoError(t, err)
 		require.Equal(t, 1, count)
 	})
@@ -51,7 +50,7 @@ func TestSqlite_Set(t *testing.T) {
 		err := storage.Set("", []byte("value"), 1*time.Second)
 		require.NoError(t, err)
 
-		count, err := storage.dao.Count(ctx, &models.Session{}, nil)
+		count, err := dao.Count(ctx, storage.dao, &models.Session{}, nil)
 		require.NoError(t, err, sql.ErrNoRows)
 		require.Equal(t, 0, count)
 	})
@@ -71,8 +70,8 @@ func TestSqlite_SetUser(t *testing.T) {
 		err = storage.SetUser("key", "1234")
 		require.NoError(t, err)
 
-		session := &models.Session{}
-		err = storage.dao.Get(ctx, session, &database.Options{Where: squirrel.Eq{models.SESSION_TABLE_ID: "key"}})
+		session := &models.Session{ID: "key"}
+		err = storage.dao.GetSession(ctx, session, nil)
 		require.NoError(t, err)
 		require.Equal(t, "1234", session.UserId)
 	})
@@ -97,7 +96,7 @@ func TestSqlite_SetUser(t *testing.T) {
 		err = storage.SetUser("key", "")
 		require.NoError(t, err)
 
-		count, err := storage.dao.Count(ctx, &models.Session{}, nil)
+		count, err := dao.Count(ctx, storage.dao, &models.Session{}, nil)
 		require.NoError(t, err, sql.ErrNoRows)
 		require.Equal(t, 0, count)
 	})
@@ -174,7 +173,7 @@ func TestSqlite_Delete(t *testing.T) {
 		err = storage.Delete("key")
 		require.NoError(t, err)
 
-		count, err := storage.dao.Count(ctx, &models.Session{}, nil)
+		count, err := dao.Count(ctx, storage.dao, &models.Session{}, nil)
 		require.NoError(t, err, sql.ErrNoRows)
 		require.Equal(t, 0, count)
 	})
@@ -232,7 +231,7 @@ func TestSqlite_DeleteUser(t *testing.T) {
 		err = storage.DeleteUser("1234")
 		require.NoError(t, err)
 
-		count, err := storage.dao.Count(ctx, &models.Session{}, nil)
+		count, err := dao.Count(ctx, storage.dao, &models.Session{}, nil)
 		require.NoError(t, err, sql.ErrNoRows)
 		require.Equal(t, 1, count)
 	})
@@ -264,7 +263,7 @@ func TestSqlite_Reset(t *testing.T) {
 	err = storage.Reset()
 	require.NoError(t, err)
 
-	count, err := storage.dao.Count(ctx, &models.Session{}, nil)
+	count, err := dao.Count(ctx, storage.dao, &models.Session{}, nil)
 	require.NoError(t, err, sql.ErrNoRows)
 	require.Equal(t, 0, count)
 }

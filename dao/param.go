@@ -17,7 +17,7 @@ func (dao *DAO) CreateParam(ctx context.Context, param *models.Param) error {
 		return utils.ErrNilPtr
 	}
 
-	return dao.Create(ctx, param)
+	return Create(ctx, dao, param)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -40,7 +40,7 @@ func (dao *DAO) GetParam(ctx context.Context, param *models.Param, options *data
 		}
 	}
 
-	return dao.Get(ctx, param, options)
+	return Get(ctx, dao, param, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -51,7 +51,7 @@ func (dao *DAO) ListParams(ctx context.Context, params *[]*models.Param, options
 		return utils.ErrNilPtr
 	}
 
-	return dao.List(ctx, params, options)
+	return List(ctx, dao, params, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -62,6 +62,6 @@ func (dao *DAO) UpdateParam(ctx context.Context, param *models.Param) error {
 		return utils.ErrNilPtr
 	}
 
-	_, err := dao.Update(ctx, param)
+	_, err := Update(ctx, dao, param)
 	return err
 }

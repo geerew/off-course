@@ -16,7 +16,7 @@ func (dao *DAO) WriteLog(ctx context.Context, log *models.Log) error {
 		return utils.ErrNilPtr
 	}
 
-	return dao.Create(ctx, log)
+	return Create(ctx, dao, log)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -27,5 +27,5 @@ func (dao *DAO) ListLogs(ctx context.Context, logs *[]*models.Log, options *data
 		return utils.ErrNilPtr
 	}
 
-	return dao.List(ctx, logs, options)
+	return List(ctx, dao, logs, options)
 }

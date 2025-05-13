@@ -42,9 +42,8 @@ func (s *SqliteStorage) Get(key string) ([]byte, error) {
 		return nil, nil
 	}
 
-	options := &database.Options{Where: squirrel.Eq{models.SESSION_TABLE_ID: key}}
-	session := &models.Session{}
-	err := s.dao.Get(context.Background(), session, options)
+	session := &models.Session{ID: key}
+	err := s.dao.GetSession(context.Background(), session, nil)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -80,7 +79,7 @@ func (s *SqliteStorage) Set(key string, data []byte, exp time.Duration) error {
 		Expires: expSeconds,
 	}
 
-	return s.dao.CreateOrReplace(context.Background(), session)
+	return s.dao.CreateOrReplaceSession(context.Background(), session)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -91,15 +90,15 @@ func (s *SqliteStorage) SetUser(key, userId string) error {
 		return nil
 	}
 
-	session := &models.Session{}
-	err := s.dao.Get(context.Background(), session, &database.Options{Where: squirrel.Eq{models.SESSION_TABLE_ID: key}})
+	session := &models.Session{ID: key}
+	err := s.dao.GetSession(context.Background(), session, nil)
 	if err != nil {
 		return err
 	}
 
 	session.UserId = userId
 
-	_, err = s.dao.Update(context.Background(), session)
+	err = s.dao.UpdateSession(context.Background(), session)
 	if err != nil {
 		return err
 	}

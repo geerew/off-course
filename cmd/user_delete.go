@@ -70,7 +70,7 @@ var deleteCmd = &cobra.Command{
 
 		if user.Role == types.UserRoleAdmin {
 			// Count the number of admin users and fail if there is only one
-			adminCount, err := dao.Count(ctx, &models.User{}, &database.Options{
+			adminCount, err := daoer.Count(ctx, dao, &models.User{}, &database.Options{
 				Where: squirrel.Eq{models.USER_TABLE_ROLE: types.UserRoleAdmin},
 			})
 

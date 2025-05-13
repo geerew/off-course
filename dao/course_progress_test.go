@@ -18,7 +18,7 @@ func Test_CreateCourseProgress(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		dao, ctx := setup(t)
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
-		require.NoError(t, dao.Create(ctx, course))
+		require.NoError(t, Create(ctx, dao, course))
 
 		courseProgress := &models.CourseProgress{CourseID: course.ID}
 		require.NoError(t, dao.CreateCourseProgress(ctx, courseProgress))
@@ -183,7 +183,7 @@ func Test_CourseProgressDeleteCascade(t *testing.T) {
 
 	require.NoError(t, Delete(ctx, dao, courseProgress, nil))
 
-	count, err := dao.Count(ctx, &models.CourseProgress{}, nil)
+	count, err := Count(ctx, dao, &models.CourseProgress{}, nil)
 	require.NoError(t, err)
 	require.Zero(t, count)
 }

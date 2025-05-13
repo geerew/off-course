@@ -25,7 +25,7 @@ func (dao *DAO) CreateCourseTag(ctx context.Context, courseTag *models.CourseTag
 
 	return dao.db.RunInTransaction(ctx, func(txCtx context.Context) error {
 		if courseTag.TagID != "" {
-			return dao.Create(txCtx, courseTag)
+			return Create(txCtx, dao, courseTag)
 		}
 
 		// Get the tag by tag name (case-insensitive)
@@ -42,7 +42,7 @@ func (dao *DAO) CreateCourseTag(ctx context.Context, courseTag *models.CourseTag
 		// If the tag does not exist, create it
 		if err == sql.ErrNoRows {
 			tag.Tag = courseTag.Tag
-			err = dao.Create(txCtx, &tag)
+			err = dao.CreateTag(txCtx, &tag)
 			if err != nil {
 				return err
 			}
@@ -50,7 +50,7 @@ func (dao *DAO) CreateCourseTag(ctx context.Context, courseTag *models.CourseTag
 
 		courseTag.TagID = tag.ID
 
-		return dao.Create(txCtx, courseTag)
+		return Create(txCtx, dao, courseTag)
 
 	})
 }
@@ -71,14 +71,14 @@ func (dao *DAO) GetCourseTag(ctx context.Context, courseTag *models.CourseTag, o
 		}
 
 		options = &database.Options{
-			Where: squirrel.Eq{courseTag.Table() + "." + models.BASE_ID: courseTag.Id()},
+			Where: squirrel.Eq{models.COURSE_TAG_TABLE_ID: courseTag.Id()},
 		}
 	}
 
 	if options.Where == nil {
 	}
 
-	return dao.Get(ctx, courseTag, options)
+	return Get(ctx, dao, courseTag, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -89,5 +89,5 @@ func (dao *DAO) ListCourseTags(ctx context.Context, courseTags *[]*models.Course
 		return utils.ErrNilPtr
 	}
 
-	return dao.List(ctx, courseTags, options)
+	return List(ctx, dao, courseTags, options)
 }

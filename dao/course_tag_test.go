@@ -86,7 +86,7 @@ func Test_CourseTagDeleteCascade(t *testing.T) {
 
 	require.Nil(t, Delete(ctx, dao, course, nil))
 
-	count, err := dao.Count(ctx, &models.CourseTag{}, nil)
+	count, err := Count(ctx, dao, &models.CourseTag{}, nil)
 	require.NoError(t, err)
 	require.Zero(t, count)
 }

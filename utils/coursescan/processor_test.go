@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/types"
@@ -164,7 +165,7 @@ func TestScanner_Processor(t *testing.T) {
 		err := Processor(ctx, scanner, scan)
 		require.NoError(t, err)
 
-		count, err := scanner.dao.Count(ctx, &models.Asset{}, nil)
+		count, err := dao.Count(ctx, scanner.dao, &models.Asset{}, nil)
 		require.NoError(t, err)
 		require.Zero(t, count)
 	})

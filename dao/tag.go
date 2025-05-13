@@ -38,7 +38,7 @@ func (dao *DAO) CreateTag(ctx context.Context, tag *models.Tag) error {
 		tag.Tag = existingTag.Tag
 	}
 
-	return dao.Create(ctx, tag)
+	return Create(ctx, dao, tag)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -57,14 +57,14 @@ func (dao *DAO) GetTag(ctx context.Context, tag *models.Tag, options *database.O
 		}
 
 		options = &database.Options{
-			Where: squirrel.Eq{tag.Table() + "." + models.BASE_ID: tag.Id()},
+			Where: squirrel.Eq{models.TAG_TABLE_ID: tag.Id()},
 		}
 	}
 
 	if options.Where == nil {
 	}
 
-	return dao.Get(ctx, tag, options)
+	return Get(ctx, dao, tag, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -75,7 +75,7 @@ func (dao *DAO) ListTags(ctx context.Context, tags *[]*models.Tag, options *data
 		return utils.ErrNilPtr
 	}
 
-	return dao.List(ctx, tags, options)
+	return List(ctx, dao, tags, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -86,6 +86,6 @@ func (dao *DAO) UpdateTag(ctx context.Context, tag *models.Tag) error {
 		return utils.ErrNilPtr
 	}
 
-	_, err := dao.Update(ctx, tag)
+	_, err := Update(ctx, dao, tag)
 	return err
 }

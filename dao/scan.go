@@ -23,7 +23,7 @@ func (dao *DAO) CreateScan(ctx context.Context, scan *models.Scan) error {
 		scan.Status.SetWaiting()
 	}
 
-	return dao.Create(ctx, scan)
+	return Create(ctx, dao, scan)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -42,14 +42,14 @@ func (dao *DAO) GetScan(ctx context.Context, scan *models.Scan, options *databas
 		}
 
 		options = &database.Options{
-			Where: squirrel.Eq{scan.Table() + "." + models.BASE_ID: scan.Id()},
+			Where: squirrel.Eq{models.SCAN_TABLE_ID: scan.Id()},
 		}
 	}
 
 	if options.Where == nil {
 	}
 
-	return dao.Get(ctx, scan, options)
+	return Get(ctx, dao, scan, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -60,7 +60,7 @@ func (dao *DAO) ListScans(ctx context.Context, scans *[]*models.Scan, options *d
 		return utils.ErrNilPtr
 	}
 
-	return dao.List(ctx, scans, options)
+	return List(ctx, dao, scans, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -71,7 +71,7 @@ func (dao *DAO) UpdateScan(ctx context.Context, scan *models.Scan) error {
 		return utils.ErrNilPtr
 	}
 
-	_, err := dao.Update(ctx, scan)
+	_, err := Update(ctx, dao, scan)
 	return err
 }
 

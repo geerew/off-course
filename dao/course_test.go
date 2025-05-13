@@ -92,7 +92,7 @@ func Test_GetCourse(t *testing.T) {
 		require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, course.ID, assetProgress2))
 
 		// Confirm there are 2 asset progress records
-		count, err := dao.Count(ctx, &models.AssetProgress{}, nil)
+		count, err := Count(ctx, dao, &models.AssetProgress{}, nil)
 		require.NoError(t, err)
 		require.Equal(t, 2, count)
 

@@ -20,7 +20,7 @@ func (dao *DAO) CreateCourse(ctx context.Context, course *models.Course) error {
 		return utils.ErrNilPtr
 	}
 
-	return dao.Create(ctx, course)
+	return Create(ctx, dao, course)
 
 }
 
@@ -43,7 +43,7 @@ func (dao *DAO) GetCourse(ctx context.Context, course *models.Course, options *d
 			return utils.ErrInvalidId
 		}
 
-		options = &database.Options{Where: squirrel.Eq{course.Table() + "." + models.BASE_ID: course.Id()}}
+		options = &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: course.Id()}}
 	}
 
 	if !slices.Contains(options.ExcludeRelations, models.COURSE_RELATION_PROGRESS) {
@@ -54,7 +54,7 @@ func (dao *DAO) GetCourse(ctx context.Context, course *models.Course, options *d
 
 		options.AddRelationFilter(models.COURSE_RELATION_PROGRESS, models.COURSE_PROGRESS_USER_ID, userId)
 	}
-	return dao.Get(ctx, course, options)
+	return Get(ctx, dao, course, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -78,7 +78,7 @@ func (dao *DAO) ListCourses(ctx context.Context, courses *[]*models.Course, opti
 		options.AddRelationFilter(models.COURSE_RELATION_PROGRESS, models.COURSE_PROGRESS_USER_ID, userId)
 	}
 
-	return dao.List(ctx, courses, options)
+	return List(ctx, dao, courses, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -89,7 +89,7 @@ func (dao *DAO) UpdateCourse(ctx context.Context, course *models.Course) error {
 		return utils.ErrNilPtr
 	}
 
-	_, err := dao.Update(ctx, course)
+	_, err := Update(ctx, dao, course)
 	return err
 }
 

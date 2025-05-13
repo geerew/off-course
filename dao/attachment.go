@@ -17,7 +17,7 @@ func (dao *DAO) CreateAttachment(ctx context.Context, attachment *models.Attachm
 		return utils.ErrNilPtr
 	}
 
-	return dao.Create(ctx, attachment)
+	return Create(ctx, dao, attachment)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -28,7 +28,7 @@ func (dao *DAO) UpdateAttachment(ctx context.Context, attachment *models.Attachm
 		return utils.ErrNilPtr
 	}
 
-	_, err := dao.Update(ctx, attachment)
+	_, err := Update(ctx, dao, attachment)
 	return err
 }
 
@@ -48,14 +48,14 @@ func (dao *DAO) GetAttachment(ctx context.Context, attachment *models.Attachment
 		}
 
 		options = &database.Options{
-			Where: squirrel.Eq{attachment.Table() + "." + models.BASE_ID: attachment.Id()},
+			Where: squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachment.Id()},
 		}
 	}
 
 	if options.Where == nil {
 	}
 
-	return dao.Get(ctx, attachment, options)
+	return Get(ctx, dao, attachment, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -66,5 +66,5 @@ func (dao *DAO) ListAttachments(ctx context.Context, attachments *[]*models.Atta
 		return utils.ErrNilPtr
 	}
 
-	return dao.List(ctx, attachments, options)
+	return List(ctx, dao, attachments, options)
 }

@@ -18,7 +18,7 @@ func (dao *DAO) CreateVideoMetadata(ctx context.Context, metadata *models.VideoM
 		return utils.ErrNilPtr
 	}
 
-	return dao.Create(ctx, metadata)
+	return Create(ctx, dao, metadata)
 
 }
 
@@ -38,14 +38,14 @@ func (dao *DAO) GetVideoMetadata(ctx context.Context, videoMetadata *models.Vide
 		}
 
 		options = &database.Options{
-			Where: squirrel.Eq{videoMetadata.Table() + "." + models.BASE_ID: videoMetadata.Id()},
+			Where: squirrel.Eq{models.VIDEO_METADATA_TABLE_ID: videoMetadata.Id()},
 		}
 	}
 
 	if options.Where == nil {
 	}
 
-	return dao.Get(ctx, videoMetadata, options)
+	return Get(ctx, dao, videoMetadata, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -56,7 +56,7 @@ func (dao *DAO) ListVideoMetadata(ctx context.Context, videoMetadata *[]*models.
 		return utils.ErrNilPtr
 	}
 
-	return dao.List(ctx, videoMetadata, options)
+	return List(ctx, dao, videoMetadata, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -67,6 +67,6 @@ func (dao *DAO) UpdateVideoMetadata(ctx context.Context, metadata *models.VideoM
 		return utils.ErrNilPtr
 	}
 
-	_, err := dao.Update(ctx, metadata)
+	_, err := Update(ctx, dao, metadata)
 	return err
 }

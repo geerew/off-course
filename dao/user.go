@@ -17,7 +17,7 @@ func (dao *DAO) CreateUser(ctx context.Context, user *models.User) error {
 		return utils.ErrNilPtr
 	}
 
-	return dao.Create(ctx, user)
+	return Create(ctx, dao, user)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -36,14 +36,14 @@ func (dao *DAO) GetUser(ctx context.Context, user *models.User, options *databas
 		}
 
 		options = &database.Options{
-			Where: squirrel.Eq{user.Table() + "." + models.BASE_ID: user.Id()},
+			Where: squirrel.Eq{models.USER_TABLE_ID: user.Id()},
 		}
 	}
 
 	if options.Where == nil {
 	}
 
-	return dao.Get(ctx, user, options)
+	return Get(ctx, dao, user, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -54,7 +54,7 @@ func (dao *DAO) ListUsers(ctx context.Context, users *[]*models.User, options *d
 		return utils.ErrNilPtr
 	}
 
-	return dao.List(ctx, users, options)
+	return List(ctx, dao, users, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -65,6 +65,6 @@ func (dao *DAO) UpdateUser(ctx context.Context, user *models.User) error {
 		return utils.ErrNilPtr
 	}
 
-	_, err := dao.Update(ctx, user)
+	_, err := Update(ctx, dao, user)
 	return err
 }

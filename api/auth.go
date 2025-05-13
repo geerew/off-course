@@ -239,7 +239,7 @@ func (api authAPI) deleteMe(c *fiber.Ctx) error {
 
 	if user.Role == types.UserRoleAdmin {
 		// Count the number of admin users and fail if there is only one
-		adminCount, err := api.dao.Count(c.UserContext(), &models.User{}, &database.Options{
+		adminCount, err := dao.Count(c.UserContext(), api.dao, &models.User{}, &database.Options{
 			Where: squirrel.Eq{models.USER_TABLE_ROLE: types.UserRoleAdmin},
 		})
 

@@ -70,7 +70,7 @@ func (dao *DAO) CreateOrUpdateAssetProgress(ctx context.Context, courseId string
 				assetProgress.CompletedAt = types.NowDateTime()
 			}
 
-			err := dao.Create(txCtx, assetProgress)
+			err := Create(txCtx, dao, assetProgress)
 			if err != nil {
 				return err
 			}
@@ -87,7 +87,7 @@ func (dao *DAO) CreateOrUpdateAssetProgress(ctx context.Context, courseId string
 				assetProgress.CompletedAt = types.DateTime{}
 			}
 
-			_, err = dao.Update(txCtx, assetProgress)
+			_, err = Update(txCtx, dao, assetProgress)
 			if err != nil {
 				return err
 			}
@@ -114,14 +114,14 @@ func (dao *DAO) GetAssetProgress(ctx context.Context, assetProgress *models.Asse
 		}
 
 		options = &database.Options{
-			Where: squirrel.Eq{assetProgress.Table() + "." + models.BASE_ID: assetProgress.Id()},
+			Where: squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: assetProgress.Id()},
 		}
 	}
 
 	if options.Where == nil {
 	}
 
-	return dao.Get(ctx, assetProgress, options)
+	return Get(ctx, dao, assetProgress, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -132,5 +132,5 @@ func (dao *DAO) ListAssetProgress(ctx context.Context, assetProgress *[]*models.
 		return utils.ErrNilPtr
 	}
 
-	return dao.List(ctx, assetProgress, options)
+	return List(ctx, dao, assetProgress, options)
 }

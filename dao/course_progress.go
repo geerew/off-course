@@ -28,7 +28,7 @@ func (dao *DAO) CreateCourseProgress(ctx context.Context, courseProgress *models
 		courseProgress.UserID = userId
 	}
 
-	return dao.Create(ctx, courseProgress)
+	return Create(ctx, dao, courseProgress)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -47,14 +47,14 @@ func (dao *DAO) GetCourseProgress(ctx context.Context, courseProgress *models.Co
 		}
 
 		options = &database.Options{
-			Where: squirrel.Eq{courseProgress.Table() + "." + models.BASE_ID: courseProgress.Id()},
+			Where: squirrel.Eq{models.COURSE_PROGRESS_TABLE_ID: courseProgress.Id()},
 		}
 	}
 
 	if options.Where == nil {
 	}
 
-	return dao.Get(ctx, courseProgress, options)
+	return Get(ctx, dao, courseProgress, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -65,31 +65,11 @@ func (dao *DAO) ListCourseProgress(ctx context.Context, courseProgress *[]*model
 		return utils.ErrNilPtr
 	}
 
-	return dao.List(ctx, courseProgress, options)
+	return List(ctx, dao, courseProgress, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// RefreshCourseProgress calculates and updates the progress for a course
-//
-// This function calculates the overall course progress by:
-// 1. Counting video and non-video assets separately
-// 2. For video assets with metadata, calculating progress based on watched duration
-// 3. For non-video assets and videos without metadata, using completion flags
-// 4. Weighting the progress based on the proportion of each asset type
-// 5. Updating the course progress record with the calculated percentage and status
-//
-// The course is considered:
-// - Started: when any asset has progress or is completed
-// - Completed: when the overall progress reaches 100%
-//
-// Parameters:
-//   - ctx: The context for the database operation
-//   - courseID: The ID of the course to refresh progress for
-//
-// Returns:
-//   - error: Any error encountered during the refresh operation
-//
 // RefreshCourseProgress calculates and updates the progress for a course.
 //
 // This function calculates the overall course progress by:
@@ -212,7 +192,7 @@ func (dao *DAO) RefreshCourseProgress(ctx context.Context, courseID string) erro
 			UserID:   userId,
 		}
 
-		if err = dao.Create(ctx, courseProgress); err != nil {
+		if err = Create(ctx, dao, courseProgress); err != nil {
 			return err
 		}
 	} else if err != nil {
@@ -301,6 +281,6 @@ func (dao *DAO) RefreshCourseProgress(ctx context.Context, courseID string) erro
 	}
 
 	// Update the course progress
-	_, err = dao.Update(ctx, courseProgress)
+	_, err = Update(ctx, dao, courseProgress)
 	return err
 }

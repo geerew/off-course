@@ -163,7 +163,7 @@ func Test_AttachmentDeleteCascade(t *testing.T) {
 
 	require.Nil(t, Delete(ctx, dao, asset, nil))
 
-	count, err := dao.Count(ctx, &models.Attachment{}, nil)
+	count, err := Count(ctx, dao, &models.Attachment{}, nil)
 	require.NoError(t, err)
 	require.Zero(t, count)
 }

@@ -166,7 +166,7 @@ func (r *Router) initBootstrap() {
 	options := &database.Options{
 		Where: squirrel.Eq{models.USER_TABLE_ROLE: types.UserRoleAdmin},
 	}
-	count, err := r.dao.Count(context.Background(), &models.User{}, options)
+	count, err := dao.Count(context.Background(), r.dao, &models.User{}, options)
 	if err != nil {
 		utils.Errf("Failed to count users: %s\n", err.Error())
 	}
