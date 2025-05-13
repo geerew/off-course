@@ -1,4 +1,3 @@
-// TODO: Rework to not have to scan every 3 seconds
 import { safeParse } from 'valibot';
 import { UserSchema, type UserModel } from './models/user-model';
 
