@@ -1,6 +1,7 @@
 import { APIError } from '$lib/api-error.svelte';
 import { FsSchema, type FsModel } from '$lib/models/fs-model';
 import { safeParse } from 'valibot';
+import { apiFetch } from './fetch';
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -9,9 +10,9 @@ import { safeParse } from 'valibot';
 export async function GetFileSystem(path?: string): Promise<FsModel> {
 	let response: Response;
 	if (path) {
-		response = await fetch(`/api/filesystem/${window.btoa(encodeURIComponent(path))}`);
+		response = await apiFetch(`/api/filesystem/${window.btoa(encodeURIComponent(path))}`);
 	} else {
-		response = await fetch(`/api/filesystem`);
+		response = await apiFetch(`/api/filesystem`);
 	}
 
 	if (response.ok) {

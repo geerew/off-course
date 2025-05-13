@@ -1,10 +1,11 @@
 import { type DeleteSelfModel, type UpdateSelfModel } from '$lib/models/user-model';
+import { apiFetch } from './fetch';
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Update self
 export async function UpdateSelf(data: UpdateSelfModel): Promise<void> {
-	const response = await fetch('/api/auth/me', {
+	const response = await apiFetch('/api/auth/me', {
 		method: 'PUT',
 		headers: {
 			'Content-Type': 'application/json'
@@ -22,7 +23,7 @@ export async function UpdateSelf(data: UpdateSelfModel): Promise<void> {
 
 // Delete self
 export async function DeleteSelf(data: DeleteSelfModel): Promise<void> {
-	const response = await fetch('/api/auth/me', {
+	const response = await apiFetch('/api/auth/me', {
 		method: 'DELETE',
 		headers: {
 			'Content-Type': 'application/json'

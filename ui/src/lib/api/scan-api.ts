@@ -1,12 +1,13 @@
 import { APIError } from '$lib/api-error.svelte';
 import { ScanSchema, type ScansModel, type StartScanModel } from '$lib/models/scan-model';
 import { array, safeParse } from 'valibot';
+import { apiFetch } from './fetch';
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Get all scans
 export async function GetScans(): Promise<ScansModel> {
-	const response = await fetch('/api/scans');
+	const response = await apiFetch('/api/scans');
 
 	if (response.ok) {
 		const data = (await response.json()) as ScansModel;
@@ -24,7 +25,7 @@ export async function GetScans(): Promise<ScansModel> {
 
 // Start a scan
 export async function StartScan(data: StartScanModel): Promise<void> {
-	const response = await fetch('/api/scans', {
+	const response = await apiFetch('/api/scans', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify(data)

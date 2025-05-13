@@ -7,6 +7,7 @@ class Auth {
 	#userLetter = $state<string | null>(null);
 	#isAdmin = $state<boolean>(false);
 	#error = $state<string | null>(null);
+	#redirected = $state(false);
 
 	constructor() {}
 
@@ -27,7 +28,9 @@ class Auth {
 			this.#userLetter = this.#user.username.charAt(0).toUpperCase();
 			this.#isAdmin = result.output.role === 'admin';
 			this.#error = null;
+			this.#redirected = false;
 		} else {
+			console.log('Error fetching user data:', response.status);
 			this.empty();
 
 			// When the user is not authenticated, the server will return a 403 status code, so
@@ -47,7 +50,6 @@ class Auth {
 
 		if (response.ok) {
 			this.empty();
-			window.location.href = '/auth/login';
 		} else {
 			const data = await response.json();
 			this.#error = data.message;
@@ -60,6 +62,11 @@ class Auth {
 		this.#user = null;
 		this.#userLetter = null;
 		this.#isAdmin = false;
+
+		if (!this.#redirected) {
+			this.#redirected = true;
+			window.location.href = '/auth/login';
+		}
 	}
 
 	get user() {

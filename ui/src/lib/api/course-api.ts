@@ -19,6 +19,7 @@ import {
 } from '$lib/models/course-model';
 import { buildQueryString } from '$lib/utils';
 import { array, safeParse } from 'valibot';
+import { apiFetch } from './fetch';
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -26,7 +27,7 @@ import { array, safeParse } from 'valibot';
 export async function GetCourses(params?: CourseReqParams): Promise<CoursePaginationModel> {
 	const qs = params && buildQueryString(params);
 
-	const response = await fetch('/api/courses' + (qs ? `?${qs}` : ''));
+	const response = await apiFetch('/api/courses' + (qs ? `?${qs}` : ''));
 
 	if (response.ok) {
 		const data = (await response.json()) as CoursePaginationModel;
@@ -44,7 +45,7 @@ export async function GetCourses(params?: CourseReqParams): Promise<CoursePagina
 
 // Create a course
 export async function CreateCourse(data: CreateCourseModel): Promise<void> {
-	const response = await fetch('/api/courses', {
+	const response = await apiFetch('/api/courses', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify(data)
@@ -60,7 +61,7 @@ export async function CreateCourse(data: CreateCourseModel): Promise<void> {
 
 // Delete a course
 export async function DeleteCourse(id: string): Promise<void> {
-	const response = await fetch(`/api/courses/${id}`, {
+	const response = await apiFetch(`/api/courses/${id}`, {
 		method: 'DELETE',
 		headers: {
 			'Content-Type': 'application/json'
@@ -77,7 +78,7 @@ export async function DeleteCourse(id: string): Promise<void> {
 
 // Get a course
 export async function GetCourse(id: string): Promise<CourseModel> {
-	const response = await fetch(`/api/courses/${id}`);
+	const response = await apiFetch(`/api/courses/${id}`);
 
 	if (response.ok) {
 		const data = (await response.json()) as CourseModel;
@@ -95,7 +96,7 @@ export async function GetCourse(id: string): Promise<CourseModel> {
 
 // Get all course tags
 export async function GetCourseTags(id: string): Promise<CourseTagsModel> {
-	const response = await fetch(`/api/courses/${id}/tags`);
+	const response = await apiFetch(`/api/courses/${id}/tags`);
 
 	if (response.ok) {
 		const data = (await response.json()) as CourseTagsModel;
@@ -113,7 +114,7 @@ export async function GetCourseTags(id: string): Promise<CourseTagsModel> {
 
 // Create a course tag
 export async function CreateCourseTag(id: string, data: CreateCourseTagModel): Promise<void> {
-	const response = await fetch(`/api/courses/${id}/tags`, {
+	const response = await apiFetch(`/api/courses/${id}/tags`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify(data)
@@ -129,7 +130,7 @@ export async function CreateCourseTag(id: string, data: CreateCourseTagModel): P
 
 // Delete a course tag
 export async function DeleteCourseTag(id: string, tag: string): Promise<void> {
-	const response = await fetch(`/api/courses/${id}/tags/${tag}`, {
+	const response = await apiFetch(`/api/courses/${id}/tags/${tag}`, {
 		method: 'DELETE',
 		headers: {
 			'Content-Type': 'application/json'
@@ -150,7 +151,7 @@ export async function GetCourseAssets(
 	params?: AssetReqParams
 ): Promise<AssetPaginationModel> {
 	const qs = params && buildQueryString(params);
-	const response = await fetch(`/api/courses/${id}/assets` + (qs ? `?${qs}` : ''));
+	const response = await apiFetch(`/api/courses/${id}/assets` + (qs ? `?${qs}` : ''));
 
 	if (response.ok) {
 		const data = (await response.json()) as AssetPaginationModel;
@@ -202,7 +203,7 @@ export async function UpdateCourseAssetProgress(
 	assetId: string,
 	data: AssetProgressModel
 ): Promise<void> {
-	const response = await fetch(`/api/courses/${courseId}/assets/${assetId}/progress`, {
+	const response = await apiFetch(`/api/courses/${courseId}/assets/${assetId}/progress`, {
 		method: 'PUT',
 		headers: {
 			'Content-Type': 'application/json'

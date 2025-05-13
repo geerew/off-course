@@ -10,6 +10,7 @@ import {
 } from '$lib/models/tag-model';
 import { buildQueryString } from '$lib/utils';
 import { safeParse } from 'valibot';
+import { apiFetch } from './fetch';
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -17,7 +18,7 @@ import { safeParse } from 'valibot';
 export async function GetTags(params?: TagReqParams): Promise<TagPaginationModel> {
 	const qs = params && buildQueryString(params);
 
-	const response = await fetch('/api/tags' + (qs ? `?${qs}` : ''));
+	const response = await apiFetch('/api/tags' + (qs ? `?${qs}` : ''));
 
 	if (response.ok) {
 		const data = (await response.json()) as TagPaginationModel;
@@ -35,7 +36,7 @@ export async function GetTags(params?: TagReqParams): Promise<TagPaginationModel
 
 // Get a tag (by name)
 export async function GetTag(name: string): Promise<TagModel> {
-	const response = await fetch(`/api/tags/${name}`);
+	const response = await apiFetch(`/api/tags/${name}`);
 
 	if (response.ok) {
 		const data = (await response.json()) as TagModel;
@@ -55,7 +56,7 @@ export async function GetTag(name: string): Promise<TagModel> {
 export async function GetTagNames(params?: TagReqParams): Promise<string[]> {
 	const qs = params && buildQueryString(params);
 
-	const response = await fetch('/api/tags/names' + (qs ? `?${qs}` : ''));
+	const response = await apiFetch('/api/tags/names' + (qs ? `?${qs}` : ''));
 
 	if (response.ok) {
 		const data = (await response.json()) as string[];
@@ -70,7 +71,7 @@ export async function GetTagNames(params?: TagReqParams): Promise<string[]> {
 
 // Create a tag
 export async function CreateTag(data: CreateTagModel): Promise<void> {
-	const response = await fetch('/api/tags', {
+	const response = await apiFetch('/api/tags', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify(data)
@@ -86,7 +87,7 @@ export async function CreateTag(data: CreateTagModel): Promise<void> {
 
 // Update a tag
 export async function UpdateTag(id: string, data: UpdateTagModel): Promise<void> {
-	const response = await fetch(`/api/tags/${id}`, {
+	const response = await apiFetch(`/api/tags/${id}`, {
 		method: 'PUT',
 		headers: {
 			'Content-Type': 'application/json'
@@ -104,7 +105,7 @@ export async function UpdateTag(id: string, data: UpdateTagModel): Promise<void>
 
 // Delete a tag
 export async function DeleteTag(id: string): Promise<void> {
-	const response = await fetch(`/api/tags/${id}`, {
+	const response = await apiFetch(`/api/tags/${id}`, {
 		method: 'DELETE',
 		headers: {
 			'Content-Type': 'application/json'

@@ -8,6 +8,7 @@ import {
 } from '$lib/models/user-model';
 import { buildQueryString } from '$lib/utils';
 import { safeParse } from 'valibot';
+import { apiFetch } from './fetch';
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -15,7 +16,7 @@ import { safeParse } from 'valibot';
 export async function GetUsers(params?: UserReqParams): Promise<UserPaginationModel> {
 	const qs = params && buildQueryString(params);
 
-	const response = await fetch('/api/users' + (qs ? `?${qs}` : ''));
+	const response = await apiFetch('/api/users' + (qs ? `?${qs}` : ''));
 
 	if (response.ok) {
 		const data = (await response.json()) as UserPaginationModel;
@@ -34,7 +35,7 @@ export async function GetUsers(params?: UserReqParams): Promise<UserPaginationMo
 
 // Create a new user
 export async function CreateUser(data: CreateUserModel): Promise<void> {
-	const response = await fetch('/api/users', {
+	const response = await apiFetch('/api/users', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify(data)
@@ -50,7 +51,7 @@ export async function CreateUser(data: CreateUserModel): Promise<void> {
 
 // Update a user
 export async function UpdateUser(id: string, data: UpdateUserModel): Promise<void> {
-	const response = await fetch(`/api/users/${id}`, {
+	const response = await apiFetch(`/api/users/${id}`, {
 		method: 'PUT',
 		headers: {
 			'Content-Type': 'application/json'
@@ -68,7 +69,7 @@ export async function UpdateUser(id: string, data: UpdateUserModel): Promise<voi
 
 // Delete a user
 export async function DeleteUser(id: string): Promise<void> {
-	const response = await fetch(`/api/users/${id}`, {
+	const response = await apiFetch(`/api/users/${id}`, {
 		method: 'DELETE',
 		headers: {
 			'Content-Type': 'application/json'
@@ -85,7 +86,7 @@ export async function DeleteUser(id: string): Promise<void> {
 
 // Revoke all sessions of a user
 export async function RevokeUserSessions(id: string): Promise<void> {
-	const response = await fetch(`/api/users/${id}/sessions`, {
+	const response = await apiFetch(`/api/users/${id}/sessions`, {
 		method: 'DELETE',
 		headers: {
 			'Content-Type': 'application/json'
