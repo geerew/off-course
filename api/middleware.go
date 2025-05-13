@@ -132,61 +132,51 @@ func bootstrapMiddleware(r *Router) fiber.Handler {
 // authMiddleware authenticates the request
 func authMiddleware(r *Router) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// When bootstrapping, ignore auth entirely. All invalid requests will be
-		// handled by the bootstrap middleware
-		if bootstrapping, ok := c.Locals("bootstrapping").(bool); ok && bootstrapping {
+		if bootstrapping, _ := c.Locals("bootstrapping").(bool); bootstrapping {
 			return c.Next()
 		}
 
-		if r.isDevUIPath(c) || r.isFavicon(c) {
+		path := c.Path()
+		isAPI := strings.HasPrefix(path, "/api/")
+		isAuthUI := strings.HasPrefix(path, "/auth/")
+		isMe := strings.HasPrefix(path, "/api/auth/me")
+		isLogout := strings.HasPrefix(path, "/api/auth/logout")
+
+		if r.isDevUIPath(c) || r.isFavicon(c) || isLogout {
 			return c.Next()
 		}
 
-		// API - Always allow logout
-		if strings.HasPrefix(c.OriginalURL(), "/api/auth/logout") {
-			return c.Next()
-		}
-
-		// Get the session
 		session, err := r.sessionManager.Get(c)
 		if err != nil {
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
-		// The session is fresh, force the user to login or register
 		if session.Fresh() {
-			// API - Only allow login and register
-			if strings.HasPrefix(c.OriginalURL(), "/api") {
-				if strings.HasPrefix(c.OriginalURL(), "/api/auth/login") ||
-					strings.HasPrefix(c.OriginalURL(), "/api/auth/register") {
+			if isAPI {
+				if strings.HasPrefix(path, "/api/auth/login") || strings.HasPrefix(path, "/api/auth/register") {
 					return c.Next()
-				} else {
-					return c.SendStatus(fiber.StatusForbidden)
 				}
+				return c.SendStatus(fiber.StatusForbidden)
 			}
 
-			// UI - Only allow login and register
-			if strings.HasPrefix(c.OriginalURL(), "/auth/login") || strings.HasPrefix(c.OriginalURL(), "/auth/register") {
+			if isAuthUI {
 				return c.Next()
 			}
 
-			return c.Redirect("/auth/login/")
+			return c.Redirect("/auth/login")
 		}
 
-		// UI - Redirect auth requests to /
-		if strings.HasPrefix(c.OriginalURL(), "/auth/") {
+		if isAuthUI {
 			return c.Redirect("/")
 		}
 
-		// API - Return 200 for all auth requests except /me
-		if strings.HasPrefix(c.OriginalURL(), "/api/auth/") && !strings.HasPrefix(c.OriginalURL(), "/api/auth/me") {
+		if strings.HasPrefix(path, "/api/auth/") && !isMe {
 			return c.SendStatus(fiber.StatusOK)
 		}
 
-		// Get the user ID and role from the session and set for downstream handlers
-		userId := session.Get("id").(string)
-		userRole := session.Get("role").(string)
-		if userId == "" || userRole == "" {
+		userID, ok1 := session.Get("id").(string)
+		userRole, ok2 := session.Get("role").(string)
+		if !ok1 || !ok2 || userID == "" || userRole == "" {
 			return c.SendStatus(fiber.StatusUnauthorized)
 		}
 
@@ -194,7 +184,7 @@ func authMiddleware(r *Router) fiber.Handler {
 			return c.Redirect("/")
 		}
 
-		c.Locals(types.UserContextKey, userId)
+		c.Locals(types.UserContextKey, userID)
 		c.Locals(types.RoleContextKey, userRole)
 
 		return c.Next()
