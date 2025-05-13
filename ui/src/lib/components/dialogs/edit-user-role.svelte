@@ -19,7 +19,7 @@
 		successFn?: () => void;
 	};
 
-	let { open = $bindable(false), value = $bindable(), trigger, successFn }: Props = $props();
+	let { open = $bindable(false), value, trigger, successFn }: Props = $props();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -46,9 +46,10 @@
 		try {
 			if (isArray) {
 				await Promise.all(Object.values(value).map((u) => UpdateUser(u.id, { role: roleValue })));
-				toast.success('Selected users updated');
+				toast.success('Users role updated');
 			} else {
 				await UpdateUser(value.id, { role: roleValue });
+				toast.success('Updated role');
 			}
 
 			successFn?.();
