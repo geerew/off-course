@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
@@ -375,7 +376,7 @@ func applyAssetChanges(
 			// example a better quality video. Existing progress will be lost, which is perfect
 			// because the duration may have changed as well
 			fmt.Println("Replacing asset", v.Existing.Path, "with", v.New.Path)
-			if err := s.dao.Delete(ctx, v.Existing, nil); err != nil {
+			if err := dao.Delete(ctx, s.dao, v.Existing, nil); err != nil {
 				return false, err
 			}
 
@@ -401,7 +402,7 @@ func applyAssetChanges(
 			// (existing) asset. The existing asset will be deleted and the new one will take its place.
 			// Progress for the rename asset will be preserved
 			fmt.Println("Overwriting asset", v.Renamed.Path, "with", v.Deleted.Path)
-			if err := s.dao.Delete(ctx, v.Deleted, nil); err != nil {
+			if err := dao.Delete(ctx, s.dao, v.Deleted, nil); err != nil {
 				return false, err
 			}
 
@@ -414,7 +415,7 @@ func applyAssetChanges(
 			// happens when two files have swapped paths on disk. Existing progress will be lost
 			fmt.Println("Swapping assets", v.ExistingA.Path, "and", v.ExistingB.Path)
 			for _, existing := range []*models.Asset{v.ExistingA, v.ExistingB} {
-				if err := s.dao.Delete(ctx, existing, nil); err != nil {
+				if err := dao.Delete(ctx, s.dao, existing, nil); err != nil {
 					return false, err
 				}
 
@@ -440,7 +441,7 @@ func applyAssetChanges(
 		case DeleteAssetOp:
 			// Delete an asset that no longer exists on disk
 			fmt.Println("Deleting asset", v.Asset.Path)
-			if err := s.dao.Delete(ctx, v.Asset, nil); err != nil {
+			if err := dao.Delete(ctx, s.dao, v.Asset, nil); err != nil {
 				return false, err
 			}
 
@@ -502,7 +503,7 @@ func applyAttachmentChanges(
 				return false, err
 			}
 		case DeleteAttachmentOp:
-			if err := s.dao.Delete(ctx, v.Attachment, nil); err != nil {
+			if err := dao.Delete(ctx, s.dao, v.Attachment, nil); err != nil {
 				return false, err
 			}
 		}

@@ -267,7 +267,7 @@ func Test_AssetDeleteCascade(t *testing.T) {
 	}
 	require.NoError(t, dao.CreateAsset(ctx, asset))
 
-	require.Nil(t, dao.Delete(ctx, course, nil))
+	require.Nil(t, Delete(ctx, dao, course, nil))
 
 	count, err := dao.Count(ctx, &models.Asset{}, nil)
 	require.NoError(t, err)

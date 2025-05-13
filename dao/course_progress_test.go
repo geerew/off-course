@@ -181,7 +181,7 @@ func Test_CourseProgressDeleteCascade(t *testing.T) {
 	courseProgress := &models.CourseProgress{}
 	require.NoError(t, dao.GetCourseProgress(ctx, courseProgress, &database.Options{Where: squirrel.Eq{models.COURSE_PROGRESS_COURSE_ID: course.ID}}))
 
-	require.NoError(t, dao.Delete(ctx, courseProgress, nil))
+	require.NoError(t, Delete(ctx, dao, courseProgress, nil))
 
 	count, err := dao.Count(ctx, &models.CourseProgress{}, nil)
 	require.NoError(t, err)

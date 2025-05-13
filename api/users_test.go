@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/auth"
 	"github.com/geerew/off-course/utils/pagination"
@@ -27,7 +28,7 @@ func TestUsers_GetUsers(t *testing.T) {
 
 		// Remove the admin user
 		user := &models.User{Base: models.Base{ID: "admin"}}
-		require.NoError(t, router.dao.Delete(ctx, user, nil))
+		require.NoError(t, dao.Delete(ctx, router.dao, user, nil))
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/", nil))
 		require.NoError(t, err)
@@ -43,7 +44,7 @@ func TestUsers_GetUsers(t *testing.T) {
 
 		// Remove the admin user
 		user := &models.User{Base: models.Base{ID: "admin"}}
-		require.NoError(t, router.dao.Delete(ctx, user, nil))
+		require.NoError(t, dao.Delete(ctx, router.dao, user, nil))
 
 		for i := range 5 {
 			users := &models.User{
@@ -69,7 +70,7 @@ func TestUsers_GetUsers(t *testing.T) {
 
 		// Remove the admin user
 		user := &models.User{Base: models.Base{ID: "admin"}}
-		require.NoError(t, router.dao.Delete(ctx, user, nil))
+		require.NoError(t, dao.Delete(ctx, router.dao, user, nil))
 
 		users := []*models.User{}
 		for i := range 5 {
@@ -112,7 +113,7 @@ func TestUsers_GetUsers(t *testing.T) {
 
 		// Remove the admin user
 		user := &models.User{Base: models.Base{ID: "admin"}}
-		require.NoError(t, router.dao.Delete(ctx, user, nil))
+		require.NoError(t, dao.Delete(ctx, router.dao, user, nil))
 
 		users := []*models.User{}
 		for i := range 17 {
@@ -165,7 +166,7 @@ func TestUsers_GetUsers(t *testing.T) {
 
 		// Remove the admin user
 		user := &models.User{Base: models.Base{ID: "admin"}}
-		require.NoError(t, router.dao.Delete(ctx, user, nil))
+		require.NoError(t, dao.Delete(ctx, router.dao, user, nil))
 
 		defaultSort := " sort:\"" + models.USER_TABLE_USERNAME + " asc\""
 

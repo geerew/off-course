@@ -622,7 +622,7 @@ func Test_ListPluck(t *testing.T) {
 	t.Run("no entries", func(t *testing.T) {
 		dao, ctx := setup(t)
 
-		ids, err := dao.ListPluck(ctx, &models.Course{}, nil, models.BASE_ID)
+		ids, err := ListPluck[string](ctx, dao, &models.Course{}, nil, models.BASE_ID)
 		require.NoError(t, err)
 		require.Empty(t, ids)
 	})
@@ -644,7 +644,7 @@ func Test_ListPluck(t *testing.T) {
 		options := &database.Options{OrderBy: []string{models.COURSE_TABLE_CREATED_AT + " ASC"}}
 
 		// Course IDs
-		ids, err := dao.ListPluck(ctx, &models.Course{}, options, models.BASE_ID)
+		ids, err := ListPluck[string](ctx, dao, &models.Course{}, options, models.BASE_ID)
 		require.NoError(t, err)
 		require.Len(t, ids, 5)
 		for i := range 5 {
@@ -652,7 +652,7 @@ func Test_ListPluck(t *testing.T) {
 		}
 
 		// Course paths
-		paths, err := dao.ListPluck(ctx, &models.Course{}, options, models.COURSE_PATH)
+		paths, err := ListPluck[string](ctx, dao, &models.Course{}, options, models.COURSE_PATH)
 		require.NoError(t, err)
 		require.Len(t, paths, 5)
 		for i := range 5 {
@@ -670,12 +670,12 @@ func Test_Delete(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.Create(ctx, course))
 
-		require.NoError(t, dao.Delete(ctx, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_PATH: course.Path}}))
+		require.NoError(t, Delete(ctx, dao, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_PATH: course.Path}}))
 	})
 
 	t.Run("nil model", func(t *testing.T) {
 		dao, ctx := setup(t)
-		err := dao.Delete(ctx, nil, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_PATH: "1234"}})
+		err := Delete(ctx, dao, nil, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_PATH: "1234"}})
 		require.ErrorIs(t, err, utils.ErrNilPtr)
 	})
 
@@ -683,7 +683,7 @@ func Test_Delete(t *testing.T) {
 		dao, ctx := setup(t)
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.Create(ctx, course))
-		require.NoError(t, dao.Delete(ctx, course, nil))
+		require.NoError(t, Delete(ctx, dao, course, nil))
 
 		// Check if it was deleted
 		courseResult := &models.Course{Base: models.Base{ID: course.ID}}
@@ -697,7 +697,7 @@ func Test_Delete(t *testing.T) {
 		_, err := dao.db.Exec("DROP TABLE IF EXISTS " + course.Table())
 		require.NoError(t, err)
 
-		err = dao.Delete(ctx, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_PATH: "1234"}})
+		err = Delete(ctx, dao, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_PATH: "1234"}})
 		require.ErrorContains(t, err, "no such table: "+course.Table())
 	})
 }

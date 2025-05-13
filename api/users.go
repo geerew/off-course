@@ -5,10 +5,12 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/auth"
 	"github.com/geerew/off-course/utils/queryparser"
+	"github.com/geerew/off-course/utils/session"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
 )
@@ -16,14 +18,19 @@ import (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type userAPI struct {
-	r *Router
+	dao            *dao.DAO
+	sessionManager *session.SessionManager
+	// r *Router
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // initFsRoutes initializes the filesystem routes
 func (r *Router) initUserRoutes() {
-	userAPI := userAPI{r: r}
+	userAPI := userAPI{
+		dao:            r.dao,
+		sessionManager: r.sessionManager,
+	}
 
 	userGroup := r.api.Group("/users")
 
@@ -55,7 +62,7 @@ func (api userAPI) getUsers(c *fiber.Ctx) error {
 	}
 
 	users := []*models.User{}
-	err = api.r.dao.ListUsers(c.UserContext(), &users, options)
+	err = api.dao.ListUsers(c.UserContext(), &users, options)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up users", err)
 	}
@@ -97,7 +104,7 @@ func (api userAPI) createUser(c *fiber.Ctx) error {
 		user.DisplayName = userReq.DisplayName
 	}
 
-	err := api.r.dao.CreateUser(c.UserContext(), user)
+	err := api.dao.CreateUser(c.UserContext(), user)
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "UNIQUE constraint failed") {
 			return errorResponse(c, fiber.StatusBadRequest, "Username already exists", nil)
@@ -125,7 +132,7 @@ func (api userAPI) updateUser(c *fiber.Ctx) error {
 	}
 
 	user := &models.User{Base: models.Base{ID: id}}
-	err := api.r.dao.GetUser(c.UserContext(), user, nil)
+	err := api.dao.GetUser(c.UserContext(), user, nil)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "User not found", nil)
@@ -151,7 +158,7 @@ func (api userAPI) updateUser(c *fiber.Ctx) error {
 		}
 	}
 
-	err = api.r.dao.UpdateUser(c.UserContext(), user)
+	err = api.dao.UpdateUser(c.UserContext(), user)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error updating user", err)
 	}
@@ -160,7 +167,7 @@ func (api userAPI) updateUser(c *fiber.Ctx) error {
 	// TODO: Change this so we don't have to delete the sessions for the user. Just need to update
 	// the role for each session belonging to the user
 	if userReq.Role != "" {
-		err := api.r.sessionManager.DeleteUserSessions(id)
+		err := api.sessionManager.DeleteUserSessions(id)
 		if err != nil {
 			return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user sessions", err)
 		}
@@ -180,12 +187,12 @@ func (api userAPI) deleteUser(c *fiber.Ctx) error {
 	id := c.Params("id")
 
 	user := &models.User{Base: models.Base{ID: id}}
-	err := api.r.dao.Delete(c.UserContext(), user, nil)
+	err := dao.Delete(c.UserContext(), api.dao, user, nil)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user", err)
 	}
 
-	err = api.r.sessionManager.DeleteUserSessions(id)
+	err = api.sessionManager.DeleteUserSessions(id)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user sessions", err)
 	}
@@ -198,7 +205,7 @@ func (api userAPI) deleteUser(c *fiber.Ctx) error {
 func (api userAPI) deleteUserSession(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	err := api.r.sessionManager.DeleteUserSessions(id)
+	err := api.sessionManager.DeleteUserSessions(id)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user sessions", err)
 	}

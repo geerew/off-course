@@ -127,23 +127,19 @@ func (dao *DAO) List(ctx context.Context, model any, options *database.Options) 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// ListPluck is a generic function to get a list of values from a column in the database
-//
-// TODO Make this a generic function
-func (dao *DAO) ListPluck(ctx context.Context, model any, options *database.Options, column string) ([]string, error) {
+// ListPluck pulls column into a []T.
+func ListPluck[T any](ctx context.Context, dao *DAO, model any, options *database.Options, column string) ([]T, error) {
 	sch, err := schema.Parse(model)
 	if err != nil {
 		return nil, err
 	}
 
-	ids := []string{}
+	var results []T
 	q := database.QuerierFromContext(ctx, dao.db)
-	err = sch.Pluck(column, &ids, options, q)
-	if err != nil && err != sql.ErrNoRows {
+	if err := sch.Pluck(column, &results, options, q); err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
-
-	return ids, nil
+	return results, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -180,7 +176,7 @@ func (dao *DAO) Update(ctx context.Context, model models.Modeler) (bool, error) 
 // Delete is a generic function to delete a model (row)
 //
 // When options is nil or options.Where is nil, the model ID will be used
-func (dao *DAO) Delete(ctx context.Context, model models.Modeler, options *database.Options) error {
+func Delete(ctx context.Context, dao *DAO, model models.Modeler, options *database.Options) error {
 	sch, err := schema.Parse(model)
 	if err != nil {
 		return err
@@ -202,7 +198,7 @@ func (dao *DAO) Delete(ctx context.Context, model models.Modeler, options *datab
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // DeleteAll is a generic function to delete all rows in a table as determined by the model
-func (dao *DAO) DeleteAll(ctx context.Context, model models.Modeler) error {
+func DeleteAll(ctx context.Context, dao *DAO, model models.Modeler) error {
 	sch, err := schema.Parse(model)
 	if err != nil {
 		return err

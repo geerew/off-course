@@ -82,7 +82,7 @@ func (api *tagsAPI) getTagNames(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
-	tags, err := api.dao.ListPluck(c.UserContext(), &models.Tag{}, options, models.TAG_TAG)
+	tags, err := dao.ListPluck[string](c.UserContext(), api.dao, &models.Tag{}, options, models.TAG_TAG)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tags", err)
 	}
@@ -184,7 +184,7 @@ func (api *tagsAPI) deleteTag(c *fiber.Ctx) error {
 	id := c.Params("id")
 
 	tag := &models.Tag{Base: models.Base{ID: id}}
-	err := api.dao.Delete(c.UserContext(), tag, nil)
+	err := dao.Delete(c.UserContext(), api.dao, tag, nil)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting tag", err)
 	}

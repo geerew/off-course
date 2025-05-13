@@ -161,7 +161,7 @@ func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessor
 			}
 
 			// Cleanup
-			if err := s.dao.Delete(ctx, nextScan, nil); err != nil {
+			if err := dao.Delete(ctx, s.dao, nextScan, nil); err != nil {
 				s.logger.Error(
 					"Failed to delete scan job",
 					loggerType,

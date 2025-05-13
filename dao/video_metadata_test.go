@@ -177,7 +177,7 @@ func Test_VideoMetadataDeleteCascade(t *testing.T) {
 	}
 	require.NoError(t, dao.CreateVideoMetadata(ctx, videoMetadata))
 
-	require.Nil(t, dao.Delete(ctx, asset, nil))
+	require.Nil(t, Delete(ctx, dao, asset, nil))
 
 	count, err := dao.Count(ctx, &models.VideoMetadata{}, nil)
 	require.NoError(t, err)

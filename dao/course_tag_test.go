@@ -84,7 +84,7 @@ func Test_CourseTagDeleteCascade(t *testing.T) {
 	courseTag := &models.CourseTag{CourseID: course.ID, Tag: "Tag 1"}
 	require.NoError(t, dao.CreateCourseTag(ctx, courseTag))
 
-	require.Nil(t, dao.Delete(ctx, course, nil))
+	require.Nil(t, Delete(ctx, dao, course, nil))
 
 	count, err := dao.Count(ctx, &models.CourseTag{}, nil)
 	require.NoError(t, err)

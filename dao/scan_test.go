@@ -156,7 +156,7 @@ func Test_ScanDeleteCascade(t *testing.T) {
 	scan := &models.Scan{CourseID: course.ID}
 	require.NoError(t, dao.Create(ctx, scan))
 
-	require.Nil(t, dao.Delete(ctx, course, nil))
+	require.Nil(t, Delete(ctx, dao, course, nil))
 
 	count, err := dao.Count(ctx, &models.Scan{}, nil)
 	require.NoError(t, err)

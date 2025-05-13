@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/dao"
+	daoer "github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/appfs"
@@ -50,7 +50,7 @@ var deleteCmd = &cobra.Command{
 
 		fmt.Println()
 
-		dao := dao.New(dbManager.DataDb)
+		dao := daoer.New(dbManager.DataDb)
 		options := &database.Options{
 			Where: squirrel.Eq{models.USER_TABLE_USERNAME: username},
 		}
@@ -86,7 +86,7 @@ var deleteCmd = &cobra.Command{
 
 		}
 
-		err = dao.Delete(ctx, user, nil)
+		err = daoer.Delete(ctx, dao, user, nil)
 		if err != nil {
 			errorMessage("Failed to delete user: %s", err)
 			os.Exit(1)

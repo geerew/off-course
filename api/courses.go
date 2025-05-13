@@ -177,7 +177,7 @@ func (api coursesAPI) deleteCourse(c *fiber.Ctx) error {
 	id := c.Params("id")
 
 	course := &models.Course{Base: models.Base{ID: id}}
-	err := api.dao.Delete(c.UserContext(), course, nil)
+	err := dao.Delete(c.UserContext(), api.dao, course, nil)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting course", err)
 	}
@@ -528,8 +528,9 @@ func (api coursesAPI) deleteTag(c *fiber.Ctx) error {
 	courseId := c.Params("id")
 	tagId := c.Params("tagId")
 
-	err := api.dao.Delete(
+	err := dao.Delete(
 		c.UserContext(),
+		api.dao,
 		&models.CourseTag{},
 		&database.Options{Where: squirrel.And{
 			squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courseId},

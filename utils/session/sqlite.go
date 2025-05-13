@@ -116,7 +116,7 @@ func (s *SqliteStorage) Delete(key string) error {
 	}
 
 	options := &database.Options{Where: squirrel.Eq{models.SESSION_TABLE_ID: key}}
-	return s.dao.Delete(context.Background(), &models.Session{}, options)
+	return dao.Delete(context.Background(), s.dao, &models.Session{}, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -128,14 +128,14 @@ func (s *SqliteStorage) DeleteUser(id string) error {
 	}
 
 	options := &database.Options{Where: squirrel.Eq{models.SESSION_TABLE_USER_ID: id}}
-	return s.dao.Delete(context.Background(), &models.Session{}, options)
+	return dao.Delete(context.Background(), s.dao, &models.Session{}, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Reset resets all entries, including unexpired
 func (s *SqliteStorage) Reset() error {
-	return s.dao.DeleteAll(context.Background(), &models.Session{})
+	return dao.DeleteAll(context.Background(), s.dao, &models.Session{})
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -159,6 +159,6 @@ func (s *SqliteStorage) gcTicker() {
 				squirrel.LtOrEq{models.SESSION_TABLE_EXPIRES: t.Unix()},
 				squirrel.NotEq{models.SESSION_TABLE_EXPIRES: 0}},
 		}
-		s.dao.Delete(ctx, &models.Session{}, o)
+		dao.Delete(ctx, s.dao, &models.Session{}, o)
 	}
 }
