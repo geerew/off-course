@@ -12,11 +12,10 @@ import (
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/auth"
+	"github.com/geerew/off-course/utils/types"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 )
-
-// TODO Support updating the role and display name
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -70,38 +69,45 @@ var updateCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		// Get password
-		var password string
+		// Display name
+		user.DisplayName = questionPlainWithDefault("Display Name", user.DisplayName)
+
+		// Role
+		var role string
 		for {
-			password = questionPassword("Password")
-			if password != "" {
+			role = questionPlainWithDefault("Role", user.Role.String())
+			if role == types.UserRoleAdmin.String() || role == types.UserRoleUser.String() {
 				break
 			}
-
-			errorMessage("Password cannot be empty")
+			errorMessage("Role must be either 'admin' or 'user'")
 		}
 
+		// Get password
+		password := questionPassword("Password (leave empty to skip)")
+
 		// Confirm password
-		for {
-			pwd := questionPassword("Confirm Password")
-			if pwd == password {
-				break
+		if password != "" {
+			for {
+				pwd := questionPassword("Confirm Password")
+				if pwd == password {
+					break
+				}
+
+				errorMessage("Passwords do not match")
 			}
 
-			errorMessage("Passwords do not match")
+			user.PasswordHash = auth.GeneratePassword(password)
 		}
 
 		fmt.Println()
 
-		user.PasswordHash = auth.GeneratePassword(password)
-
 		err = dao.UpdateUser(ctx, user)
 		if err != nil {
-			errorMessage("Failed to update password: %s", err)
+			errorMessage("Failed to update: %s", err)
 			os.Exit(1)
 		}
 
-		successMessage("Password updated for '%s'", username)
+		successMessage("Updated '%s'", username)
 	},
 }
 

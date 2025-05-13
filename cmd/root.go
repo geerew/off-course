@@ -60,6 +60,29 @@ func questionPassword(question string) string {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// questionPlainWithDefault asks a question showing a default value, and returns the answer
+func questionPlainWithDefault(question, def string) string {
+	c := color.New(color.Bold, color.FgGreen)
+
+	// Show the default value in brackets if provided
+	if def != "" {
+		c.Printf(">> %s [%s]: ", question, def)
+	} else {
+		c.Printf(">> %s: ", question)
+	}
+
+	reader := bufio.NewReader(os.Stdin)
+	answer, _ := reader.ReadString('\n')
+	answer = strings.TrimSpace(answer)
+
+	if answer == "" {
+		return def
+	}
+	return answer
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // errorMessage prints an error message
 func errorMessage(message string, a ...any) {
 	c := color.New(color.FgRed)
