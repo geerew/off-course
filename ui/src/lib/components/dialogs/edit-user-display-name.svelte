@@ -16,7 +16,7 @@
 		successFn?: () => void;
 	};
 
-	let { open = $bindable(false), value = $bindable(), trigger, successFn }: Props = $props();
+	let { open = $bindable(false), value, trigger, successFn }: Props = $props();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -37,7 +37,8 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	async function doUpdate() {
+	async function doUpdate(e: Event) {
+		e.preventDefault();
 		isPosting = true;
 
 		try {
@@ -48,9 +49,7 @@
 				await UpdateUser(value.id, { displayName: newValue });
 			}
 
-			value.displayName = newValue;
 			open = false;
-
 			successFn?.();
 		} catch (error) {
 			toast.error((error as APIError).message);
@@ -72,7 +71,11 @@
 			e.preventDefault();
 		}}
 	>
-		<form onsubmit={doUpdate}>
+		<form
+			onsubmit={(e) => {
+				doUpdate(e);
+			}}
+		>
 			<main class="flex flex-col gap-2.5 p-5">
 				<div>Display Name:</div>
 				<Input
