@@ -156,7 +156,9 @@ func (api userAPI) updateUser(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error updating user", err)
 	}
 
-	// Revoke all sessions for the give id
+	// Revoke all sessions for the given id
+	// TODO: Change this so we don't have to delete the sessions for the user. Just need to update
+	// the role for each session belonging to the user
 	if userReq.Role != "" {
 		err := api.r.sessionManager.DeleteUserSessions(id)
 		if err != nil {
