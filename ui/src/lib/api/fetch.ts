@@ -1,5 +1,3 @@
-// $lib/api/fetch.ts
-
 import { auth } from '$lib/auth.svelte';
 
 export async function apiFetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
