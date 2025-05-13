@@ -61,12 +61,12 @@
 							<!-- Name -->
 							<div class="flex flex-row items-center gap-3 p-1.5">
 								<span
-									class="bg-background-primary text-foreground-alt-5 relative flex size-10 items-center justify-center rounded-full font-semibold"
+									class="bg-background-primary text-foreground-alt-5 relative flex size-10 shrink-0 items-center justify-center rounded-full font-semibold"
 								>
 									{auth.userLetter}
 								</span>
 								<span class="text-base font-semibold tracking-wide">
-									{auth.user?.username}
+									{auth.user?.displayName}
 								</span>
 							</div>
 
