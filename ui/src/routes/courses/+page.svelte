@@ -190,6 +190,13 @@
 													</div>
 
 													<div class="flex gap-2">
+														<!-- Scan status -->
+														{#if course.scanStatus === 'processing' || course.scanStatus === 'waiting'}
+															<Badge class="text-background-alt-1 bg-background-primary-alt-1"
+																>scanning</Badge
+															>
+														{/if}
+
 														<!-- Unavailable -->
 														{#if !course.available}
 															<Badge class="bg-background-error">unavailable</Badge>
