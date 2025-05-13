@@ -1,4 +1,3 @@
-// TODO Test issue with frontend hanging when scans are running
 import { toast } from 'svelte-sonner';
 import type { APIError } from './api-error.svelte';
 import { GetCourse } from './api/course-api';
@@ -12,7 +11,7 @@ class ScanMonitor {
 	#scansRo = $derived(this.#scans);
 	#interval = $state<number | null>(null);
 	#trackedCourses = new Map<string, CourseModel>();
-	#lastSeenInScans = new Set<string>(); // Track all course IDs we've seen in scans
+	#lastSeenInScans = new Set<string>();
 
 	constructor() {}
 
@@ -27,22 +26,20 @@ class ScanMonitor {
 		try {
 			const resp = await GetScans();
 
-			// Create a new scans object
 			const tempScans: Record<string, ScanStatus> = {};
 			const currentScanIds = new Set<string>();
 
 			for (const scan of resp) {
 				tempScans[scan.courseId] = scan.status;
 				currentScanIds.add(scan.courseId);
-				this.#lastSeenInScans.add(scan.courseId); // Add to our tracking set
+				this.#lastSeenInScans.add(scan.courseId);
 			}
 
 			// Find courses that were in scans before but aren't anymore
 			for (const courseId of this.#lastSeenInScans) {
 				if (!currentScanIds.has(courseId)) {
-					// This course was in scans but isn't anymore - it completed!
 					await this.#updateCourse(courseId);
-					this.#lastSeenInScans.delete(courseId); // Remove from tracking
+					this.#lastSeenInScans.delete(courseId);
 				}
 			}
 
@@ -92,6 +89,9 @@ class ScanMonitor {
 			clearInterval(this.#interval);
 			this.#interval = null;
 		}
+
+		this.#trackedCourses.clear();
+		this.#lastSeenInScans.clear();
 	}
 
 	get scans() {
