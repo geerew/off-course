@@ -13,10 +13,6 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// TODO Support raw queries
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 // DAO is a data access object
 type DAO struct {
 	db database.Database
@@ -207,4 +203,25 @@ func DeleteAll(ctx context.Context, dao *DAO, model models.Modeler) error {
 	q := database.QuerierFromContext(ctx, dao.db)
 	_, err = sch.Delete(nil, q)
 	return err
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// RawQuery runs any SQL and scans into model (struct or slice)
+func RawQuery(ctx context.Context, dao *DAO, model any, query string, args ...any) error {
+	sch, err := schema.Parse(model)
+	if err != nil {
+		return err
+	}
+
+	q := database.QuerierFromContext(ctx, dao.db)
+	return sch.RawSelect(model, query, args, q)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// RawExec runs any SQL that doesn’t return rows (INSERT/UPDATE/DELETE/etc)
+func RawExec(ctx context.Context, dao *DAO, query string, args ...any) (sql.Result, error) {
+	q := database.QuerierFromContext(ctx, dao.db)
+	return q.Exec(query, args...)
 }

@@ -704,6 +704,61 @@ func Test_Delete(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+func Test_RawQuery(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1"}
+		require.NoError(t, Create(ctx, dao, course))
+
+		courses := []*models.Course{}
+		err := RawQuery(ctx, dao, &courses, "SELECT * FROM "+course.Table()+" WHERE "+models.COURSE_TABLE_PATH+" = ?", course.Path)
+		require.NoError(t, err)
+		require.Len(t, courses, 1)
+		require.Equal(t, course.ID, courses[0].ID)
+	})
+
+	t.Run("nil model", func(t *testing.T) {
+		dao, ctx := setup(t)
+		err := RawQuery(ctx, dao, nil, "SELECT * FROM courses")
+		require.ErrorIs(t, err, utils.ErrNilPtr)
+	})
+
+	t.Run("invalid query", func(t *testing.T) {
+		dao, ctx := setup(t)
+		courses := []*models.Course{}
+		err := RawQuery(ctx, dao, &courses, "SELECT * FROM abcd1234")
+		require.ErrorContains(t, err, "no such table: abcd1234")
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func Test_RawExec(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1"}
+		require.NoError(t, Create(ctx, dao, course))
+
+		_, err := RawExec(ctx, dao, "DELETE FROM "+course.Table()+" WHERE "+models.COURSE_TABLE_PATH+" = ?", course.Path)
+		require.NoError(t, err)
+
+		courses := []*models.Course{}
+		err = RawQuery(ctx, dao, &courses, "SELECT * FROM "+course.Table()+" WHERE "+models.COURSE_TABLE_PATH+" = ?", course.Path)
+		require.NoError(t, err)
+		require.Empty(t, courses)
+	})
+
+	t.Run("invalid query", func(t *testing.T) {
+		dao, ctx := setup(t)
+		_, err := RawExec(ctx, dao, "DELETE FROM abcd1234 WHERE id = ?", "123")
+		require.ErrorContains(t, err, "no such table: abcd1234")
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 func Benchmark_Get(b *testing.B) {
 	dao, ctx := setup(b)
 
