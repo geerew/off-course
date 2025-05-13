@@ -347,7 +347,6 @@ func applyAssetChanges(
 		switch v := op.(type) {
 		case CreateAssetOp:
 			// Create an asset that was found on disk
-			fmt.Println("Creating asset", v.New.Path)
 			if err := s.dao.CreateAsset(ctx, v.New); err != nil {
 				return false, err
 			}
@@ -364,7 +363,6 @@ func applyAssetChanges(
 			// Rename an existing asset by giving the new asset the ID of the existing one then call
 			// update. This will result in the existing asset being updated with the new prefix, title,
 			// path, etc. It also means existing progress will be preserved
-			fmt.Println("Renaming asset", v.Existing.Path, "to", v.New.Path)
 			v.New.ID = v.Existing.ID
 			if err := s.dao.UpdateAsset(ctx, v.New); err != nil {
 				return false, err
@@ -375,7 +373,6 @@ func applyAssetChanges(
 			// creating the new one. This happens with an existing asset has been updated, for
 			// example a better quality video. Existing progress will be lost, which is perfect
 			// because the duration may have changed as well
-			fmt.Println("Replacing asset", v.Existing.Path, "with", v.New.Path)
 			if err := dao.Delete(ctx, s.dao, v.Existing, nil); err != nil {
 				return false, err
 			}
@@ -401,7 +398,6 @@ func applyAssetChanges(
 			// renaming the new one. This happens when a file has been renamed to that of another
 			// (existing) asset. The existing asset will be deleted and the new one will take its place.
 			// Progress for the rename asset will be preserved
-			fmt.Println("Overwriting asset", v.Renamed.Path, "with", v.Deleted.Path)
 			if err := dao.Delete(ctx, s.dao, v.Deleted, nil); err != nil {
 				return false, err
 			}
@@ -413,7 +409,6 @@ func applyAssetChanges(
 		case SwapAssetOp:
 			// Swap two assets by first deleting the existing ones, then creating the new ones. This
 			// happens when two files have swapped paths on disk. Existing progress will be lost
-			fmt.Println("Swapping assets", v.ExistingA.Path, "and", v.ExistingB.Path)
 			for _, existing := range []*models.Asset{v.ExistingA, v.ExistingB} {
 				if err := dao.Delete(ctx, s.dao, existing, nil); err != nil {
 					return false, err
@@ -440,7 +435,6 @@ func applyAssetChanges(
 
 		case DeleteAssetOp:
 			// Delete an asset that no longer exists on disk
-			fmt.Println("Deleting asset", v.Asset.Path)
 			if err := dao.Delete(ctx, s.dao, v.Asset, nil); err != nil {
 				return false, err
 			}

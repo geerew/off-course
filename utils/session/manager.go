@@ -1,6 +1,8 @@
 package session
 
 import (
+	"context"
+
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/utils/types"
@@ -100,4 +102,11 @@ func (s *SessionManager) DeleteSession(c *fiber.Ctx) error {
 // DeleteUserSessions deletes all sessions for a user
 func (s *SessionManager) DeleteUserSessions(id string) error {
 	return s.storage.DeleteUser(id)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// UpdateSessionsRoleForUser updates the role for all sessions belonging to a user
+func (s *SessionManager) UpdateSessionsRoleForUser(userID string, newRole types.UserRole) error {
+	return s.dao.UpdateSessionsRoleForUser(context.Background(), userID, newRole)
 }

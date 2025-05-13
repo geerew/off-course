@@ -20,7 +20,6 @@ import (
 type userAPI struct {
 	dao            *dao.DAO
 	sessionManager *session.SessionManager
-	// r *Router
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -40,8 +39,6 @@ func (r *Router) initUserRoutes() {
 	userGroup.Delete("/:id", protectedRoute, userAPI.deleteUser)
 
 	userGroup.Delete("/:id/sessions", protectedRoute, userAPI.deleteUserSession)
-
-	// TODO Add route to revoke all sessions for a user
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -163,13 +160,10 @@ func (api userAPI) updateUser(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error updating user", err)
 	}
 
-	// Revoke all sessions for the given id
-	// TODO: Change this so we don't have to delete the sessions for the user. Just need to update
-	// the role for each session belonging to the user
+	// Update all the sessions for the user with the new role
 	if userReq.Role != "" {
-		err := api.sessionManager.DeleteUserSessions(id)
-		if err != nil {
-			return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user sessions", err)
+		if err := api.sessionManager.UpdateSessionsRoleForUser(id, user.Role); err != nil {
+			return errorResponse(c, fiber.StatusInternalServerError, "Error updating user sessions", err)
 		}
 	}
 
