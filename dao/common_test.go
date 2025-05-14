@@ -35,10 +35,10 @@ func setup(tb testing.TB) (*DAO, context.Context) {
 	require.NoError(tb, err, "Failed to initialize logger")
 
 	// DB
-	dbManager, err := database.NewSqliteDBManager(&database.DatabaseConfig{
-		DataDir:  "./oc_data",
-		AppFs:    appfs.New(afero.NewMemMapFs(), logger),
-		InMemory: true,
+	dbManager, err := database.NewSQLiteManager(&database.DatabaseManagerConfig{
+		DataDir: "./oc_data",
+		AppFs:   appfs.New(afero.NewMemMapFs(), logger),
+		Testing: true,
 	})
 
 	require.NoError(tb, err)

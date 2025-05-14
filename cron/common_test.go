@@ -32,10 +32,10 @@ func setup(t *testing.T) (database.Database, *appfs.AppFs, context.Context, *slo
 
 	appFs := appfs.New(afero.NewMemMapFs(), logger)
 
-	dbManager, err := database.NewSqliteDBManager(&database.DatabaseConfig{
-		DataDir:  "./oc_data",
-		AppFs:    appFs,
-		InMemory: true,
+	dbManager, err := database.NewSQLiteManager(&database.DatabaseManagerConfig{
+		DataDir: "./oc_data",
+		AppFs:   appFs,
+		Testing: true,
 	})
 
 	require.NoError(t, err)

@@ -7,65 +7,174 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/geerew/off-course/migrations"
+	"github.com/geerew/off-course/utils/security"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pressly/goose/v3"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// NewSqliteDBManager returns a new DatabaseManager
-func NewSqliteDBManager(config *DatabaseConfig) (*DatabaseManager, error) {
+// NewSQLiteManager returns a DatabaseManager
+func NewSQLiteManager(config *DatabaseManagerConfig) (*DatabaseManager, error) {
 	manager := &DatabaseManager{}
 
-	dataConfig := &DatabaseConfig{
+	// When testing, pick a unique name
+	dsnName := "data.db"
+	if config.Testing {
+		dsnName = fmt.Sprintf("data_memdb_%s", security.PseudorandomString(8))
+	}
+
+	// Data DB (writer)
+	writeCfg := &databaseConfig{
 		DataDir:    config.DataDir,
-		DSN:        "data.db",
+		DSN:        dsnName,
 		MigrateDir: "data",
 		AppFs:      config.AppFs,
-		InMemory:   config.InMemory,
+		Testing:    config.Testing,
 		Logger:     config.Logger,
+		Mode:       "rwc",
 	}
 
-	if dataDb, err := NewSqliteDB(dataConfig); err != nil {
+	writeDb, err := newSqliteDb(writeCfg)
+	if err != nil {
 		return nil, err
-	} else {
-		manager.DataDb = dataDb
 	}
 
-	logsConfig := &DatabaseConfig{
+	writeDb.DB().SetMaxOpenConns(1)
+	writeDb.DB().SetMaxIdleConns(1)
+
+	// Data DB (reader)
+	readCfg := &databaseConfig{
 		DataDir:    config.DataDir,
-		DSN:        "logs.db",
+		DSN:        dsnName,
+		MigrateDir: "",
+		AppFs:      config.AppFs,
+		Testing:    config.Testing,
+		Logger:     config.Logger,
+		Mode:       "ro",
+	}
+
+	readDb, err := newSqliteDb(readCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	readDb.DB().SetMaxOpenConns(10)
+	readDb.DB().SetMaxIdleConns(5)
+
+	manager.DataDb = &compositeDb{
+		read:  readDb,
+		write: writeDb,
+	}
+
+	// Log DB
+	dsnName = "logs.db"
+	if config.Testing {
+		dsnName = fmt.Sprintf("logs_memdb_%s", security.PseudorandomString(8))
+	}
+
+	logsCfg := &databaseConfig{
+		DataDir:    config.DataDir,
+		DSN:        dsnName,
 		MigrateDir: "logs",
 		AppFs:      config.AppFs,
-		InMemory:   config.InMemory,
-
-		// Never provider a logger for the logs DB as it will cause an infinite loop
-		Logger: nil,
+		Testing:    config.Testing,
+		Logger:     nil,
+		Mode:       "rwc",
 	}
 
-	if logsDB, err := NewSqliteDB(logsConfig); err != nil {
+	logsDb, err := newSqliteDb(logsCfg)
+	if err != nil {
 		return nil, err
-	} else {
-		manager.LogsDb = logsDB
 	}
+
+	manager.LogsDb = logsDb
 
 	return manager, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// CompositeDb - Read/write pools
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Tx is a wrapper around sql.Tx that logs queries
-type Tx struct {
+// compositeDb is a composite database that uses two sqlite databases for read and write
+type compositeDb struct {
+	read  *sqliteDb
+	write *sqliteDb
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Query executes a query that returns rows, typically a SELECT statement (read pool)
+//
+// It implements the Database interface
+func (c *compositeDb) Query(query string, args ...any) (*sql.Rows, error) {
+	return c.read.Query(query, args...)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// QueryRow executes a query that is expected to return at most one row (read pool)
+//
+// It implements the Database interface
+func (c *compositeDb) QueryRow(query string, args ...any) *sql.Row {
+	return c.read.QueryRow(query, args...)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Exec executes a query without returning any rows (write pool)
+//
+// It implements the Database interface
+func (c *compositeDb) Exec(query string, args ...any) (sql.Result, error) {
+	return c.write.Exec(query, args...)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// RunInTransaction runs a function in a transaction (write pool)
+//
+// It implements the Database interface
+func (c *compositeDb) RunInTransaction(ctx context.Context, fn func(context.Context) error) error {
+	return c.write.RunInTransaction(ctx, fn)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// DB returns the underlying sql.DB for the write pool
+//
+// It implements the Database interface
+func (c *compositeDb) DB() *sql.DB {
+	return c.write.DB()
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// SetLogger sets the logger for both read and write databases
+//
+// It implements the Database interface
+func (c *compositeDb) SetLogger(l *slog.Logger) {
+	c.read.SetLogger(l)
+	c.write.SetLogger(l)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// sqliteTx - Transaction wrapper
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// sqliteDb is a sqlite-specific transaction wrapper
+type sqliteTx struct {
 	*sql.Tx
-	db *SqliteDb
+	db *sqliteDb
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Exec executes a query within a transaction without returning any rows
-func (tx *Tx) Exec(query string, args ...any) (sql.Result, error) {
+func (tx *sqliteTx) Exec(query string, args ...any) (sql.Result, error) {
 	tx.db.log(query, args...)
 	return tx.Tx.Exec(query, args...)
 }
@@ -73,7 +182,7 @@ func (tx *Tx) Exec(query string, args ...any) (sql.Result, error) {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Query executes a query within a transaction that returns rows, typically a SELECT statement
-func (tx *Tx) Query(query string, args ...any) (*sql.Rows, error) {
+func (tx *sqliteTx) Query(query string, args ...any) (*sql.Rows, error) {
 	tx.db.log(query, args...)
 	return tx.Tx.Query(query, args...)
 }
@@ -81,42 +190,46 @@ func (tx *Tx) Query(query string, args ...any) (*sql.Rows, error) {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // QueryRow executes a query within a transaction that is expected to return at most one row
-func (tx *Tx) QueryRow(query string, args ...any) *sql.Row {
+func (tx *sqliteTx) QueryRow(query string, args ...any) *sql.Row {
 	tx.db.log(query, args...)
 	return tx.Tx.QueryRow(query, args...)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// sqliteDb - Single sqlite database
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// SqliteDb defines an sqlite database
-type SqliteDb struct {
+// sqliteDb defines a sqlite database
+type sqliteDb struct {
 	conn   *sql.DB
-	config *DatabaseConfig
+	config *databaseConfig
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// NewSqliteDB creates a new SqliteDb
-func NewSqliteDB(config *DatabaseConfig) (*SqliteDb, error) {
-	sqliteDB := &SqliteDb{
+// newSqliteDb creates a new sqliteDb
+func newSqliteDb(config *databaseConfig) (*sqliteDb, error) {
+	sqliteDb := &sqliteDb{
 		config: config,
 	}
 
-	if err := sqliteDB.bootstrap(); err != nil {
+	if err := sqliteDb.bootstrap(); err != nil {
 		return nil, err
 	}
 
-	if err := sqliteDB.migrate(); err != nil {
+	if err := sqliteDb.migrate(); err != nil {
 		return nil, err
 	}
 
-	return sqliteDB, nil
+	return sqliteDb, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // DB returns the underlying sql.DB
-func (db *SqliteDb) DB() *sql.DB {
+//
+// It implements the Database interface
+func (db *sqliteDb) DB() *sql.DB {
 	return db.conn
 }
 
@@ -125,7 +238,7 @@ func (db *SqliteDb) DB() *sql.DB {
 // Query executes a query that returns rows, typically a SELECT statement
 //
 // It implements the Database interface
-func (db *SqliteDb) Query(query string, args ...any) (*sql.Rows, error) {
+func (db *sqliteDb) Query(query string, args ...any) (*sql.Rows, error) {
 	db.log(query, args...)
 	return db.conn.Query(query, args...)
 }
@@ -135,7 +248,7 @@ func (db *SqliteDb) Query(query string, args ...any) (*sql.Rows, error) {
 // QueryRow executes a query that is expected to return at most one row
 //
 // It implements the Database interface
-func (db *SqliteDb) QueryRow(query string, args ...any) *sql.Row {
+func (db *sqliteDb) QueryRow(query string, args ...any) *sql.Row {
 	db.log(query, args...)
 	return db.conn.QueryRow(query, args...)
 }
@@ -145,7 +258,7 @@ func (db *SqliteDb) QueryRow(query string, args ...any) *sql.Row {
 // Exec executes a query without returning any rows
 //
 // It implements the Database interface
-func (db *SqliteDb) Exec(query string, args ...any) (sql.Result, error) {
+func (db *sqliteDb) Exec(query string, args ...any) (sql.Result, error) {
 	db.log(query, args...)
 	return db.conn.Exec(query, args...)
 }
@@ -155,7 +268,7 @@ func (db *SqliteDb) Exec(query string, args ...any) (sql.Result, error) {
 // RunInTransaction runs a function in a transaction
 //
 // It implements the Database interface
-func (db *SqliteDb) RunInTransaction(ctx context.Context, txFunc func(context.Context) error) (err error) {
+func (db *sqliteDb) RunInTransaction(ctx context.Context, txFunc func(context.Context) error) (err error) {
 	// Check if there's an existing querier in the context
 	existingQuerier := QuerierFromContext(ctx, nil)
 	if existingQuerier != nil {
@@ -167,7 +280,7 @@ func (db *SqliteDb) RunInTransaction(ctx context.Context, txFunc func(context.Co
 		return err
 	}
 
-	tx := &Tx{
+	tx := &sqliteTx{
 		Tx: slqTx,
 		db: db,
 	}
@@ -191,21 +304,40 @@ func (db *SqliteDb) RunInTransaction(ctx context.Context, txFunc func(context.Co
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func (db *SqliteDb) SetLogger(l *slog.Logger) {
+// SetLogger sets the logger for the database
+//
+// It implements the Database interface
+func (db *sqliteDb) SetLogger(l *slog.Logger) {
 	db.config.Logger = l
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// bootstrap initializes the sqlite database connect and sets db.conn
-func (db *SqliteDb) bootstrap() error {
+// bootstrap initializes the sqlite database connection
+func (db *sqliteDb) bootstrap() error {
 	if err := db.config.AppFs.Fs.MkdirAll(db.config.DataDir, os.ModePerm); err != nil {
 		return err
 	}
 
-	dsn := filepath.Join(db.config.DataDir, db.config.DSN)
-	if db.config.InMemory {
-		dsn = "file::memory:"
+	pragmaParts := []string{
+		"cache=shared",
+		"_busy_timeout=10000",
+		"_journal_mode=WAL",
+		"_journal_size_limit=200000000",
+		"_synchronous=NORMAL",
+		"_foreign_keys=1",
+		"_cache_size=-16000",
+	}
+
+	if db.config.Mode != "" {
+		pragmaParts = append([]string{fmt.Sprintf("mode=%s", db.config.Mode)}, pragmaParts...)
+	}
+
+	pragma := strings.Join(pragmaParts, "&")
+
+	dsn := fmt.Sprintf("file:%s?%s", filepath.Join(db.config.DataDir, db.config.DSN), pragma)
+	if db.config.Testing {
+		dsn += "&mode=memory"
 	}
 
 	conn, err := sql.Open("sqlite3", dsn)
@@ -213,15 +345,10 @@ func (db *SqliteDb) bootstrap() error {
 		return err
 	}
 
-	// TODO make this better (use semaphore to block/continue)
 	conn.SetMaxIdleConns(1)
 	conn.SetMaxOpenConns(1)
 
 	db.conn = conn
-
-	if err := db.setPragma(); err != nil {
-		return err
-	}
 
 	return nil
 }
@@ -229,9 +356,12 @@ func (db *SqliteDb) bootstrap() error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // migrate runs the goose migrations
-func (db *SqliteDb) migrate() error {
-	goose.SetLogger(goose.NopLogger())
+func (db *sqliteDb) migrate() error {
+	if db.config.MigrateDir == "" {
+		return nil
+	}
 
+	goose.SetLogger(goose.NopLogger())
 	goose.SetBaseFS(migrations.EmbedMigrations)
 
 	if err := goose.SetDialect("sqlite3"); err != nil {
@@ -247,7 +377,8 @@ func (db *SqliteDb) migrate() error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func (db *SqliteDb) log(query string, args ...any) {
+// log logs the query and arguments to the logger
+func (db *sqliteDb) log(query string, args ...any) {
 	if db.config.Logger != nil {
 		attrs := make([]any, 0, len(args))
 		attrs = append(attrs, loggerType)
@@ -261,22 +392,4 @@ func (db *SqliteDb) log(query string, args ...any) {
 			attrs...,
 		)
 	}
-
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// setPragma sets the default PRAGMA values for the DB
-func (db *SqliteDb) setPragma() error {
-	// Note: busy_timeout needs to be set BEFORE journal_mode
-	_, err := db.Exec(`
-	PRAGMA busy_timeout       = 10000;
-	PRAGMA journal_mode       = WAL;
-	PRAGMA journal_size_limit = 200000000;
-	PRAGMA synchronous        = NORMAL;
-	PRAGMA foreign_keys       = ON;
-	PRAGMA cache_size         = -16000;
-`)
-
-	return err
 }

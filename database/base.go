@@ -75,14 +75,43 @@ type DatabaseManager struct {
 	LogsDb Database
 }
 
+// DatabaseManagerConfig holds only the settings needed to create a new DatabaseManager
+type DatabaseManagerConfig struct {
+	// Where to write data.db & logs.db
+	DataDir string
+
+	// The application file system
+	AppFs *appfs.AppFs
+
+	// Whether to use an in-memory database (this is only used for testing)
+	Testing bool
+
+	// The logger to use for the database
+	Logger *slog.Logger
+}
+
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// DatabaseConfig defines the configuration for a database
-type DatabaseConfig struct {
-	DataDir    string
-	DSN        string
+// databaseConfig defines the configuration for a database
+type databaseConfig struct {
+	// The directory where the database files are stored
+	DataDir string
+
+	// The name of the database file (ie data.db or logs.db)
+	DSN string
+
+	// The directory where the migration files are stored
 	MigrateDir string
-	AppFs      *appfs.AppFs
-	InMemory   bool
-	Logger     *slog.Logger
+
+	// The application file system
+	AppFs *appfs.AppFs
+
+	// The logger to use for the database
+	Logger *slog.Logger
+
+	// The database mode (ie read-only or read-write)
+	Mode string
+
+	// Whether to use an in-memory database (this is only used for testing)
+	Testing bool
 }

@@ -25,10 +25,10 @@ var listCmd = &cobra.Command{
 
 		appFs := appfs.New(afero.NewOsFs(), nil)
 
-		dbManager, err := database.NewSqliteDBManager(&database.DatabaseConfig{
-			DataDir:  "./oc_data",
-			AppFs:    appFs,
-			InMemory: false,
+		dbManager, err := database.NewSQLiteManager(&database.DatabaseManagerConfig{
+			DataDir: "./oc_data",
+			AppFs:   appFs,
+			Testing: false,
 		})
 
 		if err != nil {

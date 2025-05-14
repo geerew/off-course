@@ -27,10 +27,10 @@ func setupSqliteDB(t *testing.T) *DatabaseManager {
 	appFs := appfs.New(afero.NewMemMapFs(), logger)
 
 	// DB
-	dbManager, err := NewSqliteDBManager(&DatabaseConfig{
-		DataDir:  "./oc_data",
-		AppFs:    appFs,
-		InMemory: true,
+	dbManager, err := NewSQLiteManager(&DatabaseManagerConfig{
+		DataDir: "./oc_data",
+		AppFs:   appFs,
+		Testing: true,
 	})
 
 	require.NoError(t, err)
@@ -55,12 +55,12 @@ func TestSqliteDb_Bootstrap(t *testing.T) {
 
 		appFs := appfs.New(afero.NewMemMapFs(), logger)
 
-		db, err := NewSqliteDB(&DatabaseConfig{
+		db, err := newSqliteDb(&databaseConfig{
 			DataDir:    "./oc_data",
 			DSN:        "data.db",
 			MigrateDir: "data",
 			AppFs:      appFs,
-			InMemory:   true,
+			Testing:    true,
 		})
 
 		require.NoError(t, err)
@@ -68,7 +68,7 @@ func TestSqliteDb_Bootstrap(t *testing.T) {
 
 	})
 
-	t.Run("error creating data dir", func(t *testing.T) {
+	t.Run("error creating data.db", func(t *testing.T) {
 		logger, _, err := logger.InitLogger(&logger.BatchOptions{
 			BatchSize: 1,
 			WriteFn:   logger.NilWriteFn(),
@@ -77,12 +77,12 @@ func TestSqliteDb_Bootstrap(t *testing.T) {
 
 		appFs := appfs.New(afero.NewReadOnlyFs(afero.NewMemMapFs()), logger)
 
-		db, err := NewSqliteDB(&DatabaseConfig{
+		db, err := newSqliteDb(&databaseConfig{
 			DataDir:    "./oc_data",
 			DSN:        "data.db",
 			MigrateDir: "data",
 			AppFs:      appFs,
-			InMemory:   true,
+			Testing:    true,
 		})
 
 		require.NotNil(t, err)
@@ -99,12 +99,12 @@ func TestSqliteDb_Bootstrap(t *testing.T) {
 
 		appFs := appfs.New(afero.NewMemMapFs(), logger)
 
-		db, err := NewSqliteDB(&DatabaseConfig{
+		db, err := newSqliteDb(&databaseConfig{
 			DataDir:    "./oc_data",
 			DSN:        "data.db",
 			MigrateDir: "test",
 			AppFs:      appFs,
-			InMemory:   true,
+			Testing:    true,
 		})
 
 		require.NotNil(t, err)
@@ -169,7 +169,6 @@ func TestSqliteDb_Exec(t *testing.T) {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func TestSqliteDb_RunInTransaction(t *testing.T) {
-
 	t.Run(("error"), func(t *testing.T) {
 		dbManager := setupSqliteDB(t)
 

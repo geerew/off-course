@@ -15,10 +15,10 @@ import (
 func setup(tb testing.TB) (database.Database, context.Context) {
 	tb.Helper()
 
-	dbManager, err := database.NewSqliteDBManager(&database.DatabaseConfig{
-		DataDir:  "./oc_data",
-		AppFs:    appfs.New(afero.NewMemMapFs(), nil),
-		InMemory: true,
+	dbManager, err := database.NewSQLiteManager(&database.DatabaseManagerConfig{
+		DataDir: "./oc_data",
+		AppFs:   appfs.New(afero.NewMemMapFs(), nil),
+		Testing: true,
 	})
 
 	require.NoError(tb, err)

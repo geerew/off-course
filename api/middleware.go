@@ -1,5 +1,9 @@
 package api
 
+// TODO When 2 windows are open with bootstrap, and the first one bootstraps, the second should
+//   1) error on submit or
+//   2) redirect to the login page on refresh
+
 import (
 	"encoding/json"
 	"log/slog"
