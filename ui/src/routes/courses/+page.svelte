@@ -1,4 +1,5 @@
 <!-- TODO open on asset when the course is ongoing -->
+<!-- TODO refresh course following scan by using trackCourses -->
 <script lang="ts">
 	import { GetCourses } from '$lib/api/course-api';
 	import { FilterBar } from '$lib/components';
