@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/geerew/off-course/migrations"
 	"github.com/geerew/off-course/utils/security"
@@ -126,11 +127,47 @@ func (c *compositeDb) QueryRow(query string, args ...any) *sql.Row {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Exec executes a query without returning any rows (write pool)
+// Exec executes a non-query SQL statement against the write pool, with automatic retry logic
+// to handle SQLite lock contention. If the operation returns a “database is locked” or “table is locked”
+// error, it will wait for an exponentially increasing backoff interval (up to defaultMaxLockRetries times)
+// before retrying. Non-lock errors are returned immediately. If all retries fail, the final error is returned
+// wrapped with the retry count
 //
 // It implements the Database interface
 func (c *compositeDb) Exec(query string, args ...any) (sql.Result, error) {
-	return c.write.Exec(query, args...)
+	var (
+		res sql.Result
+		err error
+	)
+
+	for attempt := 0; attempt <= defaultMaxLockRetries; attempt++ {
+		res, err = c.write.Exec(query, args...)
+		if err == nil {
+			// if attempt > 0 {
+			// 	fmt.Printf("[db] Exec succeeded after %d retries\n", attempt)
+			// }
+
+			return res, nil
+		}
+
+		// Bail on a non-lock error
+		if !isLockError(err) {
+			return res, err
+		}
+
+		delay := getRetryInterval(attempt)
+		// fmt.Printf("[db] Lock error on attempt %d: %v; retrying in %v\n", attempt, err, delay)
+
+		// On the last attempt, stop retrying
+		if attempt == defaultMaxLockRetries {
+			break
+		}
+
+		time.Sleep(delay)
+	}
+
+	// fmt.Printf("[db] Exec failed after %d retries: %v\n", defaultMaxLockRetries, err)
+	return res, fmt.Errorf("%w after %d retries", err, defaultMaxLockRetries)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -392,4 +429,46 @@ func (db *sqliteDb) log(query string, args ...any) {
 			attrs...,
 		)
 	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// retry intervals for SQLite lock errors
+var defaultRetryIntervals = []time.Duration{
+	50 * time.Millisecond,
+	100 * time.Millisecond,
+	150 * time.Millisecond,
+	200 * time.Millisecond,
+	300 * time.Millisecond,
+	400 * time.Millisecond,
+	500 * time.Millisecond,
+	700 * time.Millisecond,
+	1000 * time.Millisecond,
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// how many times we’ll retry before giving up
+const defaultMaxLockRetries = 9
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// isLockError returns true for any SQLite “locked” error.
+func isLockError(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := err.Error()
+	return strings.Contains(s, "database is locked") ||
+		strings.Contains(s, "table is locked")
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// getRetryInterval picks a delay for the Nth retry
+func getRetryInterval(attempt int) time.Duration {
+	if attempt < 0 || attempt >= len(defaultRetryIntervals) {
+		return defaultRetryIntervals[len(defaultRetryIntervals)-1]
+	}
+	return defaultRetryIntervals[attempt]
 }

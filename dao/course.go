@@ -21,7 +21,6 @@ func (dao *DAO) CreateCourse(ctx context.Context, course *models.Course) error {
 	}
 
 	return Create(ctx, dao, course)
-
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
