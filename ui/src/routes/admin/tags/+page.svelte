@@ -58,11 +58,12 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	async function onRowDelete() {
-		// If the current page is greater than the new total, set it to the last
-		// page
-		if (paginationPage > Math.ceil(paginationTotal / paginationPerPage)) {
-			paginationPage = Math.ceil(paginationTotal / paginationPerPage);
+	async function onRowDelete(numDeleted: number) {
+		const remainingTotal = paginationTotal - numDeleted;
+		const totalPages = Math.max(1, Math.ceil(remainingTotal / paginationPerPage));
+
+		if (paginationPage > totalPages) {
+			paginationPage = totalPages;
 		}
 
 		loadPromise = fetchTags();
@@ -131,8 +132,9 @@
 				<TableActionMenu
 					bind:tags={selectedTags}
 					onDelete={() => {
+						const numDeleted = Object.keys(selectedTags).length;
 						selectedTags = {};
-						onRowDelete();
+						onRowDelete(numDeleted);
 					}}
 				/>
 			</div>
@@ -211,7 +213,15 @@
 									<Table.Td class="text-center">{tag.courseCount}</Table.Td>
 
 									<Table.Td class="flex items-center justify-center">
-										<RowActionMenu bind:tag={tags[i]} onDelete={onRowDelete} />
+										<RowActionMenu
+											bind:tag={tags[i]}
+											onDelete={async () => {
+												await onRowDelete(1);
+												if (selectedTags[tag.id] !== undefined) {
+													delete selectedTags[tag.id];
+												}
+											}}
+										/>
 									</Table.Td>
 								</Table.Tr>
 							{/each}

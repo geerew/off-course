@@ -78,11 +78,12 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	async function onRowDelete() {
-		// If the current page is greater than the new total, set it to the last
-		// page
-		if (paginationPage > Math.ceil(paginationTotal / paginationPerPage)) {
-			paginationPage = Math.ceil(paginationTotal / paginationPerPage);
+	async function onRowDelete(numDeleted: number) {
+		const remainingTotal = paginationTotal - numDeleted;
+		const totalPages = Math.max(1, Math.ceil(remainingTotal / paginationPerPage));
+
+		if (paginationPage > totalPages) {
+			paginationPage = totalPages;
 		}
 
 		loadPromise = fetchCourses(false);
@@ -157,8 +158,9 @@
 						await scanMonitor.fetch();
 					}}
 					onDelete={() => {
+						const numDeleted = Object.keys(selectedCourses).length;
 						selectedCourses = {};
-						onRowDelete();
+						onRowDelete(numDeleted);
 					}}
 				/>
 			</div>
@@ -279,7 +281,7 @@
 												await scanMonitor.fetch();
 											}}
 											onDelete={async () => {
-												await onRowDelete();
+												await onRowDelete(1);
 												if (selectedCourses[course.id] !== undefined) {
 													delete selectedCourses[course.id];
 												}

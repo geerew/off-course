@@ -75,11 +75,12 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	async function onRowDelete() {
-		// If the current page is greater than the new total, set it to the last
-		// page
-		if (paginationPage > Math.ceil(paginationTotalMinusSelf / paginationPerPage)) {
-			paginationPage = Math.ceil(paginationTotalMinusSelf / paginationPerPage);
+	async function onRowDelete(numDeleted: number) {
+		const remainingTotal = paginationTotal - numDeleted;
+		const totalPages = Math.max(1, Math.ceil(remainingTotal / paginationPerPage));
+
+		if (paginationPage > totalPages) {
+			paginationPage = totalPages;
 		}
 
 		loadPromise = fetchUsers();
@@ -158,8 +159,9 @@
 						onRowUpdate();
 					}}
 					onDelete={() => {
+						const numDeleted = Object.keys(selectedUsers).length;
 						selectedUsers = {};
-						onRowDelete();
+						onRowDelete(numDeleted);
 					}}
 				/>
 			</div>
@@ -242,7 +244,7 @@
 												{user}
 												onUpdate={onRowUpdate}
 												onDelete={async () => {
-													await onRowDelete();
+													await onRowDelete(1);
 													if (selectedUsers[user.id] !== undefined) {
 														delete selectedUsers[user.id];
 													}
