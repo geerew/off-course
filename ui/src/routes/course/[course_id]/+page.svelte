@@ -1,5 +1,7 @@
-<!-- TODO when pointer-course show the play button (instead of showing on hover) -->
-<!-- TODO test long path on smaller screen and ensure wrap -->
+<!-- TODO Add a button to clear progress (add the backend support) -->
+<!-- TODO Add scan button (admin) -->
+<!-- TODO Edit anything/everything (admin) -->
+<!-- TODO Change asset play/restart button to a menu with play/restart, clear progress  -->
 <script lang="ts">
 	import { page } from '$app/state';
 	import { GetAllCourseAssets, GetCourse, GetCourseTags } from '$lib/api/course-api';
@@ -12,11 +14,13 @@
 		RightChevronIcon,
 		WarningIcon
 	} from '$lib/components/icons';
+	import MediaRestart from '$lib/components/icons/media-restart.svelte';
 	import { Badge } from '$lib/components/ui';
 	import Attachments from '$lib/components/ui/attachments.svelte';
 	import Button from '$lib/components/ui/button.svelte';
 	import type { AssetModel, ChapteredAssets } from '$lib/models/asset-model';
 	import type { CourseModel, CourseTagsModel } from '$lib/models/course-model';
+	import { cn } from '$lib/utils';
 	import { Accordion, Avatar, Progress, useId } from 'bits-ui';
 	import prettyMs from 'pretty-ms';
 	import { slide } from 'svelte/transition';
@@ -113,10 +117,10 @@
 		<div class="flex w-full flex-col">
 			<div class="bg-background-alt-1 flex w-full place-content-center">
 				<div class="container-px flex w-full max-w-7xl flex-col gap-6 py-10">
-					<div class="grid-col-1 grid w-full gap-10 md:grid-cols-[22.6rem_1fr]">
+					<div class="grid w-full grid-cols-1 gap-6 md:grid-cols-[minmax(0,22.6rem)_1fr] md:gap-10">
 						<!-- Card -->
 						<Avatar.Root
-							class="relative z-0 flex h-full max-h-50 w-full items-center justify-center"
+							class="relative z-0 flex h-full max-h-70 w-full items-center justify-center overflow-hidden rounded-lg"
 						>
 							<Avatar.Image
 								src={`/api/courses/${course.id}/card`}
@@ -124,9 +128,9 @@
 							/>
 
 							<Avatar.Fallback
-								class="bg-background-alt-2 flex h-50 w-full place-content-center rounded-lg"
+								class="bg-background-alt-2 flex h-full min-h-60 w-full max-w-90 place-content-center rounded-lg"
 							>
-								<LogoIcon class="fill-background-alt-3 w-20" />
+								<LogoIcon class="fill-background-alt-3 w-16 md:w-20" />
 							</Avatar.Fallback>
 
 							<div
@@ -145,7 +149,9 @@
 								{#if auth.user?.role === 'admin'}
 									<div class="grid grid-cols-[6.5rem_1fr]">
 										<span class="text-foreground-alt-3 font-medium">PATH</span>
-										<span class="text-foreground-alt-1">{course.path} </span>
+										<span class="text-foreground-alt-1 break-all" title={course.path}
+											>{course.path}</span
+										>
 									</div>
 								{/if}
 
@@ -246,15 +252,17 @@
 			<div class="bg-background flex w-full place-content-center">
 				<div class="container-px flex w-full max-w-7xl flex-col py-7">
 					<div class="flex flex-col gap-5">
-						<div class="flex flex-col gap-1.5">
-							<span class="text-xl font-medium">Course Content</span>
-							<span class="text-foreground-alt-3 flex items-center text-sm font-medium">
-								{chapterCount} chapter{chapterCount != 1 ? 's' : ''}
-								<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
-								{assetCount} asset{assetCount != 1 ? 's' : ''}
-								<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
-								{attachmentCount} attachment{attachmentCount != 1 ? 's' : ''}
-							</span>
+						<div class="flex flex-col gap-2.5">
+							<div class="flex flex-col gap-1.5">
+								<span class="text-xl font-medium">Course Content</span>
+								<span class="text-foreground-alt-3 flex items-center text-sm font-medium">
+									{chapterCount} chapter{chapterCount != 1 ? 's' : ''}
+									<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
+									{assetCount} asset{assetCount != 1 ? 's' : ''}
+									<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
+									{attachmentCount} attachment{attachmentCount != 1 ? 's' : ''}
+								</span>
+							</div>
 						</div>
 
 						<Accordion.Root class="w-full" type="single" value={Object.keys(chapters)[0]}>
@@ -272,7 +280,7 @@
 											</span>
 
 											<div class="flex shrink-0 flex-row items-center gap-2.5">
-												<span class="text-foreground-alt-3">
+												<span class="text-foreground-alt-3 text-xs">
 													{chapters[chapter].filter((a) => a.progress.completed).length}
 													/ {chapters[chapter].length}
 												</span>
@@ -292,30 +300,42 @@
 												<div {...props} transition:slide={{ duration: 200 }}>
 													{#each chapters[chapter] as asset}
 														<div
-															class="border-background-alt-2 text-foreground-alt-1 group flex flex-row items-center justify-between gap-2 rounded-none border-b px-5 py-2 last:border-none"
+															class="border-background-alt-2 text-foreground-alt-1 group relative flex flex-row items-center justify-between gap-2 overflow-hidden rounded-none border-b px-5 py-2 last:border-none"
 														>
-															<div class="flex w-full flex-col items-center py-2 text-sm">
-																<span class="w-full text-left">{asset.prefix}. {asset.title}</span>
-																<div class="flex w-full flex-row items-center">
-																	<span class="text-foreground-alt-3">{asset.assetType}</span>
+															{#if asset.progress.completed || asset.progress.videoPos > 0}
+																<div
+																	class={cn(
+																		'absolute top-0 left-0 inline-block h-0 w-0 border-t-20 border-r-20 border-b-0 border-l-0 border-solid border-r-transparent border-b-transparent border-l-transparent opacity-80',
+																		asset.progress.completed
+																			? 'border-t-background-success'
+																			: asset.progress.videoPos > 0
+																				? 'border-t-amber-600'
+																				: ''
+																	)}
+																></div>
+															{/if}
 
+															<div class="flex w-full flex-col gap-2 py-2 text-sm">
+																<span class="w-full">{asset.prefix}. {asset.title}</span>
+
+																<!-- Main metadata row -->
+																<div class="flex w-full flex-row flex-wrap items-center">
+																	<!-- Asset type -->
+																	<span class="text-foreground-alt-3 whitespace-nowrap"
+																		>{asset.assetType}</span
+																	>
+
+																	<!-- Video duration -->
 																	{#if asset.videoMetadata}
-																		<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
-																		<span class="text-foreground-alt-3">
+																		<DotIcon class="text-foreground-alt-3 size-7" />
+																		<span class="text-foreground-alt-3 whitespace-nowrap">
 																			{prettyMs(asset.videoMetadata.duration * 1000)}
 																		</span>
 																	{/if}
 
-																	{#if asset.progress.completed}
-																		<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
-																		<span class="text-background-success">completed</span>
-																	{:else if asset.progress.videoPos > 0}
-																		<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
-																		<span class="text-amber-600">in-progress</span>
-																	{/if}
-
+																	<!-- Attachments -->
 																	{#if asset.attachments.length > 0}
-																		<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
+																		<DotIcon class="text-foreground-alt-3 size-7" />
 																		<Attachments
 																			attachments={asset.attachments}
 																			courseId={course?.id ?? ''}
@@ -325,12 +345,20 @@
 																</div>
 															</div>
 
-															<a
+															<Button
 																href={`/course/${course?.id}/${asset.id}`}
-																class="bg-background-alt-2 fill-foreground-alt-1 hover:bg-background-primary-alt-1 flex h-auto items-center justify-center rounded-full p-3 opacity-0 duration-150 ease-in group-hover:opacity-100"
+																class="bg-background-alt-2  hover:bg-background-alt-3 flex h-auto w-auto shrink-0 items-center justify-center rounded-full p-2 opacity-0 transition-all duration-150 ease-in group-hover:opacity-100 pointer-coarse:opacity-100"
 															>
-																<MediaPlayIcon class="size-5" />
-															</a>
+																{#if asset.progress.completed}
+																	<MediaRestart
+																		class="stroke-foreground-alt-1 size-5 fill-transparent pointer-coarse:size-4"
+																	/>
+																{:else}
+																	<MediaPlayIcon
+																		class="fill-foreground-alt-1 size-5 pointer-coarse:size-4"
+																	/>
+																{/if}
+															</Button>
 														</div>
 													{/each}
 												</div>
@@ -340,6 +368,20 @@
 								</Accordion.Item>
 							{/each}
 						</Accordion.Root>
+
+						<div class="flex flex-row gap-3 text-sm">
+							<span>Asset Status:</span>
+							<div class="flex flex-row gap-3">
+								<div class="flex flex-row items-center gap-2">
+									<div class="bg-background-success mt-px size-4 rounded-md"></div>
+									<span>Completed</span>
+								</div>
+								<div class="flex flex-row items-center gap-2">
+									<div class="mt-px size-4 rounded-md bg-amber-600"></div>
+									<span>In-progress</span>
+								</div>
+							</div>
+						</div>
 					</div>
 				</div>
 			</div>
