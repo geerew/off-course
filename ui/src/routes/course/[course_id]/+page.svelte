@@ -1,3 +1,4 @@
+<!-- TODO when pointer-course show the play button (instead of showing on hover) -->
 <script lang="ts">
 	import { page } from '$app/state';
 	import { GetAllCourseAssets, GetCourse, GetCourseTags } from '$lib/api/course-api';
