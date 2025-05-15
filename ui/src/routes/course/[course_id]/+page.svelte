@@ -1,4 +1,5 @@
 <!-- TODO when pointer-course show the play button (instead of showing on hover) -->
+<!-- TODO test long path on smaller screen and ensure wrap -->
 <script lang="ts">
 	import { page } from '$app/state';
 	import { GetAllCourseAssets, GetCourse, GetCourseTags } from '$lib/api/course-api';
