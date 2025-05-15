@@ -29,7 +29,6 @@ class Auth {
 			this.#error = null;
 			this.#redirected = false;
 		} else {
-			console.log('Error fetching user data:', response.status);
 			this.empty();
 
 			// When the user is not authenticated, the server will return a 403 status code, so

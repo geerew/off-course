@@ -1,5 +1,6 @@
 export { default as ActionIcon } from './action.svelte';
 export { default as BackArrowIcon } from './back-arrow.svelte';
+export { default as BurgerMenuIcon } from './burger-menu.svelte';
 export { default as CourseIcon } from './course.svelte';
 export { default as DeleteIcon } from './delete.svelte';
 export { default as DeselectIcon } from './deselect.svelte';
