@@ -218,7 +218,7 @@
 	{#if course && selectedAsset}
 		<div
 			class={cn(
-				'grid grid-cols-[var(--course-menu-width)_1fr] grid-rows-1 gap-6 pt-[calc(var(--height-header)+1))]',
+				'grid grid-cols-[var(--course-menu-width)_1fr] grid-rows-1 gap-6 pt-[calc(var(--header-height)+1))]',
 				menuPopupMode ? 'grid-cols-1' : 'grid-cols-[var(--course-menu-width)_1fr]'
 			)}
 		>
@@ -243,7 +243,7 @@
 				<div class="relative row-span-full">
 					<div class="absolute inset-0">
 						<nav
-							class="border-foreground-alt-4 sticky top-[calc(var(--height-header)+1px)] left-0 flex h-[calc(100dvh-(var(--height-header)+1px))] w-[--course-menu-width] flex-col gap-2 overflow-x-hidden overflow-y-auto border-r pb-8"
+							class="border-foreground-alt-4 sticky top-[calc(var(--header-height)+1px)] left-0 flex h-[calc(100dvh-(var(--header-height)+1px))] w-[--course-menu-width] flex-col gap-2 overflow-x-hidden overflow-y-auto border-r pb-8"
 						>
 							{@render menuContents()}
 						</nav>

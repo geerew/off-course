@@ -37,7 +37,7 @@
 				</div>
 			{:else}
 				<Header />
-				<div class="min-h-dvh pt-[calc(var(--height-header)+1px)]">
+				<div class="min-h-dvh pt-[calc(var(--header-height)+1px)]">
 					{@render children()}
 				</div>
 			{/if}
