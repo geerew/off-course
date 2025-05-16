@@ -218,7 +218,7 @@
 	{#if course && selectedAsset}
 		<div
 			class={cn(
-				'grid grid-cols-[var(--course-menu-width)_1fr] grid-rows-1 gap-6 pt-[calc(var(--header-height)+1))]',
+				'grid grid-rows-1 gap-6 pt-[calc(var(--header-height)+1))]',
 				menuPopupMode ? 'grid-cols-1' : 'grid-cols-[var(--course-menu-width)_1fr]'
 			)}
 		>
