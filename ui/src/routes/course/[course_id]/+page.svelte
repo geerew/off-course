@@ -305,11 +305,11 @@
 															{#if asset.progress.completed || asset.progress.videoPos > 0}
 																<div
 																	class={cn(
-																		'absolute top-0 left-0 inline-block h-0 w-0 border-t-20 border-r-20 border-b-0 border-l-0 border-solid border-r-transparent border-b-transparent border-l-transparent opacity-80',
+																		'absolute top-0 left-0 inline-block h-full w-1 opacity-60',
 																		asset.progress.completed
-																			? 'border-t-background-success'
+																			? 'bg-background-success'
 																			: asset.progress.videoPos > 0
-																				? 'border-t-amber-600'
+																				? 'bg-amber-600'
 																				: ''
 																	)}
 																></div>
