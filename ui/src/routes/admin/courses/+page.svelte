@@ -1,18 +1,23 @@
+<!-- TODO tidy the filter bar and extra action when md or less -->
 <script lang="ts">
 	import { GetCourses } from '$lib/api/course-api';
 	import { FilterBar, NiceDate, Pagination, SortMenu } from '$lib/components';
 	import { AddCoursesDialog } from '$lib/components/dialogs';
-	import { TickIcon, WarningIcon, XIcon } from '$lib/components/icons';
+	import { RightChevronIcon, TickIcon, WarningIcon, XIcon } from '$lib/components/icons';
 	import RowActionMenu from '$lib/components/pages/admin/courses/row-action-menu.svelte';
 	import TableActionMenu from '$lib/components/pages/admin/courses/table-action-menu.svelte';
 	import Spinner from '$lib/components/spinner.svelte';
-	import { Checkbox } from '$lib/components/ui';
+	import { Button, Checkbox } from '$lib/components/ui';
 	import * as Table from '$lib/components/ui/table';
 	import type { CourseModel, CoursesModel } from '$lib/models/course-model';
 	import { scanMonitor } from '$lib/scans.svelte';
 	import type { SortColumns, SortDirection } from '$lib/types/sort';
+	import { cn, remCalc } from '$lib/utils';
+	import { ElementSize } from 'runed';
 	import { tick } from 'svelte';
 	import { toast } from 'svelte-sonner';
+	import { slide } from 'svelte/transition';
+	import theme from 'tailwindcss/defaultTheme';
 
 	let courses: CoursesModel = $state([]);
 
@@ -23,6 +28,8 @@
 		tag: [],
 		progress: ['not started', 'started', 'completed']
 	};
+
+	let expandedCourses: Record<string, boolean> = $state({});
 
 	let selectedCourses: Record<string, CourseModel> = $state({});
 	let selectedCoursesCount = $derived(Object.keys(selectedCourses).length);
@@ -44,6 +51,10 @@
 		selectedCoursesCount > 0 && selectedCoursesCount < paginationTotal
 	);
 	let isChecked = $derived(selectedCoursesCount !== 0 && selectedCoursesCount === paginationTotal);
+
+	let mainEl = $state() as HTMLElement;
+	const mainSize = new ElementSize(() => mainEl);
+	let smallTable = $state(false);
 
 	let loadPromise = $state(fetchCourses(true));
 
@@ -71,6 +82,7 @@
 			});
 			paginationTotal = data.totalItems;
 			courses = data.items;
+			expandedCourses = {};
 		} catch (error) {
 			throw error;
 		}
@@ -82,8 +94,10 @@
 		const remainingTotal = paginationTotal - numDeleted;
 		const totalPages = Math.max(1, Math.ceil(remainingTotal / paginationPerPage));
 
-		if (paginationPage > totalPages) {
+		if (paginationPage > totalPages && totalPages > 0) {
 			paginationPage = totalPages;
+		} else if (remainingTotal === 0) {
+			paginationPage = 1;
 		}
 
 		loadPromise = fetchCourses(false);
@@ -111,6 +125,10 @@
 		toastCount();
 	}
 
+	function toggleRowExpansion(userId: string) {
+		expandedCourses[userId] = !expandedCourses[userId];
+	}
+
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	function toastCount() {
@@ -122,10 +140,18 @@
 			toast.success(`${selectedCoursesCount} user${selectedCoursesCount > 1 ? 's' : ''} selected`);
 		}
 	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// Flip between table and card mode based on screen size
+	$effect(() => {
+		smallTable = remCalc(mainSize.width) <= +theme.columns['4xl'].replace('rem', '') ? true : false;
+	});
 </script>
 
-<div class="flex w-full place-content-center">
-	<div class="flex w-full max-w-7xl min-w-4xl flex-col gap-6 pt-1">
+<div class="flex w-full place-content-center" bind:this={mainEl}>
+	<div class="flex w-full max-w-7xl flex-col gap-6 pt-1">
 		<div class="flex flex-row items-center justify-between">
 			<AddCoursesDialog
 				successFn={() => {
@@ -185,10 +211,18 @@
 				</div>
 			{:then _}
 				<div class="flex w-full flex-col gap-8">
-					<Table.Root>
+					<Table.Root
+						class={smallTable
+							? 'grid-cols-[2.5rem_2.5rem_1fr_3.5rem]'
+							: 'grid-cols-[3.5rem_1fr_auto_auto_auto_3.5rem]'}
+					>
 						<Table.Thead>
-							<Table.Tr>
-								<Table.Th class="min-w-[1%]">
+							<Table.Tr class="text-xs font-semibold uppercase">
+								<!-- Chevron (small screens) -->
+								<Table.Th class={smallTable ? 'visible' : 'hidden'}></Table.Th>
+
+								<!-- Checkbox-->
+								<Table.Th>
 									<Checkbox
 										disabled={courses.length === 0}
 										indeterminate={isIndeterminate}
@@ -196,32 +230,62 @@
 										onclick={onCheckboxClicked}
 									/>
 								</Table.Th>
-								<Table.Th class="max-w-[5rem]">Course</Table.Th>
-								<Table.Th class="min-w-[1%]">Available</Table.Th>
-								<Table.Th class="min-w-[1%] text-center">Added</Table.Th>
-								<Table.Th class="min-w-[1%] text-center">Updated</Table.Th>
-								<Table.Th class="min-w-[1%]" />
+
+								<!-- Course -->
+								<Table.Th class="justify-start">Course</Table.Th>
+
+								<!-- Available (large screens) -->
+								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Available</Table.Th>
+
+								<!-- Added (large screens) -->
+								<Table.Th class={smallTable ? 'hidden' : 'visible'}>>Added</Table.Th>
+
+								<!-- Updated (large screens) -->
+								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Updated</Table.Th>
+
+								<!-- Row action menu -->
+								<Table.Th></Table.Th>
 							</Table.Tr>
 						</Table.Thead>
 
 						<Table.Tbody>
 							{#if courses.length === 0}
 								<Table.Tr>
-									<Table.Td class="h-auto text-center" colspan={9999}>
-										<div class="flex flex-col items-center gap-2 py-5">
-											<div>No courses</div>
+									<Table.Td class="col-span-full flex-col gap-3 py-5 text-center ">
+										<div>No courses</div>
 
-											{#if filterAppliedValue}
-												<div class="text-foreground-alt-3">Try adjusting your filters</div>
-											{/if}
-										</div>
+										{#if filterAppliedValue}
+											<div class="text-foreground-alt-3">Try adjusting your filters</div>
+										{/if}
 									</Table.Td>
 								</Table.Tr>
 							{/if}
 
 							{#each courses as course (course.id)}
-								<Table.Tr class="hover:bg-background-alt-1 items-center duration-200">
-									<Table.Td>
+								<Table.Tr class="group">
+									<!-- Chevron (small screens) -->
+									<Table.Td
+										class={cn('group-hover:bg-background-alt-1', smallTable ? 'visible' : 'hidden')}
+									>
+										<Button
+											class="text-foreground-alt-2 hover:text-foreground h-auto w-auto rounded bg-transparent p-1 enabled:hover:bg-transparent"
+											title={expandedCourses[course.id] ? 'Collapse details' : 'Expand details'}
+											aria-expanded={!!expandedCourses[course.id]}
+											aria-controls={`expanded-row-${course.id}`}
+											onclick={() => toggleRowExpansion(course.id)}
+										>
+											<RightChevronIcon
+												class={cn(
+													'size-4 stroke-2 transition-transform duration-200',
+													expandedCourses[course.id] ? 'rotate-90' : ''
+												)}
+											/>
+											<span class="sr-only">Details</span>
+										</Button>
+									</Table.Td>
+
+									<!-- Checkbox -->
+									<Table.Td class="group-hover:bg-background-alt-1">
 										<Checkbox
 											checked={selectedCourses[course.id] !== undefined}
 											onCheckedChange={(checked) => {
@@ -236,7 +300,8 @@
 										/>
 									</Table.Td>
 
-									<Table.Td>
+									<!-- Course -->
+									<Table.Td class="group-hover:bg-background-alt-1 justify-start px-4">
 										<div class="flex items-center gap-2">
 											<span>{course.title}</span>
 											{#if scanMonitor.scans[course.id] !== undefined}
@@ -253,7 +318,13 @@
 										</div>
 									</Table.Td>
 
-									<Table.Td class="min-w-[1%]">
+									<!-- Available (large screens) -->
+									<Table.Td
+										class={cn(
+											'group-hover:bg-background-alt-1 px-4',
+											smallTable ? 'hidden' : 'visible'
+										)}
+									>
 										<div class="flex w-full place-content-center">
 											{#if course.available}
 												<div class="bg-background-success size-5 place-self-center rounded-md p-1">
@@ -267,14 +338,28 @@
 										</div>
 									</Table.Td>
 
-									<Table.Td class="min-w-[1%] whitespace-nowrap">
+									<!-- Added (large screens) -->
+									<Table.Td
+										class={cn(
+											'group-hover:bg-background-alt-1 px-4 whitespace-nowrap',
+											smallTable ? 'hidden' : 'visible'
+										)}
+									>
 										<NiceDate date={course.createdAt} />
 									</Table.Td>
-									<Table.Td class="w-[1%] whitespace-nowrap">
+
+									<!-- Updated (large screens) -->
+									<Table.Td
+										class={cn(
+											'group-hover:bg-background-alt-1 px-4 whitespace-nowrap',
+											smallTable ? 'hidden' : 'visible'
+										)}
+									>
 										<NiceDate date={course.updatedAt} />
 									</Table.Td>
 
-									<Table.Td class="flex items-center justify-center">
+									<!-- Row action menu -->
+									<Table.Td class="group-hover:bg-background-alt-1">
 										<RowActionMenu
 											{course}
 											onScan={async () => {
@@ -289,6 +374,44 @@
 										/>
 									</Table.Td>
 								</Table.Tr>
+
+								{#if smallTable && expandedCourses[course.id]}
+									<Table.Tr>
+										<Table.Td
+											inTransition={slide}
+											inTransitionParams={{ duration: 200 }}
+											outTransition={slide}
+											outTransitionParams={{ duration: 150 }}
+											class="bg-background-alt-2/30 col-span-full justify-start pr-4 pl-14"
+										>
+											<div class="flex flex-col gap-2 py-3 text-sm">
+												<div class="grid grid-cols-[8rem_1fr]">
+													<span class="text-foreground-alt-3 font-medium">STATUS</span>
+													<span
+														class={course.available
+															? 'text-foreground-alt-1'
+															: 'text-foreground-error'}
+														>{course.available ? 'available' : 'unavailable'}</span
+													>
+												</div>
+
+												<div class="grid grid-cols-[8rem_1fr]">
+													<span class="text-foreground-alt-3 font-medium">ADDED</span>
+													<span class="text-foreground-alt-1">
+														<NiceDate date={course.createdAt} />
+													</span>
+												</div>
+
+												<div class="grid grid-cols-[8rem_1fr]">
+													<span class="text-foreground-alt-3 font-medium">UPDATED</span>
+													<span class="text-foreground-alt-1">
+														<NiceDate date={course.updatedAt} />
+													</span>
+												</div>
+											</div>
+										</Table.Td>
+									</Table.Tr>
+								{/if}
 							{/each}
 						</Table.Tbody>
 					</Table.Root>

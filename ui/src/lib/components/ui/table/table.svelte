@@ -11,6 +11,6 @@
 	let { class: containerClass = '', children, ...restProps }: Props = $props();
 </script>
 
-<table class={cn('w-full border-collapse', containerClass)} {...restProps}>
+<div role="table" class={cn('grid w-full border-collapse', containerClass)}>
 	{@render children?.()}
-</table>
+</div>

@@ -7,16 +7,18 @@
 	import Dropdown from '$lib/components/ui/dropdown.svelte';
 	import type { CourseModel } from '$lib/models/course-model';
 	import { scanMonitor } from '$lib/scans.svelte';
+	import { cn } from '$lib/utils';
 	import { DropdownMenu } from 'bits-ui';
 	import { toast } from 'svelte-sonner';
 
 	type Props = {
 		course: CourseModel;
+		triggerClass?: string;
 		onScan: () => void;
 		onDelete: () => void;
 	};
 
-	let { course, onScan, onDelete }: Props = $props();
+	let { course, triggerClass, onScan, onDelete }: Props = $props();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -37,7 +39,10 @@
 </script>
 
 <Dropdown
-	triggerClass="hover:bg-background-alt-3 data-[state=open]:bg-background-alt-3 rounded-lg border-none"
+	triggerClass={cn(
+		'hover:bg-background-alt-3 data-[state=open]:bg-background-alt-3 rounded-lg border-none',
+		triggerClass
+	)}
 	contentClass="w-38 p-1 text-sm"
 	portalProps={{ disabled: false }}
 >

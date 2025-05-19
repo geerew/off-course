@@ -18,12 +18,6 @@
 
 	const menu = [
 		{
-			label: 'Users',
-			href: '/admin/users',
-			matcher: '/admin/users/',
-			icon: UserIcon
-		},
-		{
 			label: 'Courses',
 			href: '/admin/courses',
 			matcher: '/admin/courses/',
@@ -34,6 +28,12 @@
 			href: '/admin/tags',
 			matcher: '/admin/tags/',
 			icon: TagIcon
+		},
+		{
+			label: 'Users',
+			href: '/admin/users',
+			matcher: '/admin/users/',
+			icon: UserIcon
 		}
 	];
 

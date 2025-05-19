@@ -11,6 +11,6 @@
 	let { class: containerClass = '', children, ...restProps }: Props = $props();
 </script>
 
-<tr class={cn('border-background-alt-3 border-b', containerClass)} {...restProps}>
+<div role="row" class={cn('contents text-sm', containerClass)} {...restProps}>
 	{@render children?.()}
-</tr>
+</div>

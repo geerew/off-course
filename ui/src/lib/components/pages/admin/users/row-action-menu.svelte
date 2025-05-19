@@ -8,15 +8,17 @@
 	import { DeleteIcon, DotsIcon, FlagIcon, SecureIcon, SessionIcon } from '$lib/components/icons';
 	import Dropdown from '$lib/components/ui/dropdown.svelte';
 	import type { UserModel } from '$lib/models/user-model';
+	import { cn } from '$lib/utils';
 	import { DropdownMenu } from 'bits-ui';
 
 	type Props = {
 		user: UserModel;
+		triggerClass?: string;
 		onUpdate: () => void;
 		onDelete: () => void;
 	};
 
-	let { user, onUpdate, onDelete }: Props = $props();
+	let { user, triggerClass, onUpdate, onDelete }: Props = $props();
 
 	let roleDialogOpen = $state(false);
 	let passwordDialogOpen = $state(false);
@@ -25,7 +27,10 @@
 </script>
 
 <Dropdown
-	triggerClass="hover:bg-background-alt-3 data-[state=open]:bg-background-alt-3 rounded-lg border-none"
+	triggerClass={cn(
+		'hover:bg-background-alt-3 data-[state=open]:bg-background-alt-3 rounded-lg border-none',
+		triggerClass
+	)}
 	contentClass="w-42 p-1 text-sm"
 	portalProps={{ disabled: false }}
 >

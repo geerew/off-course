@@ -105,7 +105,7 @@
 </script>
 
 <div class="flex w-full place-content-center">
-	<div class="flex w-full max-w-4xl min-w-2xl flex-col gap-6 pt-1">
+	<div class="flex w-full max-w-4xl flex-col gap-6 pt-1">
 		<div class="flex flex-row items-center justify-between">
 			<AddTagsDialog
 				successFn={() => {
@@ -159,39 +159,45 @@
 				</div>
 			{:then _}
 				<div class="flex w-full flex-col gap-8">
-					<Table.Root>
+					<Table.Root class="grid-cols-[3.5rem_1fr_auto_3.5rem]">
 						<Table.Thead>
-							<Table.Tr>
-								<Table.Th class="w-[1%]">
+							<Table.Tr class="text-xs font-semibold uppercase">
+								<!-- Checkbox-->
+								<Table.Th>
 									<Checkbox
 										indeterminate={isIndeterminate}
 										checked={isChecked}
 										onclick={onCheckboxClicked}
 									/>
 								</Table.Th>
-								<Table.Th>Tag</Table.Th>
-								<Table.Th class="min-w-[1%]">Courses</Table.Th>
-								<Table.Th class="min-w-[1%]" />
+
+								<!-- Tag -->
+								<Table.Th class="justify-start">Tag</Table.Th>
+
+								<Table.Th># Courses</Table.Th>
+
+								<!-- Row action menu -->
+								<Table.Th />
 							</Table.Tr>
 						</Table.Thead>
 
 						<Table.Tbody>
 							{#if tags.length === 0}
 								<Table.Tr>
-									<Table.Td class="h-auto text-center" colspan={9999}>
-										<div class="flex flex-col items-center gap-2 py-5">
-											<div>No tags</div>
+									<Table.Td class="col-span-full flex-col gap-3 py-5 text-center ">
+										<div>No tags</div>
 
-											{#if filterAppliedValue}
-												<div class="text-foreground-alt-3">Try adjusting your filters</div>
-											{/if}
-										</div>
+										{#if filterAppliedValue}
+											<div class="text-foreground-alt-3">Try adjusting your filters</div>
+										{/if}
 									</Table.Td>
 								</Table.Tr>
 							{/if}
+
 							{#each tags as tag, i (tag.id)}
-								<Table.Tr class="hover:bg-background-alt-1 items-center duration-200">
-									<Table.Td>
+								<Table.Tr class="group">
+									<!-- Checkbox -->
+									<Table.Td class="group-hover:bg-background-alt-1">
 										<Checkbox
 											checked={selectedTags[tag.id] !== undefined}
 											onCheckedChange={(checked) => {
@@ -206,13 +212,18 @@
 										/>
 									</Table.Td>
 
-									<Table.Td>
+									<!-- Tag -->
+									<Table.Td class="group-hover:bg-background-alt-1 justify-start px-4">
 										{tag.tag}
 									</Table.Td>
 
-									<Table.Td class="text-center">{tag.courseCount}</Table.Td>
+									<!-- Number of courses -->
+									<Table.Td class="group-hover:bg-background-alt-1 px-4">
+										{tag.courseCount}</Table.Td
+									>
 
-									<Table.Td class="flex items-center justify-center">
+									<!-- Row action menu -->
+									<Table.Td class="group-hover:bg-background-alt-1">
 										<RowActionMenu
 											bind:tag={tags[i]}
 											onDelete={async () => {

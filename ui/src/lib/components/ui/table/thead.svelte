@@ -11,12 +11,10 @@
 	let { class: containerClass = '', children, ...restProps }: Props = $props();
 </script>
 
-<thead
-	class={cn(
-		'border-background-alt-3 text-foreground-alt-3 border-b text-xs uppercase',
-		containerClass
-	)}
+<div
+	role="rowgroup"
+	class={cn('text-foreground-alt-3 contents text-xs uppercase', containerClass)}
 	{...restProps}
 >
 	{@render children?.()}
-</thead>
+</div>

@@ -251,6 +251,7 @@
 				</div>
 			{/if}
 
+			<!-- Dialog trigger -->
 			<div
 				class={cn(
 					'border-background-alt-3 flex h-12 border-b',

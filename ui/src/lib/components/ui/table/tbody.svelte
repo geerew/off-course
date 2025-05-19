@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { cn } from '$lib/utils';
 	import type { Snippet } from 'svelte';
 	import type { HTMLAttributes } from 'svelte/elements';
 
@@ -10,6 +11,6 @@
 	let { class: containerClass = '', children, ...restProps }: Props = $props();
 </script>
 
-<tbody class={containerClass} {...restProps}>
+<div role="rowgroup" class={cn('contents', containerClass)} {...restProps}>
 	{@render children?.()}
-</tbody>
+</div>
