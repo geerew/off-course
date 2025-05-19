@@ -88,7 +88,7 @@
 			</main>
 
 			<Dialog.Footer>
-				<Dialog.CloseButton />
+				<Dialog.CloseButton>Close</Dialog.CloseButton>
 
 				<Button type="submit" disabled={newValue === '' || isPosting} class="w-24">
 					{#if isPosting}

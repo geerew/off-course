@@ -160,7 +160,7 @@
 		</main>
 
 		<Dialog.Footer>
-			<Dialog.CloseButton />
+			<Dialog.CloseButton>Close</Dialog.CloseButton>
 
 			<Button disabled={isPosting || toAddCount === 0} onclick={addTags} class="h-10 w-25 py-2">
 				{#if isPosting}

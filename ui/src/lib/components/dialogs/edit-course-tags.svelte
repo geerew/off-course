@@ -400,7 +400,7 @@
 		</main>
 
 		<Dialog.Footer>
-			<Dialog.CloseButton />
+			<Dialog.CloseButton>Close</Dialog.CloseButton>
 
 			<Button
 				disabled={isPosting || (toAdd.length === 0 && toDelete.length === 0)}

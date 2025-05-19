@@ -87,7 +87,7 @@
 		</main>
 
 		<Dialog.Footer>
-			<Dialog.CloseButton />
+			<Dialog.CloseButton>Close</Dialog.CloseButton>
 			<Button disabled={isPosting || !roleValue} class="w-24" onclick={doUpdate}>
 				{#if isPosting}
 					<Spinner class="bg-background-alt-4  size-2" />

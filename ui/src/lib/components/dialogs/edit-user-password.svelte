@@ -117,7 +117,7 @@
 			</main>
 
 			<Dialog.Footer>
-				<Dialog.CloseButton />
+				<Dialog.CloseButton>Close</Dialog.CloseButton>
 				<Button type="submit" disabled={passwordSubmitDisabled || isPosting} class="w-24">
 					{#if isPosting}
 						<Spinner class="bg-background-alt-4  size-2" />

@@ -323,7 +323,7 @@
 			</div>
 
 			<div class="flex justify-end gap-2">
-				<Dialog.CloseButton />
+				<Dialog.CloseButton>Close</Dialog.CloseButton>
 
 				<Button
 					onclick={addCourses}

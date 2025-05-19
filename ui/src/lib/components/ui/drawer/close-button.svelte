@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { cn } from '$lib/utils';
 	import type { WithoutChild } from 'bits-ui';
-	import { Dialog } from 'bits-ui';
 	import type { Snippet } from 'svelte';
+	import { Drawer as DrawerPrimitive } from 'vaul-svelte';
 
-	type Props = WithoutChild<Dialog.CloseProps> & {
+	type Props = WithoutChild<DrawerPrimitive.CloseProps> & {
 		ref?: HTMLButtonElement | null;
 		class?: string;
 		children: Snippet;
@@ -13,7 +13,7 @@
 	let { ref = $bindable(null), class: containerClass, children, ...restProps }: Props = $props();
 </script>
 
-<Dialog.Close
+<DrawerPrimitive.Close
 	bind:ref
 	data-slot="drawer-close"
 	class={cn(
@@ -23,4 +23,4 @@
 	{...restProps}
 >
 	{@render children()}
-</Dialog.Close>
+</DrawerPrimitive.Close>

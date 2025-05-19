@@ -11,7 +11,7 @@
 
 <header
 	class={cn(
-		'border-background-alt-3 bg-background-alt-2 flex h-16 items-center justify-between border-b px-3 text-base font-medium',
+		'border-background-alt-3 bg-background-alt-2 flex h-16 shrink-0 items-center justify-between border-b px-3 text-base font-medium',
 		containerClass
 	)}
 >

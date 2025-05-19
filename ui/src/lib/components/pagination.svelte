@@ -6,6 +6,7 @@
 	import theme from 'tailwindcss/defaultTheme';
 	import { LeftChevronIcon, RightChevronIcon } from './icons';
 	import { Select } from './ui';
+
 	type Props = {
 		count: number;
 		page: number;
