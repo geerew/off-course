@@ -13,7 +13,6 @@
 	import { Dropdown } from '$lib/components/ui';
 	import type { CourseModel } from '$lib/models/course-model';
 	import { scanMonitor } from '$lib/scans.svelte';
-	import { DropdownMenu } from 'bits-ui';
 	import { toast } from 'svelte-sonner';
 
 	type Props = {
@@ -42,21 +41,20 @@
 	}
 </script>
 
-<Dropdown
-	triggerProps={{ disabled: Object.keys(courses).length === 0 }}
-	triggerClass="w-32 [&[data-state=open]>svg]:rotate-90"
-	contentClass="w-42 p-1 text-sm"
->
-	{#snippet trigger()}
+<Dropdown.Root>
+	<Dropdown.Trigger
+		class="w-32 [&[data-state=open]>svg]:rotate-90"
+		disabled={Object.keys(courses).length === 0}
+	>
 		<div class="flex items-center gap-1.5">
 			<ActionIcon class="size-4 stroke-[1.5]" />
 			<span>Actions</span>
 		</div>
 		<RightChevronIcon class="stroke-foreground-alt-3 size-4.5 duration-200" />
-	{/snippet}
+	</Dropdown.Trigger>
 
-	{#snippet content()}
-		<DropdownMenu.Item
+	<Dropdown.Content class="w-42">
+		<Dropdown.Item
 			class="text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-2 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none"
 			onclick={() => {
 				courses = {};
@@ -64,9 +62,9 @@
 		>
 			<DeselectAllIcon class="size-4 stroke-[1.5]" />
 			<span>Deselect all</span>
-		</DropdownMenu.Item>
+		</Dropdown.Item>
 
-		<DropdownMenu.Item
+		<Dropdown.Item
 			class="text-foreground-alt-1 hover:text-foreground data-disabled:text-foreground-alt-3 hover:bg-background-alt-2 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none disabled:opacity-50 data-disabled:cursor-default data-disabled:hover:bg-transparent"
 			onclick={async () => {
 				doScan();
@@ -74,9 +72,9 @@
 		>
 			<ScanIcon class="size-4 stroke-[1.5]" />
 			<span>Scan</span>
-		</DropdownMenu.Item>
+		</Dropdown.Item>
 
-		<DropdownMenu.Item
+		<Dropdown.Item
 			class="text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-2 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none"
 			onclick={() => {
 				tagsDialogOpen = true;
@@ -84,21 +82,20 @@
 		>
 			<TagIcon class="size-4 stroke-[1.5]" />
 			<span>Add Tags</span>
-		</DropdownMenu.Item>
+		</Dropdown.Item>
 
-		<DropdownMenu.Separator class="bg-background-alt-3 h-px w-full" />
+		<Dropdown.Separator />
 
-		<DropdownMenu.Item
-			class="text-foreground-error hover:text-foreground hover:bg-background-error inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none"
+		<Dropdown.CautionItem
 			onclick={() => {
 				deleteDialogOpen = true;
 			}}
 		>
 			<DeleteIcon class="size-4 stroke-[1.5]" />
 			<span>Delete</span>
-		</DropdownMenu.Item>
-	{/snippet}
-</Dropdown>
+		</Dropdown.CautionItem>
+	</Dropdown.Content>
+</Dropdown.Root>
 
 <EditCourseTagsDialog bind:open={tagsDialogOpen} value={Object.values(courses)} />
 

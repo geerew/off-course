@@ -158,6 +158,7 @@
 								selectedAsset?.id === asset.id && 'text-foreground-alt-1 bg-background-alt-2'
 							)}
 							onclick={() => {
+								console.log('in here');
 								if (!course || asset.id === selectedAsset?.id) return;
 								if (menuPopupMode) dialogOpen = false;
 								goto(`/course/${course.id}/${asset.id}`, {});

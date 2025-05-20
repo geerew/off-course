@@ -2,10 +2,9 @@
 	import { page } from '$app/state';
 	import { auth } from '$lib/auth.svelte';
 	import { cn } from '$lib/utils';
-	import { Button, DropdownMenu, Separator } from 'bits-ui';
 	import { Logo } from '.';
 	import { LockIcon, LogoutIcon, RightChevronIcon, UserIcon } from './icons';
-	import { Dropdown } from './ui';
+	import { Button, Dropdown } from './ui';
 
 	const menu = [
 		{
@@ -32,97 +31,97 @@
 		<!-- Menu -->
 		<nav class="flex gap-x-12">
 			{#each menu as item}
-				<Button.Root
+				<Button
 					href={item.href}
 					class={cn(
-						'text-foreground-alt-1 hover:text-foreground relative rounded-lg px-2.5 py-1.5 leading-6 font-semibold duration-200',
+						'text-foreground-alt-1 hover:text-foreground relative rounded-lg bg-transparent px-2.5 py-1.5 leading-6 font-semibold duration-200',
 						page.url.pathname === item.matcher &&
-							'after:bg-background-primary after:absolute after:-bottom-0.5 after:left-0 after:h-0.5 after:w-full'
+							'after:bg-background-primary text-foreground after:absolute after:-bottom-0.5 after:left-0 after:h-0.5 after:w-full'
 					)}
 					aria-current={page.url.pathname === item.matcher}
 				>
 					{item.label}
-				</Button.Root>
+				</Button>
 			{/each}
 		</nav>
 
 		{#if auth.user !== null}
 			<div class="flex flex-1 justify-end">
-				<Dropdown
-					triggerClass="bg-background-primary-alt-1 hover:bg-background-primary data-[state=open]:bg-background-primary text-foreground-alt-5 size-10 items-center justify-center rounded-full border-none font-semibold"
-					contentClass="w-42 p-1"
-				>
-					{#snippet trigger()}
+				<Dropdown.Root>
+					<Dropdown.Trigger
+						class="bg-background-primary-alt-1 hover:bg-background-primary data-[state=open]:bg-background-primary text-foreground-alt-5 size-10 justify-center rounded-full border-none font-semibold"
+					>
 						{auth.userLetter}
-					{/snippet}
+					</Dropdown.Trigger>
 
-					{#snippet content()}
+					<Dropdown.Content class="w-42" portalProps={{ disabled: true }}>
 						<div class="flex flex-col select-none">
 							<!-- Name -->
-							<div class="flex flex-row items-center gap-3 p-1.5">
+							<div class="flex flex-row items-center gap-3 p-1.5 pb-2.5">
 								<span
 									class="bg-background-primary text-foreground-alt-5 relative flex size-10 shrink-0 items-center justify-center rounded-full font-semibold"
 								>
 									{auth.userLetter}
 								</span>
+
 								<span class="text-base font-semibold tracking-wide">
 									{auth.user?.displayName}
 								</span>
 							</div>
 
-							<Separator.Root class="bg-background-alt-3 mb-2 h-px w-full shrink-0" />
+							<Dropdown.Separator />
 
-							<div class="flex flex-col gap-2">
+							<div class="flex flex-col gap-2 pt-2">
 								<!-- Profile link -->
-								<DropdownMenu.Item>
-									<Button.Root
+								<Dropdown.Item>
+									<Button
 										href="/profile"
-										class="hover:bg-background-alt-3 hover:text-foreground flex cursor-pointer flex-row items-center justify-between rounded-lg p-1.5 duration-200"
+										class="hover:text-foreground text-foreground-alt-1 h-auto justify-between bg-transparent p-1 enabled:hover:bg-transparent"
 									>
-										<div class="flex flex-row items-center gap-3">
+										<div class="flex flex-row items-center gap-2.5">
 											<UserIcon class="size-5 stroke-[1.5]" />
 											<span>Profile</span>
 										</div>
 
 										<RightChevronIcon class="size-4" />
-									</Button.Root>
-								</DropdownMenu.Item>
+									</Button>
+								</Dropdown.Item>
 
 								<!-- Admin link -->
 								{#if auth.user?.role === 'admin'}
-									<DropdownMenu.Item>
-										<Button.Root
+									<Dropdown.Item>
+										<Button
 											href="/admin"
-											class="hover:bg-background-alt-3 hover:text-foreground flex cursor-pointer flex-row items-center justify-between rounded-lg p-1.5 duration-200"
+											class="hover:text-foreground text-foreground-alt-1 h-auto justify-between bg-transparent p-1 enabled:hover:bg-transparent"
 										>
-											<div class="flex flex-row items-center gap-3">
+											<div class="flex flex-row items-center gap-2.5">
 												<LockIcon class="size-5 stroke-[1.5]" />
 												<span>Admin</span>
 											</div>
 
 											<RightChevronIcon class="size-4" />
-										</Button.Root>
-									</DropdownMenu.Item>
+										</Button>
+									</Dropdown.Item>
 								{/if}
 
 								<!-- Logout link-->
-								<DropdownMenu.Item>
-									<Button.Root
+								<Dropdown.CautionItem>
+									<Button
 										onclick={logout}
-										class="hover:bg-background-error hover:text-foreground flex w-full cursor-pointer flex-row items-center justify-between rounded-lg p-1.5 duration-200"
+										class="text-foreground-alt-1 h-auto justify-between bg-transparent p-1 enabled:hover:bg-transparent"
 									>
-										<div class="flex flex-row items-center gap-3">
+										<div class="flex flex-row items-center gap-2.5">
 											<LogoutIcon class="size-5 stroke-[1.5]" />
 											<span>Logout</span>
 										</div>
 
 										<RightChevronIcon class="size-4" />
-									</Button.Root>
-								</DropdownMenu.Item>
+									</Button>
+								</Dropdown.CautionItem>
 							</div>
 						</div>
-					{/snippet}
-				</Dropdown>
+					</Dropdown.Content>
+				</Dropdown.Root>
 			</div>
 		{/if}
 	</div>

@@ -1,56 +1,56 @@
 <script lang="ts">
 	import { DeleteTagDialog, EditTagNameDialog } from '$lib/components/dialogs';
 	import { DeleteIcon, DotsIcon, EditIcon } from '$lib/components/icons';
-	import Dropdown from '$lib/components/ui/dropdown.svelte';
+	import { Dropdown } from '$lib/components/ui';
 	import type { TagModel } from '$lib/models/tag-model';
-	import { DropdownMenu } from 'bits-ui';
+	import { cn } from '$lib/utils';
 
 	type Props = {
 		tag: TagModel;
+		triggerClass?: string;
 		onDelete: () => void;
 	};
 
-	let { tag = $bindable(), onDelete }: Props = $props();
+	let { tag = $bindable(), triggerClass, onDelete }: Props = $props();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	let tagDialogOpen = $state(false);
+	let editDialogOpen = $state(false);
 	let deleteDialogOpen = $state(false);
 </script>
 
-<Dropdown
-	triggerClass="hover:bg-background-alt-3 data-[state=open]:bg-background-alt-3 rounded-lg border-none"
-	contentClass="w-38 p-1 text-sm"
-	portalProps={{ disabled: false }}
->
-	{#snippet trigger()}
+<Dropdown.Root>
+	<Dropdown.Trigger
+		class={cn(
+			'hover:bg-background-alt-3 data-[state=open]:bg-background-alt-3 rounded-lg border-none',
+			triggerClass
+		)}
+	>
 		<DotsIcon class="size-5 stroke-[1.5]" />
-	{/snippet}
+	</Dropdown.Trigger>
 
-	{#snippet content()}
-		<DropdownMenu.Item
-			class="text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-2 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none"
+	<Dropdown.Content class="w-38">
+		<Dropdown.Item
 			onclick={() => {
-				tagDialogOpen = true;
+				editDialogOpen = true;
 			}}
 		>
 			<EditIcon class="size-4 stroke-[1.5]" />
 			<span>Rename</span>
-		</DropdownMenu.Item>
+		</Dropdown.Item>
 
-		<DropdownMenu.Separator class="bg-background-alt-3 h-px w-full" />
+		<Dropdown.Separator />
 
-		<DropdownMenu.Item
-			class="text-foreground-error hover:text-foreground hover:bg-background-error inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none"
+		<Dropdown.CautionItem
 			onclick={() => {
 				deleteDialogOpen = true;
 			}}
 		>
 			<DeleteIcon class="size-4 stroke-[1.5]" />
 			<span>Delete tag</span>
-		</DropdownMenu.Item>
-	{/snippet}
-</Dropdown>
+		</Dropdown.CautionItem>
+	</Dropdown.Content>
+</Dropdown.Root>
 
-<EditTagNameDialog bind:open={tagDialogOpen} bind:value={tag} />
+<EditTagNameDialog bind:open={editDialogOpen} bind:value={tag} />
 <DeleteTagDialog bind:open={deleteDialogOpen} value={tag} successFn={onDelete} />

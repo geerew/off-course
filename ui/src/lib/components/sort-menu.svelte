@@ -41,8 +41,8 @@
 	});
 </script>
 
-<Dropdown triggerClass="w-36 [&[data-state=open]>svg]:rotate-90" contentClass="min-w-40">
-	{#snippet trigger()}
+<Dropdown.Root>
+	<Dropdown.Trigger class="w-36 [&[data-state=open]>svg]:rotate-90">
 		{#if columns.length === 0}
 			<div class="flex items-center gap-1.5">
 				<WarningIcon class="size-4 stroke-[1.5]" />
@@ -64,9 +64,9 @@
 			</div>
 			<RightChevron class="stroke-foreground-alt-3 size-4.5 duration-200" />
 		{/if}
-	{/snippet}
+	</Dropdown.Trigger>
 
-	{#snippet content()}
+	<Dropdown.Content class="min-w-40">
 		{#if columns.length === 0}
 			<div class="flex flex-col gap-1.5 p-1">
 				<p class="text-foreground-alt-3 text-center text-sm">No columns</p>
@@ -143,5 +143,5 @@
 				</DropdownMenu.RadioGroup>
 			</div>
 		{/if}
-	{/snippet}
-</Dropdown>
+	</Dropdown.Content>
+</Dropdown.Root>

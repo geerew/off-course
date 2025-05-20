@@ -16,7 +16,7 @@
 	import { Badge, Button, Checkbox, Dialog, Drawer, Dropdown } from '$lib/components/ui';
 	import { FsPathClassification, type FsModel } from '$lib/models/fs-model';
 	import { cn, remCalc } from '$lib/utils';
-	import { DropdownMenu, Separator } from 'bits-ui';
+	import { Separator } from 'bits-ui';
 	import { toast } from 'svelte-sonner';
 	import { innerWidth } from 'svelte/reactivity/window';
 	import theme from 'tailwindcss/defaultTheme';
@@ -354,22 +354,17 @@
 			</Button>
 		</div>
 	{:else}
-		<Dropdown
-			triggerClass="w-32 [&[data-state=open]>svg]:rotate-90"
-			contentClass="w-42 p-1 text-sm"
-			contentProps={{ align: 'start' }}
-		>
-			{#snippet trigger()}
+		<Dropdown.Root>
+			<Dropdown.Trigger class="w-32 [&[data-state=open]>svg]:rotate-90">
 				<div class="flex items-center gap-1.5">
 					<ActionIcon class="size-4 stroke-[1.5]" />
 					<span>Actions</span>
 				</div>
 				<RightChevronIcon class="stroke-foreground-alt-3 size-4.5 duration-200" />
-			{/snippet}
+			</Dropdown.Trigger>
 
-			{#snippet content()}
-				<DropdownMenu.Item
-					class="text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-2 data-disabled:text-foreground-alt-3 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none data-disabled:cursor-auto data-disabled:hover:bg-transparent"
+			<Dropdown.Content class="w-42" align="start" portalProps={{ disabled: true }}>
+				<Dropdown.Item
 					disabled={selectAllDisabled}
 					onclick={() => {
 						if (selectAllDisabled) return;
@@ -386,10 +381,9 @@
 				>
 					<SelectAllIcon class="size-4 stroke-[1.5]" />
 					Select All
-				</DropdownMenu.Item>
+				</Dropdown.Item>
 
-				<DropdownMenu.Item
-					class="text-foreground-alt-1 data-disabled:text-foreground-alt-3 hover:text-foreground hover:bg-background-alt-2 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none data-disabled:cursor-auto data-disabled:hover:bg-transparent"
+				<Dropdown.Item
 					disabled={deselectAllDisabled}
 					onclick={() => {
 						if (deselectAllDisabled) return;
@@ -406,9 +400,9 @@
 				>
 					<DeselectAllIcon class="size-4 stroke-[1.5]" />
 					Deselect All
-				</DropdownMenu.Item>
-			{/snippet}
-		</Dropdown>
+				</Dropdown.Item>
+			</Dropdown.Content>
+		</Dropdown.Root>
 	{/if}
 {/snippet}
 
