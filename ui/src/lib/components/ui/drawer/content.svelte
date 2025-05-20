@@ -40,7 +40,7 @@
 	>
 		<div
 			class={cn(
-				'bg-background-alt-2 mx-auto mt-3 mb-2 hidden h-2 w-[100px] shrink-0 rounded-full group-data-[vaul-drawer-direction=bottom]/drawer-content:block',
+				'bg-background-alt-2 mx-auto mt-2 mb-2 hidden h-1.5 w-[100px] shrink-0 rounded-full group-data-[vaul-drawer-direction=bottom]/drawer-content:block',
 				handleClass
 			)}
 		></div>

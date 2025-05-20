@@ -50,7 +50,7 @@
 		<Button
 			href={item.href}
 			class={cn(
-				'bg-background text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-1 relative flex h-auto flex-row justify-start gap-3 px-2.5 leading-6 font-semibold duration-200',
+				'bg-background text-foreground-alt-2 hover:text-foreground hover:bg-background-alt-1 relative flex h-auto flex-row justify-start gap-3 px-2.5 leading-6 font-medium duration-200',
 				page.url.pathname.startsWith(item.matcher) &&
 					'bg-background-alt-1 after:bg-background-primary after:absolute after:top-0 after:right-0 after:h-full after:w-1',
 				mobile ? ' py-6' : ' py-3'

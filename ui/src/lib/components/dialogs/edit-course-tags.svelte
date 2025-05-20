@@ -1,3 +1,4 @@
+<!-- TODO make mobile friendly -->
 <script lang="ts">
 	import type { APIError } from '$lib/api-error.svelte';
 	import { CreateCourseTag, DeleteCourseTag, GetCourseTags } from '$lib/api/course-api';

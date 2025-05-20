@@ -34,7 +34,7 @@
 				<Button
 					href={item.href}
 					class={cn(
-						'text-foreground-alt-1 hover:text-foreground relative rounded-lg bg-transparent px-2.5 py-1.5 leading-6 font-semibold duration-200',
+						'text-foreground-alt-2 hover:text-foreground relative rounded-lg bg-transparent px-2.5 py-1.5 leading-6 font-medium duration-200',
 						page.url.pathname === item.matcher &&
 							'after:bg-background-primary text-foreground after:absolute after:-bottom-0.5 after:left-0 after:h-0.5 after:w-full'
 					)}
