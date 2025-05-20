@@ -1,17 +1,18 @@
-<!-- TODO make mobile friendly -->
 <script lang="ts">
 	import type { APIError } from '$lib/api-error.svelte';
 	import { CreateCourseTag, DeleteCourseTag, GetCourseTags } from '$lib/api/course-api';
 	import { GetTagNames } from '$lib/api/tag-api';
 	import { Oops } from '$lib/components/';
 	import { ScanIcon, UndoIcon, XIcon } from '$lib/components/icons';
-	import { Badge, Button, Dialog } from '$lib/components/ui';
+	import { Badge, Button, Dialog, Drawer } from '$lib/components/ui';
 	import type { CourseModel, CoursesModel, CourseTagsModel } from '$lib/models/course-model';
-	import { cn } from '$lib/utils';
+	import { cn, remCalc } from '$lib/utils';
 	import { Combobox } from 'bits-ui';
 	import { Debounced } from 'runed';
 	import { type Snippet } from 'svelte';
 	import { toast } from 'svelte-sonner';
+	import { innerWidth } from 'svelte/reactivity/window';
+	import theme from 'tailwindcss/defaultTheme';
 	import Spinner from '../spinner.svelte';
 
 	type Props = {
@@ -44,6 +45,9 @@
 	let isPosting = $state(false);
 
 	const isArray = Array.isArray(value);
+
+	const mdBreakpoint = +theme.screens.md.replace('rem', '');
+	let isDesktop = $derived(remCalc(innerWidth.current ?? 0) > mdBreakpoint);
 
 	let loadTagsPromise = $state<Promise<void>>();
 
@@ -255,167 +259,214 @@
 	}
 </script>
 
-<Dialog.Root bind:open {trigger}>
-	<Dialog.Content
-		class="inline-flex max-w-md flex-col"
-		onOpenAutoFocus={(e) => {
-			e.preventDefault();
+{#snippet action()}
+	<Button
+		disabled={isPosting || (toAdd.length === 0 && toDelete.length === 0)}
+		onclick={async () => {
+			await createTags();
+		}}
+		class="h-10 w-25 py-2"
+	>
+		{#if isPosting}
+			<Spinner class="bg-background-alt-4 size-2" />
+		{:else}
+			{isArray ? 'Add' : 'Update'}
+		{/if}
+	</Button>
+{/snippet}
+
+{#snippet header()}
+	<Button
+		class="absolute h-full w-auto cursor-text rounded-none bg-transparent px-3 enabled:hover:bg-transparent"
+		onfocusin={() => {
 			inputEl?.focus();
 		}}
-		onCloseAutoFocus={(e) => {
-			e.preventDefault();
-		}}
 	>
-		<Combobox.Root
-			type="single"
-			bind:open={
-				() => comboboxOpen,
-				(newOpen) => {
-					if (newOpen) return;
-					comboboxOpen = newOpen;
-				}
-			}
-			bind:value={selectedValue}
+		<ScanIcon class="text-foreground-alt-1 size-5" />
+	</Button>
+
+	<div class="absolute top-0 right-2 flex h-full items-center justify-center">
+		{#if loadingAvailableTags}
+			<Spinner class="bg-foreground-alt-3 size-1.5" />
+		{/if}
+	</div>
+
+	<Combobox.Input
+		bind:ref={inputEl}
+		oninput={(e) => (inputValue = e.currentTarget.value)}
+		onkeydown={handleInput}
+		disabled={isPosting}
+		class="bg-background-alt-2 focus:bg-background-alt-3 placeholder:text-foreground-alt-3 h-full w-full rounded-none px-2.5 ps-12 pe-12 ring-0 duration-250 ease-in-out placeholder:tracking-wide focus:outline-none"
+		placeholder="Add tag..."
+		aria-label="Add a tag"
+	/>
+
+	<Combobox.Portal>
+		<!-- {#if filteredTags.length > 0} -->
+		<Combobox.Content
+			class={cn(
+				'bg-background border-background-alt-5 data-[side=bottom]:slide-in-from-top-2 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 z-[60] w-[calc(var(--bits-combobox-anchor-width)-1rem)] overflow-x-hidden overflow-y-auto rounded-lg py-3 outline-hidden select-none data-[side=bottom]:translate-y-1',
+				isDesktop ? 'max-h-50' : 'max-h-40'
+			)}
+			side="bottom"
+			sideOffset={-10}
 		>
-			<Dialog.Header class="relative px-0">
+			{#each filteredTags as tag, i (i + tag)}
+				<Combobox.Item
+					class="rounded-button data-highlighted:bg-background-alt-2 flex h-10 w-full items-center py-3 ps-9 pr-1.5 text-sm outline-hidden select-none"
+					value={tag}
+					label={tag}
+				>
+					{#snippet children()}
+						{tag}
+					{/snippet}
+				</Combobox.Item>
+			{/each}
+		</Combobox.Content>
+		<!-- {/if} -->
+	</Combobox.Portal>
+{/snippet}
+
+{#snippet contents()}
+	<main
+		bind:this={tagsEl}
+		class="flex max-h-60 min-h-40 w-full flex-1 shrink-0 flex-wrap place-content-start gap-2.5 overflow-x-hidden overflow-y-auto p-5"
+		data-vaul-no-drag=""
+	>
+		{#if !isArray}
+			{#await loadTagsPromise}
+				<div class="flex w-full items-center justify-center pt-3">
+					<Spinner class="bg-foreground-alt-3 size-3" />
+				</div>
+			{:then _}
+				{#each existingTags as tag}
+					<Badge
+						class={cn(
+							'bg-background-alt-3 text-foreground h-6 overflow-hidden p-0 text-sm select-none',
+							toDelete.find((t) => t === tag) && 'text-foreground-alt-3'
+						)}
+						data-tag={tag.tag}
+					>
+						<span class="mt-px h-full px-2.5 font-semibold">
+							{tag.tag}
+						</span>
+
+						<Button
+							disabled={isPosting}
+							class={cn(
+								'border-background-alt-6 text-foreground h-full rounded-none rounded-r-md border-l bg-transparent px-1',
+								toDelete.find((t) => t.tag === tag.tag)
+									? 'enabled:hover:bg-background-success'
+									: 'enabled:hover:bg-background-error'
+							)}
+							onclick={() => {
+								if (toDelete.find((t) => t === tag)) {
+									toDelete = toDelete.filter((t) => t.tag !== tag.tag);
+								} else {
+									toDelete.push(tag);
+								}
+							}}
+						>
+							{#if toDelete.find((t) => t === tag)}
+								<UndoIcon class="fill-foreground size-3 stroke-2" />
+							{:else}
+								<XIcon class="size-3 stroke-2" />
+							{/if}
+						</Button>
+					</Badge>
+				{/each}
+			{:catch error}
+				<div class="container-px flex w-full">
+					<Oops class="pt-0" contentClass="border-0" message={error.message} />
+				</div>
+			{/await}
+		{/if}
+
+		{#each toAdd as tag}
+			<Badge
+				class="bg-background-success text-foreground h-6 overflow-hidden p-0 text-sm"
+				data-tag={tag}
+			>
+				<span class="mt-px h-full px-2.5 font-semibold">
+					{tag}
+				</span>
+
 				<Button
-					class="absolute h-full w-auto cursor-text rounded-none bg-transparent px-3 enabled:hover:bg-transparent"
-					onfocusin={() => {
-						inputEl?.focus();
+					class="border-background-alt-3 text-foreground enabled:hover:bg-background-error h-full rounded-none border-l bg-transparent px-1"
+					onclick={() => {
+						toAdd = toAdd.filter((t) => t !== tag);
 					}}
 				>
-					<ScanIcon class="text-foreground-alt-1 size-5" />
+					<XIcon class="size-3 stroke-2" />
 				</Button>
+			</Badge>
+		{/each}
+	</main>
+{/snippet}
 
-				<div class="absolute top-0 right-2 flex h-full items-center justify-center">
-					{#if loadingAvailableTags}
-						<Spinner class="bg-foreground-alt-3 size-1.5" />
-					{/if}
-				</div>
-
-				<Combobox.Input
-					bind:ref={inputEl}
-					oninput={(e) => (inputValue = e.currentTarget.value)}
-					onkeydown={handleInput}
-					disabled={isPosting}
-					class="bg-background-alt-2 focus:bg-background-alt-3 placeholder:text-foreground-alt-3 h-full w-full rounded-none px-2.5 ps-12 pe-12 ring-0 duration-250 ease-in-out placeholder:tracking-wide focus:outline-none"
-					placeholder="Add tag..."
-					aria-label="Add a tag"
-				/>
-
-				<Combobox.Portal>
-					<!-- {#if filteredTags.length > 0} -->
-					<Combobox.Content
-						class="bg-background border-background-alt-5 data-[side=bottom]:slide-in-from-top-2 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 z-[60] max-h-60 w-[calc(var(--bits-combobox-anchor-width)-1rem)] overflow-x-hidden overflow-y-auto rounded-lg py-3 outline-hidden select-none data-[side=bottom]:translate-y-1"
-						sideOffset={10}
-					>
-						{#each filteredTags as tag, i (i + tag)}
-							<Combobox.Item
-								class="rounded-button data-highlighted:bg-background-alt-2 flex h-10 w-full items-center py-3 ps-9 pr-1.5 text-sm outline-hidden select-none"
-								value={tag}
-								label={tag}
-							>
-								{#snippet children()}
-									{tag}
-								{/snippet}
-							</Combobox.Item>
-						{/each}
-					</Combobox.Content>
-					<!-- {/if} -->
-				</Combobox.Portal>
-			</Dialog.Header>
-		</Combobox.Root>
-
-		<main
-			bind:this={tagsEl}
-			class="flex max-h-60 min-h-40 w-full flex-1 shrink-0 flex-wrap place-content-start gap-2.5 overflow-x-hidden overflow-y-auto p-5"
+{#if isDesktop}
+	<Dialog.Root bind:open {trigger}>
+		<Dialog.Content
+			class="inline-flex max-w-md flex-col"
+			onOpenAutoFocus={(e) => {
+				e.preventDefault();
+				inputEl?.focus();
+			}}
+			onCloseAutoFocus={(e) => {
+				e.preventDefault();
+			}}
 		>
-			{#if !isArray}
-				{#await loadTagsPromise}
-					<div class="flex w-full items-center justify-center pt-3">
-						<Spinner class="bg-foreground-alt-3 size-3" />
-					</div>
-				{:then _}
-					{#each existingTags as tag}
-						<Badge
-							class={cn(
-								'bg-background-alt-3 text-foreground h-6 overflow-hidden p-0 text-sm select-none',
-								toDelete.find((t) => t === tag) && 'text-foreground-alt-3'
-							)}
-							data-tag={tag.tag}
-						>
-							<span class="mt-px h-full px-2.5 font-semibold">
-								{tag.tag}
-							</span>
-
-							<Button
-								disabled={isPosting}
-								class={cn(
-									'border-background-alt-6 text-foreground h-full rounded-none rounded-r-md border-l bg-transparent px-1',
-									toDelete.find((t) => t.tag === tag.tag)
-										? 'enabled:hover:bg-background-success'
-										: 'enabled:hover:bg-background-error'
-								)}
-								onclick={() => {
-									if (toDelete.find((t) => t === tag)) {
-										toDelete = toDelete.filter((t) => t.tag !== tag.tag);
-									} else {
-										toDelete.push(tag);
-									}
-								}}
-							>
-								{#if toDelete.find((t) => t === tag)}
-									<UndoIcon class="fill-foreground size-3 stroke-2" />
-								{:else}
-									<XIcon class="size-3 stroke-2" />
-								{/if}
-							</Button>
-						</Badge>
-					{/each}
-				{:catch error}
-					<div class="container-px flex w-full">
-						<Oops class="pt-0" contentClass="border-0" message={error.message} />
-					</div>
-				{/await}
-			{/if}
-
-			{#each toAdd as tag}
-				<Badge
-					class="bg-background-success text-foreground h-6 overflow-hidden p-0 text-sm"
-					data-tag={tag}
-				>
-					<span class="mt-px h-full px-2.5 font-semibold">
-						{tag}
-					</span>
-
-					<Button
-						class="border-background-alt-3 text-foreground enabled:hover:bg-background-error h-full rounded-none border-l bg-transparent px-1"
-						onclick={() => {
-							toAdd = toAdd.filter((t) => t !== tag);
-						}}
-					>
-						<XIcon class="size-3 stroke-2" />
-					</Button>
-				</Badge>
-			{/each}
-		</main>
-
-		<Dialog.Footer>
-			<Dialog.CloseButton>Close</Dialog.CloseButton>
-
-			<Button
-				disabled={isPosting || (toAdd.length === 0 && toDelete.length === 0)}
-				onclick={async () => {
-					await createTags();
-				}}
-				class="h-10 w-25 py-2"
+			<Combobox.Root
+				type="single"
+				bind:open={
+					() => comboboxOpen,
+					(newOpen) => {
+						if (newOpen) return;
+						comboboxOpen = newOpen;
+					}
+				}
+				bind:value={selectedValue}
 			>
-				{#if isPosting}
-					<Spinner class="bg-background-alt-4 size-2" />
-				{:else}
-					{isArray ? 'Add' : 'Update'}
-				{/if}
-			</Button>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+				<Dialog.Header class="relative px-0">
+					{@render header()}
+				</Dialog.Header>
+			</Combobox.Root>
+
+			{@render contents()}
+
+			<Dialog.Footer>
+				<Dialog.CloseButton>Close</Dialog.CloseButton>
+				{@render action()}
+			</Dialog.Footer>
+		</Dialog.Content>
+	</Dialog.Root>
+{:else}
+	<Drawer.Root bind:open>
+		{@render trigger?.()}
+
+		<Drawer.Content handleClass="bg-background-alt-4">
+			<Combobox.Root
+				type="single"
+				bind:open={
+					() => comboboxOpen,
+					(newOpen) => {
+						if (newOpen) return;
+						comboboxOpen = newOpen;
+					}
+				}
+				bind:value={selectedValue}
+			>
+				<Drawer.Header class="border-y px-0">
+					{@render header()}
+				</Drawer.Header>
+			</Combobox.Root>
+
+			{@render contents()}
+
+			<Drawer.Footer>
+				<Drawer.CloseButton>Close</Drawer.CloseButton>
+				{@render action()}
+			</Drawer.Footer>
+		</Drawer.Content>
+	</Drawer.Root>
+{/if}

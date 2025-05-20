@@ -140,6 +140,7 @@
 	<main
 		bind:this={tagsEl}
 		class="flex max-h-60 min-h-40 w-full flex-1 shrink-0 flex-wrap place-content-start gap-2.5 overflow-x-hidden overflow-y-auto p-5"
+		data-vaul-no-drag=""
 	>
 		{#each toAdd as tag}
 			<Badge
