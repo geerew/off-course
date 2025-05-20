@@ -12,6 +12,6 @@
 
 <DropdownMenu.Separator
 	bind:ref
-	class={cn('bg-background-alt-3 h-px w-full', containerClass)}
+	class={cn('bg-background-alt-3 mt-px h-px w-full shrink-0', containerClass)}
 	{...restProps}
 />

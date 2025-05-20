@@ -14,7 +14,7 @@
 
 <Dropdown.Root>
 	<Dropdown.Trigger
-		class="group text-foreground-alt-3 data-[state=open]:text-foreground-alt-1 hover:text-foreground-alt-1 h-auto rounded-lg border-none p-0"
+		class="group text-foreground-alt-3 data-[state=open]:text-foreground-alt-1 hover:text-foreground-alt-1 h-auto w-auto rounded-lg border-none p-0"
 		onclick={(e) => {
 			e.stopPropagation();
 		}}
