@@ -298,7 +298,7 @@
 										{#if user.id === auth.user?.id}
 											<div class="flex items-center gap-2">
 												<span>{user.username}</span>
-												<div class="bg-background-primary mt-px size-2 rounded-full"></div>
+												<div class="bg-background-primary mt-0.5 size-2 rounded-full"></div>
 											</div>
 										{:else}
 											{user.username}

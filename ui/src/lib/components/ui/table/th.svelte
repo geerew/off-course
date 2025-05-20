@@ -14,7 +14,7 @@
 <div
 	role="columnheader"
 	class={cn(
-		'border-background-alt-3 flex h-12 items-center justify-center border-b',
+		'border-background-alt-3 flex h-12 items-center justify-center border-b select-none',
 		containerClass
 	)}
 	{...restProps}
