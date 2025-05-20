@@ -3,15 +3,13 @@
 	import { DeleteIcon, DotsIcon, EditIcon } from '$lib/components/icons';
 	import { Dropdown } from '$lib/components/ui';
 	import type { TagModel } from '$lib/models/tag-model';
-	import { cn } from '$lib/utils';
 
 	type Props = {
 		tag: TagModel;
-		triggerClass?: string;
 		onDelete: () => void;
 	};
 
-	let { tag = $bindable(), triggerClass, onDelete }: Props = $props();
+	let { tag = $bindable(), onDelete }: Props = $props();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -21,10 +19,7 @@
 
 <Dropdown.Root>
 	<Dropdown.Trigger
-		class={cn(
-			'hover:bg-background-alt-3 data-[state=open]:bg-background-alt-3 rounded-lg border-none',
-			triggerClass
-		)}
+		class="hover:bg-background-alt-3 data-[state=open]:bg-background-alt-3 w-auto rounded-lg border-none"
 	>
 		<DotsIcon class="size-5 stroke-[1.5]" />
 	</Dropdown.Trigger>

@@ -2,7 +2,7 @@
 	import type { APIError } from '$lib/api-error.svelte';
 	import { RevokeUserSessions } from '$lib/api/user-api';
 	import { Spinner } from '$lib/components';
-	import { AlertDialog, Button } from '$lib/components/ui';
+	import { Button, Dialog } from '$lib/components/ui';
 	import type { UserModel, UsersModel } from '$lib/models/user-model';
 	import { type Snippet } from 'svelte';
 	import { toast } from 'svelte-sonner';
@@ -53,39 +53,37 @@
 	}
 </script>
 
-<AlertDialog
-	bind:open
-	contentProps={{
-		interactOutsideBehavior: 'close'
-	}}
-	{trigger}
-	{triggerClass}
->
-	{#snippet description()}
-		<div class="text-foreground-alt-1 flex flex-col gap-2 text-center">
-			{#if multipleUsers && Object.values(value).length > 1}
-				<span class="text-lg">
-					Are you sure you want to continue revoking all sessions for these users?
-				</span>
-			{:else}
-				<span class="text-lg">
-					Are you sure you want to continue revoking all sessions for this user?
-				</span>
-			{/if}
-		</div>
-	{/snippet}
+<Dialog.Root bind:open>
+	<Dialog.Content interactOutsideBehavior="close" class="w-lg">
+		<div class="bg-background-alt-1 overflow-hidden rounded-lg">
+			<Dialog.Alert>
+				<div class="text-foreground-alt-1 flex flex-col gap-2 text-center">
+					{#if multipleUsers && Object.values(value).length > 1}
+						<span class="text-lg">
+							Are you sure you want to continue revoking all sessions for these users?
+						</span>
+					{:else}
+						<span class="text-lg">
+							Are you sure you want to continue revoking all sessions for this user?
+						</span>
+					{/if}
+				</div>
+			</Dialog.Alert>
 
-	{#snippet action()}
-		<Button
-			disabled={isPosting}
-			onclick={doRevoke}
-			class="bg-background-error enabled:hover:bg-background-error-alt-1 text-foreground-alt-1 enabled:hover:text-foreground w-24"
-		>
-			{#if isPosting}
-				<Spinner class="bg-foreground-alt-1 size-2" />
-			{:else}
-				Delete
-			{/if}
-		</Button>
-	{/snippet}
-</AlertDialog>
+			<Dialog.Footer>
+				<Dialog.CloseButton>Close</Dialog.CloseButton>
+				<Button
+					disabled={isPosting}
+					onclick={doRevoke}
+					class="bg-background-error enabled:hover:bg-background-error-alt-1 text-foreground-alt-1 enabled:hover:text-foreground w-24"
+				>
+					{#if isPosting}
+						<Spinner class="bg-foreground-alt-1 size-2" />
+					{:else}
+						Delete
+					{/if}
+				</Button>
+			</Dialog.Footer>
+		</div>
+	</Dialog.Content>
+</Dialog.Root>

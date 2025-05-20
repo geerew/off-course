@@ -8,16 +8,14 @@
 	import { DeleteIcon, DotsIcon, FlagIcon, SecureIcon, SessionIcon } from '$lib/components/icons';
 	import { Dropdown } from '$lib/components/ui';
 	import type { UserModel } from '$lib/models/user-model';
-	import { cn } from '$lib/utils';
 
 	type Props = {
 		user: UserModel;
-		triggerClass?: string;
 		onUpdate: () => void;
 		onDelete: () => void;
 	};
 
-	let { user, triggerClass, onUpdate, onDelete }: Props = $props();
+	let { user, onUpdate, onDelete }: Props = $props();
 
 	let roleDialogOpen = $state(false);
 	let passwordDialogOpen = $state(false);
@@ -27,10 +25,7 @@
 
 <Dropdown.Root>
 	<Dropdown.Trigger
-		class={cn(
-			'hover:bg-background-alt-3 data-[state=open]:bg-background-alt-3 rounded-lg border-none',
-			triggerClass
-		)}
+		class="hover:bg-background-alt-3 data-[state=open]:bg-background-alt-3 w-auto rounded-lg border-none"
 	>
 		<DotsIcon class="size-5 stroke-[1.5]" />
 	</Dropdown.Trigger>

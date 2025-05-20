@@ -7,17 +7,15 @@
 	import { Dropdown } from '$lib/components/ui';
 	import type { CourseModel } from '$lib/models/course-model';
 	import { scanMonitor } from '$lib/scans.svelte';
-	import { cn } from '$lib/utils';
 	import { toast } from 'svelte-sonner';
 
 	type Props = {
 		course: CourseModel;
-		triggerClass?: string;
 		onScan: () => void;
 		onDelete: () => void;
 	};
 
-	let { course, triggerClass, onScan, onDelete }: Props = $props();
+	let { course, onScan, onDelete }: Props = $props();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -39,10 +37,7 @@
 
 <Dropdown.Root>
 	<Dropdown.Trigger
-		class={cn(
-			'hover:bg-background-alt-3 data-[state=open]:bg-background-alt-3 rounded-lg border-none',
-			triggerClass
-		)}
+		class="hover:bg-background-alt-3 data-[state=open]:bg-background-alt-3 w-auto rounded-lg border-none"
 	>
 		<DotsIcon class="size-5 stroke-[1.5]" />
 	</Dropdown.Trigger>

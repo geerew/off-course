@@ -2,7 +2,7 @@
 	import type { APIError } from '$lib/api-error.svelte';
 	import { DeleteTag } from '$lib/api/tag-api';
 	import { Spinner } from '$lib/components';
-	import { AlertDialog, Button } from '$lib/components/ui';
+	import { Button, Dialog } from '$lib/components/ui';
 	import type { TagModel, TagsModel } from '$lib/models/tag-model';
 	import { type Snippet } from 'svelte';
 	import { toast } from 'svelte-sonner';
@@ -52,35 +52,33 @@
 	}
 </script>
 
-<AlertDialog
-	bind:open
-	contentProps={{
-		interactOutsideBehavior: 'close'
-	}}
-	{trigger}
-	{triggerClass}
->
-	{#snippet description()}
-		<div class="text-foreground-alt-1 flex flex-col gap-2 text-center">
-			{#if isArray && Object.values(value).length > 1}
-				<span class="text-lg">Are you sure you want to delete these tags?</span>
-			{:else}
-				<span class="text-lg">Are you sure you want to delete this tag?</span>
-			{/if}
-		</div>
-	{/snippet}
+<Dialog.Root bind:open>
+	<Dialog.Content interactOutsideBehavior="close" class="w-lg">
+		<div class="bg-background-alt-1 overflow-hidden rounded-lg">
+			<Dialog.Alert>
+				<div class="text-foreground-alt-1 flex flex-col gap-2 text-center">
+					{#if isArray && Object.values(value).length > 1}
+						<span class="text-lg">Are you sure you want to delete these tags?</span>
+					{:else}
+						<span class="text-lg">Are you sure you want to delete this tag?</span>
+					{/if}
+				</div>
+			</Dialog.Alert>
 
-	{#snippet action()}
-		<Button
-			disabled={isPosting}
-			onclick={doDelete}
-			class="bg-background-error disabled:bg-background-error/80 enabled:hover:bg-background-error-alt-1 text-foreground-alt-1 enabled:hover:text-foreground w-24"
-		>
-			{#if isPosting}
-				<Spinner class="bg-foreground-alt-1 size-2" />
-			{:else}
-				Delete
-			{/if}
-		</Button>
-	{/snippet}
-</AlertDialog>
+			<Dialog.Footer>
+				<Dialog.CloseButton>Close</Dialog.CloseButton>
+				<Button
+					disabled={isPosting}
+					onclick={doDelete}
+					class="bg-background-error disabled:bg-background-error/80 enabled:hover:bg-background-error-alt-1 text-foreground-alt-1 enabled:hover:text-foreground w-24"
+				>
+					{#if isPosting}
+						<Spinner class="bg-foreground-alt-1 size-2" />
+					{:else}
+						Delete
+					{/if}
+				</Button>
+			</Dialog.Footer>
+		</div>
+	</Dialog.Content>
+</Dialog.Root>
