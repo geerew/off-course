@@ -35,7 +35,7 @@
 	});
 </script>
 
-<Dropdown.Root open={true}>
+<Dropdown.Root>
 	<Dropdown.Trigger class="w-36 [&[data-state=open]>svg]:rotate-90">
 		{#if columns.length === 0}
 			<div class="flex items-center gap-1.5">
