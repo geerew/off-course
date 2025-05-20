@@ -7,7 +7,7 @@
 	import {
 		ActionIcon,
 		DeleteIcon,
-		DeselectIcon,
+		DeselectAllIcon,
 		FlagIcon,
 		SessionIcon
 	} from '$lib/components/icons';
@@ -49,7 +49,7 @@
 				users = {};
 			}}
 		>
-			<DeselectIcon class="size-4 stroke-[1.5]" />
+			<DeselectAllIcon class="size-4 stroke-[1.5]" />
 			<span>Deselect all</span>
 		</DropdownMenu.Item>
 

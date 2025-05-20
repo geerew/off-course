@@ -1,3 +1,4 @@
+<!-- TODO Rework to be more like drawer -->
 <script lang="ts">
 	import { cn } from '$lib/utils';
 	import { DropdownMenu, type PopoverPortalProps, type WithoutChildren } from 'bits-ui';

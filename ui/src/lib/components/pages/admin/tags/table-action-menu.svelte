@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { DeleteTagDialog } from '$lib/components/dialogs';
-	import { ActionIcon, DeleteIcon, DeselectIcon } from '$lib/components/icons';
+	import { ActionIcon, DeleteIcon, DeselectAllIcon } from '$lib/components/icons';
 	import RightChevron from '$lib/components/icons/right-chevron.svelte';
 	import { Dropdown } from '$lib/components/ui';
 	import type { TagModel } from '$lib/models/tag-model';
@@ -36,7 +36,7 @@
 				tags = {};
 			}}
 		>
-			<DeselectIcon class="size-4 stroke-[1.5]" />
+			<DeselectAllIcon class="size-4 stroke-[1.5]" />
 			<span>Deselect all</span>
 		</DropdownMenu.Item>
 

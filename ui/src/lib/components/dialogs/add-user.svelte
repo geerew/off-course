@@ -102,6 +102,20 @@
 	}
 </script>
 
+{#snippet trigger()}
+	{#if isDesktop}
+		<Dialog.Trigger class="flex h-10 w-auto flex-row items-center gap-2 px-5">
+			<PlusIcon class="size-5 stroke-[1.5]" />
+			Add User
+		</Dialog.Trigger>
+	{:else}
+		<Drawer.Trigger class="flex h-10 w-auto flex-row items-center gap-2 px-5 py-2">
+			<PlusIcon class="size-5 stroke-[1.5]" />
+			Add User
+		</Drawer.Trigger>
+	{/if}
+{/snippet}
+
 {#snippet contents()}
 	<main
 		class="flex max-h-[50vh] min-h-[5rem] w-full flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto py-5"
@@ -167,14 +181,7 @@
 {/snippet}
 
 {#if isDesktop}
-	<Dialog.Root bind:open>
-		{#snippet trigger()}
-			<Dialog.Trigger class="flex h-10 w-auto flex-row items-center gap-2 px-5">
-				<PlusIcon class="size-5 stroke-[1.5]" />
-				Add User
-			</Dialog.Trigger>
-		{/snippet}
-
+	<Dialog.Root bind:open {trigger}>
 		<Dialog.Content
 			class="inline-flex h-[min(calc(100vh-10rem),46rem)] max-w-lg flex-col"
 			onOpenAutoFocus={(e) => {
@@ -214,10 +221,7 @@
 	</Dialog.Root>
 {:else}
 	<Drawer.Root bind:open>
-		<Drawer.Trigger class="flex h-10 w-auto flex-row items-center gap-2 px-5 py-2">
-			<PlusIcon class="size-5 stroke-[1.5]" />
-			Add User
-		</Drawer.Trigger>
+		{@render trigger()}
 
 		<Drawer.Content>
 			<form onsubmit={add}>

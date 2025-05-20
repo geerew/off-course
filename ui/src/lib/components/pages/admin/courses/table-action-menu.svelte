@@ -2,8 +2,14 @@
 	import type { APIError } from '$lib/api-error.svelte';
 	import { StartScan } from '$lib/api/scan-api';
 	import { DeleteCourseDialog, EditCourseTagsDialog } from '$lib/components/dialogs';
-	import { ActionIcon, DeleteIcon, DeselectIcon, ScanIcon, TagIcon } from '$lib/components/icons';
-	import RightChevron from '$lib/components/icons/right-chevron.svelte';
+	import {
+		ActionIcon,
+		DeleteIcon,
+		DeselectAllIcon,
+		RightChevronIcon,
+		ScanIcon,
+		TagIcon
+	} from '$lib/components/icons';
 	import { Dropdown } from '$lib/components/ui';
 	import type { CourseModel } from '$lib/models/course-model';
 	import { scanMonitor } from '$lib/scans.svelte';
@@ -39,24 +45,24 @@
 <Dropdown
 	triggerProps={{ disabled: Object.keys(courses).length === 0 }}
 	triggerClass="w-32 [&[data-state=open]>svg]:rotate-90"
-	contentClass="w-42 p-1"
+	contentClass="w-42 p-1 text-sm"
 >
 	{#snippet trigger()}
 		<div class="flex items-center gap-1.5">
 			<ActionIcon class="size-4 stroke-[1.5]" />
 			<span>Actions</span>
 		</div>
-		<RightChevron class="stroke-foreground-alt-3 size-4.5 duration-200" />
+		<RightChevronIcon class="stroke-foreground-alt-3 size-4.5 duration-200" />
 	{/snippet}
 
 	{#snippet content()}
 		<DropdownMenu.Item
-			class="text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-2 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 text-sm duration-200 select-none"
+			class="text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-2 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none"
 			onclick={() => {
 				courses = {};
 			}}
 		>
-			<DeselectIcon class="size-4 stroke-[1.5]" />
+			<DeselectAllIcon class="size-4 stroke-[1.5]" />
 			<span>Deselect all</span>
 		</DropdownMenu.Item>
 
@@ -83,7 +89,7 @@
 		<DropdownMenu.Separator class="bg-background-alt-3 h-px w-full" />
 
 		<DropdownMenu.Item
-			class="text-foreground-error hover:text-foreground hover:bg-background-error inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 text-sm duration-200 select-none"
+			class="text-foreground-error hover:text-foreground hover:bg-background-error inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none"
 			onclick={() => {
 				deleteDialogOpen = true;
 			}}
