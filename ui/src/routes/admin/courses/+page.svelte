@@ -142,8 +142,6 @@
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Flip between table and card mode based on screen size
 	$effect(() => {
 		smallTable = remCalc(mainSize.width) <= +theme.columns['4xl'].replace('rem', '') ? true : false;
@@ -160,7 +158,7 @@
 			/>
 		</div>
 
-		<div class="flex flex-row gap-3">
+		<div class="flex flex-col gap-3 md:flex-row">
 			<div class="flex flex-1 flex-row">
 				<FilterBar
 					bind:value={filterValue}
@@ -176,31 +174,33 @@
 				/>
 			</div>
 
-			<div class="flex h-10 items-center gap-3 rounded-lg">
-				<TableActionMenu
-					bind:courses={selectedCourses}
-					onScan={async () => {
-						selectedCourses = {};
-						await scanMonitor.fetch();
-					}}
-					onDelete={() => {
-						const numDeleted = Object.keys(selectedCourses).length;
-						selectedCourses = {};
-						onRowDelete(numDeleted);
-					}}
-				/>
-			</div>
+			<div class="flex flex-row justify-end gap-3">
+				<div class="flex h-10 items-center gap-3 rounded-lg">
+					<TableActionMenu
+						bind:courses={selectedCourses}
+						onScan={async () => {
+							selectedCourses = {};
+							await scanMonitor.fetch();
+						}}
+						onDelete={() => {
+							const numDeleted = Object.keys(selectedCourses).length;
+							selectedCourses = {};
+							onRowDelete(numDeleted);
+						}}
+					/>
+				</div>
 
-			<div class="flex h-10 items-center gap-3 rounded-lg">
-				<SortMenu
-					columns={sortColumns}
-					bind:selectedColumn={selectedSortColumn}
-					bind:selectedDirection={selectedSortDirection}
-					onUpdate={async () => {
-						await tick();
-						loadPromise = fetchCourses(true);
-					}}
-				/>
+				<div class="flex h-10 items-center gap-3 rounded-lg">
+					<SortMenu
+						columns={sortColumns}
+						bind:selectedColumn={selectedSortColumn}
+						bind:selectedDirection={selectedSortDirection}
+						onUpdate={async () => {
+							await tick();
+							loadPromise = fetchCourses(true);
+						}}
+					/>
+				</div>
 			</div>
 		</div>
 

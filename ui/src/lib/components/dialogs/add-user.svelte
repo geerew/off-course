@@ -18,7 +18,7 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	let open = $state(false);
+	let open = $state(true);
 
 	let usernameInputEl = $state<HTMLInputElement>();
 	let usernameValue = $state<string>('');
@@ -70,6 +70,7 @@
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function add(event: Event) {
+		console.log('adding');
 		event.preventDefault();
 		isPosting = true;
 
@@ -118,7 +119,7 @@
 
 {#snippet contents()}
 	<main
-		class="flex max-h-[50vh] min-h-[5rem] w-full flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto py-5"
+		class="flex min-h-[5rem] w-full flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto py-5"
 		data-vaul-no-drag=""
 	>
 		<!-- Username -->
@@ -180,6 +181,16 @@
 	</main>
 {/snippet}
 
+{#snippet actionButton()}
+	<Button onclick={add} disabled={submitDisabled || isPosting} class="h-10 w-25 py-2">
+		{#if isPosting}
+			<Spinner class="bg-background-alt-4 size-2" />
+		{:else}
+			Create
+		{/if}
+	</Button>
+{/snippet}
+
 {#if isDesktop}
 	<Dialog.Root bind:open {trigger}>
 		<Dialog.Content
@@ -199,24 +210,12 @@
 				</div>
 			</Dialog.Header>
 
-			<form
-				onsubmit={add}
-				class="flex min-h-[5rem] w-full flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto pt-5"
-			>
-				{@render contents()}
+			{@render contents()}
 
-				<Dialog.Footer>
-					<Dialog.CloseButton>Close</Dialog.CloseButton>
-
-					<Button type="submit" disabled={submitDisabled || isPosting} class="h-10 w-25 py-2">
-						{#if isPosting}
-							<Spinner class="bg-background-alt-4 size-2" />
-						{:else}
-							Create
-						{/if}
-					</Button>
-				</Dialog.Footer>
-			</form>
+			<Dialog.Footer>
+				<Dialog.CloseButton>Close</Dialog.CloseButton>
+				{@render actionButton()}
+			</Dialog.Footer>
 		</Dialog.Content>
 	</Dialog.Root>
 {:else}
@@ -224,21 +223,12 @@
 		{@render trigger()}
 
 		<Drawer.Content>
-			<form onsubmit={add}>
-				{@render contents()}
+			{@render contents()}
 
-				<Drawer.Footer>
-					<Drawer.CloseButton>Close</Drawer.CloseButton>
-
-					<Button type="submit" disabled={submitDisabled || isPosting} class="h-10 w-25 py-2">
-						{#if isPosting}
-							<Spinner class="bg-background-alt-4 size-2" />
-						{:else}
-							Create
-						{/if}
-					</Button>
-				</Drawer.Footer>
-			</form>
+			<Drawer.Footer>
+				<Drawer.CloseButton>Close</Drawer.CloseButton>
+				{@render actionButton()}
+			</Drawer.Footer>
 		</Drawer.Content>
 	</Drawer.Root>
 {/if}

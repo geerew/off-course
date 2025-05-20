@@ -35,7 +35,7 @@
 	/* Non-tailwind variables */
 	--header-height: 4.5rem;
 	--course-menu-width: 23rem;
-	--settings-menu-width: 16rem;
+	--settings-menu-width: 18rem;
 
 	@keyframes flash {
 		0% {

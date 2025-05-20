@@ -8,7 +8,6 @@
 	import type { UserModel, UsersModel } from '$lib/models/user-model';
 	import { remCalc } from '$lib/utils';
 	import { Separator } from 'bits-ui';
-	import { type Snippet } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { innerWidth } from 'svelte/reactivity/window';
 	import theme from 'tailwindcss/defaultTheme';
@@ -16,8 +15,6 @@
 	type Props = {
 		open?: boolean;
 		value: UserModel | UsersModel;
-		trigger?: Snippet;
-		triggerClass?: string;
 		successFn?: () => void;
 	};
 
@@ -73,6 +70,14 @@
 	}
 </script>
 
+{#snippet trigger()}
+	<Dialog.Trigger
+		class="bg-background-error enabled:hover:bg-background-error-alt-1 text-foreground-alt-1 enabled:hover:text-foreground w-auto"
+	>
+		Delete Account
+	</Dialog.Trigger>
+{/snippet}
+
 {#snippet alertContents()}
 	<Dialog.Alert>
 		<div class="text-foreground-alt-1 flex flex-col gap-2 text-center">
@@ -89,7 +94,7 @@
 		{#if deletingSelf}
 			<Separator.Root class="bg-background-alt-3 mt-2 h-px w-full shrink-0" />
 
-			<div class="flex flex-col gap-2.5 px-2.5">
+			<div class="flex w-xs flex-col gap-2.5 px-2.5">
 				<div>Confirm Password:</div>
 				<PasswordInput
 					bind:ref={currentInputEl}
@@ -116,7 +121,7 @@
 {/snippet}
 
 {#if isDesktop}
-	<Dialog.Root bind:open>
+	<Dialog.Root bind:open {trigger}>
 		<Dialog.Content
 			interactOutsideBehavior="close"
 			onOpenAutoFocus={(e) => {
@@ -140,6 +145,8 @@
 	</Dialog.Root>
 {:else}
 	<Drawer.Root bind:open>
+		{@render trigger()}
+
 		<Drawer.Content class="bg-background-alt-2" handleClass="bg-background-alt-4">
 			<div class="bg-background-alt-1 overflow-hidden rounded-lg">
 				{@render alertContents()}

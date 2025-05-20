@@ -113,7 +113,8 @@
 				}}
 			/>
 		</div>
-		<div class="flex flex-row gap-3">
+
+		<div class="flex flex-col gap-3 md:flex-row">
 			<div class="flex flex-1 flex-row">
 				<FilterBar
 					bind:value={filterValue}
@@ -128,27 +129,29 @@
 				/>
 			</div>
 
-			<div class="flex h-10 items-center gap-3 rounded-lg">
-				<TableActionMenu
-					bind:tags={selectedTags}
-					onDelete={() => {
-						const numDeleted = Object.keys(selectedTags).length;
-						selectedTags = {};
-						onRowDelete(numDeleted);
-					}}
-				/>
-			</div>
+			<div class="flex flex-row justify-end gap-3">
+				<div class="flex h-10 items-center gap-3 rounded-lg">
+					<TableActionMenu
+						bind:tags={selectedTags}
+						onDelete={() => {
+							const numDeleted = Object.keys(selectedTags).length;
+							selectedTags = {};
+							onRowDelete(numDeleted);
+						}}
+					/>
+				</div>
 
-			<div class="flex h-10 items-center gap-3 rounded-lg">
-				<SortMenu
-					columns={sortColumns}
-					bind:selectedColumn={selectedSortColumn}
-					bind:selectedDirection={selectedSortDirection}
-					onUpdate={async () => {
-						await tick();
-						loadPromise = fetchTags();
-					}}
-				/>
+				<div class="flex h-10 items-center gap-3 rounded-lg">
+					<SortMenu
+						columns={sortColumns}
+						bind:selectedColumn={selectedSortColumn}
+						bind:selectedDirection={selectedSortDirection}
+						onUpdate={async () => {
+							await tick();
+							loadPromise = fetchTags();
+						}}
+					/>
+				</div>
 			</div>
 		</div>
 

@@ -15,7 +15,8 @@
 
 <Dialog.Close
 	bind:ref
-	data-slot="drawer-close"
+	data-slot="dialog-close"
+	type="button"
 	class={cn(
 		'border-background-alt-4 text-foreground-alt-1 hover:bg-background-alt-4 hover:text-foreground w-24 cursor-pointer rounded-md border py-2 duration-200 select-none',
 		containerClass
