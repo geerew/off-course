@@ -63,7 +63,15 @@
 			<!-- Delete account -->
 			<div class="flex flex-col gap-3">
 				<div class="text-foreground-alt-3 text-[15px] uppercase">Delete Account</div>
-				<DeleteUserDialog value={auth.user} />
+				<DeleteUserDialog value={auth.user}>
+					{#snippet trigger()}
+						<Dialog.Trigger
+							class="bg-background-error enabled:hover:bg-background-error-alt-1 text-foreground-alt-1 enabled:hover:text-foreground w-auto"
+						>
+							Delete Account
+						</Dialog.Trigger>
+					{/snippet}
+				</DeleteUserDialog>
 			</div>
 		</div>
 	</div>

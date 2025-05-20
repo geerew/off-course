@@ -18,7 +18,7 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	let open = $state(true);
+	let open = $state(false);
 
 	let usernameInputEl = $state<HTMLInputElement>();
 	let usernameValue = $state<string>('');

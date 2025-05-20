@@ -8,17 +8,19 @@
 	import type { UserModel, UsersModel } from '$lib/models/user-model';
 	import { remCalc } from '$lib/utils';
 	import { Separator } from 'bits-ui';
+	import type { Snippet } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { innerWidth } from 'svelte/reactivity/window';
 	import theme from 'tailwindcss/defaultTheme';
 
 	type Props = {
 		open?: boolean;
+		trigger?: Snippet;
 		value: UserModel | UsersModel;
 		successFn?: () => void;
 	};
 
-	let { open = $bindable(false), value, successFn }: Props = $props();
+	let { open = $bindable(false), value, trigger, successFn }: Props = $props();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -69,14 +71,6 @@
 		open = false;
 	}
 </script>
-
-{#snippet trigger()}
-	<Dialog.Trigger
-		class="bg-background-error enabled:hover:bg-background-error-alt-1 text-foreground-alt-1 enabled:hover:text-foreground w-auto"
-	>
-		Delete Account
-	</Dialog.Trigger>
-{/snippet}
 
 {#snippet alertContents()}
 	<Dialog.Alert>
@@ -145,7 +139,7 @@
 	</Dialog.Root>
 {:else}
 	<Drawer.Root bind:open>
-		{@render trigger()}
+		{@render trigger?.()}
 
 		<Drawer.Content class="bg-background-alt-2" handleClass="bg-background-alt-4">
 			<div class="bg-background-alt-1 overflow-hidden rounded-lg">
