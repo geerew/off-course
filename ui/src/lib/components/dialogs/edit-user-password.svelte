@@ -77,9 +77,6 @@
 		open = false;
 		isPosting = false;
 	}
-
-	$inspect(isDesktop);
-	console.log('updateSelf', updatingSelf);
 </script>
 
 {#snippet contents()}
