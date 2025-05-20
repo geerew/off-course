@@ -1,4 +1,3 @@
-<!-- TODO Rework to be more like drawer -->
 <script lang="ts">
 	import { DropdownMenu } from 'bits-ui';
 

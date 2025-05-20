@@ -4,11 +4,14 @@
 	import { DeleteUser } from '$lib/api/user-api';
 	import { auth } from '$lib/auth.svelte';
 	import { Spinner } from '$lib/components';
-	import { Button, Dialog, PasswordInput } from '$lib/components/ui';
+	import { Button, Dialog, Drawer, PasswordInput } from '$lib/components/ui';
 	import type { UserModel, UsersModel } from '$lib/models/user-model';
+	import { remCalc } from '$lib/utils';
 	import { Separator } from 'bits-ui';
 	import { type Snippet } from 'svelte';
 	import { toast } from 'svelte-sonner';
+	import { innerWidth } from 'svelte/reactivity/window';
+	import theme from 'tailwindcss/defaultTheme';
 
 	type Props = {
 		open?: boolean;
@@ -18,7 +21,7 @@
 		successFn?: () => void;
 	};
 
-	let { open = $bindable(false), value, trigger, triggerClass, successFn }: Props = $props();
+	let { open = $bindable(false), value, successFn }: Props = $props();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -28,6 +31,9 @@
 
 	const isArray = Array.isArray(value);
 	const deletingSelf = isArray ? false : value.id === auth?.user?.id;
+
+	const mdBreakpoint = +theme.screens.md.replace('rem', '');
+	let isDesktop = $derived(remCalc(innerWidth.current ?? 0) > mdBreakpoint);
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -67,59 +73,82 @@
 	}
 </script>
 
-<Dialog.Root bind:open>
-	<Dialog.Content
-		interactOutsideBehavior="close"
-		onOpenAutoFocus={(e) => {
-			e.preventDefault();
-			currentInputEl?.focus();
-		}}
-		onCloseAutoFocus={(e) => {
-			e.preventDefault();
-		}}
-		class="w-lg"
-	>
-		<div class="bg-background-alt-1 overflow-hidden rounded-lg">
-			<Dialog.Alert>
-				<div class="text-foreground-alt-1 flex flex-col gap-2 text-center">
-					{#if deletingSelf}
-						<span class="text-lg">Are you sure you want to delete your account?</span>
-					{:else if isArray && Object.values(value).length > 1}
-						<span class="text-lg"> Are you sure you want to delete these users? </span>
-					{:else}
-						<span class="text-lg">Are you sure you want to delete this user?</span>
-					{/if}
-					<span class="text-foreground-alt-3">All associated data will be deleted</span>
-				</div>
-
-				{#if deletingSelf}
-					<Separator.Root class="bg-background-alt-3 mt-2 h-px w-full shrink-0" />
-
-					<div class="flex flex-col gap-2.5 px-2.5">
-						<div>Confirm Password:</div>
-						<PasswordInput
-							bind:ref={currentInputEl}
-							bind:value={currentPassword}
-							name="current password"
-						/>
-					</div>
-				{/if}
-			</Dialog.Alert>
-
-			<Dialog.Footer>
-				<Dialog.CloseButton>Close</Dialog.CloseButton>
-				<Button
-					disabled={isPosting}
-					onclick={doDelete}
-					class="bg-background-error disabled:bg-background-error/80 enabled:hover:bg-background-error-alt-1 text-foreground-alt-1 enabled:hover:text-foreground w-24"
-				>
-					{#if isPosting}
-						<Spinner class="bg-foreground-alt-1 size-2" />
-					{:else}
-						Delete
-					{/if}
-				</Button>
-			</Dialog.Footer>
+{#snippet alertContents()}
+	<Dialog.Alert>
+		<div class="text-foreground-alt-1 flex flex-col gap-2 text-center">
+			{#if deletingSelf}
+				<span class="text-lg">Are you sure you want to delete your account?</span>
+			{:else if isArray && Object.values(value).length > 1}
+				<span class="text-lg"> Are you sure you want to delete these users? </span>
+			{:else}
+				<span class="text-lg">Are you sure you want to delete this user?</span>
+			{/if}
+			<span class="text-foreground-alt-3">All associated data will be deleted</span>
 		</div>
-	</Dialog.Content>
-</Dialog.Root>
+
+		{#if deletingSelf}
+			<Separator.Root class="bg-background-alt-3 mt-2 h-px w-full shrink-0" />
+
+			<div class="flex flex-col gap-2.5 px-2.5">
+				<div>Confirm Password:</div>
+				<PasswordInput
+					bind:ref={currentInputEl}
+					bind:value={currentPassword}
+					name="current password"
+				/>
+			</div>
+		{/if}
+	</Dialog.Alert>
+{/snippet}
+
+{#snippet deleteButton()}
+	<Button
+		disabled={isPosting}
+		onclick={doDelete}
+		class="bg-background-error disabled:bg-background-error/80 enabled:hover:bg-background-error-alt-1 text-foreground-alt-1 enabled:hover:text-foreground w-24"
+	>
+		{#if isPosting}
+			<Spinner class="bg-foreground-alt-1 size-2" />
+		{:else}
+			Delete
+		{/if}
+	</Button>
+{/snippet}
+
+{#if isDesktop}
+	<Dialog.Root bind:open>
+		<Dialog.Content
+			interactOutsideBehavior="close"
+			onOpenAutoFocus={(e) => {
+				e.preventDefault();
+				currentInputEl?.focus();
+			}}
+			onCloseAutoFocus={(e) => {
+				e.preventDefault();
+			}}
+			class="w-lg"
+		>
+			<div class="bg-background-alt-1 overflow-hidden rounded-lg">
+				{@render alertContents()}
+
+				<Dialog.Footer>
+					<Dialog.CloseButton>Close</Dialog.CloseButton>
+					{@render deleteButton()}
+				</Dialog.Footer>
+			</div>
+		</Dialog.Content>
+	</Dialog.Root>
+{:else}
+	<Drawer.Root bind:open>
+		<Drawer.Content class="bg-background-alt-2" handleClass="bg-background-alt-4">
+			<div class="bg-background-alt-1 overflow-hidden rounded-lg">
+				{@render alertContents()}
+
+				<Drawer.Footer>
+					<Drawer.CloseButton>Close</Drawer.CloseButton>
+					{@render deleteButton()}
+				</Drawer.Footer>
+			</div>
+		</Drawer.Content>
+	</Drawer.Root>
+{/if}
