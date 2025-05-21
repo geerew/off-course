@@ -306,7 +306,7 @@
 															{#if asset.progress.completed || asset.progress.videoPos > 0}
 																<div
 																	class={cn(
-																		'absolute top-0 left-0 inline-block h-full w-1 opacity-60',
+																		'absolute top-1/2 left-1 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
 																		asset.progress.completed
 																			? 'bg-background-success'
 																			: asset.progress.videoPos > 0
