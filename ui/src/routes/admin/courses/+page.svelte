@@ -1,4 +1,3 @@
-<!-- TODO tidy the filter bar and extra action when md or less -->
 <script lang="ts">
 	import { GetCourses } from '$lib/api/course-api';
 	import { FilterBar, NiceDate, Pagination, SortMenu } from '$lib/components';
@@ -37,6 +36,7 @@
 	let sortColumns = [
 		{ label: 'Title', column: 'courses.title', asc: 'Ascending', desc: 'Descending' },
 		{ label: 'Available', column: 'courses.available', asc: 'Ascending', desc: 'Descending' },
+		{ label: 'Card', column: 'courses.card_path', asc: 'Ascending', desc: 'Descending' },
 		{ label: 'Added', column: 'courses.created_at', asc: 'Oldest', desc: 'Newest' },
 		{ label: 'Updated', column: 'courses.updated_at', asc: 'Oldest', desc: 'Newest' }
 	] as const satisfies SortColumns;
@@ -214,7 +214,7 @@
 					<Table.Root
 						class={smallTable
 							? 'grid-cols-[2.5rem_2.5rem_1fr_3.5rem]'
-							: 'grid-cols-[3.5rem_1fr_auto_auto_auto_3.5rem]'}
+							: 'grid-cols-[3.5rem_1fr_auto_auto_auto_auto_3.5rem]'}
 					>
 						<Table.Thead>
 							<Table.Tr class="text-xs font-semibold uppercase">
@@ -237,8 +237,11 @@
 								<!-- Available (large screens) -->
 								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Available</Table.Th>
 
+								<!-- Card (large screens) -->
+								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Card</Table.Th>
+
 								<!-- Added (large screens) -->
-								<Table.Th class={smallTable ? 'hidden' : 'visible'}>>Added</Table.Th>
+								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Added</Table.Th>
 
 								<!-- Updated (large screens) -->
 								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Updated</Table.Th>
@@ -338,6 +341,26 @@
 										</div>
 									</Table.Td>
 
+									<!-- Card (large screens) -->
+									<Table.Td
+										class={cn(
+											'group-hover:bg-background-alt-1 px-4',
+											smallTable ? 'hidden' : 'visible'
+										)}
+									>
+										<div class="flex w-full place-content-center">
+											{#if course.hasCard}
+												<div class="bg-background-success size-5 place-self-center rounded-md p-1">
+													<TickIcon class="text-foreground size-3 stroke-2" />
+												</div>
+											{:else}
+												<div class="bg-background-error size-5 place-self-center rounded-md p-1">
+													<XIcon class="text-foreground size-3 stroke-2" />
+												</div>
+											{/if}
+										</div>
+									</Table.Td>
+
 									<!-- Added (large screens) -->
 									<Table.Td
 										class={cn(
@@ -389,9 +412,18 @@
 													<span class="text-foreground-alt-3 font-medium">STATUS</span>
 													<span
 														class={course.available
-															? 'text-foreground-alt-1'
+															? 'text-background-success'
 															: 'text-foreground-error'}
 														>{course.available ? 'available' : 'unavailable'}</span
+													>
+												</div>
+
+												<div class="grid grid-cols-[8rem_1fr]">
+													<span class="text-foreground-alt-3 font-medium">HAS CARD</span>
+													<span
+														class={course.hasCard
+															? 'text-background-success'
+															: 'text-foreground-error'}>{course.hasCard ? 'yes' : 'no'}</span
 													>
 												</div>
 
