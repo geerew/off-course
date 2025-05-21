@@ -276,6 +276,18 @@
 											smallTable ? 'visible' : 'hidden'
 										)}
 									>
+										{#if scanMonitor.scans[course.id] !== undefined}
+											<div
+												class={cn(
+													'absolute top-1/2 left-1 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
+													scanMonitor.scans[course.id] === 'processing'
+														? 'bg-background-primary'
+														: 'bg-background-alt-4',
+													smallTable ? 'visible' : 'hidden'
+												)}
+											></div>
+										{/if}
+
 										<Button
 											class="text-foreground-alt-2 hover:text-foreground h-auto w-auto rounded bg-transparent p-1 enabled:hover:bg-transparent"
 											title={expandedCourses[course.id] ? 'Collapse details' : 'Expand details'}
@@ -295,6 +307,18 @@
 
 									<!-- Checkbox -->
 									<Table.Td class="group-hover:bg-background-alt-1 relative">
+										{#if scanMonitor.scans[course.id] !== undefined}
+											<div
+												class={cn(
+													'absolute top-1/2 left-1 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
+													scanMonitor.scans[course.id] === 'processing'
+														? 'bg-background-primary'
+														: 'bg-background-alt-4',
+													smallTable ? 'hidden' : 'visible'
+												)}
+											></div>
+										{/if}
+
 										<Checkbox
 											checked={selectedCourses[course.id] !== undefined}
 											onCheckedChange={(checked) => {
@@ -311,17 +335,6 @@
 
 									<!-- Course -->
 									<Table.Td class="group-hover:bg-background-alt-1 relative justify-start px-4">
-										{#if scanMonitor.scans[course.id] !== undefined}
-											<div
-												class={cn(
-													'absolute top-0 right-0 inline-block h-full w-1 opacity-60',
-													scanMonitor.scans[course.id] === 'processing'
-														? 'bg-background-primary'
-														: 'bg-background-alt-4'
-												)}
-											></div>
-										{/if}
-
 										<span>{course.title}</span>
 									</Table.Td>
 
