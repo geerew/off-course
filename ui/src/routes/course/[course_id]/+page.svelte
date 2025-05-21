@@ -20,6 +20,7 @@
 	import Button from '$lib/components/ui/button.svelte';
 	import type { AssetModel, ChapteredAssets } from '$lib/models/asset-model';
 	import type { CourseModel, CourseTagsModel } from '$lib/models/course-model';
+	import { scanMonitor } from '$lib/scans.svelte';
 	import { cn } from '$lib/utils';
 	import { Accordion, Avatar, Progress, useId } from 'bits-ui';
 	import prettyMs from 'pretty-ms';
@@ -70,6 +71,13 @@
 	});
 
 	let loadPromise = $state(fetchCourse());
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Stop the scan monitor when the component is destroyed
+	$effect(() => {
+		return () => scanMonitor.stop();
+	});
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

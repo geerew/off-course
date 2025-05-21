@@ -1,5 +1,6 @@
 <!-- TODO open on asset when the course is ongoing -->
-<!-- TODO refresh course following scan by using trackCourses -->
+<!-- TODO Rework `load more` to allowing setting the amount to load -->
+<!-- TODO Support marking courses as new (backend work too) -->
 <script lang="ts">
 	import { GetCourses } from '$lib/api/course-api';
 	import { FilterBar } from '$lib/components';
@@ -28,14 +29,16 @@
 
 	let loadingMore = $state(false);
 
-	let loadPromise = $state(fetchCourses(false, true));
+	let loadPromise = $state(fetchCourses(false));
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Stop the scan monitor when the component is destroyed
 	$effect(() => {
-		return () => scanMonitor.stop();
+		return () => scanMonitor.clearAll();
 	});
+
+	$inspect('COURSES CHANGE', courses);
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -59,14 +62,12 @@
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Fetch courses
-	async function fetchCourses(doScan: boolean, append: boolean): Promise<void> {
+	async function fetchCourses(append: boolean): Promise<void> {
 		if (!paginationPerPage) {
 			setPaginationPerPage(remCalc(window.innerWidth));
 		}
 
 		try {
-			if (doScan) await scanMonitor.fetch();
-
 			const sort = 'sort:"courses.title asc"';
 			const q = filterValue ? `${filterValue} ${sort}` : sort;
 
@@ -82,6 +83,12 @@
 			} else {
 				courses = data.items;
 			}
+
+			const coursesToTrack = courses.filter(
+				(course) => course.scanStatus === 'processing' || course.scanStatus === 'waiting'
+			);
+
+			scanMonitor.trackCourses(coursesToTrack);
 		} catch (error) {
 			throw error;
 		}
@@ -102,7 +109,7 @@
 								if (filterValue !== filterAppliedValue) {
 									filterAppliedValue = filterValue;
 									paginationPage = 1;
-									loadPromise = fetchCourses(false, false);
+									loadPromise = fetchCourses(false);
 								}
 							}}
 						/>
@@ -145,18 +152,27 @@
 										>
 											<!-- Card -->
 											<div class="h-px min-h-40 w-full md:min-h-35">
-												<Avatar.Root class="h-full w-full">
-													<Avatar.Image
-														src={`/api/courses/${course.id}/card`}
-														class="h-full w-full object-cover"
-													/>
+												{#if course.hasCard}
+													<Avatar.Root class="h-full w-full">
+														<Avatar.Image
+															src={`/api/courses/${course.id}/card`}
+															class="h-full w-full object-cover"
+															data-card={course.hasCard}
+														/>
 
-													<Avatar.Fallback
-														class="bg-background-alt-2 flex h-full w-full place-content-center"
+														<Avatar.Fallback
+															class="bg-background-alt-2 flex h-full w-full place-content-center"
+														>
+															<LogoIcon class="fill-background-alt-3 w-12" />
+														</Avatar.Fallback>
+													</Avatar.Root>
+												{:else}
+													<div
+														class="bg-background-alt-2 flex h-full w-full items-center justify-center"
 													>
 														<LogoIcon class="fill-background-alt-3 w-12" />
-													</Avatar.Fallback>
-												</Avatar.Root>
+													</div>
+												{/if}
 											</div>
 
 											<div class="flex h-full w-full flex-col justify-between gap-2 p-2.5">
@@ -217,7 +233,7 @@
 											onclick={async () => {
 												paginationPage += 1;
 												loadingMore = true;
-												await fetchCourses(false, true);
+												await fetchCourses(true);
 												loadingMore = false;
 											}}
 										>

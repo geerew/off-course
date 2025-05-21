@@ -11,7 +11,7 @@
 
 	type Props = {
 		course: CourseModel;
-		onScan: () => void;
+		onScan?: () => void;
 		onDelete: () => void;
 	};
 
@@ -28,7 +28,7 @@
 		try {
 			await StartScan({ courseId: course.id });
 			scanMonitor.trackCourses(course);
-			onScan();
+			onScan?.();
 		} catch (error) {
 			toast.error('Failed to start the scan ' + (error as APIError).message);
 		}

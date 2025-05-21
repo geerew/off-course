@@ -1,4 +1,6 @@
 <!-- TODO Support dropdown for filter options and values (if supported) -->
+<!-- TODO Support info button -->
+<!-- TODO test how the dropdown looks when multiline -->
 <script lang="ts">
 	import { cn } from '$lib/utils';
 	import { WarningIcon, XIcon } from './icons';

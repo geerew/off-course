@@ -62,7 +62,7 @@
 
 	// Stop the scan monitor when the component is destroyed (if running)
 	$effect(() => {
-		return () => scanMonitor.stop();
+		return () => scanMonitor.clearAll();
 	});
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -70,8 +70,6 @@
 	// Fetch courses
 	async function fetchCourses(doScan: boolean): Promise<void> {
 		try {
-			if (doScan) await scanMonitor.fetch();
-
 			const sort = `sort:"${selectedSortColumn} ${selectedSortDirection}"`;
 			const q = filterValue ? `${filterValue} ${sort}` : sort;
 
@@ -83,6 +81,12 @@
 			paginationTotal = data.totalItems;
 			courses = data.items;
 			expandedCourses = {};
+
+			const coursesToTrack = courses.filter(
+				(course) => course.scanStatus === 'processing' || course.scanStatus === 'waiting'
+			);
+
+			scanMonitor.trackCourses(coursesToTrack);
 		} catch (error) {
 			throw error;
 		}
@@ -180,7 +184,6 @@
 						bind:courses={selectedCourses}
 						onScan={async () => {
 							selectedCourses = {};
-							await scanMonitor.fetch();
 						}}
 						onDelete={() => {
 							const numDeleted = Object.keys(selectedCourses).length;
@@ -268,7 +271,10 @@
 								<Table.Tr class="group">
 									<!-- Chevron (small screens) -->
 									<Table.Td
-										class={cn('group-hover:bg-background-alt-1', smallTable ? 'visible' : 'hidden')}
+										class={cn(
+											'group-hover:bg-background-alt-1 relative',
+											smallTable ? 'visible' : 'hidden'
+										)}
 									>
 										<Button
 											class="text-foreground-alt-2 hover:text-foreground h-auto w-auto rounded bg-transparent p-1 enabled:hover:bg-transparent"
@@ -288,7 +294,7 @@
 									</Table.Td>
 
 									<!-- Checkbox -->
-									<Table.Td class="group-hover:bg-background-alt-1">
+									<Table.Td class="group-hover:bg-background-alt-1 relative">
 										<Checkbox
 											checked={selectedCourses[course.id] !== undefined}
 											onCheckedChange={(checked) => {
@@ -304,21 +310,19 @@
 									</Table.Td>
 
 									<!-- Course -->
-									<Table.Td class="group-hover:bg-background-alt-1 justify-start px-4">
-										<div class="flex items-center gap-2">
-											<span>{course.title}</span>
-											{#if scanMonitor.scans[course.id] !== undefined}
-												{#if scanMonitor.scans[course.id] === 'processing'}
-													<div
-														class="bg-background-primary mt-0.5 size-2 shrink-0 rounded-full"
-													></div>
-												{:else}
-													<div
-														class="bg-background-alt-6 mt-0.5 size-2 shrink-0 rounded-full"
-													></div>
-												{/if}
-											{/if}
-										</div>
+									<Table.Td class="group-hover:bg-background-alt-1 relative justify-start px-4">
+										{#if scanMonitor.scans[course.id] !== undefined}
+											<div
+												class={cn(
+													'absolute top-0 right-0 inline-block h-full w-1 opacity-60',
+													scanMonitor.scans[course.id] === 'processing'
+														? 'bg-background-primary'
+														: 'bg-background-alt-4'
+												)}
+											></div>
+										{/if}
+
+										<span>{course.title}</span>
 									</Table.Td>
 
 									<!-- Available (large screens) -->
@@ -385,9 +389,6 @@
 									<Table.Td class="group-hover:bg-background-alt-1">
 										<RowActionMenu
 											{course}
-											onScan={async () => {
-												await scanMonitor.fetch();
-											}}
 											onDelete={async () => {
 												await onRowDelete(1);
 												if (selectedCourses[course.id] !== undefined) {
