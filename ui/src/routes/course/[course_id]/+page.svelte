@@ -20,7 +20,6 @@
 	import Button from '$lib/components/ui/button.svelte';
 	import type { AssetModel, ChapteredAssets } from '$lib/models/asset-model';
 	import type { CourseModel, CourseTagsModel } from '$lib/models/course-model';
-	import { scanMonitor } from '$lib/scans.svelte';
 	import { cn } from '$lib/utils';
 	import { Accordion, Avatar, Progress, useId } from 'bits-ui';
 	import prettyMs from 'pretty-ms';
@@ -74,13 +73,6 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	// Stop the scan monitor when the component is destroyed
-	$effect(() => {
-		return () => scanMonitor.stop();
-	});
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 	// Fetch the course, then the assets for the course, then build a chapter structure from the
 	// assets
 	async function fetchCourse(): Promise<void> {
@@ -128,7 +120,7 @@
 					<div class="grid w-full grid-cols-1 gap-6 md:grid-cols-[minmax(0,22.6rem)_1fr] md:gap-10">
 						<!-- Card -->
 						<Avatar.Root
-							class="relative z-0 flex h-full max-h-70 w-full items-center justify-center overflow-hidden rounded-lg"
+							class="relative z-0 flex h-full max-h-70 w-full items-center justify-center overflow-hidden rounded-lg [background-image:repeating-linear-gradient(-45deg,var(--color-background-alt-1),var(--color-background-alt-1)13px,var(--color-background-alt-2)13px,var(--color-background-alt-2)14px)] bg-[size:40px_40px]"
 						>
 							<Avatar.Image
 								src={`/api/courses/${course.id}/card`}
@@ -141,9 +133,9 @@
 								<LogoIcon class="fill-background-alt-3 w-16 md:w-20" />
 							</Avatar.Fallback>
 
-							<div
+							<!-- <div
 								class="absolute inset-0 -z-10 h-full w-full bg-[radial-gradient(circle,#73737350_1px,transparent_1px)] bg-[size:11px_11px]"
-							></div>
+							></div> -->
 						</Avatar.Root>
 
 						<!-- Information -->
@@ -157,8 +149,9 @@
 								{#if auth.user?.role === 'admin'}
 									<div class="grid grid-cols-[6.5rem_1fr]">
 										<span class="text-foreground-alt-3 font-medium">PATH</span>
-										<span class="text-foreground-alt-1 break-all" title={course.path}
-											>{course.path}</span
+										<span
+											class="text-foreground-alt-1 wrap-anywhere whitespace-normal"
+											title={course.path}>{course.path}</span
 										>
 									</div>
 								{/if}
