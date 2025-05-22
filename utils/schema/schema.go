@@ -1,5 +1,7 @@
 package schema
 
+// TODO clean up leftjoin and join
+
 import (
 	"database/sql"
 	"fmt"
@@ -477,7 +479,22 @@ func (s *Schema) PluckBuilder(column string, options *database.Options) squirrel
 		builder = builder.LeftJoin(join)
 	}
 
+	if len(s.GroupBy) > 0 {
+		builder = builder.GroupBy(s.GroupBy...)
+	}
+
 	if options != nil {
+		for _, join := range options.Joins {
+			switch join.Type {
+			case "LEFT JOIN":
+				builder = builder.LeftJoin(fmt.Sprintf("%s ON %s", join.Table, join.Condition))
+			case "RIGHT JOIN":
+				builder = builder.RightJoin(fmt.Sprintf("%s ON %s", join.Table, join.Condition))
+			case "JOIN", "INNER JOIN", "":
+				builder = builder.Join(fmt.Sprintf("%s ON %s", join.Table, join.Condition))
+			}
+		}
+
 		builder = builder.Where(options.Where).
 			OrderBy(options.OrderBy...)
 
