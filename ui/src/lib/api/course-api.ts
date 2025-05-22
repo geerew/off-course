@@ -76,6 +76,23 @@ export async function DeleteCourse(id: string): Promise<void> {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// Delete course progress (for a specific user)
+export async function DeleteCourseProgress(id: string): Promise<void> {
+	const response = await apiFetch(`/api/courses/${id}/progress`, {
+		method: 'DELETE',
+		headers: {
+			'Content-Type': 'application/json'
+		}
+	});
+
+	if (!response.ok) {
+		const data = await response.json();
+		throw new APIError(response.status, data.message || 'Unknown error');
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // Get a course
 export async function GetCourse(id: string): Promise<CourseModel> {
 	const response = await apiFetch(`/api/courses/${id}`);

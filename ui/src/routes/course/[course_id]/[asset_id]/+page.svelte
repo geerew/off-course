@@ -1,3 +1,4 @@
+<!-- TODO fix bug when video is at the end, I see an parsing data error -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -75,7 +76,7 @@
 
 	// Update the asset progress in the database
 	async function updateAssetProgress(asset: AssetModel): Promise<void> {
-		if (!course) return;
+		if (!course || !asset.progress) return;
 		try {
 			await UpdateCourseAssetProgress(course.id, asset.id, asset.progress);
 		} catch (error) {
@@ -144,7 +145,7 @@
 					</span>
 					<div class="flex flex-row items-center gap-1">
 						<span class="text-foreground-alt-3 text-xs">
-							{chapters[chapter].filter((a) => a.progress.completed).length}
+							{chapters[chapter].filter((a) => a.progress?.completed).length}
 							/ {chapters[chapter].length}
 						</span>
 					</div>
@@ -168,11 +169,21 @@
 							<div class="flex w-full flex-row gap-3 py-2 pr-2.5 pl-1.5">
 								<Checkbox
 									class="hover:border-background-primary-alt-1 mt-px shrink-0 border-2"
-									checked={asset.progress.completed}
+									checked={asset.progress?.completed}
 									onclick={async (e: MouseEvent) => {
 										e.stopPropagation();
 										e.preventDefault();
-										asset.progress.completed = !asset.progress.completed;
+
+										if (!asset.progress) {
+											asset.progress = {
+												completed: true,
+												completedAt: '',
+												videoPos: 0
+											};
+										} else {
+											asset.progress.completed = !asset.progress.completed;
+										}
+
 										await updateAssetProgress(asset);
 									}}
 								/>
@@ -295,13 +306,23 @@
 											<Button
 												class={cn(
 													' flex size-8 shrink-0 items-center justify-center rounded-full border',
-													selectedAsset?.progress.completed
+													selectedAsset?.progress?.completed
 														? 'enabled:bg-background-success enabled:hover:bg-background-success border-background-success'
 														: 'enabled:bg-background enabled:hover:bg-background border-foreground'
 												)}
 												onclick={async () => {
 													if (!selectedAsset) return;
-													selectedAsset.progress.completed = !selectedAsset?.progress.completed;
+
+													if (!selectedAsset.progress) {
+														selectedAsset.progress = {
+															completed: true,
+															completedAt: '',
+															videoPos: 0
+														};
+													} else {
+														selectedAsset.progress.completed = !selectedAsset.progress.completed;
+													}
+
 													await updateAssetProgress(selectedAsset);
 												}}
 											>
@@ -310,7 +331,7 @@
 										{/snippet}
 
 										{#snippet content()}
-											Mark as {selectedAsset?.progress.completed ? 'unwatched' : 'watched'}
+											Mark as {selectedAsset?.progress?.completed ? 'unwatched' : 'watched'}
 										{/snippet}
 									</Tooltip>
 								</div>
@@ -321,16 +342,35 @@
 							{#if selectedAsset.assetType === 'video'}
 								<VideoPlayer
 									src={`/api/courses/${course.id}/assets/${selectedAsset.id}/serve`}
-									startTime={selectedAsset.progress.videoPos}
+									startTime={selectedAsset.progress?.videoPos || 0}
 									onTimeChange={(time: number) => {
 										if (!selectedAsset) return;
-										selectedAsset.progress.videoPos = time;
+
+										if (!selectedAsset.progress) {
+											selectedAsset.progress = {
+												completed: false,
+												completedAt: '',
+												videoPos: time
+											};
+										} else {
+											selectedAsset.progress.videoPos = time;
+										}
+
 										updateAssetProgress(selectedAsset);
 									}}
 									onCompleted={(time: number) => {
 										if (!selectedAsset) return;
-										selectedAsset.progress.videoPos = time;
-										selectedAsset.progress.completed = true;
+										if (!selectedAsset.progress) {
+											selectedAsset.progress = {
+												completed: true,
+												completedAt: '',
+												videoPos: time
+											};
+										} else {
+											selectedAsset.progress.videoPos = time;
+											selectedAsset.progress.completed = true;
+										}
+
 										updateAssetProgress(selectedAsset);
 									}}
 								/>

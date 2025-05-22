@@ -13,7 +13,7 @@
 
 <Dialog.Trigger
 	class={cn(
-		'bg-background-alt-4 hover:bg-background-alt-5 text-foreground-alt-1 hover:text-foreground w-38 cursor-pointer rounded-md py-2 duration-200 select-none',
+		'bg-background-alt-4 disabled:bg-background-alt-3 hover:bg-background-alt-5 disabled:text-foreground-alt-3 disabled:hover:bg-background-alt-3 text-foreground-alt-1 hover:text-foreground w-38 cursor-pointer rounded-md py-2 duration-200 select-none disabled:cursor-auto',
 		containerClass
 	)}
 	{...restProps}

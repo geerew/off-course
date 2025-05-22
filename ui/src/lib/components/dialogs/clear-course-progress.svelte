@@ -1,31 +1,33 @@
 <script lang="ts">
 	import type { APIError } from '$lib/api-error.svelte';
-	import { DeleteTag } from '$lib/api/tag-api';
-	import { Spinner } from '$lib/components';
+	import { DeleteCourseProgress } from '$lib/api/course-api';
 	import { Button, Dialog, Drawer } from '$lib/components/ui';
-	import type { TagModel, TagsModel } from '$lib/models/tag-model';
+	import type { CourseModel } from '$lib/models/course-model';
 	import { remCalc } from '$lib/utils';
+	import type { Snippet } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { innerWidth } from 'svelte/reactivity/window';
 	import theme from 'tailwindcss/defaultTheme';
+	import { Spinner } from '..';
 
 	type Props = {
 		open?: boolean;
-		value: TagModel | TagsModel;
+		course: CourseModel;
+		trigger?: Snippet;
 		successFn?: () => void;
 	};
 
-	let { open = $bindable(false), value, successFn }: Props = $props();
+	let { open = $bindable(false), course, trigger, successFn }: Props = $props();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let isPosting = $state(false);
-	const isArray = Array.isArray(value);
 
 	const mdBreakpoint = +theme.screens.md.replace('rem', '');
 	let isDesktop = $derived(remCalc(innerWidth.current ?? 0) > mdBreakpoint);
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	$effect(() => {
 		if (open) {
 			isPosting = false;
@@ -38,12 +40,7 @@
 		isPosting = true;
 
 		try {
-			if (isArray) {
-				await Promise.all(Object.values(value).map((t) => DeleteTag(t.id)));
-				toast.success('Selected tags deleted');
-			} else {
-				await DeleteTag(value.id);
-			}
+			await DeleteCourseProgress(course.id);
 
 			successFn?.();
 		} catch (error) {
@@ -58,11 +55,7 @@
 {#snippet alertContents()}
 	<Dialog.Alert>
 		<div class="text-foreground-alt-1 flex flex-col gap-2 text-center">
-			{#if isArray && Object.values(value).length > 1}
-				<span class="text-lg">Are you sure you want to delete these tags?</span>
-			{:else}
-				<span class="text-lg">Are you sure you want to delete this tag?</span>
-			{/if}
+			<span class="text-lg">Are you sure you want to delete your progress for this course?</span>
 		</div>
 	</Dialog.Alert>
 {/snippet}
@@ -82,7 +75,7 @@
 {/snippet}
 
 {#if isDesktop}
-	<Dialog.Root bind:open>
+	<Dialog.Root bind:open {trigger}>
 		<Dialog.Content interactOutsideBehavior="close" class="w-lg">
 			<div class="bg-background-alt-1 overflow-hidden rounded-lg">
 				{@render alertContents()}
@@ -96,6 +89,7 @@
 	</Dialog.Root>
 {:else}
 	<Drawer.Root bind:open>
+		{@render trigger?.()}
 		<Drawer.Content class="bg-background-alt-2" handleClass="bg-background-alt-4">
 			<div class="bg-background-alt-1 overflow-hidden rounded-lg">
 				{@render alertContents()}

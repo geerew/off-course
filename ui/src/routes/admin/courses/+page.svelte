@@ -1,3 +1,5 @@
+<!-- TODO Dont make video available when first added. Only available after scan is complete -->
+<!-- TODO dont show error when deleting a course currently scanning -->
 <script lang="ts">
 	import { GetCourses } from '$lib/api/course-api';
 	import { FilterBar, NiceDate, Pagination, SortMenu } from '$lib/components';

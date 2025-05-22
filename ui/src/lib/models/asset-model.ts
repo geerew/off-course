@@ -56,7 +56,7 @@ export const AssetSchema = object({
 	assetType: AssetTypeSchema,
 	videoMetadata: optional(AssetVideoMetadataSchema),
 	attachments: array(AttachmentSchema),
-	progress: AssetProgressSchema
+	progress: optional(AssetProgressSchema)
 });
 
 export type AssetModel = InferOutput<typeof AssetSchema>;

@@ -1,4 +1,3 @@
-<!-- TODO Add a button to clear progress (add the backend support) -->
 <!-- TODO Add scan button (admin) -->
 <!-- TODO Edit anything/everything (admin) -->
 <!-- TODO Change asset play/restart button to a menu with play/restart, clear progress  -->
@@ -7,6 +6,7 @@
 	import { GetAllCourseAssets, GetCourse, GetCourseTags } from '$lib/api/course-api';
 	import { auth } from '$lib/auth.svelte';
 	import { NiceDate, Spinner } from '$lib/components';
+	import { ClearCourseProgressDialog } from '$lib/components/dialogs';
 	import {
 		DotIcon,
 		LogoIcon,
@@ -15,7 +15,7 @@
 		WarningIcon
 	} from '$lib/components/icons';
 	import MediaRestart from '$lib/components/icons/media-restart.svelte';
-	import { Badge } from '$lib/components/ui';
+	import { Badge, Dialog } from '$lib/components/ui';
 	import Attachments from '$lib/components/ui/attachments.svelte';
 	import Button from '$lib/components/ui/button.svelte';
 	import type { AssetModel, ChapteredAssets } from '$lib/models/asset-model';
@@ -55,7 +55,7 @@
 		// Find the first asset that is not completed
 		for (const chapterAssets of assets) {
 			for (const asset of chapterAssets) {
-				if (!asset.progress.completed) {
+				if (!asset.progress || !asset.progress.completed) {
 					return asset;
 				}
 			}
@@ -236,7 +236,7 @@
 						<div class="flex flex-row gap-2.5">
 							<Button
 								href={`/course/${course.id}/${assetToResume?.id}`}
-								class="hover:bg-background-primary w-24 font-semibold"
+								class="hover:bg-background-primary w-24 font-medium"
 							>
 								{#if course.progress}
 									Resume
@@ -244,6 +244,27 @@
 									Start
 								{/if}
 							</Button>
+
+							<ClearCourseProgressDialog
+								{course}
+								successFn={() => {
+									if (!course) return;
+									course.progress = undefined;
+
+									const assets = Object.values(chapters);
+									for (const chapterAssets of assets) {
+										for (const asset of chapterAssets) {
+											if (asset.progress) asset.progress = undefined;
+										}
+									}
+								}}
+							>
+								{#snippet trigger()}
+									<Dialog.Trigger class="w-auto px-4 font-medium" disabled={!course?.progress}>
+										Clear Progress
+									</Dialog.Trigger>
+								{/snippet}
+							</ClearCourseProgressDialog>
 						</div>
 					{/if}
 				</div>
@@ -282,7 +303,7 @@
 
 											<div class="flex shrink-0 flex-row items-center gap-2.5">
 												<span class="text-foreground-alt-3 text-xs">
-													{chapters[chapter].filter((a) => a.progress.completed).length}
+													{chapters[chapter].filter((a) => a.progress?.completed).length}
 													/ {chapters[chapter].length}
 												</span>
 												<RightChevronIcon
@@ -303,17 +324,19 @@
 														<div
 															class="border-background-alt-2 text-foreground-alt-1 group relative flex flex-row items-center justify-between gap-2 overflow-hidden rounded-none border-b px-5 py-2 last:border-none"
 														>
-															{#if asset.progress.completed || asset.progress.videoPos > 0}
-																<div
-																	class={cn(
-																		'absolute top-1/2 left-1 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
-																		asset.progress.completed
-																			? 'bg-background-success'
-																			: asset.progress.videoPos > 0
-																				? 'bg-amber-600'
-																				: ''
-																	)}
-																></div>
+															{#if asset.progress}
+																{#if asset.progress.completed || asset.progress.videoPos > 0}
+																	<div
+																		class={cn(
+																			'absolute top-1/2 left-1 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
+																			asset.progress.completed
+																				? 'bg-background-success'
+																				: asset.progress.videoPos > 0
+																					? 'bg-amber-600'
+																					: ''
+																		)}
+																	></div>
+																{/if}
 															{/if}
 
 															<div class="flex w-full flex-col gap-2 py-2 text-sm">
@@ -350,13 +373,13 @@
 																href={`/course/${course?.id}/${asset.id}`}
 																class="bg-background-alt-2  hover:bg-background-alt-3 flex h-auto w-auto shrink-0 items-center justify-center rounded-full p-2 opacity-0 transition-all duration-150 ease-in group-hover:opacity-100 pointer-coarse:opacity-100"
 															>
-																{#if asset.progress.completed}
+																{#if asset.progress?.completed}
 																	<MediaRestart
-																		class="stroke-foreground-alt-1 size-5 fill-transparent pointer-coarse:size-4"
+																		class="stroke-foreground-alt-1 size-5.5 fill-transparent stroke-[1.5] pointer-coarse:size-4"
 																	/>
 																{:else}
 																	<MediaPlayIcon
-																		class="fill-foreground-alt-1 size-5 pointer-coarse:size-4"
+																		class="fill-foreground-alt-1 size-5.5 pointer-coarse:size-4"
 																	/>
 																{/if}
 															</Button>

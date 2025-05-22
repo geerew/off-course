@@ -1,6 +1,7 @@
 export { default as AddCoursesDialog } from './add-courses.svelte';
 export { default as AddTagsDialog } from './add-tags.svelte';
 export { default as AddUserDialog } from './add-user.svelte';
+export { default as ClearCourseProgressDialog } from './clear-course-progress.svelte';
 export { default as DeleteCourseDialog } from './delete-course.svelte';
 export { default as DeleteTagDialog } from './delete-tag.svelte';
 export { default as DeleteUserDialog } from './delete-user.svelte';
