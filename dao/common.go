@@ -27,6 +27,13 @@ func New(db database.Database) *DAO {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// RunInTransaction is a wrapper for database.RunInTransaction
+func RunInTransaction(ctx context.Context, dao *DAO, fn func(ctx context.Context) error) error {
+	return dao.db.RunInTransaction(ctx, fn)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // Create is a generic function to create a model in the database
 func Create(ctx context.Context, dao *DAO, model models.Modeler) error {
 	sch, err := schema.Parse(model)
@@ -123,19 +130,28 @@ func List(ctx context.Context, dao *DAO, model any, options *database.Options) e
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// ListPluck pulls column into a []T.
-func ListPluck[T any](ctx context.Context, dao *DAO, model any, options *database.Options, column string) ([]T, error) {
+// ListPluck pulls a column into T.
+func ListPluck[T any](ctx context.Context, dao *DAO, model any, options *database.Options, column string) (T, error) {
+	var zero T
+
 	sch, err := schema.Parse(model)
 	if err != nil {
-		return nil, err
+		return zero, err
 	}
 
-	var results []T
+	var result T
 	q := database.QuerierFromContext(ctx, dao.db)
-	if err := sch.Pluck(column, &results, options, q); err != nil && err != sql.ErrNoRows {
-		return nil, err
+
+	err = sch.Pluck(column, &result, options, q)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return result, nil
+		}
+
+		return zero, err
 	}
-	return results, nil
+
+	return result, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

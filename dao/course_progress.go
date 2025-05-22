@@ -51,9 +51,6 @@ func (dao *DAO) GetCourseProgress(ctx context.Context, courseProgress *models.Co
 		}
 	}
 
-	if options.Where == nil {
-	}
-
 	return Get(ctx, dao, courseProgress, options)
 }
 

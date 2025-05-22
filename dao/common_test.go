@@ -622,7 +622,7 @@ func Test_ListPluck(t *testing.T) {
 	t.Run("no entries", func(t *testing.T) {
 		dao, ctx := setup(t)
 
-		ids, err := ListPluck[string](ctx, dao, &models.Course{}, nil, models.BASE_ID)
+		ids, err := ListPluck[[]string](ctx, dao, &models.Course{}, nil, models.BASE_ID)
 		require.NoError(t, err)
 		require.Empty(t, ids)
 	})
@@ -644,7 +644,7 @@ func Test_ListPluck(t *testing.T) {
 		options := &database.Options{OrderBy: []string{models.COURSE_TABLE_CREATED_AT + " ASC"}}
 
 		// Course IDs
-		ids, err := ListPluck[string](ctx, dao, &models.Course{}, options, models.BASE_ID)
+		ids, err := ListPluck[[]string](ctx, dao, &models.Course{}, options, models.BASE_ID)
 		require.NoError(t, err)
 		require.Len(t, ids, 5)
 		for i := range 5 {
@@ -652,7 +652,7 @@ func Test_ListPluck(t *testing.T) {
 		}
 
 		// Course paths
-		paths, err := ListPluck[string](ctx, dao, &models.Course{}, options, models.COURSE_PATH)
+		paths, err := ListPluck[[]string](ctx, dao, &models.Course{}, options, models.COURSE_PATH)
 		require.NoError(t, err)
 		require.Len(t, paths, 5)
 		for i := range 5 {
