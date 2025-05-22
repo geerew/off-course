@@ -1,5 +1,7 @@
 <!-- TODO Dont make video available when first added. Only available after scan is complete -->
 <!-- TODO dont show error when deleting a course currently scanning -->
+<!-- TODO have a columns dropdown to hide show columns -->
+<!-- TODO store selection state in localstorage -->
 <script lang="ts">
 	import { GetCourses } from '$lib/api/course-api';
 	import { FilterBar, NiceDate, Pagination, SortMenu } from '$lib/components';

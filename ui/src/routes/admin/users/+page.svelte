@@ -1,5 +1,6 @@
-<!-- TODO Show number of courses in progress and completed courses (backend work too) -->
-<!-- TODO Tidy the filter bar and extra action when md or less -->
+<!-- TODO Show number of ongoing/completed courses (backend work too) -->
+<!-- TODO have a columns dropdown to hide show columns -->
+<!-- TODO store selection state in localstorage -->
 <script lang="ts">
 	import { GetUsers } from '$lib/api/user-api';
 	import { auth } from '$lib/auth.svelte';

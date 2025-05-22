@@ -40,11 +40,11 @@ export const CourseProgressSchema = object({
 export const CourseSchema = object({
 	...BaseSchema.entries,
 	title: string(),
-	path: string(),
+	path: optional(string()),
 	hasCard: boolean(),
 	available: boolean(),
 	duration: number(),
-	scanStatus: ScanStatusSchema,
+	scanStatus: optional(ScanStatusSchema),
 	progress: optional(CourseProgressSchema)
 });
 

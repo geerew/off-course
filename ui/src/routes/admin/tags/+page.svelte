@@ -1,3 +1,5 @@
+<!-- TODO have a columns dropdown to hide show columns -->
+<!-- TODO store selection state in localstorage -->
 <script lang="ts">
 	import { GetTags } from '$lib/api/tag-api';
 	import { FilterBar, Pagination, SortMenu } from '$lib/components';

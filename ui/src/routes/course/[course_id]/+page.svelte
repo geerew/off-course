@@ -132,10 +132,6 @@
 							>
 								<LogoIcon class="fill-background-alt-3 w-16 md:w-20" />
 							</Avatar.Fallback>
-
-							<!-- <div
-								class="absolute inset-0 -z-10 h-full w-full bg-[radial-gradient(circle,#73737350_1px,transparent_1px)] bg-[size:11px_11px]"
-							></div> -->
 						</Avatar.Root>
 
 						<!-- Information -->

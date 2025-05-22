@@ -1,4 +1,4 @@
-<!-- TODO open on asset when the course is ongoing -->
+<!-- TODO Open on asset when the course is ongoing -->
 <!-- TODO Rework `load more` to allowing setting the amount to load -->
 <!-- TODO Support marking courses as new (backend work too) -->
 <script lang="ts">
