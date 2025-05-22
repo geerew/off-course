@@ -61,6 +61,7 @@ type Database interface {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// Querier defines the interface for a DB querier
 type Querier interface {
 	Exec(query string, args ...any) (sql.Result, error)
 	Query(query string, args ...any) (*sql.Rows, error)
@@ -74,6 +75,8 @@ type DatabaseManager struct {
 	DataDb Database
 	LogsDb Database
 }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // DatabaseManagerConfig holds only the settings needed to create a new DatabaseManager
 type DatabaseManagerConfig struct {
