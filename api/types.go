@@ -157,7 +157,7 @@ type assetResponse struct {
 
 	// Relations
 	VideoMetadata *assetVideoMetadataResponse `json:"videoMetadata,omitempty"`
-	Progress      *assetProgressResponse      `json:"progress"`
+	Progress      *assetProgressResponse      `json:"progress,omitempty"`
 	Attachments   []*attachmentResponse       `json:"attachments"`
 }
 
