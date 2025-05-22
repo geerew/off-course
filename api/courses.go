@@ -51,6 +51,9 @@ func (r *Router) initCourseRoutes() {
 	courseGroup.Post("", protectedRoute, coursesAPI.createCourse)
 	courseGroup.Delete("/:id", protectedRoute, coursesAPI.deleteCourse)
 
+	// Course progress
+	courseGroup.Delete("/:id/progress", coursesAPI.deleteCourseProgress)
+
 	// Course card
 	courseGroup.Head("/:id/card", coursesAPI.getCard)
 	courseGroup.Get("/:id/card", coursesAPI.getCard)
@@ -60,6 +63,7 @@ func (r *Router) initCourseRoutes() {
 	courseGroup.Get("/:id/assets/:asset", coursesAPI.getAsset)
 	courseGroup.Get("/:id/assets/:asset/serve", coursesAPI.serveAsset)
 	courseGroup.Put("/:id/assets/:asset/progress", coursesAPI.updateAssetProgress)
+	courseGroup.Delete("/:id/assets/:asset/progress", coursesAPI.deleteAssetProgress)
 
 	// Course asset attachments
 	courseGroup.Get("/:id/assets/:asset/attachments", coursesAPI.getAttachments)
@@ -180,6 +184,62 @@ func (api coursesAPI) deleteCourse(c *fiber.Ctx) error {
 	err := dao.Delete(c.UserContext(), api.dao, course, nil)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting course", err)
+	}
+
+	return c.Status(fiber.StatusNoContent).Send(nil)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// TODO add tests
+
+func (api coursesAPI) deleteCourseProgress(c *fiber.Ctx) error {
+	courseId := c.Params("id")
+
+	userId := c.Locals(types.UserContextKey).(string)
+	ctx := context.WithValue(c.UserContext(), types.UserContextKey, userId)
+
+	err := dao.RunInTransaction(ctx, api.dao, func(txCtx context.Context) error {
+		// Delete the course progress for this user
+		options := &database.Options{
+			Where: squirrel.And{
+				squirrel.Eq{models.COURSE_PROGRESS_COURSE_ID: courseId},
+				squirrel.Eq{models.COURSE_PROGRESS_USER_ID: userId},
+			},
+		}
+
+		if err := dao.Delete(txCtx, api.dao, &models.CourseProgress{}, options); err != nil {
+			return err
+		}
+
+		// Pluck the asset progress IDs for this asset progress associated with this course and user
+		options = &database.Options{}
+		options.AddJoin(models.ASSET_TABLE, models.ASSET_PROGRESS_TABLE_ASSET_ID+" = "+models.ASSET_TABLE_ID)
+		options.AddJoin(models.COURSE_TABLE, models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
+		options.Where = squirrel.And{
+			squirrel.Eq{models.ASSET_PROGRESS_USER_ID: userId},
+			squirrel.Eq{models.COURSE_TABLE_ID: courseId},
+		}
+
+		assetProgressIDs, err := dao.ListPluck[[]string](txCtx, api.dao, &models.AssetProgress{}, options, models.BASE_ID)
+		if err != nil {
+			return err
+		}
+
+		if len(assetProgressIDs) == 0 {
+			return nil
+		}
+
+		// Delete the asset progress for this user and course
+		options = &database.Options{Where: squirrel.And{squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: assetProgressIDs}}}
+		if err = dao.Delete(txCtx, api.dao, &models.AssetProgress{}, options); err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting asset progress", err)
 	}
 
 	return c.Status(fiber.StatusNoContent).Send(nil)
@@ -355,6 +415,32 @@ func (api coursesAPI) updateAssetProgress(c *fiber.Ctx) error {
 		}
 
 		return errorResponse(c, fiber.StatusInternalServerError, "Error updating asset", err)
+	}
+
+	return c.Status(fiber.StatusNoContent).Send(nil)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// TODO add tests
+func (api coursesAPI) deleteAssetProgress(c *fiber.Ctx) error {
+	courseId := c.Params("id")
+	assetId := c.Params("asset")
+
+	userId := c.Locals(types.UserContextKey).(string)
+	ctx := context.WithValue(c.UserContext(), types.UserContextKey, userId)
+
+	options := &database.Options{}
+	options.AddJoin(models.COURSE_TABLE, models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
+	options.Where = squirrel.And{
+		squirrel.Eq{models.ASSET_PROGRESS_ASSET_ID: assetId},
+		squirrel.Eq{models.ASSET_PROGRESS_USER_ID: userId},
+		squirrel.Eq{models.COURSE_TABLE_ID: courseId},
+	}
+
+	err := dao.Delete(ctx, api.dao, &models.AssetProgress{}, options)
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting asset progress", err)
 	}
 
 	return c.Status(fiber.StatusNoContent).Send(nil)
