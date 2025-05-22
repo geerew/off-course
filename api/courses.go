@@ -87,6 +87,7 @@ func (api coursesAPI) getCourses(c *fiber.Ctx) error {
 	}
 
 	userId := c.Locals(types.UserContextKey).(string)
+	userRole := c.Locals(types.RoleContextKey).(string)
 
 	options, err := optionsBuilder(c, builderOptions, userId)
 	if err != nil {
@@ -101,7 +102,7 @@ func (api coursesAPI) getCourses(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up courses", err)
 	}
 
-	pResult, err := options.Pagination.BuildResult(courseResponseHelper(courses))
+	pResult, err := options.Pagination.BuildResult(courseResponseHelper(courses, userRole == types.UserRoleAdmin.String()))
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error building pagination result", err)
 	}
@@ -115,6 +116,8 @@ func (api coursesAPI) getCourse(c *fiber.Ctx) error {
 	id := c.Params("id")
 
 	userId := c.Locals(types.UserContextKey).(string)
+	userRole := c.Locals(types.RoleContextKey).(string)
+
 	ctx := context.WithValue(c.UserContext(), types.UserContextKey, userId)
 
 	course := &models.Course{}
@@ -128,7 +131,7 @@ func (api coursesAPI) getCourse(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up course", err)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(courseResponseHelper([]*models.Course{course})[0])
+	return c.Status(fiber.StatusOK).JSON(courseResponseHelper([]*models.Course{course}, userRole == types.UserRoleAdmin.String())[0])
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -172,7 +175,7 @@ func (api coursesAPI) createCourse(c *fiber.Ctx) error {
 		course.ScanStatus = scan.Status
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(courseResponseHelper([]*models.Course{course})[0])
+	return c.Status(fiber.StatusCreated).JSON(courseResponseHelper([]*models.Course{course}, true)[0])
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

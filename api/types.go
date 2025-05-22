@@ -43,7 +43,7 @@ type courseProgressResponse struct {
 type courseResponse struct {
 	ID        string         `json:"id"`
 	Title     string         `json:"title"`
-	Path      string         `json:"path"`
+	Path      string         `json:"path,omitempty"`
 	HasCard   bool           `json:"hasCard"`
 	Available bool           `json:"available"`
 	Duration  int            `json:"duration"`
@@ -51,7 +51,7 @@ type courseResponse struct {
 	UpdatedAt types.DateTime `json:"updatedAt"`
 
 	// Scan status
-	ScanStatus string `json:"scanStatus"`
+	ScanStatus string `json:"scanStatus,omitempty"`
 
 	// Progress
 	Progress *courseProgressResponse `json:"progress,omitempty"`
@@ -59,7 +59,7 @@ type courseResponse struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func courseResponseHelper(courses []*models.Course) []*courseResponse {
+func courseResponseHelper(courses []*models.Course, isAdmin bool) []*courseResponse {
 	responses := []*courseResponse{}
 
 	for _, course := range courses {
@@ -75,22 +75,25 @@ func courseResponseHelper(courses []*models.Course) []*courseResponse {
 			}
 		}
 
-		responses = append(responses, &courseResponse{
+		response := &courseResponse{
 			ID:        course.ID,
 			Title:     course.Title,
-			Path:      course.Path,
 			HasCard:   course.CardPath != "",
 			Available: course.Available,
 			Duration:  course.Duration,
 			CreatedAt: course.CreatedAt,
 			UpdatedAt: course.UpdatedAt,
 
-			// Scan status
-			ScanStatus: course.ScanStatus.String(),
-
 			// Progress
 			Progress: progress,
-		})
+		}
+
+		if isAdmin {
+			response.Path = course.Path
+			response.ScanStatus = course.ScanStatus.String()
+		}
+
+		responses = append(responses, response)
 	}
 
 	return responses
