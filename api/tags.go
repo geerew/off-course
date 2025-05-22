@@ -82,7 +82,7 @@ func (api *tagsAPI) getTagNames(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
-	tags, err := dao.ListPluck[string](c.UserContext(), api.dao, &models.Tag{}, options, models.TAG_TAG)
+	tags, err := dao.ListPluck[[]string](c.UserContext(), api.dao, &models.Tag{}, options, models.TAG_TAG)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tags", err)
 	}
