@@ -34,7 +34,8 @@
 	let sortColumns = [
 		{ label: 'Course Path', column: 'courses.path', asc: 'Ascending', desc: 'Descending' },
 		{ label: 'Status', column: 'scans.status', asc: 'Ascending', desc: 'Descending' },
-		{ label: 'Added', column: 'scans.created_at', asc: 'Oldest', desc: 'Newest' }
+		{ label: 'Added', column: 'scans.created_at', asc: 'Oldest', desc: 'Newest' },
+		{ label: 'Updated', column: 'scans.updated_at', asc: 'Oldest', desc: 'Newest' }
 	] as const satisfies SortColumns;
 	let selectedSortColumn = $state<(typeof sortColumns)[number]['column']>('scans.created_at');
 	let selectedSortDirection = $state<SortDirection>('desc');
