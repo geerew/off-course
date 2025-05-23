@@ -1,5 +1,6 @@
 package database
 
+// TODO Tidy to to make this more consistent. Use the builder pattern for all options
 import (
 	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/utils/pagination"

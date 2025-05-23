@@ -40,6 +40,7 @@ func (dao *DAO) GetScan(ctx context.Context, scan *models.Scan, options *databas
 		options = &database.Options{}
 	}
 
+	// When there is no where clause, use the ID
 	if options.Where == nil {
 		if scan.Id() == "" {
 			return utils.ErrInvalidId

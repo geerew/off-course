@@ -51,16 +51,18 @@ func (api userAPI) getUsers(c *fiber.Ctx) error {
 		AfterParseHook: usersAfterParseHook,
 	}
 
-	userId := c.Locals(types.UserContextKey).(string)
+	principal, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
 
-	options, err := optionsBuilder(c, builderOptions, userId)
+	options, err := optionsBuilder(c, builderOptions, principal.UserID)
 	if err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
 	users := []*models.User{}
-	err = api.dao.ListUsers(c.UserContext(), &users, options)
-	if err != nil {
+	if err := api.dao.ListUsers(ctx, &users, options); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up users", err)
 	}
 
@@ -101,8 +103,12 @@ func (api userAPI) createUser(c *fiber.Ctx) error {
 		user.DisplayName = userReq.DisplayName
 	}
 
-	err := api.dao.CreateUser(c.UserContext(), user)
+	_, ctx, err := principalCtx(c)
 	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	if err := api.dao.CreateUser(ctx, user); err != nil {
 		if strings.HasPrefix(err.Error(), "UNIQUE constraint failed") {
 			return errorResponse(c, fiber.StatusBadRequest, "Username already exists", nil)
 		}
@@ -128,9 +134,13 @@ func (api userAPI) updateUser(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "No data to update", nil)
 	}
 
-	user := &models.User{Base: models.Base{ID: id}}
-	err := api.dao.GetUser(c.UserContext(), user, nil)
+	_, ctx, err := principalCtx(c)
 	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	user := &models.User{Base: models.Base{ID: id}}
+	if err := api.dao.GetUser(ctx, user, nil); err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "User not found", nil)
 		}
@@ -155,7 +165,7 @@ func (api userAPI) updateUser(c *fiber.Ctx) error {
 		}
 	}
 
-	err = api.dao.UpdateUser(c.UserContext(), user)
+	err = api.dao.UpdateUser(ctx, user)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error updating user", err)
 	}
@@ -180,9 +190,13 @@ func (api userAPI) updateUser(c *fiber.Ctx) error {
 func (api userAPI) deleteUser(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	user := &models.User{Base: models.Base{ID: id}}
-	err := dao.Delete(c.UserContext(), api.dao, user, nil)
+	_, ctx, err := principalCtx(c)
 	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	user := &models.User{Base: models.Base{ID: id}}
+	if err := dao.Delete(ctx, api.dao, user, nil); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user", err)
 	}
 
@@ -206,8 +220,6 @@ func (api userAPI) deleteUserSession(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusNoContent).Send(nil)
 }
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

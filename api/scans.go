@@ -43,9 +43,13 @@ func (r *Router) initScanRoutes() {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api *scansAPI) getScans(c *fiber.Ctx) error {
-	scans := []*models.Scan{}
-	err := api.dao.ListScans(c.UserContext(), &scans, nil)
+	_, ctx, err := principalCtx(c)
 	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	scans := []*models.Scan{}
+	if err := api.dao.ListScans(ctx, &scans, nil); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up scan", err)
 	}
 
@@ -57,13 +61,17 @@ func (api *scansAPI) getScans(c *fiber.Ctx) error {
 func (api *scansAPI) getScan(c *fiber.Ctx) error {
 	courseId := c.Params("courseId")
 
+	_, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
 	scan := &models.Scan{}
 	options := &database.Options{
 		Where: squirrel.Eq{models.SCAN_TABLE_COURSE_ID: courseId},
 	}
 
-	err := api.dao.GetScan(c.UserContext(), scan, options)
-	if err != nil {
+	if err := api.dao.GetScan(ctx, scan, options); err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Scan not found", nil)
 		}
@@ -86,7 +94,12 @@ func (api *scansAPI) createScan(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "A course ID is required", nil)
 	}
 
-	scan, err := api.courseScan.Add(c.UserContext(), req.CourseID)
+	_, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	scan, err := api.courseScan.Add(ctx, req.CourseID)
 	if err != nil {
 		if err == utils.ErrInvalidId {
 			return errorResponse(c, fiber.StatusBadRequest, "Invalid course ID", nil)

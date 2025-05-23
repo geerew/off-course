@@ -52,7 +52,12 @@ func setup(t *testing.T) (database.Database, *appfs.AppFs, context.Context, *slo
 	}
 	require.NoError(t, dao.CreateUser(context.Background(), user))
 
-	ctx := context.WithValue(context.Background(), types.UserContextKey, user.ID)
+	principal := types.Principal{
+		UserID: user.ID,
+		Role:   user.Role,
+	}
+
+	ctx := context.WithValue(context.Background(), types.PrincipalContextKey, principal)
 
 	return dbManager.DataDb, appFs, ctx, logger, &logs
 }

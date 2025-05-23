@@ -43,15 +43,18 @@ func (api *logsAPI) getLogs(c *fiber.Ctx) error {
 		AfterParseHook: logsAfterParseHook,
 	}
 
-	userId := c.Locals(types.UserContextKey).(string)
+	principal, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
 
-	options, err := optionsBuilder(c, builderOptions, userId)
+	options, err := optionsBuilder(c, builderOptions, principal.UserID)
 	if err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
 	logs := []*models.Log{}
-	err = api.dao.ListLogs(c.UserContext(), &logs, options)
+	err = api.dao.ListLogs(ctx, &logs, options)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up logs", err)
 	}

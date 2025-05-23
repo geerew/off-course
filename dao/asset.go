@@ -8,7 +8,6 @@ import (
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
-	"github.com/geerew/off-course/utils/types"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -36,6 +35,7 @@ func (dao *DAO) GetAsset(ctx context.Context, asset *models.Asset, options *data
 		options = &database.Options{}
 	}
 
+	// When there is no where clause, use the ID
 	if options.Where == nil {
 		if asset.Id() == "" {
 			return utils.ErrInvalidId
@@ -44,13 +44,13 @@ func (dao *DAO) GetAsset(ctx context.Context, asset *models.Asset, options *data
 		options.Where = squirrel.Eq{models.ASSET_TABLE_ID: asset.Id()}
 	}
 
-	if !slices.Contains(options.ExcludeRelations, models.ASSET_RELATION_PROGRESS) {
-		userId, ok := ctx.Value(types.UserContextKey).(string)
-		if !ok || userId == "" {
-			return utils.ErrMissingUserId
-		}
+	principal, err := principalFromCtx(ctx)
+	if err != nil {
+		return err
+	}
 
-		options.AddRelationFilter(models.ASSET_RELATION_PROGRESS, models.ASSET_PROGRESS_USER_ID, userId)
+	if !slices.Contains(options.ExcludeRelations, models.ASSET_RELATION_PROGRESS) {
+		options.AddRelationFilter(models.ASSET_RELATION_PROGRESS, models.ASSET_PROGRESS_USER_ID, principal.UserID)
 	}
 
 	return Get(ctx, dao, asset, options)
@@ -68,13 +68,13 @@ func (dao *DAO) ListAssets(ctx context.Context, assets *[]*models.Asset, options
 		options = &database.Options{}
 	}
 
-	if !slices.Contains(options.ExcludeRelations, models.ASSET_RELATION_PROGRESS) {
-		userId, ok := ctx.Value(types.UserContextKey).(string)
-		if !ok || userId == "" {
-			return utils.ErrMissingUserId
-		}
+	principal, err := principalFromCtx(ctx)
+	if err != nil {
+		return err
+	}
 
-		options.AddRelationFilter(models.ASSET_RELATION_PROGRESS, models.ASSET_PROGRESS_USER_ID, userId)
+	if !slices.Contains(options.ExcludeRelations, models.ASSET_RELATION_PROGRESS) {
+		options.AddRelationFilter(models.ASSET_RELATION_PROGRESS, models.ASSET_PROGRESS_USER_ID, principal.UserID)
 	}
 
 	return List(ctx, dao, assets, options)

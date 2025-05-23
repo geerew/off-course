@@ -69,6 +69,7 @@ func (dao *DAO) GetCourseTag(ctx context.Context, courseTag *models.CourseTag, o
 		options = &database.Options{}
 	}
 
+	// When there is no where clause, use the ID
 	if options.Where == nil {
 		if courseTag.Id() == "" {
 			return utils.ErrInvalidId

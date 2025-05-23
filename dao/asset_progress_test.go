@@ -20,6 +20,8 @@ func Test_CreateOrUpdateAssetProgress(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		dao, ctx := setup(t)
 
+		principal := ctx.Value(types.PrincipalContextKey).(types.Principal)
+
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
@@ -44,7 +46,7 @@ func Test_CreateOrUpdateAssetProgress(t *testing.T) {
 		options := &database.Options{
 			Where: squirrel.And{
 				squirrel.Eq{models.COURSE_PROGRESS_TABLE_COURSE_ID: course.ID},
-				squirrel.Eq{models.COURSE_PROGRESS_TABLE_USER_ID: ctx.Value(types.UserContextKey)},
+				squirrel.Eq{models.COURSE_PROGRESS_TABLE_USER_ID: principal.UserID},
 			},
 		}
 		require.NoError(t, dao.GetCourseProgress(ctx, courseProgress, options))
@@ -53,6 +55,9 @@ func Test_CreateOrUpdateAssetProgress(t *testing.T) {
 
 	t.Run("update", func(t *testing.T) {
 		dao, ctx := setup(t)
+
+		principal := ctx.Value(types.PrincipalContextKey).(types.Principal)
+
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
@@ -82,7 +87,7 @@ func Test_CreateOrUpdateAssetProgress(t *testing.T) {
 		courseProgressOptions := &database.Options{
 			Where: squirrel.And{
 				squirrel.Eq{models.COURSE_PROGRESS_TABLE_COURSE_ID: course.ID},
-				squirrel.Eq{models.COURSE_PROGRESS_TABLE_USER_ID: ctx.Value(types.UserContextKey)},
+				squirrel.Eq{models.COURSE_PROGRESS_TABLE_USER_ID: principal.UserID},
 			},
 		}
 
@@ -127,9 +132,9 @@ func Test_CreateOrUpdateAssetProgress(t *testing.T) {
 		require.ErrorIs(t, dao.CreateOrUpdateAssetProgress(ctx, "", nil), utils.ErrNilPtr)
 	})
 
-	t.Run("missing user id", func(t *testing.T) {
+	t.Run("missing principal", func(t *testing.T) {
 		dao, _ := setup(t)
-		require.ErrorIs(t, dao.CreateOrUpdateAssetProgress(context.Background(), "", &models.AssetProgress{}), utils.ErrMissingUserId)
+		require.ErrorIs(t, dao.CreateOrUpdateAssetProgress(context.Background(), "", &models.AssetProgress{}), utils.ErrMissingPrincipal)
 	})
 }
 

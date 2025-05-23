@@ -35,9 +35,9 @@ func Test_CreateCourseProgress(t *testing.T) {
 		require.ErrorContains(t, dao.CreateCourseProgress(ctx, courseProgress), "FOREIGN KEY constraint failed")
 	})
 
-	t.Run("missing user id", func(t *testing.T) {
+	t.Run("missing principal", func(t *testing.T) {
 		dao, _ := setup(t)
-		require.ErrorIs(t, dao.CreateCourseProgress(context.Background(), &models.CourseProgress{}), utils.ErrMissingUserId)
+		require.ErrorIs(t, dao.CreateCourseProgress(context.Background(), &models.CourseProgress{}), utils.ErrMissingPrincipal)
 	})
 }
 
@@ -162,9 +162,9 @@ func Test_RefreshCourseProgress(t *testing.T) {
 		require.ErrorIs(t, dao.RefreshCourseProgress(ctx, ""), utils.ErrInvalidId)
 	})
 
-	t.Run("missing user id", func(t *testing.T) {
+	t.Run("missing principal", func(t *testing.T) {
 		dao, _ := setup(t)
-		require.ErrorIs(t, dao.RefreshCourseProgress(context.Background(), "1234"), utils.ErrMissingUserId)
+		require.ErrorIs(t, dao.RefreshCourseProgress(context.Background(), "1234"), utils.ErrMissingPrincipal)
 	})
 }
 

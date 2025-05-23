@@ -2,7 +2,6 @@ package models
 
 import (
 	"github.com/geerew/off-course/utils/schema"
-	"github.com/geerew/off-course/utils/types"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -10,14 +9,13 @@ import (
 // Course defines the model for a course
 type Course struct {
 	Base
-	Title     string
-	Path      string
-	CardPath  string
-	Available bool
-	Duration  int
-
-	// Joins
-	ScanStatus types.ScanStatus
+	Title       string
+	Path        string
+	CardPath    string
+	Available   bool
+	Duration    int
+	InitialScan bool
+	Maintenance bool
 
 	// Relations
 	Progress *CourseProgress
@@ -26,23 +24,25 @@ type Course struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 const (
-	COURSE_TABLE       = "courses"
-	COURSE_TITLE       = "title"
-	COURSE_PATH        = "path"
-	COURSE_CARD_PATH   = "card_path"
-	COURSE_AVAILABLE   = "available"
-	COURSE_DURATION    = "duration"
-	COURSE_SCAN_STATUS = "status"
+	COURSE_TABLE        = "courses"
+	COURSE_TITLE        = "title"
+	COURSE_PATH         = "path"
+	COURSE_CARD_PATH    = "card_path"
+	COURSE_AVAILABLE    = "available"
+	COURSE_DURATION     = "duration"
+	COURSE_INITIAL_SCAN = "initial_scan"
+	COURSE_MAINTENANCE  = "maintenance"
 
-	COURSE_TABLE_ID          = COURSE_TABLE + "." + BASE_ID
-	COURSE_TABLE_CREATED_AT  = COURSE_TABLE + "." + BASE_CREATED_AT
-	COURSE_TABLE_UPDATED_AT  = COURSE_TABLE + "." + BASE_UPDATED_AT
-	COURSE_TABLE_TITLE       = COURSE_TABLE + "." + COURSE_TITLE
-	COURSE_TABLE_PATH        = COURSE_TABLE + "." + COURSE_PATH
-	COURSE_TABLE_CARD_PATH   = COURSE_TABLE + "." + COURSE_CARD_PATH
-	COURSE_TABLE_AVAILABLE   = COURSE_TABLE + "." + COURSE_AVAILABLE
-	COURSE_TABLE_DURATION    = COURSE_TABLE + "." + COURSE_DURATION
-	COURSE_TABLE_SCAN_STATUS = COURSE_TABLE + "." + COURSE_SCAN_STATUS
+	COURSE_TABLE_ID           = COURSE_TABLE + "." + BASE_ID
+	COURSE_TABLE_CREATED_AT   = COURSE_TABLE + "." + BASE_CREATED_AT
+	COURSE_TABLE_UPDATED_AT   = COURSE_TABLE + "." + BASE_UPDATED_AT
+	COURSE_TABLE_TITLE        = COURSE_TABLE + "." + COURSE_TITLE
+	COURSE_TABLE_PATH         = COURSE_TABLE + "." + COURSE_PATH
+	COURSE_TABLE_CARD_PATH    = COURSE_TABLE + "." + COURSE_CARD_PATH
+	COURSE_TABLE_AVAILABLE    = COURSE_TABLE + "." + COURSE_AVAILABLE
+	COURSE_TABLE_DURATION     = COURSE_TABLE + "." + COURSE_DURATION
+	COURSE_TABLE_INITIAL_SCAN = COURSE_TABLE + "." + COURSE_INITIAL_SCAN
+	COURSE_TABLE_MAINTENANCE  = COURSE_TABLE + "." + COURSE_MAINTENANCE
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -64,9 +64,8 @@ func (c *Course) Define(s *schema.ModelConfig) {
 	s.Field("CardPath").Column(COURSE_CARD_PATH).Mutable()
 	s.Field("Available").Column(COURSE_AVAILABLE).Mutable()
 	s.Field("Duration").Column(COURSE_DURATION).Mutable()
-
-	// Join fields
-	s.Field("ScanStatus").JoinTable(SCAN_TABLE).Column(COURSE_SCAN_STATUS).Alias("scan_status")
+	s.Field("InitialScan").Column(COURSE_INITIAL_SCAN).Mutable()
+	s.Field("Maintenance").Column(COURSE_MAINTENANCE).Mutable()
 
 	// Relation fields
 	s.Relation("Progress").MatchOn(COURSE_PROGRESS_COURSE_ID)

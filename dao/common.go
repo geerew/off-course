@@ -9,6 +9,7 @@ import (
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/schema"
+	"github.com/geerew/off-course/utils/types"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -240,4 +241,16 @@ func RawQuery(ctx context.Context, dao *DAO, model any, query string, args ...an
 func RawExec(ctx context.Context, dao *DAO, query string, args ...any) (sql.Result, error) {
 	q := database.QuerierFromContext(ctx, dao.db)
 	return q.Exec(query, args...)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// principalFromCtx is a helper method to get the principal from the context
+func principalFromCtx(ctx context.Context) (types.Principal, error) {
+	principal, ok := ctx.Value(types.PrincipalContextKey).(types.Principal)
+	if !ok {
+		return types.Principal{}, utils.ErrMissingPrincipal
+	}
+
+	return principal, nil
 }

@@ -31,7 +31,7 @@ type CourseScan struct {
 	db        database.Database
 	dao       *dao.DAO
 	logger    *slog.Logger
-	jobSignal chan bool
+	jobSignal chan struct{}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -52,7 +52,7 @@ func New(config *CourseScanConfig) *CourseScan {
 		db:        config.Db,
 		dao:       dao.New(config.Db),
 		logger:    config.Logger,
-		jobSignal: make(chan bool, 1),
+		jobSignal: make(chan struct{}, 1),
 	}
 }
 
@@ -60,7 +60,7 @@ func New(config *CourseScanConfig) *CourseScan {
 
 // Add inserts a course scan job into the db
 func (s *CourseScan) Add(ctx context.Context, courseId string) (*models.Scan, error) {
-	// Check if the course exists
+	// Look up the course
 	course := &models.Course{}
 	options := &database.Options{
 		Where:            squirrel.Eq{models.COURSE_TABLE_ID: courseId},
@@ -74,33 +74,34 @@ func (s *CourseScan) Add(ctx context.Context, courseId string) (*models.Scan, er
 		return nil, err
 	}
 
-	// Do nothing when a scan job is already in progress
-	if course.ScanStatus.IsWaiting() || course.ScanStatus.IsProcessing() {
-		s.logger.Debug(
-			"Scan already in progress",
-			loggerType,
-			slog.String("path", course.Path),
-		)
-
-		// Get the scan from the db and return that
-		scan := &models.Scan{}
-		err := s.dao.GetScan(ctx, scan, &database.Options{Where: squirrel.Eq{models.SCAN_TABLE_COURSE_ID: courseId}})
-		if err != nil {
+	// Get the scan from the db and return that
+	scan := &models.Scan{}
+	if err := s.dao.GetScan(ctx, scan, &database.Options{Where: squirrel.Eq{models.SCAN_TABLE_COURSE_ID: courseId}}); err != nil {
+		if err == sql.ErrNoRows {
+			// No scan job exists, create a new one
+			scan = &models.Scan{CourseID: course.ID}
+			if err := s.dao.CreateScan(ctx, scan); err != nil {
+				return nil, err
+			}
+		} else {
+			// Error
 			return nil, err
 		}
+	} else {
+		// Scan job already exists
+		s.logger.Debug(
+			"Scan job already exists",
+			loggerType,
+			slog.String("job", scan.ID),
+			slog.String("path", course.Path),
+		)
 
 		return scan, nil
 	}
 
-	// Add the job
-	scan := &models.Scan{CourseID: courseId, Status: types.NewScanStatusWaiting()}
-	if err := s.dao.CreateScan(ctx, scan); err != nil {
-		return nil, err
-	}
-
 	// Signal the worker to process the job
 	select {
-	case s.jobSignal <- true:
+	case s.jobSignal <- struct{}{}:
 	default:
 	}
 

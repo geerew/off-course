@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"mime"
 	"path/filepath"
@@ -108,6 +109,21 @@ const maxInitialChunkSize = 1024 * 1024 * 5 // 5MB, adjust as needed
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// principalCtx is a helper method to get the principal and build a new context
+func principalCtx(c *fiber.Ctx) (types.Principal, context.Context, error) {
+	principal, ok := c.Locals(types.PrincipalContextKey).(types.Principal)
+	if !ok {
+		return types.Principal{}, nil, fmt.Errorf("missing principal")
+	}
+
+	ctx := c.UserContext()
+	ctx = context.WithValue(ctx, types.PrincipalContextKey, principal)
+
+	return principal, ctx, nil
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // handleVideo handles the video streaming logic
 func handleVideo(c *fiber.Ctx, appFs *appfs.AppFs, asset *models.Asset) error {
 	// Open the video
@@ -209,12 +225,12 @@ func handleHtml(c *fiber.Ctx, appFs *appfs.AppFs, asset *models.Asset) error {
 //
 //	group.Get("/my-route", protectedRoute, myHandler)
 func protectedRoute(c *fiber.Ctx) error {
-	userRole, ok := c.Locals(types.RoleContextKey).(string)
-	if !ok {
-		return errorResponse(c, fiber.StatusUnauthorized, "Invalid user", nil)
+	principal, _, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	if userRole != types.UserRoleAdmin.String() {
+	if principal.Role != types.UserRoleAdmin {
 		return errorResponse(c, fiber.StatusForbidden, "User is not an admin", nil)
 	}
 

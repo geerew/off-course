@@ -37,6 +37,7 @@ func (dao *DAO) GetSession(ctx context.Context, session *models.Session, options
 		options = &database.Options{}
 	}
 
+	// When there is no where clause, use the ID
 	if options == nil || options.Where == nil {
 		if session.Id() == "" {
 			return utils.ErrInvalidId

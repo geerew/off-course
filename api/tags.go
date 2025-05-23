@@ -49,14 +49,18 @@ func (api *tagsAPI) getTags(c *fiber.Ctx) error {
 		AfterParseHook: tagsAfterParseHook,
 	}
 
-	options, err := optionsBuilder(c, builderOptions, "")
+	principal, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	options, err := optionsBuilder(c, builderOptions, principal.UserID)
 	if err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
 	tags := []*models.Tag{}
-	err = api.dao.ListTags(c.UserContext(), &tags, options)
-	if err != nil {
+	if err = api.dao.ListTags(ctx, &tags, options); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tags", err)
 	}
 
@@ -77,12 +81,17 @@ func (api *tagsAPI) getTagNames(c *fiber.Ctx) error {
 		AfterParseHook: tagsAfterParseHook,
 	}
 
-	options, err := optionsBuilder(c, builderOptions, "")
+	principal, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	options, err := optionsBuilder(c, builderOptions, principal.UserID)
 	if err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
-	tags, err := dao.ListPluck[[]string](c.UserContext(), api.dao, &models.Tag{}, options, models.TAG_TAG)
+	tags, err := dao.ListPluck[[]string](ctx, api.dao, &models.Tag{}, options, models.TAG_TAG)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tags", err)
 	}
@@ -102,13 +111,15 @@ func (api *tagsAPI) getTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error decoding name parameter", err)
 	}
 
-	options := &database.Options{
-		Where: squirrel.Eq{models.TAG_TABLE_TAG: name},
+	_, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
+	options := &database.Options{Where: squirrel.Eq{models.TAG_TABLE_TAG: name}}
+
 	tag := &models.Tag{}
-	err = api.dao.GetTag(c.UserContext(), tag, options)
-	if err != nil {
+	if err = api.dao.GetTag(ctx, tag, options); err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Tag not found", nil)
 		}
@@ -131,9 +142,13 @@ func (api *tagsAPI) createTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "A tag is required", nil)
 	}
 
-	tag := &models.Tag{Tag: req.Tag}
-	err := api.dao.CreateTag(c.UserContext(), tag)
+	_, ctx, err := principalCtx(c)
 	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	tag := &models.Tag{Tag: req.Tag}
+	if err := api.dao.CreateTag(ctx, tag); err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return errorResponse(c, fiber.StatusBadRequest, "Tag already exists", err)
 		}
@@ -154,9 +169,13 @@ func (api *tagsAPI) updateTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
 	}
 
-	tag := &models.Tag{Base: models.Base{ID: id}}
-	err := api.dao.GetTag(c.UserContext(), tag, nil)
+	_, ctx, err := principalCtx(c)
 	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	tag := &models.Tag{Base: models.Base{ID: id}}
+	if err := api.dao.GetTag(ctx, tag, nil); err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Tag not found", nil)
 		}
@@ -166,8 +185,7 @@ func (api *tagsAPI) updateTag(c *fiber.Ctx) error {
 
 	tag.Tag = tagReq.Tag
 
-	err = api.dao.UpdateTag(c.UserContext(), tag)
-	if err != nil {
+	if err := api.dao.UpdateTag(ctx, tag); err != nil {
 		if strings.HasPrefix(err.Error(), "UNIQUE constraint failed") {
 			return errorResponse(c, fiber.StatusBadRequest, "Tag already exists", err)
 		}
@@ -183,9 +201,13 @@ func (api *tagsAPI) updateTag(c *fiber.Ctx) error {
 func (api *tagsAPI) deleteTag(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	tag := &models.Tag{Base: models.Base{ID: id}}
-	err := dao.Delete(c.UserContext(), api.dao, tag, nil)
+	_, ctx, err := principalCtx(c)
 	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	tag := &models.Tag{Base: models.Base{ID: id}}
+	if err := dao.Delete(ctx, api.dao, tag, nil); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting tag", err)
 	}
 

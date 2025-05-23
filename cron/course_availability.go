@@ -10,6 +10,7 @@ import (
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/pagination"
+	"github.com/geerew/off-course/utils/types"
 )
 
 type courseAvailability struct {
@@ -30,7 +31,12 @@ func (ca *courseAvailability) run() error {
 
 	coursesBatch := make([]*models.Course, 0, ca.batchSize)
 
-	ctx := context.Background()
+	// Create an admin principal context for the cron job
+	principal := types.Principal{
+		UserID: "availability-cron",
+		Role:   types.UserRoleAdmin,
+	}
+	ctx := context.WithValue(context.Background(), types.PrincipalContextKey, principal)
 
 	for page <= totalPages {
 		p := pagination.New(page, perPage)

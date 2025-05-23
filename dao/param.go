@@ -34,6 +34,7 @@ func (dao *DAO) GetParam(ctx context.Context, param *models.Param, options *data
 		options = &database.Options{}
 	}
 
+	// When there is no where clause, use the key
 	if options.Where == nil {
 		if param.Key == "" {
 			return utils.ErrInvalidKey

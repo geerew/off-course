@@ -21,6 +21,14 @@ const (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// Principal represents a user with a specific role
+type Principal struct {
+	UserID string
+	Role   UserRole
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // NewUserRole creates a new UserRole. Defaults to UserRoleUser if the role provided is invalid
 func NewUserRole(role string) UserRole {
 	switch role {

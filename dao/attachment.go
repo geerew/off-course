@@ -46,6 +46,7 @@ func (dao *DAO) GetAttachment(ctx context.Context, attachment *models.Attachment
 		options = &database.Options{}
 	}
 
+	// When there is no where clause, use the IDs
 	if options.Where == nil {
 		if attachment.Id() == "" {
 			return utils.ErrInvalidId

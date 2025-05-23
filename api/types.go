@@ -41,14 +41,16 @@ type courseProgressResponse struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type courseResponse struct {
-	ID        string         `json:"id"`
-	Title     string         `json:"title"`
-	Path      string         `json:"path,omitempty"`
-	HasCard   bool           `json:"hasCard"`
-	Available bool           `json:"available"`
-	Duration  int            `json:"duration"`
-	CreatedAt types.DateTime `json:"createdAt"`
-	UpdatedAt types.DateTime `json:"updatedAt"`
+	ID          string         `json:"id"`
+	Title       string         `json:"title"`
+	Path        string         `json:"path,omitempty"`
+	HasCard     bool           `json:"hasCard"`
+	Available   bool           `json:"available"`
+	Duration    int            `json:"duration"`
+	InitialScan bool           `json:"initialScan,omitempty"`
+	Maintenance bool           `json:"maintenance"`
+	CreatedAt   types.DateTime `json:"createdAt"`
+	UpdatedAt   types.DateTime `json:"updatedAt"`
 
 	// Scan status
 	ScanStatus string `json:"scanStatus,omitempty"`
@@ -76,13 +78,14 @@ func courseResponseHelper(courses []*models.Course, isAdmin bool) []*courseRespo
 		}
 
 		response := &courseResponse{
-			ID:        course.ID,
-			Title:     course.Title,
-			HasCard:   course.CardPath != "",
-			Available: course.Available,
-			Duration:  course.Duration,
-			CreatedAt: course.CreatedAt,
-			UpdatedAt: course.UpdatedAt,
+			ID:          course.ID,
+			Title:       course.Title,
+			HasCard:     course.CardPath != "",
+			Available:   course.Available,
+			Duration:    course.Duration,
+			Maintenance: course.Maintenance,
+			CreatedAt:   course.CreatedAt,
+			UpdatedAt:   course.UpdatedAt,
 
 			// Progress
 			Progress: progress,
@@ -90,7 +93,7 @@ func courseResponseHelper(courses []*models.Course, isAdmin bool) []*courseRespo
 
 		if isAdmin {
 			response.Path = course.Path
-			response.ScanStatus = course.ScanStatus.String()
+			response.InitialScan = course.InitialScan
 		}
 
 		responses = append(responses, response)

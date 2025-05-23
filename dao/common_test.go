@@ -55,7 +55,12 @@ func setup(tb testing.TB) (*DAO, context.Context) {
 	}
 	require.NoError(tb, dao.CreateUser(context.Background(), user))
 
-	ctx := context.WithValue(context.Background(), types.UserContextKey, user.ID)
+	ctx := context.Background()
+	principal := types.Principal{
+		UserID: user.ID,
+		Role:   user.Role,
+	}
+	ctx = context.WithValue(ctx, types.PrincipalContextKey, principal)
 
 	return dao, ctx
 }
@@ -191,7 +196,8 @@ func Test_Get(t *testing.T) {
 			require.Equal(t, course.Path, courseResult.Path)
 			require.Equal(t, course.CardPath, courseResult.CardPath)
 			require.True(t, courseResult.Available)
-			require.Empty(t, courseResult.ScanStatus)
+			require.False(t, courseResult.InitialScan)
+			require.False(t, courseResult.Maintenance)
 			require.Nil(t, courseResult.Progress)
 		}
 
@@ -208,14 +214,6 @@ func Test_Get(t *testing.T) {
 			require.Equal(t, scan.CourseID, scanResult.CourseID)
 			require.True(t, scanResult.Status.IsWaiting())
 			require.Equal(t, course.Path, scanResult.CoursePath)
-		}
-
-		// Get course (again) and check scan status
-		{
-			courseResult := &models.Course{}
-			require.NoError(t, dao.GetCourse(ctx, courseResult, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: course.ID}}))
-			require.Equal(t, course.ID, courseResult.ID)
-			require.True(t, courseResult.ScanStatus.IsWaiting())
 		}
 
 		// Create video asset

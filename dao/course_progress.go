@@ -20,13 +20,13 @@ func (dao *DAO) CreateCourseProgress(ctx context.Context, courseProgress *models
 		return utils.ErrNilPtr
 	}
 
-	if courseProgress.UserID == "" {
-		userId, ok := ctx.Value(types.UserContextKey).(string)
-		if !ok || userId == "" {
-			return utils.ErrMissingUserId
-		}
-		courseProgress.UserID = userId
+	principal, err := principalFromCtx(ctx)
+	if err != nil {
+		return err
 	}
+
+	// Always ensure the course progress is created with the user ID that made the request
+	courseProgress.UserID = principal.UserID
 
 	return Create(ctx, dao, courseProgress)
 }
@@ -45,6 +45,7 @@ func (dao *DAO) GetCourseProgress(ctx context.Context, courseProgress *models.Co
 		options = &database.Options{}
 	}
 
+	// When there is no where clause, use the ID
 	if options == nil || options.Where == nil {
 		if courseProgress.Id() == "" {
 			return utils.ErrInvalidId
@@ -95,10 +96,9 @@ func (dao *DAO) RefreshCourseProgress(ctx context.Context, courseID string) erro
 		return utils.ErrInvalidId
 	}
 
-	// Extract user ID from context
-	userId, ok := ctx.Value(types.UserContextKey).(string)
-	if !ok || userId == "" {
-		return utils.ErrMissingUserId
+	principal, err := principalFromCtx(ctx)
+	if err != nil {
+		return err
 	}
 
 	// Count video and non-video assets separately
@@ -116,8 +116,7 @@ func (dao *DAO) RefreshCourseProgress(ctx context.Context, courseID string) erro
 	var nonVideoCount sql.NullInt32
 
 	q := database.QuerierFromContext(ctx, dao.db)
-	err := q.QueryRow(assetCountQuery, assetCountArgs...).Scan(&videoCount, &nonVideoCount)
-	if err != nil {
+	if err := q.QueryRow(assetCountQuery, assetCountArgs...).Scan(&videoCount, &nonVideoCount); err != nil {
 		return err
 	}
 
@@ -152,7 +151,7 @@ func (dao *DAO) RefreshCourseProgress(ctx context.Context, courseID string) erro
 		ToSql()
 
 	// Add userID as the first parameter
-	progressArgs = append([]interface{}{userId}, progressArgs...)
+	progressArgs = append([]interface{}{principal.UserID}, progressArgs...)
 
 	var videosWithMetadata sql.NullInt32
 	var totalVideoDuration sql.NullInt64
@@ -180,7 +179,7 @@ func (dao *DAO) RefreshCourseProgress(ctx context.Context, courseID string) erro
 	err = dao.GetCourseProgress(ctx, courseProgress, &database.Options{
 		Where: squirrel.And{
 			squirrel.Eq{models.COURSE_PROGRESS_TABLE_COURSE_ID: courseID},
-			squirrel.Eq{models.COURSE_PROGRESS_TABLE_USER_ID: userId},
+			squirrel.Eq{models.COURSE_PROGRESS_TABLE_USER_ID: principal.UserID},
 		},
 	})
 
@@ -188,7 +187,7 @@ func (dao *DAO) RefreshCourseProgress(ctx context.Context, courseID string) erro
 	if err == sql.ErrNoRows {
 		courseProgress = &models.CourseProgress{
 			CourseID: courseID,
-			UserID:   userId,
+			UserID:   principal.UserID,
 		}
 
 		if err = Create(ctx, dao, courseProgress); err != nil {

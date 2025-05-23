@@ -56,8 +56,13 @@ func (api fsAPI) fileSystem(c *fiber.Ctx) error {
 		normalizedPaths = append(normalizedPaths, normalizedPath)
 	}
 
+	_, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
 	// Include path classification; ancestor, course, descendant, none
-	if classificationResult, err := api.dao.ClassifyCoursePaths(c.UserContext(), normalizedPaths); err != nil {
+	if classificationResult, err := api.dao.ClassifyCoursePaths(ctx, normalizedPaths); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "error classifying paths - " + err.Error(),
 		})
@@ -104,8 +109,13 @@ func (api fsAPI) path(c *fiber.Ctx) error {
 		directories = append(directories, &fileInfoResponse{Title: directory.Name(), Path: path})
 	}
 
+	_, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
 	// Include path classification; ancestor, course, descendant, none
-	if classificationResult, err := api.dao.ClassifyCoursePaths(c.UserContext(), paths); err != nil {
+	if classificationResult, err := api.dao.ClassifyCoursePaths(ctx, paths); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "error classifying paths - " + err.Error(),
 		})

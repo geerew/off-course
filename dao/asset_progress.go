@@ -19,14 +19,13 @@ func (dao *DAO) CreateOrUpdateAssetProgress(ctx context.Context, courseId string
 		return utils.ErrNilPtr
 	}
 
-	// Extract user ID from context
-	userId, ok := ctx.Value(types.UserContextKey).(string)
-	if !ok || userId == "" {
-		return utils.ErrMissingUserId
+	principal, err := principalFromCtx(ctx)
+	if err != nil {
+		return err
 	}
 
 	// Set the user ID in the progress object
-	assetProgress.UserID = userId
+	assetProgress.UserID = principal.UserID
 
 	return dao.db.RunInTransaction(ctx, func(txCtx context.Context) error {
 		if assetProgress.VideoPos < 0 {
@@ -56,7 +55,7 @@ func (dao *DAO) CreateOrUpdateAssetProgress(ctx context.Context, courseId string
 		err = dao.GetAssetProgress(txCtx, existingProgress, &database.Options{
 			Where: squirrel.And{
 				squirrel.Eq{models.ASSET_PROGRESS_TABLE_ASSET_ID: assetProgress.AssetID},
-				squirrel.Eq{models.ASSET_PROGRESS_TABLE_USER_ID: userId},
+				squirrel.Eq{models.ASSET_PROGRESS_TABLE_USER_ID: principal.UserID},
 			},
 		})
 
@@ -112,6 +111,7 @@ func (dao *DAO) GetAssetProgress(ctx context.Context, assetProgress *models.Asse
 		options = &database.Options{}
 	}
 
+	// When there is no where clause, use the ID
 	if options.Where == nil {
 		if assetProgress.Id() == "" {
 			return utils.ErrInvalidId

@@ -36,6 +36,7 @@ func (dao *DAO) GetVideoMetadata(ctx context.Context, videoMetadata *models.Vide
 		options = &database.Options{}
 	}
 
+	// When there is no where clause, use the ID
 	if options.Where == nil {
 		if videoMetadata.Id() == "" {
 			return utils.ErrInvalidId

@@ -51,6 +51,8 @@ func Test_GetCourse(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		dao, ctx := setup(t)
 
+		principal := ctx.Value(types.PrincipalContextKey).(types.Principal)
+
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
@@ -87,7 +89,9 @@ func Test_GetCourse(t *testing.T) {
 		require.NoError(t, dao.CreateUser(ctx, user2))
 
 		// Create asset progress for user 2
-		ctx = context.WithValue(context.Background(), types.UserContextKey, user2.ID)
+		principal.UserID = user2.ID
+		ctx = context.WithValue(ctx, types.PrincipalContextKey, principal)
+
 		assetProgress2 := &models.AssetProgress{AssetID: asset.ID}
 		require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, course.ID, assetProgress2))
 
@@ -104,14 +108,40 @@ func Test_GetCourse(t *testing.T) {
 		require.Equal(t, user2.ID, courseResult.Progress.UserID)
 	})
 
+	t.Run("initial scan", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		principal := ctx.Value(types.PrincipalContextKey).(types.Principal)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		// Set the user role to user
+		principal.Role = types.UserRoleUser
+		ctx = context.WithValue(ctx, types.PrincipalContextKey, principal)
+
+		courseResult := &models.Course{Base: models.Base{ID: course.ID}}
+		require.Error(t, dao.GetCourse(ctx, courseResult, nil), sql.ErrNoRows)
+
+		// Set the initial scan to true
+		course.InitialScan = true
+		require.NoError(t, dao.UpdateCourse(ctx, course))
+
+		// Get the course again
+		require.NoError(t, dao.GetCourse(ctx, courseResult, nil))
+		require.Equal(t, course.ID, courseResult.ID)
+	})
+
 	t.Run("nil", func(t *testing.T) {
 		dao, ctx := setup(t)
 		require.ErrorIs(t, dao.GetCourse(ctx, nil, nil), utils.ErrNilPtr)
 	})
 
-	t.Run("missing user id", func(t *testing.T) {
+	t.Run("missing principal", func(t *testing.T) {
 		dao, _ := setup(t)
-		require.ErrorIs(t, dao.GetCourse(context.Background(), &models.Course{Base: models.Base{ID: "1234"}}, nil), utils.ErrMissingUserId)
+
+		course := &models.Course{Base: models.Base{ID: "1234"}}
+		require.ErrorIs(t, dao.GetCourse(context.Background(), course, nil), utils.ErrMissingPrincipal)
 	})
 }
 
@@ -132,14 +162,42 @@ func Test_ListCourses(t *testing.T) {
 		require.Len(t, courses, 2)
 	})
 
+	t.Run("initial scan", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		principal := ctx.Value(types.PrincipalContextKey).(types.Principal)
+
+		course1 := &models.Course{Title: "Course 1", Path: "/course-1"}
+		require.NoError(t, dao.CreateCourse(ctx, course1))
+
+		course2 := &models.Course{Title: "Course 2", Path: "/course-2"}
+		require.NoError(t, dao.CreateCourse(ctx, course2))
+
+		// Set the user role to user
+		principal.Role = types.UserRoleUser
+		ctx = context.WithValue(ctx, types.PrincipalContextKey, principal)
+
+		courses := []*models.Course{}
+		require.NoError(t, dao.ListCourses(ctx, &courses, nil))
+		require.Empty(t, courses)
+
+		course1.InitialScan = true
+		require.NoError(t, dao.UpdateCourse(ctx, course1))
+
+		courses = []*models.Course{}
+		require.NoError(t, dao.ListCourses(ctx, &courses, nil))
+		require.Len(t, courses, 1)
+		require.Equal(t, course1.ID, courses[0].ID)
+	})
+
 	t.Run("nil", func(t *testing.T) {
 		dao, ctx := setup(t)
 		require.ErrorIs(t, dao.ListCourses(ctx, nil, nil), utils.ErrNilPtr)
 	})
 
-	t.Run("missing user id", func(t *testing.T) {
+	t.Run("missing principal", func(t *testing.T) {
 		dao, _ := setup(t)
-		require.ErrorIs(t, dao.ListCourses(context.Background(), &[]*models.Course{}, nil), utils.ErrMissingUserId)
+		require.ErrorIs(t, dao.ListCourses(context.Background(), &[]*models.Course{}, nil), utils.ErrMissingPrincipal)
 	})
 }
 

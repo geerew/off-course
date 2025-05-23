@@ -20,6 +20,10 @@ func (dao *DAO) CreateCourse(ctx context.Context, course *models.Course) error {
 		return utils.ErrNilPtr
 	}
 
+	// Ensure initial scan  and maintenance are false when adding a new course
+	course.InitialScan = false
+	course.Maintenance = false
+
 	return Create(ctx, dao, course)
 }
 
@@ -28,53 +32,82 @@ func (dao *DAO) CreateCourse(ctx context.Context, course *models.Course) error {
 // GetCourse retrieves a course
 //
 // When options is nil or options.Where is nil, the models ID will be used
+// When the user role is user, only courses with an initial scan will be returned
 func (dao *DAO) GetCourse(ctx context.Context, course *models.Course, options *database.Options) error {
 	if course == nil {
 		return utils.ErrNilPtr
+	}
+
+	principal, err := principalFromCtx(ctx)
+	if err != nil {
+		return err
 	}
 
 	if options == nil {
 		options = &database.Options{}
 	}
 
+	// When there is no where clause, use the ID
 	if options.Where == nil {
 		if course.Id() == "" {
 			return utils.ErrInvalidId
 		}
 
-		options = &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: course.Id()}}
+		options.Where = squirrel.Eq{models.COURSE_TABLE_ID: course.Id()}
 	}
 
+	// When including progress, ensure we set the progress for the user
 	if !slices.Contains(options.ExcludeRelations, models.COURSE_RELATION_PROGRESS) {
-		userId, ok := ctx.Value(types.UserContextKey).(string)
-		if !ok || userId == "" {
-			return utils.ErrMissingUserId
-		}
-
-		options.AddRelationFilter(models.COURSE_RELATION_PROGRESS, models.COURSE_PROGRESS_USER_ID, userId)
+		options.AddRelationFilter(models.COURSE_RELATION_PROGRESS, models.COURSE_PROGRESS_USER_ID, principal.UserID)
 	}
+
+	// If the user role is user, ignore courses without an initial scan
+	if principal.Role == types.UserRoleUser {
+		additionalWhere := squirrel.Eq{models.COURSE_TABLE_INITIAL_SCAN: true}
+
+		if options.Where == nil {
+			options.Where = squirrel.And{additionalWhere}
+		} else {
+			options.Where = squirrel.And{options.Where, additionalWhere}
+		}
+	}
+
 	return Get(ctx, dao, course, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // ListCourses retrieves a list of courses
+//
+// When the user role is user, only courses with an initial scan will be returned
 func (dao *DAO) ListCourses(ctx context.Context, courses *[]*models.Course, options *database.Options) error {
 	if courses == nil {
 		return utils.ErrNilPtr
+	}
+
+	principal, err := principalFromCtx(ctx)
+	if err != nil {
+		return err
 	}
 
 	if options == nil {
 		options = &database.Options{}
 	}
 
+	// When including progress, ensure we set the progress for the user
 	if !slices.Contains(options.ExcludeRelations, models.COURSE_RELATION_PROGRESS) {
-		userId, ok := ctx.Value(types.UserContextKey).(string)
-		if !ok || userId == "" {
-			return utils.ErrMissingUserId
-		}
+		options.AddRelationFilter(models.COURSE_RELATION_PROGRESS, models.COURSE_PROGRESS_USER_ID, principal.UserID)
+	}
 
-		options.AddRelationFilter(models.COURSE_RELATION_PROGRESS, models.COURSE_PROGRESS_USER_ID, userId)
+	// If the user role is user, ignore courses without an initial scan
+	if principal.Role == types.UserRoleUser {
+		additionalWhere := squirrel.Eq{models.COURSE_TABLE_INITIAL_SCAN: true}
+
+		if options.Where == nil {
+			options.Where = squirrel.And{additionalWhere}
+		} else {
+			options.Where = squirrel.And{options.Where, additionalWhere}
+		}
 	}
 
 	return List(ctx, dao, courses, options)

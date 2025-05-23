@@ -33,7 +33,7 @@ type AttachmentsByChapterPrefix map[string]map[int][]*models.Attachment
 
 // Processor scans a course to identify assets and attachments
 //
-// It can be passed to coursescan.Worker
+// # It can be passed to coursescan.Worker
 func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	if scan == nil {
 		return ErrNilScan
@@ -53,6 +53,18 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	if err != nil || !available {
 		return err
 	}
+
+	if err := enableCourseMaintenance(ctx, s, course); err != nil {
+		return err
+	}
+
+	defer func() {
+		if err := clearCourseMaintenance(ctx, s, course); err != nil {
+			s.logger.Error("Failed to clear course from maintenance mode", loggerType,
+				slog.String("path", course.Path),
+			)
+		}
+	}()
 
 	assetsByChapterPrefix, attachmentsByChapterPrefix, cardPath, err := scanFiles(s, course.Path, course.ID)
 	if err != nil {
@@ -91,7 +103,10 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 				Resolution: info.Resolution,
 			}
 		} else {
-			// TODO handle error properly
+			s.logger.Error("Failed to probe video file", loggerType,
+				slog.String("path", asset.Path),
+				slog.String("error", err.Error()),
+			)
 		}
 	}
 
@@ -112,6 +127,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		}
 
 		if updatedCourse || updatedAssets || updatedAttachments {
+			course.InitialScan = true
 			return s.dao.UpdateCourse(txCtx, course)
 		}
 
@@ -168,6 +184,40 @@ func checkAndSetCourseAvailability(ctx context.Context, s *CourseScan, course *m
 	}
 
 	return true, nil
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// enableCourseMaintenance sets the course to maintenance mode if it is not already
+func enableCourseMaintenance(ctx context.Context, s *CourseScan, course *models.Course) error {
+	if course.Maintenance {
+		return nil
+	}
+
+	course.Maintenance = true
+	if err := s.dao.UpdateCourse(ctx, course); err != nil {
+		return err
+	}
+
+	s.logger.Debug("Set course to maintenance mode", loggerType, slog.String("path", course.Path))
+	return nil
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// clearCourseMaintenance clears the course from maintenance mode if it is set
+func clearCourseMaintenance(ctx context.Context, s *CourseScan, course *models.Course) error {
+	if !course.Maintenance {
+		return nil
+	}
+
+	course.Maintenance = false
+	if err := s.dao.UpdateCourse(ctx, course); err != nil {
+		return err
+	}
+
+	s.logger.Debug("Cleared course from maintenance mode", loggerType, slog.String("path", course.Path))
+	return nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

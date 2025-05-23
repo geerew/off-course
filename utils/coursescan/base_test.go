@@ -15,6 +15,7 @@ import (
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/logger"
+	"github.com/geerew/off-course/utils/types"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 )
@@ -50,7 +51,22 @@ func setup(t *testing.T) (*CourseScan, context.Context, *[]*logger.Log) {
 		Logger: logger,
 	})
 
-	return courseScan, context.Background(), &logs
+	// Create a user for the context
+	user := &models.User{
+		Username:     "test-user",
+		DisplayName:  "Test User",
+		PasswordHash: "test-password",
+		Role:         types.UserRoleAdmin,
+	}
+	require.NoError(t, courseScan.dao.CreateUser(context.Background(), user))
+
+	principal := types.Principal{
+		UserID: user.ID,
+		Role:   user.Role,
+	}
+	ctx := context.WithValue(context.Background(), types.PrincipalContextKey, principal)
+
+	return courseScan, ctx, &logs
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -89,7 +105,7 @@ func TestScanner_Add(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, second.ID, first.ID)
 		require.NotEmpty(t, *logs)
-		require.Equal(t, "Scan already in progress", (*logs)[len(*logs)-1].Message)
+		require.Equal(t, "Scan job already exists", (*logs)[len(*logs)-1].Message)
 		require.Equal(t, slog.LevelDebug, (*logs)[len(*logs)-1].Level)
 	})
 
@@ -117,7 +133,7 @@ func TestScanner_Worker(t *testing.T) {
 
 		var processingDone = make(chan bool, 1)
 		go scanner.Worker(ctx, func(context.Context, *CourseScan, *models.Scan) error {
-			time.Sleep(1 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 			return nil
 		}, processingDone)
 
@@ -128,11 +144,7 @@ func TestScanner_Worker(t *testing.T) {
 			require.Equal(t, scan.CourseID, courses[i].ID)
 		}
 
-		// Wait for the worker to finish
 		<-processingDone
-
-		// Sometimes the delete is slow to happen
-		time.Sleep(20 * time.Millisecond)
 
 		count, err := dao.Count(ctx, scanner.dao, &models.Scan{}, nil)
 		require.NoError(t, err)
@@ -149,7 +161,6 @@ func TestScanner_Worker(t *testing.T) {
 			require.Equal(t, scan.CourseID, courses[i].ID)
 		}
 
-		// Wait for the worker to finish
 		<-processingDone
 
 		count, err = dao.Count(ctx, scanner.dao, &models.Scan{}, nil)
@@ -177,13 +188,7 @@ func TestScanner_Worker(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, scan.CourseID, course.ID)
 
-		// Wait for the worker to finish
 		<-processingDone
-
-		// TODO TMP LOGS for debugging race error
-		for _, l := range *logs {
-			fmt.Printf("%s\n", l.Message)
-		}
 
 		require.NotEmpty(t, *logs)
 		require.Greater(t, len(*logs), 2)

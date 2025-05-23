@@ -34,6 +34,7 @@ func (dao *DAO) GetUser(ctx context.Context, user *models.User, options *databas
 		options = &database.Options{}
 	}
 
+	// When there is no where clause, use the ID
 	if options.Where == nil {
 		if user.Id() == "" {
 			return utils.ErrInvalidId

@@ -147,14 +147,13 @@ func (api authAPI) logout(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api authAPI) getMe(c *fiber.Ctx) error {
-	userId, ok := c.Locals(types.UserContextKey).(string)
-	if !ok {
-		return errorResponse(c, fiber.StatusUnauthorized, "Invalid user", nil)
+	principal, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	user := &models.User{}
-	err := api.dao.GetUser(c.UserContext(), user, &database.Options{Where: squirrel.Eq{models.USER_TABLE_ID: userId}})
-	if err != nil {
+	user := &models.User{Base: models.Base{ID: principal.UserID}}
+	if err := api.dao.GetUser(ctx, user, nil); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error getting user information", err)
 	}
 
@@ -169,14 +168,13 @@ func (api authAPI) getMe(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api authAPI) updateMe(c *fiber.Ctx) error {
-	userId, ok := c.Locals(types.UserContextKey).(string)
-	if !ok {
-		return errorResponse(c, fiber.StatusUnauthorized, "Invalid user", nil)
+	principal, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	user := &models.User{}
-	err := api.dao.GetUser(c.UserContext(), user, &database.Options{Where: squirrel.Eq{models.USER_TABLE_ID: userId}})
-	if err != nil {
+	user := &models.User{Base: models.Base{ID: principal.UserID}}
+	if err := api.dao.GetUser(ctx, user, nil); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error getting user information", err)
 	}
 
@@ -201,7 +199,7 @@ func (api authAPI) updateMe(c *fiber.Ctx) error {
 		user.PasswordHash = auth.GeneratePassword(userReq.Password)
 	}
 
-	err = api.dao.UpdateUser(c.UserContext(), user)
+	err = api.dao.UpdateUser(ctx, user)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error updating user", err)
 	}
@@ -217,14 +215,13 @@ func (api authAPI) updateMe(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api authAPI) deleteMe(c *fiber.Ctx) error {
-	userId, ok := c.Locals(types.UserContextKey).(string)
-	if !ok {
-		return errorResponse(c, fiber.StatusUnauthorized, "Invalid user", nil)
+	principal, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	user := &models.User{}
-	err := api.dao.GetUser(c.UserContext(), user, &database.Options{Where: squirrel.Eq{models.USER_TABLE_ID: userId}})
-	if err != nil {
+	user := &models.User{Base: models.Base{ID: principal.UserID}}
+	if err := api.dao.GetUser(ctx, user, nil); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error getting user information", err)
 	}
 
@@ -239,7 +236,7 @@ func (api authAPI) deleteMe(c *fiber.Ctx) error {
 
 	if user.Role == types.UserRoleAdmin {
 		// Count the number of admin users and fail if there is only one
-		adminCount, err := dao.Count(c.UserContext(), api.dao, &models.User{}, &database.Options{
+		adminCount, err := dao.Count(ctx, api.dao, &models.User{}, &database.Options{
 			Where: squirrel.Eq{models.USER_TABLE_ROLE: types.UserRoleAdmin},
 		})
 
@@ -252,7 +249,7 @@ func (api authAPI) deleteMe(c *fiber.Ctx) error {
 		}
 	}
 
-	err = dao.Delete(c.UserContext(), api.dao, user, nil)
+	err = dao.Delete(ctx, api.dao, user, nil)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user", err)
 	}

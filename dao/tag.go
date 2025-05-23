@@ -55,6 +55,7 @@ func (dao *DAO) GetTag(ctx context.Context, tag *models.Tag, options *database.O
 		options = &database.Options{}
 	}
 
+	// When there is no where clause, use the ID
 	if options.Where == nil {
 		if tag.Id() == "" {
 			return utils.ErrInvalidId

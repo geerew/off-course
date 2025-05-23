@@ -99,9 +99,9 @@ func Test_GetAsset(t *testing.T) {
 		require.ErrorIs(t, dao.GetAsset(ctx, nil, nil), utils.ErrNilPtr)
 	})
 
-	t.Run("missing user id", func(t *testing.T) {
+	t.Run("missing principal", func(t *testing.T) {
 		dao, _ := setup(t)
-		require.ErrorIs(t, dao.GetAsset(context.Background(), &models.Asset{Base: models.Base{ID: "1234"}}, nil), utils.ErrMissingUserId)
+		require.ErrorIs(t, dao.GetAsset(context.Background(), &models.Asset{Base: models.Base{ID: "1234"}}, nil), utils.ErrMissingPrincipal)
 	})
 }
 
@@ -152,9 +152,9 @@ func Test_ListAssets(t *testing.T) {
 		require.ErrorIs(t, dao.ListAssets(ctx, nil, nil), utils.ErrNilPtr)
 	})
 
-	t.Run("missing user id", func(t *testing.T) {
+	t.Run("missing principal", func(t *testing.T) {
 		dao, _ := setup(t)
-		require.ErrorIs(t, dao.ListAssets(context.Background(), &[]*models.Asset{}, nil), utils.ErrMissingUserId)
+		require.ErrorIs(t, dao.ListAssets(context.Background(), &[]*models.Asset{}, nil), utils.ErrMissingPrincipal)
 	})
 }
 

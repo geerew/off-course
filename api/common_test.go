@@ -72,7 +72,12 @@ func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Conte
 	}
 	require.NoError(t, router.dao.CreateUser(context.Background(), &user))
 
-	ctx := context.WithValue(context.Background(), types.UserContextKey, id)
+	ctx := context.Background()
+	principal := types.Principal{
+		UserID: id,
+		Role:   role,
+	}
+	ctx = context.WithValue(ctx, types.PrincipalContextKey, principal)
 
 	return router, ctx
 }
