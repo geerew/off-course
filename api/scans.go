@@ -63,7 +63,12 @@ func (api *scansAPI) getScans(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up scan", err)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(scanResponseHelper(scans))
+	pResult, err := options.Pagination.BuildResult(scanResponseHelper(scans))
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error building pagination result", err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(pResult)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
