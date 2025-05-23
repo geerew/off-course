@@ -33,6 +33,10 @@ func (dao *DAO) GetSession(ctx context.Context, session *models.Session, options
 		return utils.ErrNilPtr
 	}
 
+	if options == nil {
+		options = &database.Options{}
+	}
+
 	if options == nil || options.Where == nil {
 		if session.Id() == "" {
 			return utils.ErrInvalidId
