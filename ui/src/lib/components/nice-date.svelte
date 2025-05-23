@@ -1,3 +1,4 @@
+<!-- Capatalize this -->
 <script lang="ts">
 	import { cn } from '$lib/utils';
 	import ago from 's-ago';

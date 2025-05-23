@@ -47,7 +47,7 @@ type courseResponse struct {
 	HasCard     bool           `json:"hasCard"`
 	Available   bool           `json:"available"`
 	Duration    int            `json:"duration"`
-	InitialScan bool           `json:"initialScan,omitempty"`
+	InitialScan *bool          `json:"initialScan,omitempty"`
 	Maintenance bool           `json:"maintenance"`
 	CreatedAt   types.DateTime `json:"createdAt"`
 	UpdatedAt   types.DateTime `json:"updatedAt"`
@@ -93,7 +93,7 @@ func courseResponseHelper(courses []*models.Course, isAdmin bool) []*courseRespo
 
 		if isAdmin {
 			response.Path = course.Path
-			response.InitialScan = course.InitialScan
+			response.InitialScan = &course.InitialScan
 		}
 
 		responses = append(responses, response)

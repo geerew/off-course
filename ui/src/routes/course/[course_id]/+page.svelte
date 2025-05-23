@@ -128,7 +128,7 @@
 							/>
 
 							<Avatar.Fallback
-								class="bg-background-alt-2 flex h-full min-h-60 w-full max-w-90 place-content-center rounded-lg"
+								class="bg-background-alt-2 flex h-50 w-full max-w-90 place-content-center rounded-lg"
 							>
 								<LogoIcon class="fill-background-alt-3 w-16 md:w-20" />
 							</Avatar.Fallback>
@@ -152,14 +152,6 @@
 									</div>
 								{/if}
 
-								<!-- Status -->
-								{#if !course.available}
-									<div class="grid grid-cols-[6.5rem_1fr]">
-										<span class="text-foreground-alt-3 font-medium">STATUS</span>
-										<span class="text-foreground-error">unavailable</span>
-									</div>
-								{/if}
-
 								<!-- Created At -->
 								<div class="grid grid-cols-[6.5rem_1fr]">
 									<span class="text-foreground-alt-3 font-medium">ADDED</span>
@@ -172,10 +164,25 @@
 									<span class="text-foreground-alt-1"><NiceDate date={course.updatedAt} /></span>
 								</div>
 
+								<!-- Status -->
+								{#if !course.available || course.maintenance || (course.initialScan !== undefined && !course.initialScan)}
+									<div class="grid grid-cols-[6.5rem_1fr]">
+										<span class="text-foreground-alt-3 font-medium">STATUS</span>
+
+										{#if !course.initialScan}
+											<span class="text-amber-600">Initial scan</span>
+										{:else if course.maintenance}
+											<span class="text-background-success">Maintenance</span>
+										{:else}
+											<span class="text-foreground-error">Unavailable</span>
+										{/if}
+									</div>
+								{/if}
+
 								<!-- Duration -->
 								<div class="grid grid-cols-[6.5rem_1fr]">
 									<span class="text-foreground-alt-3 font-medium">DURATION</span>
-									<span class="text-foreground-alt-1">
+									<span class={course.duration ? 'text-foreground-alt-1' : 'text-foreground-alt-3'}>
 										{course.duration
 											? prettyMs(course.duration * 1000, { hideSeconds: true })
 											: '-'}
@@ -205,7 +212,7 @@
 											</span>
 										</div>
 									{:else}
-										<span class="text-foreground-alt-1">Not Started</span>
+										<span class="text-foreground-alt-3">-</span>
 									{/if}
 								</div>
 							</div>

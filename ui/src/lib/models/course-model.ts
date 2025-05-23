@@ -10,7 +10,6 @@ import {
 } from 'valibot';
 import { BaseSchema } from './base-model';
 import { BasePaginationSchema, type PaginationReqParams } from './pagination-model';
-import { ScanStatusSchema } from './scan-model';
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -44,7 +43,8 @@ export const CourseSchema = object({
 	hasCard: boolean(),
 	available: boolean(),
 	duration: number(),
-	scanStatus: optional(ScanStatusSchema),
+	initialScan: optional(boolean()),
+	maintenance: boolean(),
 	progress: optional(CourseProgressSchema)
 });
 

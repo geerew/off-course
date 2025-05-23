@@ -51,7 +51,7 @@
 				<div class="flex grow place-content-center items-center gap-5">
 					{#if count > perPage}
 						<Pagination.PrevButton
-							class="hover:bg-background-alt-2 disabled:text-background-alt-6 data-[selected]:text-background data-[selected]:bg-background-primary-alt-1 inline-flex h-10 flex-row items-center justify-center gap-1 rounded-lg pr-2 text-[15px] font-medium duration-200 select-none hover:cursor-pointer disabled:cursor-not-allowed hover:disabled:bg-transparent"
+							class="hover:bg-background-alt-2 disabled:text-background-alt-6 data-[selected]:text-foreground-alt-6 data-[selected]:bg-background-primary-alt-1 inline-flex h-10 flex-row items-center justify-center gap-1 rounded-lg pr-2 text-[15px] font-medium duration-200 select-none hover:cursor-pointer disabled:cursor-not-allowed hover:disabled:bg-transparent"
 						>
 							<LeftChevronIcon class="size-6" />
 							<span class="text-xs">PREVIOUS</span>
@@ -64,7 +64,7 @@
 								{:else}
 									<Pagination.Page
 										{page}
-										class="hover:bg-background-alt-2 data-[selected]:text-background data-[selected]:bg-background-primary-alt-1 inline-flex size-10 items-center justify-center rounded-lg text-[15px] font-medium duration-200 select-none hover:cursor-pointer"
+										class="hover:bg-background-alt-2 data-[selected]:text-foreground-alt-6 data-[selected]:bg-background-primary-alt-1 inline-flex size-10 items-center justify-center rounded-lg text-[15px] font-medium duration-200 select-none hover:cursor-pointer"
 									>
 										{page.value}
 									</Pagination.Page>
@@ -73,7 +73,7 @@
 						</div>
 
 						<Pagination.NextButton
-							class="hover:bg-background-alt-2 disabled:text-background-alt-6 data-[selected]:text-background data-[selected]:bg-background-primary-alt-1 inline-flex h-10 flex-row items-center justify-center gap-1 rounded-lg pl-2 text-[15px] font-medium duration-200 select-none hover:cursor-pointer disabled:cursor-not-allowed hover:disabled:bg-transparent"
+							class="hover:bg-background-alt-2 disabled:text-background-alt-6 data-[selected]:text-foreground-alt-6 data-[selected]:bg-background-primary-alt-1 inline-flex h-10 flex-row items-center justify-center gap-1 rounded-lg pl-2 text-[15px] font-medium duration-200 select-none hover:cursor-pointer disabled:cursor-not-allowed hover:disabled:bg-transparent"
 						>
 							<span class="text-xs">NEXT</span>
 							<RightChevronIcon class="size-5" />

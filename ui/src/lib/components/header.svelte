@@ -49,7 +49,7 @@
 			<div class="flex flex-1 justify-end">
 				<Dropdown.Root>
 					<Dropdown.Trigger
-						class="bg-background-primary-alt-1 hover:bg-background-primary data-[state=open]:bg-background-primary text-foreground-alt-5 size-10 justify-center rounded-full border-none font-semibold"
+						class="bg-background-primary-alt-1 hover:bg-background-primary data-[state=open]:bg-background-primary text-foreground-alt-6 size-10 justify-center rounded-full border-none font-semibold"
 					>
 						{auth.userLetter}
 					</Dropdown.Trigger>
@@ -59,7 +59,7 @@
 							<!-- Name -->
 							<div class="flex flex-row items-center gap-3 p-1.5 pb-2.5">
 								<span
-									class="bg-background-primary text-foreground-alt-5 relative flex size-10 shrink-0 items-center justify-center rounded-full font-semibold"
+									class="bg-background-primary-alt-1 text-foreground-alt-6 relative flex size-10 shrink-0 items-center justify-center rounded-full font-semibold"
 								>
 									{auth.userLetter}
 								</span>

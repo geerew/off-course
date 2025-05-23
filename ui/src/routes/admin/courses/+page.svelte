@@ -86,9 +86,7 @@
 			courses = data.items;
 			expandedCourses = {};
 
-			const coursesToTrack = courses.filter(
-				(course) => course.scanStatus === 'processing' || course.scanStatus === 'waiting'
-			);
+			const coursesToTrack = courses.filter((course) => course.maintenance);
 
 			scanMonitor.trackCourses(coursesToTrack);
 		} catch (error) {

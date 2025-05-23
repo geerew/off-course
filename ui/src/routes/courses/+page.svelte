@@ -1,6 +1,7 @@
 <!-- TODO Open on asset when the course is ongoing -->
 <!-- TODO Rework `load more` to allowing setting the amount to load -->
 <!-- TODO Support marking courses as new (backend work too) -->
+<!-- TODO Don't use the scan status here as normal users cannot access it. Instead when course.maintenance is true, rescan for that course -->
 <script lang="ts">
 	import { GetCourses } from '$lib/api/course-api';
 	import { FilterBar } from '$lib/components';
@@ -37,8 +38,6 @@
 	$effect(() => {
 		return () => scanMonitor.clearAll();
 	});
-
-	$inspect('COURSES CHANGE', courses);
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -84,11 +83,12 @@
 				courses = data.items;
 			}
 
-			const coursesToTrack = courses.filter(
-				(course) => course.scanStatus === 'processing' || course.scanStatus === 'waiting'
-			);
+			// TODO change to use maintenance.svelte.ts
+			// const coursesToTrack = courses.filter(
+			// 	(course) => course.scanStatus === 'processing' || course.scanStatus === 'waiting'
+			// );
 
-			scanMonitor.trackCourses(coursesToTrack);
+			// scanMonitor.trackCourses(coursesToTrack);
 		} catch (error) {
 			throw error;
 		}
@@ -175,7 +175,7 @@
 												{/if}
 											</div>
 
-											<div class="flex h-full w-full flex-col justify-between gap-2 p-2.5">
+											<div class="flex h-full w-full flex-col justify-between gap-3 p-2.5">
 												<!-- Course Title -->
 												<span
 													class={cn(
@@ -206,17 +206,20 @@
 														{/if}
 													</div>
 
-													<div class="flex gap-2">
-														<!-- Scan status -->
-														{#if course.scanStatus === 'processing' || course.scanStatus === 'waiting'}
-															<Badge class="text-background-alt-1 bg-background-primary-alt-1"
-																>scanning</Badge
-															>
-														{/if}
-
-														<!-- Unavailable -->
-														{#if !course.available}
-															<Badge class="bg-background-error">unavailable</Badge>
+													<div class="flex gap-2 font-medium">
+														<!-- Maintenance -->
+														{#if !course.available || course.maintenance || (course.initialScan !== undefined && !course.initialScan)}
+															{#if course.initialScan !== undefined && !course.initialScan}
+																<Badge class="text-foreground-alt-1 bg-amber-800"
+																	>Initial Scan</Badge
+																>
+															{:else if course.maintenance}
+																<Badge class="text-foreground-alt-6 bg-background-primary-alt-1">
+																	Maintenance
+																</Badge>
+															{:else}
+																<Badge class="bg-background-error">Unavailable</Badge>
+															{/if}
 														{/if}
 													</div>
 												</div>
