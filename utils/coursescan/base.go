@@ -120,6 +120,13 @@ func (s *CourseScan) Add(ctx context.Context, courseId string) (*models.Scan, er
 func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessorFn, processingDone chan bool) {
 	s.logger.Debug("Started course scanner worker", loggerType)
 
+	// Create an admin principal context for the course scan worker
+	principal := types.Principal{
+		UserID: "course-scan-worker",
+		Role:   types.UserRoleAdmin,
+	}
+	ctx = context.WithValue(ctx, types.PrincipalContextKey, principal)
+
 	for {
 		<-s.jobSignal
 

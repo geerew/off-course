@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
-	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -49,6 +48,14 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		return err
 	}
 
+	defer func() {
+		if err := clearCourseMaintenance(ctx, s, course); err != nil {
+			s.logger.Error("Failed to clear course from maintenance mode", loggerType,
+				slog.String("path", course.Path),
+			)
+		}
+	}()
+
 	available, err := checkAndSetCourseAvailability(ctx, s, course)
 	if err != nil || !available {
 		return err
@@ -57,14 +64,6 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	if err := enableCourseMaintenance(ctx, s, course); err != nil {
 		return err
 	}
-
-	defer func() {
-		if err := clearCourseMaintenance(ctx, s, course); err != nil {
-			s.logger.Error("Failed to clear course from maintenance mode", loggerType,
-				slog.String("path", course.Path),
-			)
-		}
-	}()
 
 	assetsByChapterPrefix, attachmentsByChapterPrefix, cardPath, err := scanFiles(s, course.Path, course.ID)
 	if err != nil {
@@ -688,13 +687,11 @@ func populateHashesIfChanged(fs afero.Fs, scanned []*models.Asset, existing []*m
 func hashFilePartial(fs afero.Fs, path string, chunkSize int64) (string, error) {
 	file, err := fs.Open(path)
 	if err != nil {
-		return "", fmt.Errorf("open file: %w", err)
 	}
 	defer file.Close()
 
 	info, err := file.Stat()
 	if err != nil {
-		return "", fmt.Errorf("stat file: %w", err)
 	}
 	size := info.Size()
 

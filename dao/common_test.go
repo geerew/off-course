@@ -197,7 +197,7 @@ func Test_Get(t *testing.T) {
 			require.Equal(t, course.CardPath, courseResult.CardPath)
 			require.True(t, courseResult.Available)
 			require.False(t, courseResult.InitialScan)
-			require.False(t, courseResult.Maintenance)
+			require.True(t, courseResult.Maintenance)
 			require.Nil(t, courseResult.Progress)
 		}
 

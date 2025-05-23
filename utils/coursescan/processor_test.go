@@ -55,8 +55,9 @@ func TestScanner_Processor(t *testing.T) {
 		require.NoError(t, err)
 
 		require.NotEmpty(t, *logs)
-		require.Equal(t, "Skipping unavailable course", (*logs)[len(*logs)-1].Message)
-		require.Equal(t, slog.LevelDebug, (*logs)[len(*logs)-1].Level)
+		require.Greater(t, len(*logs), 1)
+		require.Equal(t, "Skipping unavailable course", (*logs)[len(*logs)-2].Message)
+		require.Equal(t, slog.LevelDebug, (*logs)[len(*logs)-2].Level)
 	})
 
 	t.Run("mark course available", func(t *testing.T) {

@@ -20,9 +20,9 @@ func (dao *DAO) CreateCourse(ctx context.Context, course *models.Course) error {
 		return utils.ErrNilPtr
 	}
 
-	// Ensure initial scan  and maintenance are false when adding a new course
+	// Ensure initial scan is false and maintenance is true
 	course.InitialScan = false
-	course.Maintenance = false
+	course.Maintenance = true
 
 	return Create(ctx, dao, course)
 }
