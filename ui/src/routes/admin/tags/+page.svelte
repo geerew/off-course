@@ -101,7 +101,7 @@
 		if (selectedTagsCount === 0) {
 			toast.success('No tags selected');
 		} else {
-			toast.success(`${selectedTagsCount} tag${selectedTagsCount > 1 ? 's' : ''} selected`);
+			toast.success(`${selectedTagsCount} row${selectedTagsCount > 1 ? 's' : ''} selected`);
 		}
 	}
 </script>

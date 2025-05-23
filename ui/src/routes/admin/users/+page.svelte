@@ -145,7 +145,7 @@
 		if (selectedUsersCount === 0) {
 			toast.success('No users selected');
 		} else {
-			toast.success(`${selectedUsersCount} user${selectedUsersCount > 1 ? 's' : ''} selected`);
+			toast.success(`${selectedUsersCount} row${selectedUsersCount > 1 ? 's' : ''} selected`);
 		}
 	}
 

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { BurgerMenuIcon, CourseIcon, TagIcon, UserIcon } from '$lib/components/icons';
+	import { BurgerMenuIcon, CourseIcon, ScanIcon, TagIcon, UserIcon } from '$lib/components/icons';
 	import { Button } from '$lib/components/ui';
 	import { cn, remCalc } from '$lib/utils';
 	import { Dialog } from 'bits-ui';
@@ -22,6 +22,12 @@
 			href: '/admin/courses',
 			matcher: '/admin/courses/',
 			icon: CourseIcon
+		},
+		{
+			label: 'Scans',
+			href: '/admin/scans',
+			matcher: '/admin/scans/',
+			icon: ScanIcon
 		},
 		{
 			label: 'Tags',

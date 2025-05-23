@@ -1,6 +1,8 @@
 <!-- TODO Add scan button (admin) -->
 <!-- TODO Edit anything/everything (admin) -->
 <!-- TODO Change asset play/restart button to a menu with play/restart, clear progress  -->
+<!-- TODO Don't allow clicking the start button when in maintenance -->
+<!-- TODO Hide the asset play button when in maintenance -->
 <script lang="ts">
 	import { page } from '$app/state';
 	import { GetAllCourseAssets, GetCourse, GetCourseTags } from '$lib/api/course-api';
