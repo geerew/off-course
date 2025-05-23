@@ -22,6 +22,7 @@ import (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 var (
 	defaultCoursesOrderBy                = []string{models.COURSE_TABLE_CREATED_AT + " desc"}
+	defaultScansOrderBy                  = []string{models.SCAN_TABLE_CREATED_AT + " desc"}
 	defaultCourseAssetsOrderBy           = []string{models.ASSET_TABLE_CHAPTER + " asc", models.ASSET_TABLE_PREFIX + " asc"}
 	defaultCourseAssetAttachmentsOrderBy = []string{models.ATTACHMENT_TABLE_TITLE + " asc"}
 	defaultTagsOrderBy                   = []string{models.TAG_TABLE_TAG + " asc"}

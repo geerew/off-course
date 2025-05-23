@@ -80,16 +80,16 @@ func (r *Router) initCourseRoutes() {
 
 // TODO add tests when initial scan is false
 func (api coursesAPI) getCourses(c *fiber.Ctx) error {
+	principal, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
 	builderOptions := builderOptions{
 		DefaultOrderBy: defaultCoursesOrderBy,
 		AllowedFilters: []string{"available", "tag", "progress"},
 		Paginate:       true,
 		AfterParseHook: coursesAfterParseHook,
-	}
-
-	principal, ctx, err := principalCtx(c)
-	if err != nil {
-		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
 	options, err := optionsBuilder(c, builderOptions, principal.UserID)

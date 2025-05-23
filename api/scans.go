@@ -43,13 +43,23 @@ func (r *Router) initScanRoutes() {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api *scansAPI) getScans(c *fiber.Ctx) error {
-	_, ctx, err := principalCtx(c)
+	principal, ctx, err := principalCtx(c)
 	if err != nil {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
+	builderOptions := builderOptions{
+		DefaultOrderBy: defaultScansOrderBy,
+		Paginate:       true,
+	}
+
+	options, err := optionsBuilder(c, builderOptions, principal.UserID)
+	if err != nil {
+		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
+	}
+
 	scans := []*models.Scan{}
-	if err := api.dao.ListScans(ctx, &scans, nil); err != nil {
+	if err := api.dao.ListScans(ctx, &scans, options); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up scan", err)
 	}
 
