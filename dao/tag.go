@@ -51,17 +51,16 @@ func (dao *DAO) GetTag(ctx context.Context, tag *models.Tag, options *database.O
 		return utils.ErrNilPtr
 	}
 
-	if options == nil || options.Where == nil {
+	if options == nil {
+		options = &database.Options{}
+	}
+
+	if options.Where == nil {
 		if tag.Id() == "" {
 			return utils.ErrInvalidId
 		}
 
-		options = &database.Options{
-			Where: squirrel.Eq{models.TAG_TABLE_ID: tag.Id()},
-		}
-	}
-
-	if options.Where == nil {
+		options.Where = squirrel.Eq{models.TAG_TABLE_ID: tag.Id()}
 	}
 
 	return Get(ctx, dao, tag, options)

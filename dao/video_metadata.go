@@ -32,17 +32,16 @@ func (dao *DAO) GetVideoMetadata(ctx context.Context, videoMetadata *models.Vide
 		return utils.ErrNilPtr
 	}
 
-	if options == nil || options.Where == nil {
+	if options == nil {
+		options = &database.Options{}
+	}
+
+	if options.Where == nil {
 		if videoMetadata.Id() == "" {
 			return utils.ErrInvalidId
 		}
 
-		options = &database.Options{
-			Where: squirrel.Eq{models.VIDEO_METADATA_TABLE_ID: videoMetadata.Id()},
-		}
-	}
-
-	if options.Where == nil {
+		options.Where = squirrel.Eq{models.VIDEO_METADATA_TABLE_ID: videoMetadata.Id()}
 	}
 
 	return Get(ctx, dao, videoMetadata, options)

@@ -30,14 +30,16 @@ func (dao *DAO) GetParam(ctx context.Context, param *models.Param, options *data
 		return utils.ErrNilPtr
 	}
 
-	if options == nil || options.Where == nil {
+	if options == nil {
+		options = &database.Options{}
+	}
+
+	if options.Where == nil {
 		if param.Key == "" {
 			return utils.ErrInvalidKey
 		}
 
-		options = &database.Options{
-			Where: squirrel.Eq{models.PARAM_TABLE_KEY: param.Key},
-		}
+		options.Where = squirrel.Eq{models.PARAM_TABLE_KEY: param.Key}
 	}
 
 	return Get(ctx, dao, param, options)

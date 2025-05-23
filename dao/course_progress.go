@@ -41,14 +41,16 @@ func (dao *DAO) GetCourseProgress(ctx context.Context, courseProgress *models.Co
 		return utils.ErrNilPtr
 	}
 
+	if options == nil {
+		options = &database.Options{}
+	}
+
 	if options == nil || options.Where == nil {
 		if courseProgress.Id() == "" {
 			return utils.ErrInvalidId
 		}
 
-		options = &database.Options{
-			Where: squirrel.Eq{models.COURSE_PROGRESS_TABLE_ID: courseProgress.Id()},
-		}
+		options.Where = squirrel.Eq{models.COURSE_PROGRESS_TABLE_ID: courseProgress.Id()}
 	}
 
 	return Get(ctx, dao, courseProgress, options)

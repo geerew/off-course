@@ -108,17 +108,16 @@ func (dao *DAO) GetAssetProgress(ctx context.Context, assetProgress *models.Asse
 		return utils.ErrNilPtr
 	}
 
-	if options == nil || options.Where == nil {
+	if options == nil {
+		options = &database.Options{}
+	}
+
+	if options.Where == nil {
 		if assetProgress.Id() == "" {
 			return utils.ErrInvalidId
 		}
 
-		options = &database.Options{
-			Where: squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: assetProgress.Id()},
-		}
-	}
-
-	if options.Where == nil {
+		options.Where = squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: assetProgress.Id()}
 	}
 
 	return Get(ctx, dao, assetProgress, options)

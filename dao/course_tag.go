@@ -65,14 +65,16 @@ func (dao *DAO) GetCourseTag(ctx context.Context, courseTag *models.CourseTag, o
 		return utils.ErrNilPtr
 	}
 
-	if options == nil || options.Where == nil {
+	if options == nil {
+		options = &database.Options{}
+	}
+
+	if options.Where == nil {
 		if courseTag.Id() == "" {
 			return utils.ErrInvalidId
 		}
 
-		options = &database.Options{
-			Where: squirrel.Eq{models.COURSE_TAG_TABLE_ID: courseTag.Id()},
-		}
+		options.Where = squirrel.Eq{models.COURSE_TAG_TABLE_ID: courseTag.Id()}
 	}
 
 	if options.Where == nil {

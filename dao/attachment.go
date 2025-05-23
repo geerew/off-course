@@ -42,17 +42,16 @@ func (dao *DAO) GetAttachment(ctx context.Context, attachment *models.Attachment
 		return utils.ErrNilPtr
 	}
 
-	if options == nil || options.Where == nil {
+	if options == nil {
+		options = &database.Options{}
+	}
+
+	if options.Where == nil {
 		if attachment.Id() == "" {
 			return utils.ErrInvalidId
 		}
 
-		options = &database.Options{
-			Where: squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachment.Id()},
-		}
-	}
-
-	if options.Where == nil {
+		options.Where = squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachment.Id()}
 	}
 
 	return Get(ctx, dao, attachment, options)

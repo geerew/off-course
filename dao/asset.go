@@ -41,9 +41,7 @@ func (dao *DAO) GetAsset(ctx context.Context, asset *models.Asset, options *data
 			return utils.ErrInvalidId
 		}
 
-		options = &database.Options{
-			Where: squirrel.Eq{models.ASSET_TABLE_ID: asset.Id()},
-		}
+		options.Where = squirrel.Eq{models.ASSET_TABLE_ID: asset.Id()}
 	}
 
 	if !slices.Contains(options.ExcludeRelations, models.ASSET_RELATION_PROGRESS) {

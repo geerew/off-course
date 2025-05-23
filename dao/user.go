@@ -30,17 +30,16 @@ func (dao *DAO) GetUser(ctx context.Context, user *models.User, options *databas
 		return utils.ErrNilPtr
 	}
 
-	if options == nil || options.Where == nil {
+	if options == nil {
+		options = &database.Options{}
+	}
+
+	if options.Where == nil {
 		if user.Id() == "" {
 			return utils.ErrInvalidId
 		}
 
-		options = &database.Options{
-			Where: squirrel.Eq{models.USER_TABLE_ID: user.Id()},
-		}
-	}
-
-	if options.Where == nil {
+		options.Where = squirrel.Eq{models.USER_TABLE_ID: user.Id()}
 	}
 
 	return Get(ctx, dao, user, options)

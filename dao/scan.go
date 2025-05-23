@@ -36,17 +36,16 @@ func (dao *DAO) GetScan(ctx context.Context, scan *models.Scan, options *databas
 		return utils.ErrNilPtr
 	}
 
-	if options == nil || options.Where == nil {
+	if options == nil {
+		options = &database.Options{}
+	}
+
+	if options.Where == nil {
 		if scan.Id() == "" {
 			return utils.ErrInvalidId
 		}
 
-		options = &database.Options{
-			Where: squirrel.Eq{models.SCAN_TABLE_ID: scan.Id()},
-		}
-	}
-
-	if options.Where == nil {
+		options.Where = squirrel.Eq{models.SCAN_TABLE_ID: scan.Id()}
 	}
 
 	return Get(ctx, dao, scan, options)
