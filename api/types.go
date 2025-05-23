@@ -255,11 +255,12 @@ type ScanRequest struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type scanResponse struct {
-	ID        string           `json:"id"`
-	CourseID  string           `json:"courseId"`
-	Status    types.ScanStatus `json:"status"`
-	CreatedAt types.DateTime   `json:"createdAt"`
-	UpdatedAt types.DateTime   `json:"updatedAt"`
+	ID         string           `json:"id"`
+	CourseID   string           `json:"courseId"`
+	CoursePath string           `json:"coursePath"`
+	Status     types.ScanStatus `json:"status"`
+	CreatedAt  types.DateTime   `json:"createdAt"`
+	UpdatedAt  types.DateTime   `json:"updatedAt"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -268,11 +269,12 @@ func scanResponseHelper(scans []*models.Scan) []*scanResponse {
 	responses := []*scanResponse{}
 	for _, scan := range scans {
 		responses = append(responses, &scanResponse{
-			ID:        scan.ID,
-			CourseID:  scan.CourseID,
-			Status:    scan.Status,
-			CreatedAt: scan.CreatedAt,
-			UpdatedAt: scan.UpdatedAt,
+			ID:         scan.ID,
+			CourseID:   scan.CourseID,
+			CoursePath: scan.CoursePath,
+			Status:     scan.Status,
+			CreatedAt:  scan.CreatedAt,
+			UpdatedAt:  scan.UpdatedAt,
 		})
 	}
 

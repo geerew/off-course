@@ -38,6 +38,7 @@ func (r *Router) initScanRoutes() {
 	scanGroup.Get("/", protectedRoute, scansAPI.getScans)
 	scanGroup.Get("/:courseId", protectedRoute, scansAPI.getScan)
 	scanGroup.Post("", protectedRoute, scansAPI.createScan)
+	scanGroup.Delete("/:id", protectedRoute, scansAPI.deleteScan)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -124,4 +125,22 @@ func (api *scansAPI) createScan(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(scanResponseHelper([]*models.Scan{scan})[0])
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func (api scansAPI) deleteScan(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	_, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	scan := &models.Scan{Base: models.Base{ID: id}}
+	if err := dao.Delete(ctx, api.dao, scan, nil); err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting scan", err)
+	}
+
+	return c.Status(fiber.StatusNoContent).Send(nil)
 }

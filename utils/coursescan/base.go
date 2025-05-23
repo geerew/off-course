@@ -117,6 +117,8 @@ func (s *CourseScan) Add(ctx context.Context, courseId string) (*models.Scan, er
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Worker processes jobs out of the DB sequentially
+//
+// TODO find a way to stop processing when the job is deleted
 func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessorFn, processingDone chan bool) {
 	s.logger.Debug("Started course scanner worker", loggerType)
 
