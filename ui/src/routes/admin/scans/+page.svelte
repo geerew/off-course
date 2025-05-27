@@ -45,7 +45,7 @@
 		};
 	};
 
-	const persistedState = new PersistedState<PersistedState>('admin_courses', {
+	const persistedState = new PersistedState<PersistedState>('admin_scans', {
 		sort: { column: 'scans.created_at', direction: 'desc' }
 	});
 
