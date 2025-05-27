@@ -95,6 +95,11 @@ export function BuildChapterStructure(courseAssets: AssetModel[]): Chapters {
 						(asset.progress?.videoPos && asset.progress?.videoPos > 0) || asset.progress?.completed
 				);
 
+				console.log(
+					`Lesson ${prefix} (${lessonTitle}) has ${sortedAssets.length} assets, ` +
+						`${completedAssets.length} completed, ${startedAssets.length} started`
+				);
+
 				return {
 					prefix: parseInt(prefix),
 					title: lessonTitle,

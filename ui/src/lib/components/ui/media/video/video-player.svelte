@@ -68,7 +68,7 @@
 		if (currentSecond >= duration - 5) {
 			if (completeDispatched) return;
 			completeDispatched = true;
-			onCompleted(duration);
+			onCompleted(Math.ceil(duration));
 		} else {
 			completeDispatched = false;
 			onTimeChange(currentSecond);
@@ -127,7 +127,7 @@
 	<Buffering />
 
 	<media-controls
-		class="pointer-events-none absolute inset-0 z-10 box-border flex h-full w-full flex-col opacity-0 transition-opacity duration-200 ease-out data-visible:opacity-100 data-visible:ease-in"
+		class="pointer-events-none absolute inset-0 z-2 box-border flex h-full w-full flex-col opacity-0 transition-opacity duration-200 ease-out data-visible:opacity-100 data-visible:ease-in"
 	>
 		<div class="flex-1"></div>
 

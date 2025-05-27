@@ -1,4 +1,5 @@
-<!-- TODO fix bug when video is at the end, I see an parsing data error -->
+<!-- TODO When page contains a group of assets, only allow 1 video to play -->
+<!-- TODO find a way to show which assets are completed when page contains a group of assets -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -9,16 +10,18 @@
 	import { Button, Checkbox, Tooltip } from '$lib/components/ui';
 	import Attachments from '$lib/components/ui/attachments.svelte';
 	import { VideoPlayer } from '$lib/components/ui/media';
-	import type { AssetModel, ChapteredAssets } from '$lib/models/asset-model';
+	import type { AssetGroup, AssetModel, Chapters } from '$lib/models/asset-model';
 	import type { CourseModel } from '$lib/models/course-model';
-	import { cn } from '$lib/utils';
+	import { BuildChapterStructure, cn } from '$lib/utils';
 	import { Dialog } from 'bits-ui';
 	import prettyMs from 'pretty-ms';
 	import { ElementSize } from 'runed';
 	import { toast } from 'svelte-sonner';
 
 	let course = $state<CourseModel>();
-	let chapters = $state<ChapteredAssets>({});
+	let chapters = $state<Chapters>({});
+
+	let selectedAssetGroup = $state<AssetGroup>();
 	let selectedAsset = $state<AssetModel>();
 
 	let loadPromise = $state(fetchCourseAndAsset());
@@ -44,8 +47,13 @@
 
 			chapters = BuildChapterStructure(assets);
 
-			selectedAsset = findAsset(page.params.asset_id, chapters);
+			const result = findAssetGroup(page.params.asset_id, chapters);
+			if (!result) {
+				throw new Error('Asset not found');
+			}
 
+			selectedAssetGroup = result.group;
+			selectedAsset = findAssetInGroup(page.params.asset_id, result.group);
 			if (!selectedAsset) {
 				throw new Error('Asset not found');
 			}
@@ -54,22 +62,6 @@
 		} catch (error) {
 			throw error;
 		}
-	}
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	// Build the course chapter structure
-	function BuildChapterStructure(courseAssets: AssetModel[]): ChapteredAssets {
-		const chapters: ChapteredAssets = {};
-
-		for (const courseAsset of courseAssets) {
-			const chapter = courseAsset.chapter || '(no chapter)';
-			!chapters[chapter]
-				? (chapters[chapter] = [courseAsset])
-				: chapters[chapter]?.push(courseAsset);
-		}
-
-		return chapters;
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -86,16 +78,23 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	// Find the asset in the chapters
-	function findAsset(assetId: string, chapters: ChapteredAssets): AssetModel | undefined {
-		for (const chapter of Object.values(chapters)) {
-			const found = chapter.find((asset) => asset.id === assetId);
-			if (found) {
-				return found;
+	export function findAssetGroup(
+		assetId: string,
+		chapters: Chapters
+	): { group: AssetGroup; chapter: string } | undefined {
+		for (const [chapterName, assetGroups] of Object.entries(chapters)) {
+			for (const group of assetGroups) {
+				if (group.assets.some((asset) => asset.id === assetId)) {
+					return { group, chapter: chapterName };
+				}
 			}
 		}
-
 		return undefined;
+	}
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	export function findAssetInGroup(assetId: string, group: AssetGroup): AssetModel | undefined {
+		return group.assets.find((asset) => asset.id === assetId);
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -103,8 +102,18 @@
 	// Update the selected asset when the page changes
 	$effect(() => {
 		const assetId = page.params.asset_id;
-		if (!initDone) return;
-		selectedAsset = findAsset(assetId, chapters);
+		if (!initDone || !selectedAssetGroup) return;
+
+		selectedAsset = findAssetInGroup(assetId, selectedAssetGroup);
+
+		// If asset not found in current group, need to find new group
+		if (!selectedAsset) {
+			const result = findAssetGroup(assetId, chapters);
+			if (result) {
+				selectedAssetGroup = result.group;
+				selectedAsset = findAssetInGroup(assetId, result.group);
+			}
+		}
 	});
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -145,73 +154,110 @@
 					</span>
 					<div class="flex flex-row items-center gap-1">
 						<span class="text-foreground-alt-3 text-xs">
-							{chapters[chapter].filter((a) => a.progress?.completed).length}
+							{chapters[chapter].filter((a) => a.completed).length}
 							/ {chapters[chapter].length}
 						</span>
 					</div>
 				</div>
 
 				<div class="ml-auto flex flex-col pt-4 pb-3">
-					{#each chapters[chapter] as asset, index}
+					{#each chapters[chapter] as assetGroup, index}
 						<Button
 							class={cn(
 								'text-foreground-alt-2 bg-background enabled:hover:bg-background-alt-2 enabled:hover:text-foreground-alt-1 h-auto justify-start rounded-none text-start duration-50',
-								selectedAsset?.id === asset.id && 'text-foreground-alt-1 bg-background-alt-2'
+								selectedAsset?.id === assetGroup.assets[0].id &&
+									'text-foreground-alt-1 bg-background-alt-2'
 							)}
 							onclick={() => {
-								console.log('in here');
-								if (!course || asset.id === selectedAsset?.id) return;
+								if (!course || assetGroup.assets[0].id === selectedAsset?.id) return;
 								if (menuPopupMode) dialogOpen = false;
-								goto(`/course/${course.id}/${asset.id}`, {});
-								selectedAsset = asset;
+								goto(`/course/${course.id}/${assetGroup.assets[0].id}`, {});
+								selectedAsset = assetGroup.assets[0];
 							}}
 						>
 							<div class="flex w-full flex-row gap-3 py-2 pr-2.5 pl-1.5">
 								<Checkbox
 									class="hover:border-background-primary-alt-1 mt-px shrink-0 border-2"
-									checked={asset.progress?.completed}
+									checked={assetGroup.completed}
 									onclick={async (e: MouseEvent) => {
 										e.stopPropagation();
 										e.preventDefault();
 
-										if (!asset.progress) {
-											asset.progress = {
-												completed: true,
-												completedAt: '',
-												videoPos: 0
-											};
-										} else {
-											asset.progress.completed = !asset.progress.completed;
-										}
+										assetGroup.completed = !assetGroup.completed;
 
-										await updateAssetProgress(asset);
+										assetGroup.assets.forEach((asset) => {
+											if (!asset.progress) {
+												asset.progress = {
+													completed: true,
+													completedAt: '',
+													videoPos: 0
+												};
+											} else {
+												asset.progress.completed = assetGroup?.completed || false;
+											}
+										});
+
+										// promise await for all assets to update
+										await Promise.all(assetGroup.assets.map((asset) => updateAssetProgress(asset)));
 									}}
 								/>
 
-								<div class="flex w-full flex-col gap-2.5 text-sm">
+								<div class="flex w-full flex-col gap-2 text-sm">
 									<span>
-										{index + 1}. {asset.title}
+										{index + 1}. {assetGroup.title}
 									</span>
 
-									<div class="flex w-full flex-row items-center">
-										<span class="text-foreground-alt-3">{asset.assetType}</span>
+									<div class="relative flex w-full flex-col gap-0 text-sm select-none">
+										<!-- Attachments -->
+										{#if assetGroup.attachments.length > 0}
+											<div class="flex h-7 w-full flex-row flex-wrap items-center">
+												<Attachments
+													attachments={assetGroup.attachments}
+													courseId={course?.id ?? ''}
+													assetId={assetGroup.assets[0].id}
+												/>
+											</div>
+										{/if}
 
-										{#if asset.videoMetadata}
+										{#each assetGroup.assets as asset}
+											<div class="flex w-full flex-row flex-wrap items-center">
+												<DotIcon class="text-foreground-alt-3 mt-0.5 -ml-2.5 size-7" />
+
+												<!-- Asset Title -->
+												<span class="text-foreground-alt-3 whitespace-nowrap">
+													{asset.assetType}
+												</span>
+
+												<!-- Video duration -->
+												{#if asset.videoMetadata}
+													<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
+													<span class="text-foreground-alt-3 whitespace-nowrap">
+														{prettyMs(asset.videoMetadata.duration * 1000)}
+													</span>
+												{/if}
+											</div>
+										{/each}
+									</div>
+
+									<!-- <div class="flex w-full flex-row items-center">
+										<span class="text-foreground-alt-3">{assetGroup.assets[0].assetType}</span>
+
+										{#if assetGroup.assets[0].videoMetadata}
 											<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
 											<span class="text-foreground-alt-3">
-												{prettyMs(asset.videoMetadata.duration * 1000)}
+												{prettyMs(assetGroup.assets[0].videoMetadata.duration * 1000)}
 											</span>
 										{/if}
 
-										{#if asset.attachments.length > 0}
+										{#if assetGroup.attachments.length > 0}
 											<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
 											<Attachments
-												attachments={asset.attachments}
+												attachments={assetGroup.attachments}
 												courseId={course?.id ?? ''}
-												assetId={asset.id}
+												assetId={assetGroup.assets[0].id}
 											/>
 										{/if}
-									</div>
+									</div> -->
 								</div>
 							</div>
 						</Button>
@@ -227,7 +273,7 @@
 		<Spinner class="bg-foreground-alt-3 size-4" />
 	</div>
 {:then _}
-	{#if course && selectedAsset}
+	{#if course && selectedAsset && selectedAssetGroup}
 		<div
 			class={cn(
 				'grid grid-rows-1 gap-6 pt-[calc(var(--header-height)+1))]',
@@ -292,90 +338,100 @@
 					<div class="flex w-full max-w-5xl flex-col gap-6 pt-1">
 						<!-- Header -->
 						<div class="flex w-full flex-col gap-8">
-							{#if selectedAsset}
-								<div class="flex flex-row items-center justify-between">
-									<div class="flex w-full flex-row items-center gap-2">
-										<span class="text-xl font-medium">
-											{selectedAsset.title}
-										</span>
-									</div>
+							<div class="flex flex-row items-center justify-between">
+								<div class="flex w-full flex-row items-center gap-2">
+									<span class="text-xl font-medium">
+										{selectedAssetGroup.title}
+									</span>
+								</div>
 
-									<!-- Mark watched/unwatched -->
-									<Tooltip delayDuration={100} contentProps={{ side: 'bottom', sideOffset: 8 }}>
-										{#snippet trigger()}
-											<Button
-												class={cn(
-													' flex size-8 shrink-0 items-center justify-center rounded-full border',
-													selectedAsset?.progress?.completed
-														? 'enabled:bg-background-success enabled:hover:bg-background-success border-background-success'
-														: 'enabled:bg-background enabled:hover:bg-background border-foreground'
-												)}
-												onclick={async () => {
-													if (!selectedAsset) return;
+								<!-- Mark watched/unwatched -->
+								<Tooltip delayDuration={100} contentProps={{ side: 'bottom', sideOffset: 8 }}>
+									{#snippet trigger()}
+										<Button
+											class={cn(
+												' flex size-8 shrink-0 items-center justify-center rounded-full border',
+												selectedAssetGroup?.completed
+													? 'enabled:bg-background-success enabled:hover:bg-background-success border-background-success'
+													: 'enabled:bg-background enabled:hover:bg-background border-foreground'
+											)}
+											onclick={async () => {
+												if (!selectedAssetGroup) return;
 
-													if (!selectedAsset.progress) {
-														selectedAsset.progress = {
+												selectedAssetGroup.completed = !selectedAssetGroup.completed;
+
+												selectedAssetGroup.assets.forEach((asset) => {
+													if (!asset.progress) {
+														asset.progress = {
 															completed: true,
 															completedAt: '',
 															videoPos: 0
 														};
 													} else {
-														selectedAsset.progress.completed = !selectedAsset.progress.completed;
+														asset.progress.completed = selectedAssetGroup?.completed || false;
 													}
+												});
 
-													await updateAssetProgress(selectedAsset);
-												}}
-											>
-												<TickIcon class="text-foreground size-4 stroke-[3]" />
-											</Button>
-										{/snippet}
+												// promise await for all assets to update
+												await Promise.all(
+													selectedAssetGroup.assets.map((asset) => updateAssetProgress(asset))
+												);
+											}}
+										>
+											<TickIcon class="text-foreground size-4 stroke-[3]" />
+										</Button>
+									{/snippet}
 
-										{#snippet content()}
-											Mark as {selectedAsset?.progress?.completed ? 'unwatched' : 'watched'}
-										{/snippet}
-									</Tooltip>
-								</div>
-							{/if}
+									{#snippet content()}
+										Mark as {selectedAsset?.progress?.completed ? 'unwatched' : 'watched'}
+									{/snippet}
+								</Tooltip>
+							</div>
 						</div>
 
-						{#if selectedAsset}
-							{#if selectedAsset.assetType === 'video'}
-								<VideoPlayer
-									src={`/api/courses/${course.id}/assets/${selectedAsset.id}/serve`}
-									startTime={selectedAsset.progress?.videoPos || 0}
-									onTimeChange={(time: number) => {
-										if (!selectedAsset) return;
+						{#each selectedAssetGroup.assets as asset}
+							<span>{asset.subPrefix}.</span>
 
-										if (!selectedAsset.progress) {
-											selectedAsset.progress = {
+							{#if asset.assetType === 'video'}
+								<VideoPlayer
+									src={`/api/courses/${course.id}/assets/${asset.id}/serve`}
+									startTime={asset.progress?.videoPos || 0}
+									onTimeChange={(time: number) => {
+										if (!asset.progress) {
+											asset.progress = {
 												completed: false,
 												completedAt: '',
 												videoPos: time
 											};
 										} else {
-											selectedAsset.progress.videoPos = time;
+											asset.progress.videoPos = time;
 										}
 
-										updateAssetProgress(selectedAsset);
+										updateAssetProgress(asset);
 									}}
 									onCompleted={(time: number) => {
-										if (!selectedAsset) return;
-										if (!selectedAsset.progress) {
-											selectedAsset.progress = {
+										if (!asset.progress) {
+											asset.progress = {
 												completed: true,
 												completedAt: '',
 												videoPos: time
 											};
 										} else {
-											selectedAsset.progress.videoPos = time;
-											selectedAsset.progress.completed = true;
+											asset.progress.videoPos = time;
+											asset.progress.completed = true;
 										}
 
-										updateAssetProgress(selectedAsset);
+										updateAssetProgress(asset);
+
+										if (!selectedAssetGroup) return;
+										selectedAssetGroup.completedAssetCount += 1;
+
+										if (selectedAssetGroup.completedAssetCount >= selectedAssetGroup.assets.length)
+											selectedAssetGroup.completed = true;
 									}}
 								/>
 							{/if}
-						{/if}
+						{/each}
 					</div>
 				</div>
 			</main>

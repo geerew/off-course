@@ -27,8 +27,9 @@
 	</Dropdown.Trigger>
 
 	<Dropdown.Content
-		class="text-foreground-alt-3 flex max-h-[10rem] w-auto max-w-xs overflow-y-scroll px-1.5 py-1"
+		class="text-foreground-alt-3 z-10 flex max-h-[10rem] w-auto max-w-xs overflow-y-scroll px-1.5 py-1"
 		portalProps={{ disabled: true }}
+		align="start"
 	>
 		{#each attachments as attachment, index}
 			{@const lastAttachment = attachments.length - 1 == index}
