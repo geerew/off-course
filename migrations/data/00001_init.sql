@@ -38,6 +38,7 @@ CREATE TABLE assets (
 	course_id    TEXT NOT NULL,
 	title        TEXT NOT NULL,
 	prefix       INTEGER NOT NULL,
+	sub_prefix   INTEGER,
 	chapter      TEXT,
 	type         TEXT NOT NULL,
 	path         TEXT UNIQUE NOT NULL,

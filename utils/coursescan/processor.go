@@ -25,7 +25,7 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-type AssetsByChapterPrefix map[string]map[int]*models.Asset
+type AssetsByChapterPrefix map[string]map[int][]*models.Asset
 type AttachmentsByChapterPrefix map[string]map[int][]*models.Attachment
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -258,7 +258,7 @@ func scanFiles(s *CourseScan, coursePath string, courseID string) (AssetsByChapt
 		}
 
 		if _, ok := assetsByChapterPrefix[chapter]; !ok {
-			assetsByChapterPrefix[chapter] = make(map[int]*models.Asset)
+			assetsByChapterPrefix[chapter] = make(map[int][]*models.Asset)
 		}
 
 		if _, ok := attachmentsByChapterPrefix[chapter]; !ok {
@@ -278,58 +278,71 @@ func scanFiles(s *CourseScan, coursePath string, courseID string) (AssetsByChapt
 			continue
 		}
 
-		prefix := parsed.prefix
-		existingAsset := assetsByChapterPrefix[chapter][prefix]
-
 		stat, err := s.appFs.Fs.Stat(normalized)
 		if err != nil {
 			return nil, nil, "", err
 		}
 
+		var subPrefix sql.NullInt16
+		if parsed.subPrefix != nil {
+			subPrefix = sql.NullInt16{Int16: int16(*parsed.subPrefix), Valid: true}
+		}
+
 		scannedAsset := &models.Asset{
-			Title:    parsed.title,
-			Prefix:   sql.NullInt16{Int16: int16(prefix), Valid: true},
-			Chapter:  chapter,
-			CourseID: courseID,
-			Path:     normalized,
-			Type:     *parsed.asset,
-			FileSize: stat.Size(),
-			ModTime:  stat.ModTime().UTC().Format(time.RFC3339Nano),
+			Title:     parsed.title,
+			Prefix:    sql.NullInt16{Int16: int16(parsed.prefix), Valid: true},
+			SubPrefix: subPrefix,
+			Chapter:   chapter,
+			CourseID:  courseID,
+			Path:      normalized,
+			Type:      *parsed.asset,
+			FileSize:  stat.Size(),
+			ModTime:   stat.ModTime().UTC().Format(time.RFC3339Nano),
 		}
 
-		// Add new asset
-		if existingAsset == nil {
-			assetsByChapterPrefix[chapter][prefix] = scannedAsset
-			continue
-		}
+		prefix := parsed.prefix
+		existingAssets := assetsByChapterPrefix[chapter][prefix]
 
-		// Apply asset priority: video > html > pdf
-		if scannedAsset.Type.IsVideo() && !existingAsset.Type.IsVideo() ||
-			scannedAsset.Type.IsHTML() && existingAsset.Type.IsPDF() {
+		if parsed.subPrefix == nil {
+			if len(existingAssets) == 0 {
+				assetsByChapterPrefix[chapter][prefix] = []*models.Asset{scannedAsset}
+			} else {
+				existingAsset := existingAssets[0]
 
-			scannedAsset.Hash, err = hashFilePartial(s.appFs.Fs, normalized, 1024*1024)
-			if err != nil {
-				return nil, nil, "", err
+				// Apply asset priority: video > html > pdf
+				if scannedAsset.Type.IsVideo() && !existingAsset.Type.IsVideo() ||
+					scannedAsset.Type.IsHTML() && existingAsset.Type.IsPDF() {
+
+					// Downgrade existing asset to attachment
+					attachmentsByChapterPrefix[chapter][prefix] = append(
+						attachmentsByChapterPrefix[chapter][prefix],
+						&models.Attachment{
+							Title: existingAsset.Title + filepath.Ext(existingAsset.Path),
+							Path:  existingAsset.Path,
+						},
+					)
+
+					scannedAsset.Hash, err = hashFilePartial(s.appFs.Fs, normalized, 1024*1024)
+					if err != nil {
+						return nil, nil, "", err
+					}
+
+					assetsByChapterPrefix[chapter][prefix] = []*models.Asset{scannedAsset}
+				} else {
+					// Add the new asset as an attachment
+					attachmentsByChapterPrefix[chapter][prefix] = append(
+						attachmentsByChapterPrefix[chapter][prefix],
+						&models.Attachment{
+							Title: parsed.title,
+							Path:  normalized,
+						},
+					)
+				}
 			}
-
-			// Downgrade asset to attachment
-			attachmentsByChapterPrefix[chapter][prefix] = append(
-				attachmentsByChapterPrefix[chapter][prefix],
-				&models.Attachment{
-					Title: existingAsset.Title + filepath.Ext(existingAsset.Path),
-					Path:  existingAsset.Path,
-				},
-			)
-
-			assetsByChapterPrefix[chapter][prefix] = scannedAsset
 		} else {
-			// Add the new asset as an attachment
-			attachmentsByChapterPrefix[chapter][prefix] = append(
-				attachmentsByChapterPrefix[chapter][prefix],
-				&models.Attachment{
-					Title: parsed.title,
-					Path:  normalized,
-				},
+			assetsByChapterPrefix[chapter][prefix] = append(
+				assetsByChapterPrefix[chapter][prefix],
+				scannedAsset,
 			)
 		}
 	}
@@ -343,7 +356,7 @@ func flattenAssets(assetsByChapterPrefix AssetsByChapterPrefix) []*models.Asset 
 	var out []*models.Asset
 	for _, chapterMap := range assetsByChapterPrefix {
 		for _, asset := range chapterMap {
-			out = append(out, asset)
+			out = append(out, asset...)
 		}
 	}
 	return out
@@ -511,9 +524,12 @@ func applyAttachmentChanges(
 	for chapter, attachmentMap := range attachmentsByChapterPrefix {
 		for prefix, potentialAttachments := range attachmentMap {
 			// Only add attachments when there is an asset
-			if asset, exists := assetsByChapterPrefix[chapter][prefix]; exists {
+			if assets, exists := assetsByChapterPrefix[chapter][prefix]; exists && len(assets) > 0 {
+				// Attach it to the first asset in the chapter with the prefix
+				assetId := assets[0].ID
+
 				for _, attachment := range potentialAttachments {
-					attachment.AssetID = asset.ID
+					attachment.AssetID = assetId
 					attachmentsFlat = append(attachmentsFlat, attachment)
 				}
 			}
@@ -522,8 +538,9 @@ func applyAttachmentChanges(
 
 	assetIDs := []string{}
 	for _, chapterMap := range assetsByChapterPrefix {
-		for _, asset := range chapterMap {
-			assetIDs = append(assetIDs, asset.ID)
+		for _, assets := range chapterMap {
+			// Always just use the first asset in the chapter with the prefix
+			assetIDs = append(assetIDs, assets[0].ID)
 		}
 	}
 
@@ -559,14 +576,15 @@ func applyAttachmentChanges(
 
 // parsedFilename that holds information following a filename being parsed
 type parsedFilename struct {
-	prefix int
-	title  string
-	asset  *types.Asset
+	prefix    int
+	subPrefix *int
+	title     string
+	asset     *types.Asset
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// A regex for parsing a file name into a prefix, title, and extension
+// A regex for parsing a file name into a prefix, title, sub-prefix (optional) and extension
 //
 // Valid patterns:
 //
@@ -578,20 +596,24 @@ type parsedFilename struct {
 //	 `<prefix> <title>.<ext>`
 //	 `<prefix>-<title>.<ext>`
 //	 `<prefix> - <title>.<ext>`
+//	 `<prefix> - <title> {sub-prefix}.<ext>`
 //
 //	- <prefix> is required and must be a number
 //	- A dash (-) is optional
 //	- <title> is optional and can be any non-empty string
 //	- <ext> is optional
-var filenameRegex = regexp.MustCompile(`^\s*(?P<Prefix>[0-9]+)((?:\s+-+\s+|\s+-+|\s+|-+\s*)(?P<Title>[^.][^.]*)?)?(?:\.(?P<Ext>\w+))?$`)
+// var filenameRegex = regexp.MustCompile(`^\s*(?P<Prefix>[0-9]+)((?:\s+-+\s+|\s+-+|\s+|-+\s*)(?P<Title>[^.][^.]*)?)?(?:\.(?P<Ext>\w+))?$`)
+
+var filenameRegex = regexp.MustCompile(`^\s*(?P<Prefix>[0-9]+)((?:\s+-+\s+|\s+-+|\s+|-+\s*)(?P<Title>[^.][^.]*?))?(?:\s+\{(?P<SubPrefix>[0-9]+)\})?(?:\.(?P<Ext>\w+))?$`)
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // parseFilename parses a file name and determines if it represents an asset, attachment, or
 // neither
 //
-// Asset: `<prefix> <title>.<ext>` (where <ext> is a valid `types.AssetType`)
-// Attachment: `<prefix>`, `<prefix> <title>` or `<prefix> <title>.<ext>` (where <ext> is not a valid `types.AssetType`)
+//   - Asset: `<prefix> <title> {<sub-prefix>}.<ext>` (where <ext> is a valid `types.AssetType`)
+//   - Attachment: `<prefix>`, `<prefix> <title>` or `<prefix> <title>.<ext>` (where <ext> is not
+//     a valid `types.AssetType`)
 func parseFilename(filename string) *parsedFilename {
 	pfn := &parsedFilename{}
 
@@ -607,6 +629,12 @@ func parseFilename(filename string) *parsedFilename {
 
 	pfn.prefix = prefix
 	pfn.title = matches[filenameRegex.SubexpIndex("Title")]
+
+	if subPrefixStr := matches[filenameRegex.SubexpIndex("SubPrefix")]; subPrefixStr != "" {
+		if subPrefix, err := strconv.Atoi(subPrefixStr); err == nil {
+			pfn.subPrefix = &subPrefix
+		}
+	}
 
 	// When title is empty, consider this an attachment
 	if pfn.title == "" {
@@ -671,6 +699,8 @@ func populateHashesIfChanged(fs afero.Fs, scanned []*models.Asset, existing []*m
 	for _, s := range scanned {
 		e := existingMap[s.Path]
 		if e == nil || e.FileSize != s.FileSize || e.ModTime != s.ModTime {
+			// TODO tmp
+
 			hash, err := hashFilePartial(fs, s.Path, 1024*1024)
 			if err != nil {
 				return err

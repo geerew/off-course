@@ -91,7 +91,6 @@ func Test_GetAsset(t *testing.T) {
 		require.Equal(t, asset.ID, assetResult.ID)
 		require.NotNil(t, assetResult.Progress)
 		require.Equal(t, assetProgress.ID, assetResult.Progress.ID)
-
 	})
 
 	t.Run("nil", func(t *testing.T) {

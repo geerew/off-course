@@ -563,6 +563,96 @@ func TestScanner_Processor(t *testing.T) {
 			require.Equal(t, filepath.Join(course.Path, "01 doc 2.pdf"), attachments[2].Path)
 		}
 	})
+
+	t.Run("asset with sub-prefix", func(t *testing.T) {
+		scanner, ctx, _ := setup(t)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1"}
+		require.NoError(t, scanner.dao.CreateCourse(ctx, course))
+
+		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
+		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
+
+		assetOptions := &database.Options{
+			OrderBy:          []string{models.ASSET_TABLE_CHAPTER + " asc", models.ASSET_TABLE_PREFIX + " asc"},
+			Where:            squirrel.Eq{models.ASSET_TABLE_COURSE_ID: course.ID},
+			ExcludeRelations: []string{models.ASSET_RELATION_PROGRESS},
+		}
+
+		assets := []*models.Asset{}
+
+		// Add video 1 asset with sub-prefix of 1
+		{
+			scanner.appFs.Fs.Mkdir(course.Path, os.ModePerm)
+			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 video 1 {1}.mp4", course.Path), []byte("video 1"), os.ModePerm)
+
+			err := Processor(ctx, scanner, scan)
+			require.NoError(t, err)
+
+			err = scanner.dao.ListAssets(ctx, &assets, assetOptions)
+			require.NoError(t, err)
+			require.Len(t, assets, 1)
+
+			require.Equal(t, "video 1", assets[0].Title)
+			require.Equal(t, course.ID, assets[0].CourseID)
+			require.Equal(t, 1, int(assets[0].Prefix.Int16))
+			require.Equal(t, 1, int(assets[0].SubPrefix.Int16))
+			require.Empty(t, assets[0].Chapter)
+			require.True(t, assets[0].Type.IsVideo())
+			require.Equal(t, "3b857b8441d7c9e734535d6b82f69a34c6fcd63ed0ef989ff03808ecb29a2f1f", assets[0].Hash)
+			require.Len(t, assets[0].Attachments, 0)
+		}
+
+		// Add video 2 asset with sub-prefix of 2
+		{
+			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 video 2 {2}.mp4", course.Path), []byte("video 2"), os.ModePerm)
+
+			err := Processor(ctx, scanner, scan)
+			require.NoError(t, err)
+
+			err = scanner.dao.ListAssets(ctx, &assets, assetOptions)
+			require.NoError(t, err)
+			require.Len(t, assets, 2)
+
+			require.Equal(t, "video 1", assets[0].Title)
+
+			require.Equal(t, "video 2", assets[1].Title)
+			require.Equal(t, course.ID, assets[1].CourseID)
+			require.Equal(t, 1, int(assets[1].Prefix.Int16))
+			require.Equal(t, 2, int(assets[1].SubPrefix.Int16))
+			require.Empty(t, assets[1].Chapter)
+			require.True(t, assets[1].Type.IsVideo())
+			require.Equal(t, "614ef49d4a1ef39bc763b7c9665f6f30a0eea3ec5ec10e04b897bdad9b973f9c", assets[1].Hash)
+			require.Len(t, assets[1].Attachments, 0)
+		}
+
+		// Add attachment (should get attached to asset 1)
+		{
+			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 attachment 1.txt", course.Path), []byte("attachment 1"), os.ModePerm)
+
+			err := Processor(ctx, scanner, scan)
+			require.NoError(t, err)
+
+			err = scanner.dao.ListAssets(ctx, &assets, assetOptions)
+			require.NoError(t, err)
+			require.Len(t, assets, 2)
+
+			require.Equal(t, "video 1", assets[0].Title)
+			require.Equal(t, course.ID, assets[0].CourseID)
+			require.Equal(t, 1, int(assets[0].Prefix.Int16))
+			require.Equal(t, 1, int(assets[0].SubPrefix.Int16))
+			require.Empty(t, assets[0].Chapter)
+			require.True(t, assets[0].Type.IsVideo())
+			require.Equal(t, "3b857b8441d7c9e734535d6b82f69a34c6fcd63ed0ef989ff03808ecb29a2f1f", assets[0].Hash)
+
+			require.Len(t, assets[0].Attachments, 1)
+			require.Equal(t, filepath.Join(course.Path, "01 attachment 1.txt"), assets[0].Attachments[0].Path)
+			require.Equal(t, "attachment 1.txt", assets[0].Attachments[0].Title)
+			require.Equal(t, assets[0].ID, assets[0].Attachments[0].AssetID)
+
+		}
+
+	})
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -597,18 +687,21 @@ func TestScanner_ParseFilename(t *testing.T) {
 			expected *parsedFilename
 		}{
 			// Video (with varied filenames)
-			{"0    file 0.avi", &parsedFilename{prefix: 0, title: "file 0", asset: types.NewAsset("avi")}},
-			{"001 file 1.mp4", &parsedFilename{prefix: 1, title: "file 1", asset: types.NewAsset("mp4")}},
-			{"1-file.ogg", &parsedFilename{prefix: 1, title: "file", asset: types.NewAsset("ogg")}},
-			{"2 - file.webm", &parsedFilename{prefix: 2, title: "file", asset: types.NewAsset("webm")}},
-			{"3 -file.m4a", &parsedFilename{prefix: 3, title: "file", asset: types.NewAsset("m4a")}},
-			{"4- file.opus", &parsedFilename{prefix: 4, title: "file", asset: types.NewAsset("opus")}},
-			{"5000 --- file.wav", &parsedFilename{prefix: 5000, title: "file", asset: types.NewAsset("wav")}},
-			{"0100 file.mp3", &parsedFilename{prefix: 100, title: "file", asset: types.NewAsset("mp3")}},
+			{"0    file 0.avi", &parsedFilename{prefix: 0, title: "file 0", subPrefix: nil, asset: types.NewAsset("avi")}},
+			{"001 file 1.mp4", &parsedFilename{prefix: 1, title: "file 1", subPrefix: nil, asset: types.NewAsset("mp4")}},
+			{"1-file.ogg", &parsedFilename{prefix: 1, title: "file", subPrefix: nil, asset: types.NewAsset("ogg")}},
+			{"2 - file.webm", &parsedFilename{prefix: 2, title: "file", subPrefix: nil, asset: types.NewAsset("webm")}},
+			{"3 -file.m4a", &parsedFilename{prefix: 3, title: "file", subPrefix: nil, asset: types.NewAsset("m4a")}},
+			{"4- file.opus", &parsedFilename{prefix: 4, title: "file", subPrefix: nil, asset: types.NewAsset("opus")}},
+			{"5000 --- file.wav", &parsedFilename{prefix: 5000, title: "file", subPrefix: nil, asset: types.NewAsset("wav")}},
+			{"0100 file.mp3", &parsedFilename{prefix: 100, title: "file", subPrefix: nil, asset: types.NewAsset("mp3")}},
 			// PDF
-			{"1 - doc.pdf", &parsedFilename{prefix: 1, title: "doc", asset: types.NewAsset("pdf")}},
+			{"1 - doc.pdf", &parsedFilename{prefix: 1, title: "doc", subPrefix: nil, asset: types.NewAsset("pdf")}},
 			// HTML
-			{"1 index.html", &parsedFilename{prefix: 1, title: "index", asset: types.NewAsset("html")}},
+			{"1 index.html", &parsedFilename{prefix: 1, title: "index", subPrefix: nil, asset: types.NewAsset("html")}},
+			// With sub-prefix
+			{"01 file 0 {1}.avi", &parsedFilename{prefix: 1, title: "file 0", subPrefix: intPtr(1), asset: types.NewAsset("avi")}},
+			{"01 file 0 {2}.mp4", &parsedFilename{prefix: 1, title: "file 0", subPrefix: intPtr(2), asset: types.NewAsset("mp4")}},
 		}
 
 		for _, tt := range tests {

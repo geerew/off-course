@@ -71,6 +71,12 @@ func setup(t *testing.T) (*CourseScan, context.Context, *[]*logger.Log) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+func intPtr(i int) *int {
+	return &i
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 func TestScanner_Add(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		scanner, ctx, _ := setup(t)

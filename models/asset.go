@@ -14,15 +14,16 @@ import (
 // Asset defines the model for an asset
 type Asset struct {
 	Base
-	CourseID string
-	Title    string
-	Prefix   sql.NullInt16
-	Chapter  string
-	Type     types.Asset
-	Path     string
-	FileSize int64
-	ModTime  string
-	Hash     string
+	CourseID  string
+	Title     string
+	Prefix    sql.NullInt16
+	SubPrefix sql.NullInt16
+	Chapter   string
+	Type      types.Asset
+	Path      string
+	FileSize  int64
+	ModTime   string
+	Hash      string
 
 	// Relations
 	VideoMetadata *VideoMetadata
@@ -37,6 +38,7 @@ const (
 	ASSET_COURSE_ID      = "course_id"
 	ASSET_TITLE          = "title"
 	ASSET_PREFIX         = "prefix"
+	ASSET_SUB_PREFIX     = "sub_prefix"
 	ASSET_CHAPTER        = "chapter"
 	ASSET_TYPE           = "type"
 	ASSET_PATH           = "path"
@@ -53,6 +55,7 @@ const (
 	ASSET_TABLE_COURSE_ID    = ASSET_TABLE + "." + ASSET_COURSE_ID
 	ASSET_TABLE_TITLE        = ASSET_TABLE + "." + ASSET_TITLE
 	ASSET_TABLE_PREFIX       = ASSET_TABLE + "." + ASSET_PREFIX
+	ASSET_TABLE_SUB_PREFIX   = ASSET_TABLE + "." + ASSET_SUB_PREFIX
 	ASSET_TABLE_CHAPTER      = ASSET_TABLE + "." + ASSET_CHAPTER
 	ASSET_TABLE_TYPE         = ASSET_TABLE + "." + ASSET_TYPE
 	ASSET_TABLE_PATH         = ASSET_TABLE + "." + ASSET_PATH
@@ -81,6 +84,7 @@ func (a *Asset) Define(s *schema.ModelConfig) {
 	s.Field("CourseID").Column(ASSET_COURSE_ID).NotNull()
 	s.Field("Title").Column(ASSET_TITLE).NotNull().Mutable()
 	s.Field("Prefix").Column(ASSET_PREFIX).Mutable()
+	s.Field("SubPrefix").Column(ASSET_SUB_PREFIX).Mutable()
 	s.Field("Chapter").Column(ASSET_CHAPTER).Mutable()
 	s.Field("Type").Column(ASSET_TYPE).NotNull().Mutable()
 	s.Field("Path").Column(ASSET_PATH).NotNull().Mutable()
