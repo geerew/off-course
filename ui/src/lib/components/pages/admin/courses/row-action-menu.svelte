@@ -44,9 +44,7 @@
 
 	<Dropdown.Content class="w-38">
 		<Dropdown.Item
-			disabled={!course.available}
 			onclick={async () => {
-				if (!course.available) return;
 				goto(`/course/${course.id}`);
 			}}
 		>

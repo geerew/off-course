@@ -241,7 +241,14 @@
 						<div class="flex flex-row gap-2.5">
 							<Button
 								href={`/course/${course.id}/${assetToResume?.id}`}
-								class="hover:bg-background-primary w-24 font-medium"
+								class="w-auto px-4"
+								disabled={course.maintenance || !course.available}
+								onclick={(e) => {
+									if (course?.maintenance || !course?.available) {
+										e.preventDefault();
+										e.stopPropagation();
+									}
+								}}
 							>
 								{#if course.progress}
 									Resume
@@ -265,7 +272,7 @@
 								}}
 							>
 								{#snippet trigger()}
-									<Dialog.Trigger class="w-auto px-4 font-medium" disabled={!course?.progress}>
+									<Dialog.Trigger class="w-auto px-4" disabled={!course?.progress}>
 										Clear Progress
 									</Dialog.Trigger>
 								{/snippet}
@@ -374,9 +381,15 @@
 																</div>
 															</div>
 
+															<!-- TODO HIDE BUTTON -->
 															<Button
 																href={`/course/${course?.id}/${asset.id}`}
-																class="bg-background-alt-2  hover:bg-background-alt-3 flex h-auto w-auto shrink-0 items-center justify-center rounded-full p-2 opacity-0 transition-all duration-150 ease-in group-hover:opacity-100 pointer-coarse:opacity-100"
+																class={cn(
+																	'bg-background-alt-2  hover:bg-background-alt-3 flex h-auto w-auto shrink-0 items-center justify-center rounded-full p-2 opacity-0 transition-all duration-150 ease-in',
+																	course?.maintenance || !course?.available
+																		? 'group-hover:opacity-0 pointer-coarse:opacity-0'
+																		: 'group-hover:opacity-100 pointer-coarse:opacity-100'
+																)}
 															>
 																{#if asset.progress?.completed}
 																	<MediaRestart
