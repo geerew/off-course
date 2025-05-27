@@ -1,6 +1,7 @@
 import { goto } from '$app/navigation';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import type { AssetModel, Chapters } from './models/asset-model';
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -46,4 +47,66 @@ export async function UpdateQueryParam(key: string, value: string, replaceState:
 	url.searchParams.set(key, value);
 
 	await goto(url.toString(), { replaceState, keepFocus: true, noScroll: true });
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Build the course chapter structure
+export function BuildChapterStructure(courseAssets: AssetModel[]): Chapters {
+	const chapters: Chapters = {};
+
+	// Group by chapter
+	const assetsByChapter: Record<string, AssetModel[]> = {};
+	for (const asset of courseAssets) {
+		const chapter = asset.chapter || '(no chapter)';
+		if (!assetsByChapter[chapter]) assetsByChapter[chapter] = [];
+		assetsByChapter[chapter].push(asset);
+	}
+
+	// Group by prefix within each chapter to create lessons
+	for (const [chapterName, chapterAssets] of Object.entries(assetsByChapter)) {
+		console.log(`Processing chapter: ${chapterName} with ${chapterAssets.length} assets`);
+		const lessonMap: Record<number, AssetModel[]> = {};
+
+		// Group assets by prefix
+		for (const asset of chapterAssets) {
+			if (!lessonMap[asset.prefix]) lessonMap[asset.prefix] = [];
+			lessonMap[asset.prefix].push(asset);
+		}
+
+		// Convert to lessons array
+		chapters[chapterName] = Object.entries(lessonMap)
+			.map(([prefix, assets]) => {
+				// Sort assets by subPrefix
+				const sortedAssets = assets.sort((a, b) => {
+					if (a.subPrefix === undefined && b.subPrefix === undefined) return 0;
+					if (a.subPrefix === undefined) return -1;
+					if (b.subPrefix === undefined) return 1;
+					return a.subPrefix - b.subPrefix;
+				});
+
+				// The lesson title is the title of the first asset in the sorted list
+				let lessonTitle = sortedAssets[0].title;
+
+				const allAttachments = sortedAssets.flatMap((asset) => asset.attachments);
+				const completedAssets = sortedAssets.filter((asset) => asset.progress?.completed);
+				const startedAssets = sortedAssets.filter(
+					(asset) =>
+						(asset.progress?.videoPos && asset.progress?.videoPos > 0) || asset.progress?.completed
+				);
+
+				return {
+					prefix: parseInt(prefix),
+					title: lessonTitle,
+					assets: sortedAssets,
+					completed: completedAssets.length === sortedAssets.length,
+					startedAssetCount: startedAssets.length,
+					completedAssetCount: completedAssets.length,
+					attachments: allAttachments
+				};
+			})
+			.sort((a, b) => a.prefix - b.prefix);
+	}
+
+	return chapters;
 }

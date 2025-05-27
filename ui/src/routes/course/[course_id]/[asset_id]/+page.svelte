@@ -130,7 +130,7 @@
 			<Button
 				href={`/course/${course.id}`}
 				class={cn(
-					'bg-background text-foreground-alt-1 hover:text-background-primary-alt-1 flex h-auto items-start justify-start py-5 pr-3 text-start duration-200'
+					'bg-background hover:bg-background-alt-1 text-foreground-alt-1 hover:text-background-primary flex h-auto items-start justify-start rounded-none py-5 pr-3 text-start duration-200'
 				)}
 			>
 				<span class="container-pl font-semibold">{course.title}</span>

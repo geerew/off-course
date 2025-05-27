@@ -5,6 +5,7 @@ import {
 	object,
 	optional,
 	picklist,
+	record,
 	string,
 	type InferOutput
 } from 'valibot';
@@ -19,8 +20,6 @@ const AssetTypeSchema = picklist(['video', 'html', 'pdf']);
 export type AssetType = InferOutput<typeof AssetTypeSchema>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-export type ChapteredAssets = Record<string, AssetsModel>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -51,6 +50,7 @@ export const AssetSchema = object({
 	...BaseSchema.entries,
 	title: string(),
 	prefix: number(),
+	subPrefix: optional(number()),
 	chapter: string(),
 	path: string(),
 	assetType: AssetTypeSchema,
@@ -76,3 +76,23 @@ export type AssetPaginationModel = InferOutput<typeof AssetPaginationSchema>;
 export type AssetReqParams = PaginationReqParams & {
 	q?: string;
 };
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+const AssetGroupSchema = object({
+	prefix: number(),
+	title: string(),
+	assets: array(AssetSchema),
+	attachments: array(AttachmentSchema),
+	completed: boolean(),
+	startedAssetCount: number(),
+	completedAssetCount: number()
+});
+
+export type AssetGroup = InferOutput<typeof AssetGroupSchema>;
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+const ChaptersSchema = record(string(), array(AssetGroupSchema));
+
+export type Chapters = InferOutput<typeof ChaptersSchema>;

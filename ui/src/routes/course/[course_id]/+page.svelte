@@ -20,15 +20,15 @@
 	import { Badge, Dialog } from '$lib/components/ui';
 	import Attachments from '$lib/components/ui/attachments.svelte';
 	import Button from '$lib/components/ui/button.svelte';
-	import type { AssetModel, ChapteredAssets } from '$lib/models/asset-model';
+	import type { Chapters } from '$lib/models/asset-model';
 	import type { CourseModel, CourseTagsModel } from '$lib/models/course-model';
-	import { cn } from '$lib/utils';
+	import { BuildChapterStructure, cn } from '$lib/utils';
 	import { Accordion, Avatar, Progress, useId } from 'bits-ui';
 	import prettyMs from 'pretty-ms';
 	import { slide } from 'svelte/transition';
 
 	let course = $state<CourseModel>();
-	let chapters = $state<ChapteredAssets>({});
+	let chapters = $state<Chapters>({});
 	let tags = $state<CourseTagsModel>([]);
 
 	const labelId = useId();
@@ -36,36 +36,44 @@
 	let chapterCount = $derived(Object.keys(chapters).length);
 	let assetCount = $derived.by(() => {
 		let count = 0;
-		for (const chapterAssets of Object.values(chapters)) {
-			count += chapterAssets.length;
+		for (const chapter of Object.values(chapters)) {
+			for (const assetGroup of chapter) {
+				count += assetGroup.assets.length;
+			}
 		}
 		return count;
 	});
 	let attachmentCount = $derived.by(() => {
 		let count = 0;
-		for (const chapterAssets of Object.values(chapters)) {
-			for (const asset of chapterAssets) {
-				count += asset.attachments.length;
+		for (const chapter of Object.values(chapters)) {
+			for (const assetGroup of chapter) {
+				count += assetGroup.attachments.length;
 			}
 		}
 		return count;
 	});
 
 	let assetToResume = $derived.by(() => {
-		const assets = Object.values(chapters);
+		const allChapters = Object.values(chapters);
 
 		// Find the first asset that is not completed
-		for (const chapterAssets of assets) {
-			for (const asset of chapterAssets) {
-				if (!asset.progress || !asset.progress.completed) {
-					return asset;
+		for (const chapter of allChapters) {
+			for (const assetGroup of chapter) {
+				for (const asset of assetGroup.assets) {
+					if (!asset.progress || !asset.progress.completed) {
+						return asset;
+					}
 				}
 			}
 		}
 
 		// If all assets are completed, return the first asset
-		if (assets.length > 0 && assets[0].length > 0) {
-			return assets[0][0];
+		if (
+			allChapters.length > 0 &&
+			allChapters[0].length > 0 &&
+			allChapters[0][0].assets.length > 0
+		) {
+			return allChapters[0][0].assets[0];
 		}
 
 		return null;
@@ -91,22 +99,6 @@
 		} catch (error) {
 			throw error;
 		}
-	}
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	// Build the course chapter structure
-	function BuildChapterStructure(courseAssets: AssetModel[]): ChapteredAssets {
-		const chapters: ChapteredAssets = {};
-
-		for (const courseAsset of courseAssets) {
-			const chapter = courseAsset.chapter || '(no chapter)';
-			!chapters[chapter]
-				? (chapters[chapter] = [courseAsset])
-				: chapters[chapter]?.push(courseAsset);
-		}
-
-		return chapters;
 	}
 </script>
 
@@ -263,10 +255,16 @@
 									if (!course) return;
 									course.progress = undefined;
 
-									const assets = Object.values(chapters);
-									for (const chapterAssets of assets) {
-										for (const asset of chapterAssets) {
-											if (asset.progress) asset.progress = undefined;
+									// Clear progress for all assets in all chapters
+									const allChapters = Object.values(chapters);
+									for (const chapter of allChapters) {
+										for (const assetGroup of chapter) {
+											assetGroup.completed = false;
+											assetGroup.startedAssetCount = 0;
+											assetGroup.completedAssetCount = 0;
+											assetGroup.assets.forEach((asset) => {
+												asset.progress = undefined;
+											});
 										}
 									}
 								}}
@@ -315,8 +313,14 @@
 
 											<div class="flex shrink-0 flex-row items-center gap-2.5">
 												<span class="text-foreground-alt-3 text-xs">
-													{chapters[chapter].filter((a) => a.progress?.completed).length}
-													/ {chapters[chapter].length}
+													{chapters[chapter].reduce(
+														(acc, assetGroup) => acc + assetGroup.completedAssetCount,
+														0
+													)}
+													/ {chapters[chapter].reduce(
+														(acc, assetGroup) => acc + assetGroup.assets.length,
+														0
+													)}
 												</span>
 												<RightChevronIcon
 													class="size-[18px] rotate-90 stroke-2 transition-transform duration-200 group-data-[state=open]/trigger:-rotate-90"
@@ -332,58 +336,67 @@
 										{#snippet child({ props, open })}
 											{#if open}
 												<div {...props} transition:slide={{ duration: 200 }}>
-													{#each chapters[chapter] as asset}
+													{#each chapters[chapter] as assetGroup}
 														<div
 															class="border-background-alt-2 text-foreground-alt-1 group relative flex flex-row items-center justify-between gap-2 overflow-hidden rounded-none border-b px-5 py-2 last:border-none"
 														>
-															{#if asset.progress}
-																{#if asset.progress.completed || asset.progress.videoPos > 0}
-																	<div
-																		class={cn(
-																			'absolute top-1/2 left-1 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
-																			asset.progress.completed
-																				? 'bg-background-success'
-																				: asset.progress.videoPos > 0
-																					? 'bg-amber-600'
-																					: ''
-																		)}
-																	></div>
-																{/if}
+															{#if assetGroup.completed || assetGroup.startedAssetCount > 0}
+																<div
+																	class={cn(
+																		'absolute top-1/2 left-1 inline-block h-[calc(100%-30px)] w-0.5 -translate-y-1/2 opacity-60',
+																		assetGroup.completed
+																			? 'bg-background-success'
+																			: assetGroup.startedAssetCount > 0
+																				? 'bg-amber-600'
+																				: ''
+																	)}
+																></div>
 															{/if}
 
 															<div class="flex w-full flex-col gap-2 py-2 text-sm">
-																<span class="w-full">{asset.prefix}. {asset.title}</span>
+																<span class="w-full">{assetGroup.prefix}. {assetGroup.title}</span>
 
 																<!-- Main metadata row -->
-																<div class="flex w-full flex-row flex-wrap items-center">
-																	<!-- Asset type -->
-																	<span class="text-foreground-alt-3 whitespace-nowrap"
-																		>{asset.assetType}</span
-																	>
-
-																	<!-- Video duration -->
-																	{#if asset.videoMetadata}
-																		<DotIcon class="text-foreground-alt-3 size-7" />
-																		<span class="text-foreground-alt-3 whitespace-nowrap">
-																			{prettyMs(asset.videoMetadata.duration * 1000)}
-																		</span>
-																	{/if}
-
+																<div
+																	class="relative flex w-full flex-col gap-0 text-sm select-none"
+																>
 																	<!-- Attachments -->
-																	{#if asset.attachments.length > 0}
-																		<DotIcon class="text-foreground-alt-3 size-7" />
-																		<Attachments
-																			attachments={asset.attachments}
-																			courseId={course?.id ?? ''}
-																			assetId={asset.id}
-																		/>
+																	{#if assetGroup.attachments.length > 0}
+																		<div
+																			class="flex h-7 w-full flex-row flex-wrap items-center pl-2.5"
+																		>
+																			<Attachments
+																				attachments={assetGroup.attachments}
+																				courseId={course?.id ?? ''}
+																				assetId={assetGroup.assets[0].id}
+																			/>
+																		</div>
 																	{/if}
+
+																	{#each assetGroup.assets as asset}
+																		<div class="flex w-full flex-row flex-wrap items-center">
+																			<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
+
+																			<!-- Asset Title -->
+																			<span class="text-foreground-alt-3 whitespace-nowrap">
+																				{asset.assetType}
+																			</span>
+
+																			<!-- Video duration -->
+																			{#if asset.videoMetadata}
+																				<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
+																				<span class="text-foreground-alt-3 whitespace-nowrap">
+																					{prettyMs(asset.videoMetadata.duration * 1000)}
+																				</span>
+																			{/if}
+																		</div>
+																	{/each}
 																</div>
 															</div>
 
-															<!-- TODO HIDE BUTTON -->
+															<!-- Play button -->
 															<Button
-																href={`/course/${course?.id}/${asset.id}`}
+																href={`/course/${course?.id}/${assetGroup.assets[0].id}`}
 																class={cn(
 																	'bg-background-alt-2  hover:bg-background-alt-3 flex h-auto w-auto shrink-0 items-center justify-center rounded-full p-2 opacity-0 transition-all duration-150 ease-in',
 																	course?.maintenance || !course?.available
@@ -391,7 +404,7 @@
 																		: 'group-hover:opacity-100 pointer-coarse:opacity-100'
 																)}
 															>
-																{#if asset.progress?.completed}
+																{#if assetGroup.completed}
 																	<MediaRestart
 																		class="stroke-foreground-alt-1 size-5.5 fill-transparent stroke-[1.5] pointer-coarse:size-4"
 																	/>
