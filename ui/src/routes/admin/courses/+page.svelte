@@ -1,5 +1,4 @@
 <!-- TODO have a columns dropdown to hide show columns -->
-<!-- TODO store selection state in localstorage -->
 <script lang="ts">
 	import { GetCourses } from '$lib/api/course-api';
 	import { FilterBar, NiceDate, Pagination, SortMenu } from '$lib/components';
@@ -14,7 +13,7 @@
 	import { scanMonitor } from '$lib/scans.svelte';
 	import type { SortColumns, SortDirection } from '$lib/types/sort';
 	import { cn, remCalc } from '$lib/utils';
-	import { ElementSize } from 'runed';
+	import { ElementSize, PersistedState } from 'runed';
 	import { tick } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { slide } from 'svelte/transition';
@@ -42,8 +41,20 @@
 		{ label: 'Added', column: 'courses.created_at', asc: 'Oldest', desc: 'Newest' },
 		{ label: 'Updated', column: 'courses.updated_at', asc: 'Oldest', desc: 'Newest' }
 	] as const satisfies SortColumns;
-	let selectedSortColumn = $state<(typeof sortColumns)[number]['column']>('courses.updated_at');
-	let selectedSortDirection = $state<SortDirection>('desc');
+
+	type PersistedState = {
+		sort: {
+			column: (typeof sortColumns)[number]['column'];
+			direction: SortDirection;
+		};
+	};
+
+	const persistedState = new PersistedState<PersistedState>('admin_courses', {
+		sort: { column: 'courses.updated_at', direction: 'desc' }
+	});
+
+	let selectedSortColumn = $state(persistedState.current.sort.column);
+	let selectedSortDirection = $state(persistedState.current.sort.direction);
 
 	let paginationPage = $state(1);
 	let paginationPerPage = $state(10);
@@ -208,6 +219,15 @@
 						bind:selectedDirection={selectedSortDirection}
 						onUpdate={async () => {
 							await tick();
+
+							persistedState.current = {
+								...persistedState.current,
+								sort: {
+									column: selectedSortColumn,
+									direction: selectedSortDirection
+								}
+							};
+
 							loadPromise = fetchCourses();
 						}}
 					/>

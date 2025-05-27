@@ -14,7 +14,7 @@
 	import type { UserModel, UsersModel } from '$lib/models/user-model';
 	import type { SortColumns, SortDirection } from '$lib/types/sort';
 	import { capitalizeFirstLetter, cn, remCalc } from '$lib/utils';
-	import { ElementSize } from 'runed';
+	import { ElementSize, PersistedState } from 'runed';
 	import { tick } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { slide } from 'svelte/transition';
@@ -36,8 +36,20 @@
 		{ label: 'Role', column: 'users.role', asc: 'Ascending', desc: 'Descending' },
 		{ label: 'Created At', column: 'users.created_at', asc: 'Oldest', desc: 'Newest' }
 	] as const satisfies SortColumns;
-	let selectedSortColumn = $state<(typeof sortColumns)[number]['column']>('users.username');
-	let selectedSortDirection = $state<SortDirection>('asc');
+
+	type PersistedState = {
+		sort: {
+			column: (typeof sortColumns)[number]['column'];
+			direction: SortDirection;
+		};
+	};
+
+	const persistedState = new PersistedState<PersistedState>('admin_users', {
+		sort: { column: 'users.username', direction: 'desc' }
+	});
+
+	let selectedSortColumn = $state(persistedState.current.sort.column);
+	let selectedSortDirection = $state(persistedState.current.sort.direction);
 
 	let paginationPage = $state(1);
 	let paginationPerPage = $state(10);
@@ -205,6 +217,15 @@
 						bind:selectedDirection={selectedSortDirection}
 						onUpdate={async () => {
 							await tick();
+
+							persistedState.current = {
+								...persistedState.current,
+								sort: {
+									column: selectedSortColumn,
+									direction: selectedSortDirection
+								}
+							};
+
 							loadPromise = fetchUsers();
 						}}
 					/>

@@ -12,6 +12,7 @@
 	import * as Table from '$lib/components/ui/table';
 	import type { TagModel, TagsModel } from '$lib/models/tag-model';
 	import type { SortColumns, SortDirection } from '$lib/types/sort';
+	import { PersistedState } from 'runed';
 	import { tick } from 'svelte';
 	import { toast } from 'svelte-sonner';
 
@@ -31,8 +32,20 @@
 		{ label: 'Tag', column: 'tags.tag', asc: 'Ascending', desc: 'Descending' },
 		{ label: 'Courses', column: 'course_count', asc: 'Lowest', desc: 'Highest' }
 	] as const satisfies SortColumns;
-	let selectedSortColumn = $state<(typeof sortColumns)[number]['column']>('tags.tag');
-	let selectedSortDirection = $state<SortDirection>('asc');
+
+	type PersistedState = {
+		sort: {
+			column: (typeof sortColumns)[number]['column'];
+			direction: SortDirection;
+		};
+	};
+
+	const persistedState = new PersistedState<PersistedState>('admin_tags', {
+		sort: { column: 'tags.tag', direction: 'desc' }
+	});
+
+	let selectedSortColumn = $state(persistedState.current.sort.column);
+	let selectedSortDirection = $state(persistedState.current.sort.direction);
 
 	let isIndeterminate = $derived(selectedTagsCount > 0 && selectedTagsCount < paginationTotal);
 	let isChecked = $derived(selectedTagsCount !== 0 && selectedTagsCount === paginationTotal);
@@ -150,6 +163,15 @@
 						bind:selectedDirection={selectedSortDirection}
 						onUpdate={async () => {
 							await tick();
+
+							persistedState.current = {
+								...persistedState.current,
+								sort: {
+									column: selectedSortColumn,
+									direction: selectedSortDirection
+								}
+							};
+
 							loadPromise = fetchTags();
 						}}
 					/>
