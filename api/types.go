@@ -155,6 +155,7 @@ type assetResponse struct {
 	CourseID  string         `json:"courseId"`
 	Title     string         `json:"title"`
 	Prefix    int            `json:"prefix"`
+	SubPrefix int            `json:"subPrefix,omitempty"`
 	Chapter   string         `json:"chapter"`
 	Path      string         `json:"path"`
 	Type      types.Asset    `json:"assetType"`
@@ -192,7 +193,7 @@ func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 			progress.CompletedAt = asset.Progress.CompletedAt
 		}
 
-		responses = append(responses, &assetResponse{
+		response := &assetResponse{
 			ID:        asset.ID,
 			CourseID:  asset.CourseID,
 			Title:     asset.Title,
@@ -206,8 +207,13 @@ func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 			VideoMetadata: videoMetadata,
 			Progress:      progress,
 			Attachments:   attachmentResponseHelper(asset.Attachments),
-		})
+		}
 
+		if asset.SubPrefix.Valid {
+			response.SubPrefix = int(asset.Prefix.Int16)
+		}
+
+		responses = append(responses, response)
 	}
 
 	return responses
