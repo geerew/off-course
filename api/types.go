@@ -210,7 +210,7 @@ func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 		}
 
 		if asset.SubPrefix.Valid {
-			response.SubPrefix = int(asset.Prefix.Int16)
+			response.SubPrefix = int(asset.SubPrefix.Int16)
 		}
 
 		responses = append(responses, response)
