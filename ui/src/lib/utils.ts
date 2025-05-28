@@ -85,8 +85,8 @@ export function BuildChapterStructure(courseAssets: AssetModel[]): Chapters {
 					return a.subPrefix - b.subPrefix;
 				});
 
-				// The lesson title is the title of the first asset in the sorted list
-				let lessonTitle = sortedAssets[0].title;
+				// The group title is the title of the first asset in the sorted list
+				let groupTitle = sortedAssets[0].title;
 
 				const allAttachments = sortedAssets.flatMap((asset) => asset.attachments);
 				const completedAssets = sortedAssets.filter((asset) => asset.progress?.completed);
@@ -96,13 +96,13 @@ export function BuildChapterStructure(courseAssets: AssetModel[]): Chapters {
 				);
 
 				console.log(
-					`Lesson ${prefix} (${lessonTitle}) has ${sortedAssets.length} assets, ` +
+					`Lesson ${prefix} (${groupTitle}) has ${sortedAssets.length} assets, ` +
 						`${completedAssets.length} completed, ${startedAssets.length} started`
 				);
 
 				return {
 					prefix: parseInt(prefix),
-					title: lessonTitle,
+					title: groupTitle,
 					assets: sortedAssets,
 					completed: completedAssets.length === sortedAssets.length,
 					startedAssetCount: startedAssets.length,

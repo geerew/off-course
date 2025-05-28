@@ -76,7 +76,7 @@
 								<Dropdown.Item>
 									<Button
 										href="/profile"
-										class="hover:text-foreground text-foreground-alt-1 h-auto justify-between bg-transparent p-1 enabled:hover:bg-transparent"
+										class="hover:text-foreground text-foreground-alt-1 h-auto justify-between bg-transparent p-1 hover:bg-transparent"
 									>
 										<div class="flex flex-row items-center gap-2.5">
 											<UserIcon class="size-5 stroke-[1.5]" />
@@ -92,7 +92,7 @@
 									<Dropdown.Item>
 										<Button
 											href="/admin"
-											class="hover:text-foreground text-foreground-alt-1 h-auto justify-between bg-transparent p-1 enabled:hover:bg-transparent"
+											class="hover:text-foreground text-foreground-alt-1 h-auto justify-between bg-transparent p-1 hover:bg-transparent"
 										>
 											<div class="flex flex-row items-center gap-2.5">
 												<LockIcon class="size-5 stroke-[1.5]" />
@@ -108,7 +108,7 @@
 								<Dropdown.CautionItem>
 									<Button
 										onclick={logout}
-										class="text-foreground-alt-1 h-auto justify-between bg-transparent p-1 enabled:hover:bg-transparent"
+										class="text-foreground-alt-1 h-auto justify-between bg-transparent p-1 hover:bg-transparent"
 									>
 										<div class="flex flex-row items-center gap-2.5">
 											<LogoutIcon class="size-5 stroke-[1.5]" />
