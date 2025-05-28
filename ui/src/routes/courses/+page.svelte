@@ -164,14 +164,14 @@
 														<Avatar.Fallback
 															class="bg-background-alt-2 flex h-full w-full place-content-center"
 														>
-															<LogoIcon class="fill-background-alt-3 w-12" />
+															<LogoIcon class="fill-background-alt-3 size-20" />
 														</Avatar.Fallback>
 													</Avatar.Root>
 												{:else}
 													<div
 														class="bg-background-alt-2 flex h-full w-full items-center justify-center"
 													>
-														<LogoIcon class="fill-background-alt-3 w-12" />
+														<LogoIcon class="fill-background-alt-3 size-20" />
 													</div>
 												{/if}
 											</div>
