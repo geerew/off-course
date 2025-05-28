@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { Button } from 'bits-ui';
 	import type { HTMLInputAttributes } from 'svelte/elements';
+	import { Button } from '.';
 	import Input from './input.svelte';
 
 	type Props = HTMLInputAttributes & {
@@ -41,9 +41,10 @@
 <div class="relative w-full overflow-hidden rounded-md">
 	<Input bind:ref bind:value name="password" type="password" class="pe-10" {...restProps} />
 
-	<Button.Root
+	<Button
 		type="button"
-		class="absolute top-1/2 right-0 h-full w-8 -translate-y-1/2 hover:cursor-pointer"
+		variant="ghost"
+		class="group absolute top-1/2 right-2 h-full w-8 -translate-y-1/2 hover:bg-transparent"
 		aria-label="Toggle password visibility"
 		onclick={() => {
 			togglePasswordVisibility(passwordEl, passwordEyeOpenEl, passwordEyeClosedEl);
@@ -56,7 +57,7 @@
 			viewBox="0 0 24 24"
 			stroke-width="1.5"
 			stroke="currentColor"
-			class="text-foreground-alt-3 visible size-5"
+			class="text-foreground-alt-3 group-hover:text-foreground visible size-5"
 		>
 			<path
 				stroke-linecap="round"
@@ -85,5 +86,5 @@
 				d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
 			/>
 		</svg>
-	</Button.Root>
+	</Button>
 </div>

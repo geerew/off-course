@@ -281,7 +281,8 @@
 										class={cn('group-hover:bg-background-alt-1', smallTable ? 'visible' : 'hidden')}
 									>
 										<Button
-											class="text-foreground-alt-2 hover:text-foreground h-auto w-auto rounded bg-transparent p-1 enabled:hover:bg-transparent"
+											variant="ghost"
+											class="text-foreground-alt-2 hover:text-foreground h-auto p-1 enabled:hover:bg-transparent"
 											title={expandedUsers[user.id] ? 'Collapse details' : 'Expand details'}
 											aria-expanded={!!expandedUsers[user.id]}
 											aria-controls={`expanded-row-${user.id}`}

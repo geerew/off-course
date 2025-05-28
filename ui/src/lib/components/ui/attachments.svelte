@@ -37,8 +37,9 @@
 			<Dropdown.Item>
 				<Button
 					href={`/api/courses/${courseId}/assets/${assetId}/attachments/${attachment.id}/serve`}
+					variant="ghost"
+					class="hover:text-foreground h-auto justify-between gap-5 text-xs hover:bg-transparent"
 					download
-					class="hover:text-foreground text-foreground-alt-1 flex h-auto cursor-pointer flex-row items-center justify-between rounded-md bg-transparent text-xs duration-200 hover:bg-transparent"
 				>
 					<div class="flex flex-row items-center gap-3">
 						<span class="shrink-0">{index + 1}.</span>

@@ -88,13 +88,15 @@
 		{#if deletingSelf}
 			<Separator.Root class="bg-background-alt-3 mt-2 h-px w-full shrink-0" />
 
-			<div class="flex w-xs flex-col gap-2.5 px-2.5">
-				<div>Confirm Password:</div>
-				<PasswordInput
-					bind:ref={currentInputEl}
-					bind:value={currentPassword}
-					name="current password"
-				/>
+			<div class="flex w-full justify-center">
+				<div class="flex w-xs flex-col gap-2.5 px-2.5">
+					<div>Confirm Password:</div>
+					<PasswordInput
+						bind:ref={currentInputEl}
+						bind:value={currentPassword}
+						name="current password"
+					/>
+				</div>
 			</div>
 		{/if}
 	</Dialog.Alert>
@@ -102,9 +104,10 @@
 
 {#snippet deleteButton()}
 	<Button
-		disabled={isPosting}
+		variant="destructive"
+		class="w-24"
+		disabled={(deletingSelf && !currentPassword) || isPosting}
 		onclick={doDelete}
-		class="bg-background-error disabled:bg-background-error/80 enabled:hover:bg-background-error-alt-1 text-foreground-alt-1 enabled:hover:text-foreground w-24"
 	>
 		{#if isPosting}
 			<Spinner class="bg-foreground-alt-1 size-2" />

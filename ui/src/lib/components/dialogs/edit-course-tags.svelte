@@ -277,7 +277,7 @@
 
 {#snippet header()}
 	<Button
-		class="absolute h-full w-auto cursor-text rounded-none bg-transparent px-3 enabled:hover:bg-transparent"
+		class="absolute h-full w-auto cursor-text rounded-none bg-transparent px-3 hover:bg-transparent"
 		onfocusin={() => {
 			inputEl?.focus();
 		}}
@@ -356,8 +356,8 @@
 							class={cn(
 								'border-background-alt-6 text-foreground h-full rounded-none rounded-r-md border-l bg-transparent px-1',
 								toDelete.find((t) => t.tag === tag.tag)
-									? 'enabled:hover:bg-background-success'
-									: 'enabled:hover:bg-background-error'
+									? 'hover:bg-background-success'
+									: 'hover:bg-background-error'
 							)}
 							onclick={() => {
 								if (toDelete.find((t) => t === tag)) {
@@ -392,7 +392,7 @@
 				</span>
 
 				<Button
-					class="border-background-alt-3 text-foreground enabled:hover:bg-background-error h-full rounded-none border-l bg-transparent px-1"
+					class="border-background-alt-3 text-foreground hover:bg-background-error h-full rounded-none border-l bg-transparent px-1"
 					onclick={() => {
 						toAdd = toAdd.filter((t) => t !== tag);
 					}}

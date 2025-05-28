@@ -68,11 +68,7 @@
 {/snippet}
 
 {#snippet deleteButton()}
-	<Button
-		disabled={isPosting}
-		onclick={doDelete}
-		class="bg-background-error disabled:bg-background-error/80 enabled:hover:bg-background-error-alt-1 text-foreground-alt-1 enabled:hover:text-foreground w-24"
-	>
+	<Button variant="destructive" class="w-24" disabled={isPosting} onclick={doDelete}>
 		{#if isPosting}
 			<Spinner class="bg-foreground-alt-1 size-2" />
 		{:else}

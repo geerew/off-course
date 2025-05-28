@@ -73,11 +73,7 @@
 {/snippet}
 
 {#snippet revokeButton()}
-	<Button
-		disabled={isPosting}
-		onclick={doRevoke}
-		class="bg-background-error enabled:hover:bg-background-error-alt-1 text-foreground-alt-1 enabled:hover:text-foreground w-24"
-	>
+	<Button variant="destructive" class="w-24" disabled={isPosting} onclick={doRevoke}>
 		{#if isPosting}
 			<Spinner class="bg-foreground-alt-1 size-2" />
 		{:else}

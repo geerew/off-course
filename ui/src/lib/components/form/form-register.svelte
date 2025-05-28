@@ -37,7 +37,7 @@
 <form onsubmit={submitForm} class="flex flex-col gap-5">
 	<Input bind:value={username} name="username" type="text" placeholder="Username" />
 	<PasswordInput bind:value={password} placeholder="password" />
-	<Button class="font-medium" disabled={!username || !password || posting}>
+	<Button variant="default" disabled={!username || !password || posting}>
 		{#if posting}
 			<Spinner class="bg-background-alt-4  size-4" />
 		{:else}

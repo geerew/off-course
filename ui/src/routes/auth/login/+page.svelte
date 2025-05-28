@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Logo } from '$lib/components';
 	import FormLogin from '$lib/components/form/form-login.svelte';
+	import { Button } from '$lib/components/ui';
 </script>
 
 <div class="flex h-dvh min-h-110 flex-col items-center justify-center gap-8">
@@ -15,9 +16,13 @@
 
 		<div class="text-foreground-alt-3 text-center">
 			Don't have an account?
-			<a href="/auth/register/" class="hover:text-background-primary font-semibold duration-200">
+			<Button
+				href="/auth/register/"
+				variant="ghost"
+				class="hover:text-background-primary h-auto px-1"
+			>
 				Sign up
-			</a>
+			</Button>
 		</div>
 	</div>
 </div>

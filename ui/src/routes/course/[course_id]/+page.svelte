@@ -233,6 +233,7 @@
 						<div class="flex flex-row gap-2.5">
 							<Button
 								href={`/course/${course.id}/${assetToResume?.id}`}
+								variant="default"
 								class="w-auto px-4"
 								disabled={course.maintenance || !course.available}
 								onclick={(e) => {
@@ -397,8 +398,9 @@
 															<!-- Play button -->
 															<Button
 																href={`/course/${course?.id}/${assetGroup.assets[0].id}`}
+																variant="secondary"
 																class={cn(
-																	'bg-background-alt-2  hover:bg-background-alt-3 flex h-auto w-auto shrink-0 items-center justify-center rounded-full p-2 opacity-0 transition-all duration-150 ease-in',
+																	'bg-background-alt-2 hover:bg-background-alt-3 h-auto w-auto rounded-full p-2 opacity-0 duration-150 ease-in',
 																	course?.maintenance || !course?.available
 																		? 'group-hover:opacity-0 pointer-coarse:opacity-0'
 																		: 'group-hover:opacity-100 pointer-coarse:opacity-100'
@@ -406,11 +408,11 @@
 															>
 																{#if assetGroup.completed}
 																	<MediaRestart
-																		class="stroke-foreground-alt-1 size-5.5 fill-transparent stroke-[1.5] pointer-coarse:size-4"
+																		class="stroke-foreground-alt-1 size-5 fill-transparent stroke-[1.5] pointer-coarse:size-4"
 																	/>
 																{:else}
 																	<MediaPlayIcon
-																		class="fill-foreground-alt-1 size-5.5 pointer-coarse:size-4"
+																		class="fill-foreground-alt-1 size-5 pointer-coarse:size-4"
 																	/>
 																{/if}
 															</Button>

@@ -3,7 +3,6 @@
 <script lang="ts">
 	import { GetScans } from '$lib/api/scan-api';
 	import { NiceDate, Pagination, SortMenu } from '$lib/components';
-	import { AddCoursesDialog } from '$lib/components/dialogs';
 	import { RightChevronIcon, WarningIcon } from '$lib/components/icons';
 	import RowActionMenu from '$lib/components/pages/admin/scans/row-action-menu.svelte';
 	import TableActionMenu from '$lib/components/pages/admin/scans/table-action-menu.svelte';
@@ -172,14 +171,6 @@
 
 <div class="flex w-full place-content-center" bind:this={mainEl}>
 	<div class="flex w-full max-w-7xl flex-col gap-6 pt-1">
-		<div class="flex flex-row items-center justify-between">
-			<AddCoursesDialog
-				successFn={() => {
-					loadPromise = fetchScans();
-				}}
-			/>
-		</div>
-
 		<div class="flex flex-col gap-3 md:flex-row">
 			<div class="flex flex-1 flex-row">
 				<!-- <FilterBar
@@ -312,7 +303,8 @@
 										></div>
 
 										<Button
-											class="text-foreground-alt-2 hover:text-foreground h-auto w-auto rounded bg-transparent p-1 enabled:hover:bg-transparent"
+											variant="ghost"
+											class="text-foreground-alt-2 hover:text-foreground h-auto p-1 enabled:hover:bg-transparent"
 											title={expandedScans[scan.id] ? 'Collapse details' : 'Expand details'}
 											aria-expanded={!!expandedScans[scan.id]}
 											aria-controls={`expanded-row-${scan.id}`}

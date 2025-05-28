@@ -420,8 +420,9 @@
 
 		{#if !disabled}
 			<Button
+				variant="ghost"
 				class={cn(
-					'bg-background-alt-4 text-foreground-alt-3 enabled:hover:text-foreground-alt-1 enabled:hover:bg-background-alt-6 mt-[7px] size-6 p-0',
+					'text-foreground-alt-3 hover:text-foreground-alt-1 mt-[7px] size-6 p-0',
 					!value && !filterApplied && 'cursor-default opacity-0'
 				)}
 				onclick={() => {

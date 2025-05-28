@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Logo } from '$lib/components';
 	import { FormRegister } from '$lib/components/form';
-	import { Button } from 'bits-ui';
+	import { Button } from '$lib/components/ui';
 </script>
 
 <div class="flex h-dvh min-h-110 flex-col items-center justify-center gap-8">
@@ -16,12 +16,9 @@
 
 		<div class="text-foreground-alt-3 text-center">
 			Already have an account?
-			<Button.Root
-				href="/auth/login/"
-				class="hover:text-background-primary font-semibold duration-200"
-			>
+			<Button href="/auth/login/" variant="ghost" class="hover:text-background-primary h-auto px-1">
 				Login
-			</Button.Root>
+			</Button>
 		</div>
 	</div>
 </div>

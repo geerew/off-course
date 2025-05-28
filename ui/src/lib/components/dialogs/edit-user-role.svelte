@@ -88,7 +88,7 @@
 
 		<Dialog.Footer>
 			<Dialog.CloseButton>Close</Dialog.CloseButton>
-			<Button disabled={isPosting || !roleValue} class="w-24" onclick={doUpdate}>
+			<Button variant="default" class="w-24" disabled={isPosting || !roleValue} onclick={doUpdate}>
 				{#if isPosting}
 					<Spinner class="bg-background-alt-4  size-2" />
 				{:else}

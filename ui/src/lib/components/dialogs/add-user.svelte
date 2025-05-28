@@ -182,7 +182,7 @@
 {/snippet}
 
 {#snippet actionButton()}
-	<Button onclick={add} disabled={submitDisabled || isPosting} class="h-10 w-25 py-2">
+	<Button onclick={add} disabled={submitDisabled || isPosting} class="w-25">
 		{#if isPosting}
 			<Spinner class="bg-background-alt-4 size-2" />
 		{:else}

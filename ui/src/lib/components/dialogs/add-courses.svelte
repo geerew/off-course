@@ -169,8 +169,9 @@
 
 {#snippet refreshButton()}
 	<Button
+		variant="ghost"
+		class="mr-2.5 w-auto"
 		disabled={isRefreshing}
-		class="enabled:hover:bg-background-alt-4 mr-2 w-auto bg-transparent px-2 disabled:bg-transparent"
 		onclick={async () => {
 			isRefreshing = true;
 			paths.length > 0 ? await load(paths[paths.length - 1]) : await load('');
@@ -185,9 +186,9 @@
 
 {#snippet addButton()}
 	<Button
-		onclick={addCourses}
+		class="w-25"
 		disabled={isPosting || isRefreshing || selectedCoursesCount === 0}
-		class="h-10 w-25 py-2"
+		onclick={addCourses}
 	>
 		{#if isPosting}
 			<Spinner class="bg-background-alt-4 size-2" />
@@ -212,7 +213,8 @@
 				{#key paths[paths.length - 1]}
 					<div class="border-background-alt-3 flex flex-row items-center border-b">
 						<Button
-							class="text-foreground-alt-1 enabled:hover:bg-background disabled:text-foreground-alt-3 h-14 grow justify-start rounded-none bg-transparent p-0 px-3 text-start whitespace-normal duration-0 disabled:bg-transparent disabled:hover:cursor-default"
+							variant="ghost"
+							class=" h-14 grow justify-start rounded-none px-3 py-2 text-start duration-0"
 							disabled={selectedPath !== '' || isPosting || isRefreshing}
 							onclick={async () => {
 								await moveBack();
@@ -237,7 +239,8 @@
 			{#each fs.directories as dir (dir.path)}
 				<div class="border-background-alt-3 flex min-h-14 flex-row items-stretch border-b">
 					<Button
-						class="text-foreground-alt-1 enabled:hover:bg-background disabled:text-foreground-alt-3 h-auto grow justify-start rounded-none bg-transparent p-0 px-3 py-2 text-start wrap-anywhere whitespace-normal duration-0 disabled:bg-transparent disabled:hover:cursor-default"
+						variant="ghost"
+						class=" h-auto grow justify-start rounded-none px-3 py-2 text-start wrap-anywhere whitespace-normal duration-0"
 						disabled={isPosting ||
 							isRefreshing ||
 							selectedPath !== '' ||
@@ -252,7 +255,10 @@
 
 					<!-- Selection -->
 					<div class="flex w-20 shrink-0 justify-center self-stretch">
-						<Separator.Root orientation="vertical" class="bg-background-alt-3 h-full w-px" />
+						<Separator.Root
+							orientation="vertical"
+							class="bg-background-alt-3 h-full w-px shrink-0"
+						/>
 
 						{#if dir.classification === FsPathClassification.Course}
 							<div class="flex w-full justify-center place-self-center">
@@ -268,8 +274,9 @@
 							</div>
 						{:else}
 							<Button
+								variant="ghost"
 								class={cn(
-									'enabled:hover:bg-background group disabled:text-foreground-alt-3 h-full w-full rounded-none bg-transparent p-0 disabled:bg-transparent disabled:hover:cursor-default',
+									'group h-full w-full rounded-none p-0',
 									dir.classification === FsPathClassification.Ancestor &&
 										'cursor-default hover:bg-transparent'
 								)}
@@ -320,7 +327,8 @@
 	{#if isDesktop}
 		<div class="flex justify-start gap-2">
 			<Button
-				class="border-background-alt-4 text-foreground-alt-1 enabled:hover:bg-background-alt-4 enabled:hover:text-foreground disabled:text-foreground-alt-3 w-24 cursor-pointer rounded-md border bg-transparent py-2 duration-200 select-none disabled:bg-transparent disabled:opacity-70"
+				variant="outline"
+				class="w-auto"
 				disabled={selectAllDisabled}
 				onclick={() => {
 					// Select all courses current not selected (and can be selected)
@@ -333,11 +341,13 @@
 					toastCount();
 				}}
 			>
-				Select All
+				<SelectAllIcon class="size-4 stroke-[1.5]" />
+				Select all
 			</Button>
 
 			<Button
-				class="border-background-alt-4 text-foreground-alt-1 enabled:hover:bg-background-alt-4 enabled:hover:text-foreground disabled:text-foreground-alt-3 w-28 cursor-pointer rounded-md border bg-transparent py-2 duration-200 select-none disabled:bg-transparent disabled:opacity-70"
+				variant="outline"
+				class="w-auto"
 				disabled={deselectAllDisabled}
 				onclick={() => {
 					// Remove all selected courses
@@ -350,6 +360,7 @@
 					toastCount();
 				}}
 			>
+				<DeselectAllIcon class="size-4 stroke-[1.5]" />
 				Deselect All
 			</Button>
 		</div>

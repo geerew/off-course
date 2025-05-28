@@ -317,7 +317,8 @@
 										{/if}
 
 										<Button
-											class="text-foreground-alt-2 hover:text-foreground h-auto w-auto rounded bg-transparent p-1 enabled:hover:bg-transparent"
+											variant="ghost"
+											class="text-foreground-alt-2 hover:text-foreground h-auto p-1 enabled:hover:bg-transparent"
 											title={expandedCourses[course.id] ? 'Collapse details' : 'Expand details'}
 											aria-expanded={!!expandedCourses[course.id]}
 											aria-controls={`expanded-row-${course.id}`}

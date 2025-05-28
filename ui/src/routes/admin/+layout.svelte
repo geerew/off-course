@@ -55,11 +55,12 @@
 	{#each menu as item}
 		<Button
 			href={item.href}
+			variant="ghost"
 			class={cn(
-				'bg-background text-foreground-alt-2 hover:text-foreground hover:bg-background-alt-1 relative flex h-auto flex-row justify-start gap-3 px-2.5 leading-6 font-medium duration-200',
+				'text-foreground-alt-2 hover:text-foreground hover:bg-background-alt-1 relative h-auto justify-start gap-3 px-2.5 leading-6',
 				page.url.pathname.startsWith(item.matcher) &&
 					'bg-background-alt-1 after:bg-background-primary after:absolute after:top-0 after:right-0 after:h-full after:w-1',
-				mobile ? ' py-6' : ' py-3'
+				mobile ? 'py-6 text-base' : 'py-3'
 			)}
 			onclick={() => {
 				if (mobile && menuPopupMode) {
@@ -114,7 +115,8 @@
 	>
 		<div class="container-pl flex h-full items-center">
 			<Button
-				class="bg-background text-foreground-alt-2 hover:text-foreground-alt-1 flex h-auto items-start justify-start gap-1.5 text-start duration-200 enabled:hover:bg-transparent"
+				variant="ghost"
+				class="text-foreground-alt-2 hover:text-foreground h-auto hover:bg-transparent"
 				onclick={() => {
 					dialogOpen = !dialogOpen;
 				}}

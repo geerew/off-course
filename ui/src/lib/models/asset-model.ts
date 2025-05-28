@@ -51,6 +51,7 @@ export const AssetSchema = object({
 	title: string(),
 	prefix: number(),
 	subPrefix: optional(number()),
+	subTitle: optional(string()),
 	chapter: string(),
 	path: string(),
 	assetType: AssetTypeSchema,

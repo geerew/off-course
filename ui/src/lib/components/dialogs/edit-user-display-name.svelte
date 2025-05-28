@@ -90,7 +90,12 @@
 			<Dialog.Footer>
 				<Dialog.CloseButton>Close</Dialog.CloseButton>
 
-				<Button type="submit" disabled={newValue === '' || isPosting} class="w-24">
+				<Button
+					type="submit"
+					variant="default"
+					class="w-24"
+					disabled={newValue === '' || isPosting}
+				>
 					{#if isPosting}
 						<Spinner class="bg-background-alt-4  size-2" />
 					{:else}

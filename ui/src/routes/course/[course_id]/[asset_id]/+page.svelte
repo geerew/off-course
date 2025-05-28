@@ -138,9 +138,8 @@
 		>
 			<Button
 				href={`/course/${course.id}`}
-				class={cn(
-					'bg-background hover:bg-background-alt-1 text-foreground-alt-1 hover:text-background-primary flex h-auto items-start justify-start rounded-none py-5 pr-3 text-start duration-200'
-				)}
+				variant="ghost"
+				class="bg-background hover:bg-background-alt-1 text-foreground-alt-1 hover:text-background-primary h-auto w-full items-start justify-start rounded-none py-5 pr-3 pl-0 text-start whitespace-normal"
 			>
 				<span class="container-pl font-semibold">{course.title}</span>
 			</Button>
@@ -163,8 +162,9 @@
 				<div class="ml-auto flex flex-col pt-4 pb-3">
 					{#each chapters[chapter] as assetGroup, index}
 						<Button
+							variant="ghost"
 							class={cn(
-								'text-foreground-alt-2 bg-background enabled:hover:bg-background-alt-2 enabled:hover:text-foreground-alt-1 h-auto justify-start rounded-none text-start duration-50',
+								'text-foreground-alt-2 hover:bg-background-alt-2 hover:text-foreground-alt-1 h-auto w-full justify-start rounded-none text-start whitespace-normal',
 								selectedAsset?.id === assetGroup.assets[0].id &&
 									'text-foreground-alt-1 bg-background-alt-2'
 							)}
@@ -318,7 +318,8 @@
 			>
 				<div class="container-pl flex h-full items-center">
 					<Button
-						class="bg-background text-foreground-alt-2 hover:text-foreground-alt-1 flex h-auto items-start justify-start gap-1.5 text-start duration-200 enabled:hover:bg-transparent"
+						variant="ghost"
+						class="text-foreground-alt-2 hover:text-foreground h-auto hover:bg-transparent"
 						onclick={() => {
 							dialogOpen = !dialogOpen;
 						}}
@@ -349,11 +350,12 @@
 								<Tooltip delayDuration={100} contentProps={{ side: 'bottom', sideOffset: 8 }}>
 									{#snippet trigger()}
 										<Button
+											variant="ghost"
 											class={cn(
-												' flex size-8 shrink-0 items-center justify-center rounded-full border',
+												'flex size-8 shrink-0 items-center justify-center rounded-full border',
 												selectedAssetGroup?.completed
-													? 'enabled:bg-background-success enabled:hover:bg-background-success border-background-success'
-													: 'enabled:bg-background enabled:hover:bg-background border-foreground'
+													? 'bg-background-success hover:bg-background-success border-background-success'
+													: 'bg-background border-foreground'
 											)}
 											onclick={async () => {
 												if (!selectedAssetGroup) return;
@@ -390,47 +392,55 @@
 						</div>
 
 						{#each selectedAssetGroup.assets as asset}
-							<span>{asset.subPrefix}.</span>
+							<div class="flex w-full flex-col gap-2">
+								{#if selectedAssetGroup.assets.length > 1}
+									<span class="text-lg font-medium">
+										{asset.subPrefix}. {asset.subTitle ? asset.subTitle : asset.title}
+									</span>
+								{/if}
 
-							{#if asset.assetType === 'video'}
-								<VideoPlayer
-									src={`/api/courses/${course.id}/assets/${asset.id}/serve`}
-									startTime={asset.progress?.videoPos || 0}
-									onTimeChange={(time: number) => {
-										if (!asset.progress) {
-											asset.progress = {
-												completed: false,
-												completedAt: '',
-												videoPos: time
-											};
-										} else {
-											asset.progress.videoPos = time;
-										}
+								{#if asset.assetType === 'video'}
+									<VideoPlayer
+										src={`/api/courses/${course.id}/assets/${asset.id}/serve`}
+										startTime={asset.progress?.videoPos || 0}
+										onTimeChange={(time: number) => {
+											if (!asset.progress) {
+												asset.progress = {
+													completed: false,
+													completedAt: '',
+													videoPos: time
+												};
+											} else {
+												asset.progress.videoPos = time;
+											}
 
-										updateAssetProgress(asset);
-									}}
-									onCompleted={(time: number) => {
-										if (!asset.progress) {
-											asset.progress = {
-												completed: true,
-												completedAt: '',
-												videoPos: time
-											};
-										} else {
-											asset.progress.videoPos = time;
-											asset.progress.completed = true;
-										}
+											updateAssetProgress(asset);
+										}}
+										onCompleted={(time: number) => {
+											if (!asset.progress) {
+												asset.progress = {
+													completed: true,
+													completedAt: '',
+													videoPos: time
+												};
+											} else {
+												asset.progress.videoPos = time;
+												asset.progress.completed = true;
+											}
 
-										updateAssetProgress(asset);
+											updateAssetProgress(asset);
 
-										if (!selectedAssetGroup) return;
-										selectedAssetGroup.completedAssetCount += 1;
+											if (!selectedAssetGroup) return;
+											selectedAssetGroup.completedAssetCount += 1;
 
-										if (selectedAssetGroup.completedAssetCount >= selectedAssetGroup.assets.length)
-											selectedAssetGroup.completed = true;
-									}}
-								/>
-							{/if}
+											if (
+												selectedAssetGroup.completedAssetCount >= selectedAssetGroup.assets.length
+											)
+												selectedAssetGroup.completed = true;
+										}}
+									/>
+								{/if}
+							</div>
 						{/each}
 					</div>
 				</div>

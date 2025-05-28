@@ -146,8 +146,9 @@
 									{#each courses as course}
 										<Button
 											href={`/course/${course.id}`}
+											variant="ghost"
 											class={cn(
-												'bg-background-alt-1 text-foreground-alt-1 hover:bg-background-alt-1 group flex h-auto flex-row items-start gap-1.5 overflow-hidden rounded-lg text-start duration-200 md:flex-col'
+												'bg-background-alt-1 hover:bg-background-alt-1 group h-auto items-start overflow-hidden rounded-lg p-0 text-start whitespace-normal md:flex-col'
 											)}
 										>
 											<!-- Card -->
@@ -231,8 +232,9 @@
 								{#if paginationTotal && paginationTotal > courses.length}
 									<div class="flex w-full justify-center pt-5">
 										<Button
+											variant="default"
+											class="w-full px-4 text-base"
 											disabled={loadingMore}
-											class="px-4 py-2 text-base font-semibold"
 											onclick={async () => {
 												paginationPage += 1;
 												loadingMore = true;

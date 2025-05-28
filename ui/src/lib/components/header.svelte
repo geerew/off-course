@@ -33,8 +33,9 @@
 			{#each menu as item}
 				<Button
 					href={item.href}
+					variant="ghost"
 					class={cn(
-						'text-foreground-alt-2 hover:text-foreground relative rounded-lg bg-transparent px-2.5 py-1.5 leading-6 font-medium duration-200',
+						'hover:text-foreground relative px-2.5 py-1.5 text-base leading-6 hover:bg-transparent',
 						page.url.pathname === item.matcher &&
 							'after:bg-background-primary text-foreground after:absolute after:-bottom-0.5 after:left-0 after:h-0.5 after:w-full'
 					)}
@@ -76,7 +77,8 @@
 								<Dropdown.Item>
 									<Button
 										href="/profile"
-										class="hover:text-foreground text-foreground-alt-1 h-auto justify-between bg-transparent p-1 hover:bg-transparent"
+										variant="ghost"
+										class="hover:text-foreground h-auto w-full justify-between p-1 hover:bg-transparent"
 									>
 										<div class="flex flex-row items-center gap-2.5">
 											<UserIcon class="size-5 stroke-[1.5]" />
@@ -92,7 +94,8 @@
 									<Dropdown.Item>
 										<Button
 											href="/admin"
-											class="hover:text-foreground text-foreground-alt-1 h-auto justify-between bg-transparent p-1 hover:bg-transparent"
+											variant="ghost"
+											class="hover:text-foreground h-auto w-full justify-between p-1 hover:bg-transparent"
 										>
 											<div class="flex flex-row items-center gap-2.5">
 												<LockIcon class="size-5 stroke-[1.5]" />
@@ -108,7 +111,8 @@
 								<Dropdown.CautionItem>
 									<Button
 										onclick={logout}
-										class="text-foreground-alt-1 h-auto justify-between bg-transparent p-1 hover:bg-transparent"
+										variant="ghost"
+										class="hover:text-foreground h-auto w-full justify-between p-1 hover:bg-transparent"
 									>
 										<div class="flex flex-row items-center gap-2.5">
 											<LogoutIcon class="size-5 stroke-[1.5]" />

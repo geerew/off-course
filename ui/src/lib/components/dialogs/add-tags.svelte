@@ -116,7 +116,8 @@
 
 {#snippet header()}
 	<Button
-		class="absolute h-full w-auto cursor-text rounded-none bg-transparent px-3 enabled:hover:bg-transparent"
+		variant="ghost"
+		class="absolute h-full w-auto cursor-text rounded-none px-3 hover:bg-transparent"
 		onfocusin={() => {
 			inputEl?.focus();
 		}}
@@ -152,7 +153,8 @@
 				</span>
 
 				<Button
-					class="border-background-alt-3 text-foreground enabled:hover:bg-background-error h-full rounded-none border-l bg-transparent px-1"
+					variant="destructive"
+					class="border-background-alt-3 h-full rounded-none border-l bg-transparent px-1"
 					onclick={() => {
 						toAdd = toAdd.filter((t) => t !== tag);
 					}}
@@ -165,7 +167,7 @@
 {/snippet}
 
 {#snippet action()}
-	<Button disabled={isPosting || toAddCount === 0} onclick={addTags} class="h-10 w-25 py-2">
+	<Button disabled={isPosting || toAddCount === 0} onclick={addTags} variant="default" class="w-25">
 		{#if isPosting}
 			<Spinner class="bg-background-alt-4 size-2" />
 		{:else}
