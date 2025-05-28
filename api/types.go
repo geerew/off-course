@@ -156,6 +156,7 @@ type assetResponse struct {
 	Title     string         `json:"title"`
 	Prefix    int            `json:"prefix"`
 	SubPrefix int            `json:"subPrefix,omitempty"`
+	SubTitle  string         `json:"subTitle,omitempty"`
 	Chapter   string         `json:"chapter"`
 	Path      string         `json:"path"`
 	Type      types.Asset    `json:"assetType"`
@@ -211,6 +212,7 @@ func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 
 		if asset.SubPrefix.Valid {
 			response.SubPrefix = int(asset.SubPrefix.Int16)
+			response.SubTitle = asset.SubTitle
 		}
 
 		responses = append(responses, response)

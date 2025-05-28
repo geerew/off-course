@@ -18,6 +18,7 @@ type Asset struct {
 	Title     string
 	Prefix    sql.NullInt16
 	SubPrefix sql.NullInt16
+	SubTitle  string
 	Chapter   string
 	Type      types.Asset
 	Path      string
@@ -39,6 +40,7 @@ const (
 	ASSET_TITLE          = "title"
 	ASSET_PREFIX         = "prefix"
 	ASSET_SUB_PREFIX     = "sub_prefix"
+	ASSET_SUB_TITLE      = "sub_title"
 	ASSET_CHAPTER        = "chapter"
 	ASSET_TYPE           = "type"
 	ASSET_PATH           = "path"
@@ -85,6 +87,7 @@ func (a *Asset) Define(s *schema.ModelConfig) {
 	s.Field("Title").Column(ASSET_TITLE).NotNull().Mutable()
 	s.Field("Prefix").Column(ASSET_PREFIX).Mutable()
 	s.Field("SubPrefix").Column(ASSET_SUB_PREFIX).Mutable()
+	s.Field("SubTitle").Column(ASSET_SUB_TITLE).Mutable()
 	s.Field("Chapter").Column(ASSET_CHAPTER).Mutable()
 	s.Field("Type").Column(ASSET_TYPE).NotNull().Mutable()
 	s.Field("Path").Column(ASSET_PATH).NotNull().Mutable()

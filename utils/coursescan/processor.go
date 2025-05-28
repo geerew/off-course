@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -292,6 +293,7 @@ func scanFiles(s *CourseScan, coursePath string, courseID string) (AssetsByChapt
 			Title:     parsed.title,
 			Prefix:    sql.NullInt16{Int16: int16(parsed.prefix), Valid: true},
 			SubPrefix: subPrefix,
+			SubTitle:  parsed.subTitle,
 			Chapter:   chapter,
 			CourseID:  courseID,
 			Path:      normalized,
@@ -578,40 +580,58 @@ func applyAttachmentChanges(
 type parsedFilename struct {
 	prefix    int
 	subPrefix *int
+	subTitle  string
 	title     string
 	asset     *types.Asset
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// A regex for parsing a file name into a prefix, title, sub-prefix (optional) and extension
-//
-// Valid patterns:
-//
-//	 `<prefix>`
-//	 `<prefix>.<ext>`
-//	 `<prefix> <title>`
-//	 `<prefix>-<title>`
-//	 `<prefix> - <title>`
-//	 `<prefix> <title>.<ext>`
-//	 `<prefix>-<title>.<ext>`
-//	 `<prefix> - <title>.<ext>`
-//	 `<prefix> - <title> {sub-prefix}.<ext>`
-//
-//	- <prefix> is required and must be a number
-//	- A dash (-) is optional
-//	- <title> is optional and can be any non-empty string
-//	- <ext> is optional
-// var filenameRegex = regexp.MustCompile(`^\s*(?P<Prefix>[0-9]+)((?:\s+-+\s+|\s+-+|\s+|-+\s*)(?P<Title>[^.][^.]*)?)?(?:\.(?P<Ext>\w+))?$`)
+// A regex for parsing a file name into a prefix, title, sub-prefix (optional), sub-title (optional) and extension
+var filenameRegex = regexp.MustCompile(
+	`^` +
+		// Prefix
+		//   - Ex: 1, 01, 123
+		`(?P<Prefix>\d+)` +
 
-var filenameRegex = regexp.MustCompile(`^\s*(?P<Prefix>[0-9]+)((?:\s+-+\s+|\s+-+|\s+|-+\s*)(?P<Title>[^.][^.]*?))?(?:\s+\{(?P<SubPrefix>[0-9]+)\})?(?:\.(?P<Ext>\w+))?$`)
+		// Optional spacer followed by an optional title
+		//   - Spacer: zero or more spaces, zero or more hyphens, zero or more spaces
+		//   - Title: any chars up to “{” (non‐greedy)
+		//
+		//   - Ex:
+		// 		`- title`,
+		// 		`  -  title`,
+		// 		`title`,
+		// 		`--- title`
+		`(?:(?:\s+|\s*-+\s*)(?P<Title>[^{]*?))?` +
+
+		// Optional sub‐group in braces { … }
+		//   - SubPrefix: any number of digits (non‐greedy)
+		//   - Spacer: zero or more spaces, zero or more hyphens, zero or more spaces
+		//   - SubTitle: any chars up to “}” (non‐greedy)
+		//
+		//  - Ex:
+		// 		`{2}`,
+		// 		`{2 - subtitle}`,
+		// 		`{ 2 - subtitle}`,
+		// 		`{ 2 }`,
+		// 		`{2 - subtitle}`,
+		`(?:\s*\{(?:(?P<SubPrefix>\d+)(?:\s*(?:-+\s*)?(?P<SubTitle>[^}]*))?)?\})?` +
+
+		// Optional extension
+		//   - Ex: `.jpg`, `.png`, `.pdf`
+		`(?:\.(?P<Ext>\w+))?` +
+
+		// End of string
+		`$`,
+)
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // parseFilename parses a file name and determines if it represents an asset, attachment, or
 // neither
 //
-//   - Asset: `<prefix> <title> {<sub-prefix>}.<ext>` (where <ext> is a valid `types.AssetType`)
+//   - Asset: `<prefix> <title> {<sub-prefix> <sub-title>}.<ext>` (where <ext> is a valid `types.AssetType`)
 //   - Attachment: `<prefix>`, `<prefix> <title>` or `<prefix> <title>.<ext>` (where <ext> is not
 //     a valid `types.AssetType`)
 func parseFilename(filename string) *parsedFilename {
@@ -628,13 +648,10 @@ func parseFilename(filename string) *parsedFilename {
 	}
 
 	pfn.prefix = prefix
-	pfn.title = matches[filenameRegex.SubexpIndex("Title")]
 
-	if subPrefixStr := matches[filenameRegex.SubexpIndex("SubPrefix")]; subPrefixStr != "" {
-		if subPrefix, err := strconv.Atoi(subPrefixStr); err == nil {
-			pfn.subPrefix = &subPrefix
-		}
-	}
+	title := strings.TrimSpace(matches[filenameRegex.SubexpIndex("Title")])
+	title = strings.TrimLeft(title, " -")
+	pfn.title = title
 
 	// When title is empty, consider this an attachment
 	if pfn.title == "" {
@@ -654,6 +671,17 @@ func parseFilename(filename string) *parsedFilename {
 	if pfn.asset == nil {
 		pfn.title = pfn.title + "." + ext
 	}
+
+	// When this is an asset, optionally parse the sub-prefix and sub-title
+	if subPrefixStr := matches[filenameRegex.SubexpIndex("SubPrefix")]; subPrefixStr != "" {
+		if subPrefix, err := strconv.Atoi(subPrefixStr); err == nil {
+			pfn.subPrefix = &subPrefix
+		}
+	}
+
+	subTitle := strings.TrimSpace(matches[filenameRegex.SubexpIndex("SubTitle")])
+	subTitle = strings.Trim(subTitle, " -")
+	pfn.subTitle = subTitle
 
 	return pfn
 }

@@ -39,6 +39,7 @@ CREATE TABLE assets (
 	title        TEXT NOT NULL,
 	prefix       INTEGER NOT NULL,
 	sub_prefix   INTEGER,
+	sub_title	 TEXT,
 	chapter      TEXT,
 	type         TEXT NOT NULL,
 	path         TEXT UNIQUE NOT NULL,
