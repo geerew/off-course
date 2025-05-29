@@ -11,11 +11,12 @@ type OpType string
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 const (
-	CreateOp  OpType = "create"
-	RenameOp  OpType = "rename"
-	SwapOp    OpType = "swap"
-	ReplaceOp OpType = "replace"
-	DeleteOp  OpType = "delete"
+	CreateOp    OpType = "create"
+	UpdateOp    OpType = "update"
+	SwapOp      OpType = "swap"
+	OverwriteOp OpType = "overwrite"
+	ReplaceOp   OpType = "replace"
+	DeleteOp    OpType = "delete"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -41,31 +42,31 @@ func (o CreateAssetOp) Type() OpType { return CreateOp }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// RenameAssetOp represents an asset that should be updated due to a rename
-// (same hash, different path)
-type RenameAssetOp struct {
+// UpdateAssetOp represents an asset that should be updated in the database
+type UpdateAssetOp struct {
 	Existing *models.Asset
 	New      *models.Asset
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Type implements the Op interface for RenameAssetOp
-func (o RenameAssetOp) Type() OpType { return RenameOp }
+// Type implements the Op interface for UpdateAssetOp
+func (o UpdateAssetOp) Type() OpType { return UpdateOp }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// OverwriteRenameOp represents a case where an asset has been renamed to take the place of an
+// OverwriteAssetOp represents a case where an asset has been renamed to take the place of an
 // existing but now deleted asset (same hash, different path and a deleted path)
-type OverwriteRenameOp struct {
-	Deleted *models.Asset
-	Renamed *models.Asset
+type OverwriteAssetOp struct {
+	Deleted  *models.Asset
+	Existing *models.Asset
+	Renamed  *models.Asset
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Type implements the Op interface for OverwriteRenameOp
-func (o OverwriteRenameOp) Type() OpType { return ReplaceOp }
+// Type implements the Op interface for OverwriteAssetOp
+func (o OverwriteAssetOp) Type() OpType { return OverwriteOp }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -140,35 +141,12 @@ func (o DeleteAttachmentOp) Type() OpType { return DeleteOp }
 //
 // Cases handled:
 //   - No-op: Same path, same mod time and file size → do nothing
-//   - OverwriteRename: A known asset was renamed to the path of a now-deleted asset (same hash)
-//   - Rename: Same content (hash) moved to a new path (and that path was unused)
-//   - Replace: Same path, new content (hash differs) → delete and re-create
-//   - Create: Completely new path and content → create asset
+//   - Create: Completely new path and content → create new asset
+//   - Update: Same content, different metadata → update existing asset
+//   - Replace: Same metadata, new content → delete and re-create
+//   - Overwrite: A known asset was renamed to the path of a now-deleted asset (same hash)
 //   - Swap: Two assets exchanged names → delete both and re-create in reverse
 //   - Delete: Asset in DB no longer exists on disk → delete it
-
-// reconcileAssets compares the current scanned assets on disk with the existing assets in the
-// database and returns a list of operations (Op) that describe how to transition the database
-// state to match the disk state.
-//
-// Cases handled:
-//   - No-op: Same path, same mod time and file size → do nothing
-//   - OverwriteRename: A known asset was renamed to the path of a now-deleted asset (same hash)
-//   - Rename: Same content (hash) moved to a new path (and that path was unused)
-//   - Replace: Same path, new content (hash differs) → delete and re-create
-//   - Create: Completely new path and content → create asset
-//   - Swap: Two assets exchanged names → delete both and re-create in reverse
-//   - Delete: Asset in DB no longer exists on disk → delete it
-//
-// reconcileAssets compares the scanned assets on disk with the existing database assets
-// and returns a list of operations to make the DB match disk.  It handles:
-//  1. No-op       : identical path+size+modtime
-//  2. OverwriteRename: content from one asset moved to another path whose original file was deleted
-//  3. Rename      : same content moved to an unused path
-//  4. Replace     : same path but content changed
-//  5. Create      : new path+content
-//  6. Swap        : two assets swapped names
-//  7. Delete      : DB asset no longer on disk
 func reconcileAssets(scanned []*models.Asset, existing []*models.Asset) []Op {
 	var ops []Op
 
@@ -181,6 +159,7 @@ func reconcileAssets(scanned []*models.Asset, existing []*models.Asset) []Op {
 		pathMap[e.Path] = e
 		hashMap[e.Hash] = e
 	}
+
 	for _, s := range scanned {
 		scannedPathMap[s.Path] = s
 	}
@@ -189,7 +168,21 @@ func reconcileAssets(scanned []*models.Asset, existing []*models.Asset) []Op {
 		existingByPath := pathMap[s.Path]
 		existingByHash := hashMap[s.Hash]
 
-		// 1. No-op
+		// Update: same path, same size and mod time, but different description path
+		if existingByPath != nil && existingByPath.FileSize == s.FileSize && existingByPath.ModTime == s.ModTime {
+			if existingByPath.DescriptionPath != s.DescriptionPath {
+				// fmt.Printf("[Update] %s (new description=%s)\n", s.Path, s.DescriptionPath)
+				ops = append(ops, UpdateAssetOp{
+					Existing: existingByPath,
+					New:      s,
+				})
+
+				seen[existingByPath.ID] = true
+				continue
+			}
+		}
+
+		// No-op: same path, same mod time and file size
 		if existingByPath != nil && existingByPath.FileSize == s.FileSize && existingByPath.ModTime == s.ModTime {
 			// fmt.Printf("[No-Op] Match on path+mod+size: %s\n", s.Path)
 			s.ID = existingByPath.ID
@@ -197,60 +190,59 @@ func reconcileAssets(scanned []*models.Asset, existing []*models.Asset) []Op {
 			continue
 		}
 
-		// 2. OverwriteRename: content moved onto another file's path
+		// Overwrite: content moved onto another file's path
 		if existingByHash != nil && existingByPath != nil && existingByHash.ID != existingByPath.ID {
-			// Check if this should actually be a swap, which is 2 assets switching paths
 			if other, ok := scannedPathMap[existingByHash.Path]; ok && other.Hash == existingByPath.Hash {
 				continue
-			} else {
-				// confirm the original path is gone or has new content
-				if onDisk, ok := scannedPathMap[existingByPath.Path]; !ok || onDisk.Hash != existingByPath.Hash {
+			}
 
-					s.ID = existingByHash.ID
+			// Only overwrite if the original path is not on disk or has a different hash
+			if onDisk, ok := scannedPathMap[existingByPath.Path]; !ok || onDisk.Hash != existingByPath.Hash {
+				// fmt.Printf("[Overwrite] %s (new hash=%s) → %s\n", existingByHash.Path, s.Hash, s.Path)
+				ops = append(ops, OverwriteAssetOp{
+					Deleted:  existingByPath,
+					Existing: existingByHash,
+					Renamed:  s,
+				})
 
-					// fmt.Printf("[Overwrite] %s (new hash=%s) → %s\n", existingByHash.Path, s.Hash, s.Path)
-					ops = append(ops, OverwriteRenameOp{
-						Deleted: existingByPath,
-						Renamed: s,
-					})
-
-					seen[existingByHash.ID] = true
-					seen[existingByPath.ID] = true
-					continue
-				}
+				seen[existingByHash.ID] = true
+				seen[existingByPath.ID] = true
+				continue
 			}
 		}
 
-		// 3. Rename: same hash, path unused
+		// Update (rename): same hash, new path
 		if existingByHash != nil && pathMap[s.Path] == nil {
-			// fmt.Printf("[Rename] %s → %s\n", existingByHash.Path, s.Path)
-			ops = append(ops, RenameAssetOp{
+			// fmt.Printf("[Update (Rename)] %s → %s\n", existingByHash.Path, s.Path)
+			ops = append(ops, UpdateAssetOp{
 				Existing: existingByHash,
 				New:      s,
 			})
+
 			seen[existingByHash.ID] = true
 			continue
 		}
 
-		// 4. Replace: same path, new hash
+		// Replace: same path, new hash
 		if existingByPath != nil && existingByHash == nil {
 			// fmt.Printf("[Replace] %s (new hash=%s)\n", s.Path, s.Hash)
 			ops = append(ops, ReplaceAssetOp{
 				Existing: existingByPath,
 				New:      s,
 			})
+
 			seen[existingByPath.ID] = true
 			continue
 		}
 
-		// 5. Create: entirely new
+		// Create: entirely new
 		if existingByPath == nil && existingByHash == nil {
 			// fmt.Printf("[Create] New asset: %s\n", s.Path)
 			ops = append(ops, CreateAssetOp{New: s})
 		}
 	}
 
-	// 6. Swap: two assets exchanged names
+	// Swap: two assets exchanged names
 	processedSwap := map[string]bool{}
 	for _, e1 := range existing {
 		if seen[e1.ID] || processedSwap[e1.ID] {
@@ -279,13 +271,14 @@ func reconcileAssets(scanned []*models.Asset, existing []*models.Asset) []Op {
 			NewA:      s2,
 			NewB:      s1,
 		})
+
 		processedSwap[e1.ID] = true
 		processedSwap[e2.ID] = true
 		seen[e1.ID] = true
 		seen[e2.ID] = true
 	}
 
-	// 7. Delete: any remaining existing assets are gone from disk
+	// Delete: anything not seen yet
 	for _, e := range existing {
 		if !seen[e.ID] {
 			// fmt.Printf("[Delete] Removed asset: %s\n", e.Path)

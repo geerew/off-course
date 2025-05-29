@@ -1,5 +1,9 @@
 package coursescan
 
+// TODO support <prefix> description.txt for assets
+// TODO support author.txt/md for course
+// TODO support description.txt/md for course
+
 import (
 	"context"
 	"crypto/sha256"
@@ -27,6 +31,7 @@ import (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type AssetsByChapterPrefix map[string]map[int][]*models.Asset
+type AssetDescriptionsByChapterPrefix map[string]map[int]string
 type AttachmentsByChapterPrefix map[string]map[int][]*models.Attachment
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -49,6 +54,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		return err
 	}
 
+	// Clear the maintenance mode at the end of the scan
 	defer func() {
 		if err := clearCourseMaintenance(ctx, s, course); err != nil {
 			s.logger.Error("Failed to clear course from maintenance mode", loggerType,
@@ -57,6 +63,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		}
 	}()
 
+	// Check if the course is available and set its status accordingly
 	available, err := checkAndSetCourseAvailability(ctx, s, course)
 	if err != nil || !available {
 		return err
@@ -66,13 +73,16 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		return err
 	}
 
-	assetsByChapterPrefix, attachmentsByChapterPrefix, cardPath, err := scanFiles(s, course.Path, course.ID)
+	// Scan the course directory for files and populate assets and attachments. Also check if there is
+	// a course card
+	scannedResults, err := scanFiles(s, course.Path, course.ID)
 	if err != nil {
 		return err
 	}
 
-	scannedAssets := flattenAssets(assetsByChapterPrefix)
+	scannedAssets := flattenAssets(scannedResults.assetsByChapterPrefix)
 
+	// List the assets that already exist in the database for this course
 	var existingAssets []*models.Asset
 	assetOptions := &database.Options{
 		Where:            squirrel.Eq{models.ASSET_TABLE_COURSE_ID: course.ID},
@@ -110,9 +120,9 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		}
 	}
 
-	updatedCourse := course.CardPath != cardPath
+	updatedCourse := course.CardPath != scannedResults.cardPath
 	if updatedCourse {
-		course.CardPath = cardPath
+		course.CardPath = scannedResults.cardPath
 	}
 
 	return s.db.RunInTransaction(ctx, func(txCtx context.Context) error {
@@ -121,7 +131,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 			return err
 		}
 
-		updatedAttachments, err := applyAttachmentChanges(txCtx, s, assetsByChapterPrefix, attachmentsByChapterPrefix)
+		updatedAttachments, err := applyAttachmentChanges(txCtx, s, scannedResults.assetsByChapterPrefix, scannedResults.attachmentsByChapterPrefix)
 		if err != nil {
 			return err
 		}
@@ -222,15 +232,24 @@ func clearCourseMaintenance(ctx context.Context, s *CourseScan, course *models.C
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+type scannedResults struct {
+	assetsByChapterPrefix      AssetsByChapterPrefix
+	attachmentsByChapterPrefix AttachmentsByChapterPrefix
+	cardPath                   string
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // scanFiles scans the course directory for files. It will return a list of assets,
 // attachments and a card path, if found.
-func scanFiles(s *CourseScan, coursePath string, courseID string) (AssetsByChapterPrefix, AttachmentsByChapterPrefix, string, error) {
+func scanFiles(s *CourseScan, coursePath string, courseID string) (*scannedResults, error) {
 	files, err := s.appFs.ReadDirFlat(coursePath, 2)
 	if err != nil {
-		return nil, nil, "", err
+		return nil, err
 	}
 
 	assetsByChapterPrefix := make(AssetsByChapterPrefix)
+	assetDescriptionsByChapterPrefix := make(AssetDescriptionsByChapterPrefix)
 	attachmentsByChapterPrefix := make(AttachmentsByChapterPrefix)
 	cardPath := ""
 
@@ -262,6 +281,10 @@ func scanFiles(s *CourseScan, coursePath string, courseID string) (AssetsByChapt
 			assetsByChapterPrefix[chapter] = make(map[int][]*models.Asset)
 		}
 
+		if _, ok := assetDescriptionsByChapterPrefix[chapter]; !ok {
+			assetDescriptionsByChapterPrefix[chapter] = make(map[int]string)
+		}
+
 		if _, ok := attachmentsByChapterPrefix[chapter]; !ok {
 			attachmentsByChapterPrefix[chapter] = make(map[int][]*models.Attachment)
 		}
@@ -279,9 +302,14 @@ func scanFiles(s *CourseScan, coursePath string, courseID string) (AssetsByChapt
 			continue
 		}
 
+		if parsed.asset.IsMarkdown() && strings.ToLower(parsed.title) == "description" {
+			assetDescriptionsByChapterPrefix[chapter][parsed.prefix] = normalized
+			continue
+		}
+
 		stat, err := s.appFs.Fs.Stat(normalized)
 		if err != nil {
-			return nil, nil, "", err
+			return nil, err
 		}
 
 		var subPrefix sql.NullInt16
@@ -326,7 +354,7 @@ func scanFiles(s *CourseScan, coursePath string, courseID string) (AssetsByChapt
 
 					scannedAsset.Hash, err = hashFilePartial(s.appFs.Fs, normalized, 1024*1024)
 					if err != nil {
-						return nil, nil, "", err
+						return nil, err
 					}
 
 					assetsByChapterPrefix[chapter][prefix] = []*models.Asset{scannedAsset}
@@ -349,7 +377,23 @@ func scanFiles(s *CourseScan, coursePath string, courseID string) (AssetsByChapt
 		}
 	}
 
-	return assetsByChapterPrefix, attachmentsByChapterPrefix, cardPath, nil
+	// Attach asset descriptions to the assets
+	for chapter, assetMap := range assetDescriptionsByChapterPrefix {
+		for prefix, descriptionPath := range assetMap {
+			if assets, exists := assetsByChapterPrefix[chapter][prefix]; exists && len(assets) > 0 {
+				// Attach the description to the first asset in the chapter with the prefix
+				assets[0].DescriptionPath = descriptionPath
+			}
+		}
+	}
+
+	scannedResults := &scannedResults{
+		assetsByChapterPrefix:      assetsByChapterPrefix,
+		attachmentsByChapterPrefix: attachmentsByChapterPrefix,
+		cardPath:                   cardPath,
+	}
+
+	return scannedResults, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -410,33 +454,51 @@ func applyAssetChanges(
 	for _, op := range ops {
 		switch v := op.(type) {
 		case CreateAssetOp:
-			// Create an asset that was found on disk
+			// Create an asset that was found on disk and does not exist in the database
 			if err := s.dao.CreateAsset(ctx, v.New); err != nil {
 				return false, err
 			}
 
+			// If the asset is a video, also create video metadata
 			if metadata := videoMetadataByPath[v.New.Path]; metadata != nil && v.New.Type.IsVideo() {
 				metadata.AssetID = v.New.ID
+
 				if err := s.dao.CreateVideoMetadata(ctx, metadata); err != nil {
 					return false, err
 				}
+
 				course.Duration += metadata.Duration
 			}
 
-		case RenameAssetOp:
-			// Rename an existing asset by giving the new asset the ID of the existing one then call
-			// update. This will result in the existing asset being updated with the new prefix, title,
-			// path, etc. It also means existing progress will be preserved
+		case UpdateAssetOp:
+			// Update an existing asset by giving the new asset the ID of the existing asset, then calling
+			// update
+			//
+			// This happens when the metadata (title, path, prefix, description, etc) changes but the
+			// contents of the asset have not
+			//
+			// Asset progress will be preserved
 			v.New.ID = v.Existing.ID
+
+			// When the update is because of a change to `description path`, the actual asset will not
+			// have changed and therefore a hash will not have been generated. In this case, just take
+			// the existing hash
+			if v.New.Hash == "" {
+				v.New.Hash = v.Existing.Hash
+			}
+
 			if err := s.dao.UpdateAsset(ctx, v.New); err != nil {
 				return false, err
 			}
 
 		case ReplaceAssetOp:
-			// Replace an existing asset with a new one by first deleting the existing one, then
-			// creating the new one. This happens with an existing asset has been updated, for
-			// example a better quality video. Existing progress will be lost, which is perfect
-			// because the duration may have changed as well
+			// Replace an existing asset with a new asset by first deleting the existing asset, then
+			// creating the new asset
+			//
+			// This happens when the contents of an existing asset have changed but the metadata
+			// (title, path, prefix, etc) has not
+			//
+			// Asset progress will be lost
 			if err := dao.Delete(ctx, s.dao, v.Existing, nil); err != nil {
 				return false, err
 			}
@@ -449,30 +511,40 @@ func applyAssetChanges(
 				return false, err
 			}
 
+			// If the asset is a video, also create video metadata
 			if metadata := videoMetadataByPath[v.New.Path]; metadata != nil && v.New.Type.IsVideo() {
 				metadata.AssetID = v.New.ID
+
 				if err := s.dao.CreateVideoMetadata(ctx, metadata); err != nil {
 					return false, err
 				}
+
 				course.Duration += metadata.Duration
 			}
 
-		case OverwriteRenameOp:
-			// Overwrite an existing asset with a new one by first deleting the existing one, then
-			// renaming the new one. This happens when a file has been renamed to that of another
-			// (existing) asset. The existing asset will be deleted and the new one will take its place.
-			// Progress for the rename asset will be preserved
+		case OverwriteAssetOp:
+			// Overwrite an existing but now deleted asset with another still existing asset by first
+			// taking the ID of the deleted asset, then deleting the nonexisting asset, and finally calling
+			// update on the renamed asset to update its metadata (title, path, prefix, etc)
+			//
+			// This happens when an asset has been renamed to that of another, now deleted, asset
+			//
+			// Asset progress will be preserved
 			if err := dao.Delete(ctx, s.dao, v.Deleted, nil); err != nil {
 				return false, err
 			}
 
+			v.Renamed.ID = v.Existing.ID
 			if err := s.dao.UpdateAsset(ctx, v.Renamed); err != nil {
 				return false, err
 			}
 
 		case SwapAssetOp:
-			// Swap two assets by first deleting the existing ones, then creating the new ones. This
-			// happens when two files have swapped paths on disk. Existing progress will be lost
+			// Swap two assets by first deleting the existing assets, then recreating the assets
+			//
+			// This happens when two existing assets swap paths
+			//
+			// Asset progress will be lost
 			for _, existing := range []*models.Asset{v.ExistingA, v.ExistingB} {
 				if err := dao.Delete(ctx, s.dao, existing, nil); err != nil {
 					return false, err
@@ -488,11 +560,14 @@ func applyAssetChanges(
 					return false, err
 				}
 
+				// If the asset is a video, also create video metadata
 				if metadata := videoMetadataByPath[newAsset.Path]; metadata != nil && newAsset.Type.IsVideo() {
 					metadata.AssetID = newAsset.ID
+
 					if err := s.dao.CreateVideoMetadata(ctx, metadata); err != nil {
 						return false, err
 					}
+
 					course.Duration += metadata.Duration
 				}
 			}

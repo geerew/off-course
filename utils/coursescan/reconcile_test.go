@@ -53,12 +53,63 @@ func TestReconcileAssets_Create(t *testing.T) {
 
 	ops := reconcileAssets(scanned, existing)
 	require.Len(t, ops, 1)
-	assert.Equal(t, CreateOp, ops[0].Type())
+
+	op, ok := ops[0].(CreateAssetOp)
+	require.True(t, ok, "expected CreateAssetOp")
+	assert.Equal(t, CreateOp, op.Type())
+
+	assert.Equal(t, "/foo/video.mp4", op.New.Path)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func TestReconcileAssets_OverwriteRename(t *testing.T) {
+func TestReconcileAssets_Update(t *testing.T) {
+	t.Run("rename", func(t *testing.T) {
+		existing := []*models.Asset{
+			newAsset("a1", "/old.mp4", 1024, "t1", "hash123"),
+		}
+		scanned := []*models.Asset{
+			newAsset("", "/new.mp4", 1024, "t2", "hash123"),
+		}
+
+		ops := reconcileAssets(scanned, existing)
+		require.Len(t, ops, 1)
+
+		op, ok := ops[0].(UpdateAssetOp)
+		require.True(t, ok)
+		assert.Equal(t, UpdateOp, op.Type())
+
+		assert.Equal(t, "a1", op.Existing.ID)
+		assert.Equal(t, "/new.mp4", op.New.Path)
+	})
+
+	t.Run("description", func(t *testing.T) {
+		existing := []*models.Asset{
+			newAsset("a1", "/lesson.mp4", 1024, "mod1", "hash123"),
+		}
+		scanned := []*models.Asset{
+			newAsset("", "/lesson.mp4", 1024, "mod1", "hash123"),
+		}
+
+		// Set the description
+		scanned[0].DescriptionPath = "/path/to/01 description.md"
+
+		ops := reconcileAssets(scanned, existing)
+		require.Len(t, ops, 1)
+
+		op, ok := ops[0].(UpdateAssetOp)
+		require.True(t, ok, "expected UpdateAssetOp")
+		assert.Equal(t, UpdateOp, op.Type())
+
+		// It should carry the existing ID and pick up the new description path
+		assert.Equal(t, "a1", op.Existing.ID)
+		assert.Equal(t, "/path/to/01 description.md", op.New.DescriptionPath)
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestReconcileAssets_Overwrite(t *testing.T) {
 	t.Run("forward", func(t *testing.T) {
 		existing := []*models.Asset{
 			newAsset("a1", "/01 file 1.mp4", 1024, "t1", "hash-abc"),
@@ -71,11 +122,11 @@ func TestReconcileAssets_OverwriteRename(t *testing.T) {
 		ops := reconcileAssets(scanned, existing)
 		require.Len(t, ops, 1)
 
-		op, ok := ops[0].(OverwriteRenameOp)
-		require.True(t, ok, "expected OverwriteRenameOp")
+		op, ok := ops[0].(OverwriteAssetOp)
+		require.True(t, ok, "expected OverwriteAssetOp")
+		assert.Equal(t, OverwriteOp, op.Type())
 
 		assert.Equal(t, "a2", op.Deleted.ID)
-		assert.Equal(t, "a1", op.Renamed.ID)
 		assert.Equal(t, "/02 file 2.mp4", op.Renamed.Path)
 	})
 
@@ -91,33 +142,13 @@ func TestReconcileAssets_OverwriteRename(t *testing.T) {
 		ops := reconcileAssets(scanned, existing)
 		require.Len(t, ops, 1)
 
-		op, ok := ops[0].(OverwriteRenameOp)
-		require.True(t, ok, "expected OverwriteRenameOp")
+		op, ok := ops[0].(OverwriteAssetOp)
+		require.True(t, ok, "expected OverwriteAssetOp")
+		assert.Equal(t, OverwriteOp, op.Type())
 
 		assert.Equal(t, "a1", op.Deleted.ID)
-		assert.Equal(t, "a2", op.Renamed.ID)
 		assert.Equal(t, "/01 file 1.mp4", op.Renamed.Path)
 	})
-
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-func TestReconcileAssets_Rename(t *testing.T) {
-	existing := []*models.Asset{
-		newAsset("a1", "/old.mp4", 1024, "t1", "hash123"),
-	}
-	scanned := []*models.Asset{
-		newAsset("", "/new.mp4", 1024, "t2", "hash123"),
-	}
-
-	ops := reconcileAssets(scanned, existing)
-	require.Len(t, ops, 1)
-
-	op, ok := ops[0].(RenameAssetOp)
-	require.True(t, ok)
-	assert.Equal(t, "a1", op.Existing.ID)
-	assert.Equal(t, "/new.mp4", op.New.Path)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -137,6 +168,7 @@ func TestReconcileAssets_Swap(t *testing.T) {
 
 	op, ok := ops[0].(SwapAssetOp)
 	require.True(t, ok)
+	assert.Equal(t, SwapOp, op.Type())
 
 	// Validate old asset IDs
 	oldIDs := []string{op.ExistingA.ID, op.ExistingB.ID}
@@ -167,6 +199,8 @@ func TestReconcileAssets_Replace(t *testing.T) {
 
 	op, ok := ops[0].(ReplaceAssetOp)
 	require.True(t, ok)
+	assert.Equal(t, ReplaceOp, op.Type())
+
 	assert.Equal(t, "a1", op.Existing.ID)
 	assert.Equal(t, "newhash", op.New.Hash)
 }
@@ -184,6 +218,8 @@ func TestReconcileAssets_Delete(t *testing.T) {
 
 	op, ok := ops[0].(DeleteAssetOp)
 	require.True(t, ok)
+	assert.Equal(t, DeleteOp, op.Type())
+
 	assert.Equal(t, "a1", op.Asset.ID)
 }
 
@@ -216,6 +252,8 @@ func TestReconcileAttachments_Create(t *testing.T) {
 
 	op, ok := ops[0].(CreateAttachmentOp)
 	require.True(t, ok)
+	assert.Equal(t, CreateOp, op.Type())
+
 	assert.Equal(t, "/newfile.pdf", op.New.Path)
 }
 
@@ -232,6 +270,8 @@ func TestReconcileAttachments_Delete(t *testing.T) {
 
 	op, ok := ops[0].(DeleteAttachmentOp)
 	require.True(t, ok)
+	assert.Equal(t, DeleteOp, op.Type())
+
 	assert.Equal(t, "a1", op.Attachment.ID)
 }
 

@@ -62,6 +62,7 @@ func (r *Router) initCourseRoutes() {
 	courseGroup.Get("/:id/assets", coursesAPI.getAssets)
 	courseGroup.Get("/:id/assets/:asset", coursesAPI.getAsset)
 	courseGroup.Get("/:id/assets/:asset/serve", coursesAPI.serveAsset)
+	courseGroup.Get("/:id/assets/:asset/description/serve", coursesAPI.serveAssetDescription)
 	courseGroup.Put("/:id/assets/:asset/progress", coursesAPI.updateAssetProgress)
 	courseGroup.Delete("/:id/assets/:asset/progress", coursesAPI.deleteAssetProgress)
 
@@ -399,6 +400,47 @@ func (api coursesAPI) serveAsset(c *fiber.Ctx) error {
 
 	// TODO Handle PDF and HTML
 	return c.Status(fiber.StatusOK).SendString("done")
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func (api coursesAPI) serveAssetDescription(c *fiber.Ctx) error {
+	id := c.Params("id")
+	assetId := c.Params("asset")
+
+	options := &database.Options{}
+
+	// Join the course table
+	options.AddJoin(models.COURSE_TABLE, models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
+
+	options.Where = squirrel.And{
+		squirrel.Eq{models.ASSET_TABLE_ID: assetId},
+		squirrel.Eq{models.COURSE_TABLE_ID: id},
+	}
+
+	_, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	asset := &models.Asset{}
+	if err := api.dao.GetAsset(ctx, asset, options); err != nil {
+		if err == sql.ErrNoRows {
+			return errorResponse(c, fiber.StatusNotFound, "Asset not found", nil)
+		}
+
+		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up asset", err)
+	}
+
+	if asset.DescriptionPath == "" {
+		return errorResponse(c, fiber.StatusNotFound, "Asset has no description", nil)
+	}
+
+	if exists, err := afero.Exists(api.appFs.Fs, asset.DescriptionPath); err != nil || !exists {
+		return errorResponse(c, fiber.StatusBadRequest, "Asset description does not exist", err)
+	}
+
+	return filesystem.SendFile(c, afero.NewHttpFs(api.appFs.Fs), asset.DescriptionPath)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

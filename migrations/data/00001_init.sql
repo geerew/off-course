@@ -34,20 +34,21 @@ CREATE TABLE courses_progress (
 
 --- Assets
 CREATE TABLE assets (
-	id           TEXT PRIMARY KEY NOT NULL,
-	course_id    TEXT NOT NULL,
-	title        TEXT NOT NULL,
-	prefix       INTEGER NOT NULL,
-	sub_prefix   INTEGER,
-	sub_title	 TEXT,
-	chapter      TEXT,
-	type         TEXT NOT NULL,
-	path         TEXT UNIQUE NOT NULL,
-	file_size    INTEGER NOT NULL DEFAULT 0,
-	mod_time     TEST NOT NULL DEFAULT '',
-	hash	     TEXT NOT NULL,
-	created_at   TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
-	updated_at   TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+	id               TEXT PRIMARY KEY NOT NULL,
+	course_id        TEXT NOT NULL,
+	title            TEXT NOT NULL,
+	prefix           INTEGER NOT NULL,
+	sub_prefix       INTEGER,
+	sub_title	     TEXT,
+	chapter          TEXT,
+	type             TEXT NOT NULL,
+	path             TEXT UNIQUE NOT NULL,
+	file_size        INTEGER NOT NULL DEFAULT 0,
+	mod_time         TEST NOT NULL DEFAULT '',
+	hash	         TEXT NOT NULL,
+	description_path TEXT,
+	created_at       TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+	updated_at       TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	---
 	FOREIGN KEY (course_id) REFERENCES courses (id) ON DELETE CASCADE
 );

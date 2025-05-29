@@ -188,7 +188,7 @@ func TestScanner_Processor(t *testing.T) {
 
 		assets := []*models.Asset{}
 
-		// Add file 1, file 2 and file 3
+		// Add file 1, file 2 and file 3 (create op)
 		{
 			scanner.appFs.Fs.Mkdir(course.Path, os.ModePerm)
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 file 1.mkv", course.Path), []byte("hash 1"), os.ModePerm)
@@ -224,7 +224,7 @@ func TestScanner_Processor(t *testing.T) {
 			require.Equal(t, "c4ca2e438d8809f0e4459bde1f948de8fe6289f1c179d506da8720fb79859be6", assets[2].Hash)
 		}
 
-		// Add file 1 under a chapter
+		// Add file 1 under a chapter (create op)
 		{
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 Chapter 1/01 file 1.pdf", course.Path), []byte("hash 4"), os.ModePerm)
 
@@ -243,7 +243,7 @@ func TestScanner_Processor(t *testing.T) {
 			require.Equal(t, "e72c82bb74988135e7b6c478fe3659a14b4941f867a93a23687ea172031e4e06", assets[3].Hash)
 		}
 
-		// Delete file 1 in chapter
+		// Delete file 1 in chapter (delete op)
 		{
 			scanner.appFs.Fs.Remove(fmt.Sprintf("%s/01 Chapter 1/01 file 1.pdf", course.Path))
 
@@ -259,7 +259,7 @@ func TestScanner_Processor(t *testing.T) {
 			require.Equal(t, fmt.Sprintf("%s/03 file 3.pdf", course.Path), assets[2].Path)
 		}
 
-		// Rename file 3 to file 4
+		// Rename file 3 to file 4 (update op)
 		{
 			existingAssetID := assets[2].ID
 			scanner.appFs.Fs.Rename(fmt.Sprintf("%s/03 file 3.pdf", course.Path), fmt.Sprintf("%s/04 file 4.pdf", course.Path))
@@ -277,7 +277,7 @@ func TestScanner_Processor(t *testing.T) {
 			require.Equal(t, existingAssetID, assets[2].ID)
 		}
 
-		// Replace file 4 with new content
+		// Replace file 4 with new content (replace op)
 		{
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/04 file 4.pdf", course.Path), []byte("hash 4"), os.ModePerm)
 
@@ -300,7 +300,7 @@ func TestScanner_Processor(t *testing.T) {
 			require.Equal(t, "e72c82bb74988135e7b6c478fe3659a14b4941f867a93a23687ea172031e4e06", assets[2].Hash)
 		}
 
-		// Swap file 1 and file 2
+		// Swap file 1 and file 2 (swap op)
 		{
 			scanner.appFs.Fs.Rename(fmt.Sprintf("%s/01 file 1.mkv", course.Path), fmt.Sprintf("%s/02 file 2.html.temp", course.Path))
 			scanner.appFs.Fs.Rename(fmt.Sprintf("%s/02 file 2.html", course.Path), fmt.Sprintf("%s/01 file 1.mkv", course.Path))
@@ -321,7 +321,7 @@ func TestScanner_Processor(t *testing.T) {
 			require.Equal(t, "0657190350cbea662b6c15d703d9c7482308e511504d3308306d0f1ede153a34", assets[1].Hash)
 		}
 
-		// Overwrite: delete file 1 and move file 2 to file 1
+		// Delete file 1 and move file 2 to file 1 (overwrite op)
 		{
 			require.NoError(t, scanner.appFs.Fs.Remove(fmt.Sprintf("%s/01 file 1.mkv", course.Path)))
 
@@ -671,9 +671,63 @@ func TestScanner_Processor(t *testing.T) {
 			require.Equal(t, filepath.Join(course.Path, "01 attachment 1.txt"), assets[0].Attachments[0].Path)
 			require.Equal(t, "attachment 1.txt", assets[0].Attachments[0].Title)
 			require.Equal(t, assets[0].ID, assets[0].Attachments[0].AssetID)
+		}
+	})
 
+	t.Run("asset description", func(t *testing.T) {
+		scanner, ctx, _ := setup(t)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1"}
+		require.NoError(t, scanner.dao.CreateCourse(ctx, course))
+
+		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
+		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
+
+		assetOptions := &database.Options{
+			OrderBy:          []string{models.ASSET_TABLE_CHAPTER + " asc", models.ASSET_TABLE_PREFIX + " asc"},
+			Where:            squirrel.Eq{models.ASSET_TABLE_COURSE_ID: course.ID},
+			ExcludeRelations: []string{models.ASSET_RELATION_PROGRESS},
 		}
 
+		assets := []*models.Asset{}
+
+		// Add video 1 asset
+		{
+			scanner.appFs.Fs.Mkdir(course.Path, os.ModePerm)
+			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 video 1.mp4", course.Path), []byte("video 1"), os.ModePerm)
+
+			err := Processor(ctx, scanner, scan)
+			require.NoError(t, err)
+
+			err = scanner.dao.ListAssets(ctx, &assets, assetOptions)
+			require.NoError(t, err)
+			require.Len(t, assets, 1)
+
+			require.Equal(t, "video 1", assets[0].Title)
+			require.Equal(t, course.ID, assets[0].CourseID)
+			require.Equal(t, 1, int(assets[0].Prefix.Int16))
+			require.Empty(t, assets[0].Chapter)
+			require.True(t, assets[0].Type.IsVideo())
+			require.Equal(t, "3b857b8441d7c9e734535d6b82f69a34c6fcd63ed0ef989ff03808ecb29a2f1f", assets[0].Hash)
+			require.Empty(t, assets[0].DescriptionPath)
+			require.Len(t, assets[0].Attachments, 0)
+		}
+
+		// Add description file for video 1
+		{
+			scanner.appFs.Fs.Mkdir(course.Path, os.ModePerm)
+			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 description.md", course.Path), []byte("description"), os.ModePerm)
+
+			err := Processor(ctx, scanner, scan)
+			require.NoError(t, err)
+
+			err = scanner.dao.ListAssets(ctx, &assets, assetOptions)
+			require.NoError(t, err)
+			require.Len(t, assets, 1)
+
+			require.Equal(t, "video 1", assets[0].Title)
+			require.Equal(t, fmt.Sprintf("%s/01 description.md", course.Path), assets[0].DescriptionPath)
+		}
 	})
 }
 

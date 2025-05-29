@@ -24,9 +24,10 @@ type Asset struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 const (
-	AssetVideo AssetType = "video"
-	AssetHTML  AssetType = "html"
-	AssetPDF   AssetType = "pdf"
+	AssetVideo    AssetType = "video"
+	AssetHTML     AssetType = "html"
+	AssetPDF      AssetType = "pdf"
+	AssetMarkdown AssetType = "md"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -53,6 +54,8 @@ func NewAsset(ext string) *Asset {
 		return &Asset{s: AssetHTML}
 	case "pdf":
 		return &Asset{s: AssetPDF}
+	case "md":
+		return &Asset{s: AssetMarkdown}
 	}
 
 	return nil
@@ -102,6 +105,20 @@ func (a Asset) IsPDF() bool {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// SetMarkdown sets the asset type to Markdown
+func (a *Asset) SetMarkdown() {
+	a.s = AssetMarkdown
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// IsMarkdown returns true is the asset is of type Markdown
+func (a Asset) IsMarkdown() bool {
+	return a.s == AssetMarkdown
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // String implements the `Stringer` interface
 func (a Asset) String() string {
 	return fmt.Sprint(a.s)
@@ -146,6 +163,8 @@ func (a *Asset) Scan(value any) error {
 		a.s = AssetHTML
 	case string(AssetPDF):
 		a.s = AssetPDF
+	case string(AssetMarkdown):
+		a.s = AssetMarkdown
 	default:
 		return errors.New("invalid asset type")
 	}
