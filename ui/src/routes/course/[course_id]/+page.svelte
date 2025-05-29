@@ -399,12 +399,8 @@
 															<Button
 																href={`/course/${course?.id}/${assetGroup.assets[0].id}`}
 																variant="secondary"
-																class={cn(
-																	'bg-background-alt-2 hover:bg-background-alt-3 h-auto w-auto rounded-full p-2 opacity-0 duration-150 ease-in',
-																	course?.maintenance || !course?.available
-																		? 'group-hover:opacity-0 pointer-coarse:opacity-0'
-																		: 'group-hover:opacity-100 pointer-coarse:opacity-100'
-																)}
+																class="bg-background-alt-2 hover:bg-background-alt-3 h-auto w-auto rounded-full p-2 opacity-0 duration-150 ease-in group-hover:opacity-100 disabled:opacity-0 aria-disabled:opacity-0 pointer-coarse:opacity-100"
+																disabled={course?.maintenance || !course?.available}
 															>
 																{#if assetGroup.completed}
 																	<MediaRestart
