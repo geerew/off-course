@@ -70,7 +70,6 @@
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function add(event: Event) {
-		console.log('adding');
 		event.preventDefault();
 		isPosting = true;
 

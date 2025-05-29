@@ -233,3 +233,17 @@ export async function UpdateCourseAssetProgress(
 		throw new APIError(response.status, data.message || 'Unknown error');
 	}
 }
+
+export async function GetCourseAssetDescription(
+	courseId: string,
+	assetId: string
+): Promise<string> {
+	const response = await apiFetch(`/api/courses/${courseId}/assets/${assetId}/description`);
+
+	if (response.ok) {
+		return await response.text();
+	} else {
+		const data = await response.json();
+		throw new APIError(response.status, data.message || 'Unknown error');
+	}
+}

@@ -16,7 +16,7 @@ import { BasePaginationSchema, type PaginationReqParams } from './pagination-mod
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Asset type schema
-const AssetTypeSchema = picklist(['video', 'html', 'pdf']);
+const AssetTypeSchema = picklist(['video', 'html', 'pdf', 'md', 'txt']);
 export type AssetType = InferOutput<typeof AssetTypeSchema>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -55,6 +55,7 @@ export const AssetSchema = object({
 	chapter: string(),
 	path: string(),
 	assetType: AssetTypeSchema,
+	hasDescription: boolean(),
 	videoMetadata: optional(AssetVideoMetadataSchema),
 	attachments: array(AttachmentSchema),
 	progress: optional(AssetProgressSchema)

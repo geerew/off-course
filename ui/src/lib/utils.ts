@@ -1,5 +1,7 @@
 import { goto } from '$app/navigation';
 import { clsx, type ClassValue } from 'clsx';
+import DOMPurify from 'dompurify';
+import MarkdownIt from 'markdown-it';
 import { twMerge } from 'tailwind-merge';
 import type { AssetModel, Chapters } from './models/asset-model';
 
@@ -65,7 +67,6 @@ export function BuildChapterStructure(courseAssets: AssetModel[]): Chapters {
 
 	// Group by prefix within each chapter to create lessons
 	for (const [chapterName, chapterAssets] of Object.entries(assetsByChapter)) {
-		console.log(`Processing chapter: ${chapterName} with ${chapterAssets.length} assets`);
 		const lessonMap: Record<number, AssetModel[]> = {};
 
 		// Group assets by prefix
@@ -95,11 +96,6 @@ export function BuildChapterStructure(courseAssets: AssetModel[]): Chapters {
 						(asset.progress?.videoPos && asset.progress?.videoPos > 0) || asset.progress?.completed
 				);
 
-				console.log(
-					`Lesson ${prefix} (${groupTitle}) has ${sortedAssets.length} assets, ` +
-						`${completedAssets.length} completed, ${startedAssets.length} started`
-				);
-
 				return {
 					prefix: parseInt(prefix),
 					title: groupTitle,
@@ -114,4 +110,16 @@ export function BuildChapterStructure(courseAssets: AssetModel[]): Chapters {
 	}
 
 	return chapters;
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Enable HTML inside MD, linkify URLs, etc—tweak to taste
+const md = new MarkdownIt({ html: true, linkify: true, typographer: true });
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Sanitize the rendered HTML to prevent XSS attacks
+export function renderMarkdown(raw: string): string {
+	return DOMPurify.sanitize(md.render(raw));
 }

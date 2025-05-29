@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @plugin "tailwindcss-animate";
 @plugin 'tailwind-scrollbar-hide';
+@plugin '@tailwindcss/typography';
 
 @theme {
 	--font-logo: 'Source Sans Pro', 'sans-serif';

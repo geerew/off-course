@@ -1,10 +1,16 @@
 <!-- TODO When page contains a group of assets, only allow 1 video to play -->
 <!-- TODO find a way to show which assets are completed when page contains a group of assets -->
+<!-- TODO rework description to support description type so we can render md vs txt -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import type { APIError } from '$lib/api-error.svelte';
-	import { GetAllCourseAssets, GetCourse, UpdateCourseAssetProgress } from '$lib/api/course-api';
+	import {
+		GetAllCourseAssets,
+		GetCourse,
+		GetCourseAssetDescription,
+		UpdateCourseAssetProgress
+	} from '$lib/api/course-api';
 	import { Spinner } from '$lib/components';
 	import { BurgerMenuIcon, DotIcon, TickIcon, WarningIcon } from '$lib/components/icons';
 	import { Button, Checkbox, Tooltip } from '$lib/components/ui';
@@ -12,7 +18,7 @@
 	import { VideoPlayer } from '$lib/components/ui/media';
 	import type { AssetGroup, AssetModel, Chapters } from '$lib/models/asset-model';
 	import type { CourseModel } from '$lib/models/course-model';
-	import { BuildChapterStructure, cn } from '$lib/utils';
+	import { BuildChapterStructure, cn, renderMarkdown } from '$lib/utils';
 	import { Dialog } from 'bits-ui';
 	import prettyMs from 'pretty-ms';
 	import { ElementSize } from 'runed';
@@ -23,6 +29,8 @@
 
 	let selectedAssetGroup = $state<AssetGroup>();
 	let selectedAsset = $state<AssetModel>();
+
+	let renderedDescription = $state<string>();
 
 	let loadPromise = $state(fetchCourseAndAsset());
 	let initDone = false;
@@ -58,6 +66,8 @@
 				throw new Error('Asset not found');
 			}
 
+			await setRenderedDescription(selectedAsset);
+
 			initDone = true;
 		} catch (error) {
 			throw error;
@@ -73,6 +83,23 @@
 			await UpdateCourseAssetProgress(course.id, asset.id, asset.progress);
 		} catch (error) {
 			toast.error((error as APIError).message);
+		}
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Set the rendered description for the asset
+	async function setRenderedDescription(asset: AssetModel): Promise<void> {
+		if (!course || !asset || !asset.hasDescription) {
+			renderedDescription = '';
+			return;
+		}
+
+		const desc = await GetCourseAssetDescription(course.id, asset.id);
+		if (!desc) {
+			renderedDescription = '';
+		} else {
+			renderedDescription = renderMarkdown(desc);
 		}
 	}
 
@@ -168,11 +195,12 @@
 								selectedAsset?.id === assetGroup.assets[0].id &&
 									'text-foreground-alt-1 bg-background-alt-2'
 							)}
-							onclick={() => {
+							onclick={async () => {
 								if (!course || assetGroup.assets[0].id === selectedAsset?.id) return;
 								if (menuPopupMode) dialogOpen = false;
 								goto(`/course/${course.id}/${assetGroup.assets[0].id}`, {});
 								selectedAsset = assetGroup.assets[0];
+								await setRenderedDescription(selectedAsset);
 							}}
 						>
 							<div class="flex w-full flex-row gap-3 py-2 pr-2.5 pl-1.5">
@@ -391,6 +419,7 @@
 							</div>
 						</div>
 
+						<!-- Asset(s) -->
 						{#each selectedAssetGroup.assets as asset}
 							<div class="flex w-full flex-col gap-2">
 								{#if selectedAssetGroup.assets.length > 1}
@@ -442,6 +471,27 @@
 								{/if}
 							</div>
 						{/each}
+
+						<!-- Description -->
+
+						<div>
+							{#if renderedDescription}
+								<div
+									class="prose prose-p:mb-2.5 prose-p:mt-2.5 md:prose-lg prose-invert max-w-none"
+								>
+									<h4>Description</h4>
+									{@html renderedDescription}
+								</div>
+							{/if}
+
+							{#if selectedAssetGroup.attachments.length > 0}
+								<Attachments
+									attachments={selectedAssetGroup.attachments}
+									courseId={course.id}
+									assetId={selectedAsset.id}
+								/>
+							{/if}
+						</div>
 					</div>
 				</div>
 			</main>
