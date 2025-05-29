@@ -62,7 +62,7 @@ func (r *Router) initCourseRoutes() {
 	courseGroup.Get("/:id/assets", coursesAPI.getAssets)
 	courseGroup.Get("/:id/assets/:asset", coursesAPI.getAsset)
 	courseGroup.Get("/:id/assets/:asset/serve", coursesAPI.serveAsset)
-	courseGroup.Get("/:id/assets/:asset/description/serve", coursesAPI.serveAssetDescription)
+	courseGroup.Get("/:id/assets/:asset/description", coursesAPI.serveAssetDescription)
 	courseGroup.Put("/:id/assets/:asset/progress", coursesAPI.updateAssetProgress)
 	courseGroup.Delete("/:id/assets/:asset/progress", coursesAPI.deleteAssetProgress)
 
