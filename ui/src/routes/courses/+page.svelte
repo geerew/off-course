@@ -152,7 +152,7 @@
 											)}
 										>
 											<!-- Card -->
-											<div class="h-px min-h-40 w-full md:min-h-35">
+											<div class="h-px min-h-40 w-50 sm:w-90 md:min-h-35 md:w-full">
 												{#if course.hasCard}
 													<Avatar.Root class="h-full w-full">
 														<Avatar.Image
@@ -162,16 +162,16 @@
 														/>
 
 														<Avatar.Fallback
-															class="bg-background-alt-2 flex h-full w-full place-content-center"
+															class="bg-background-alt-2 flex h-full w-full items-center justify-center"
 														>
-															<LogoIcon class="fill-background-alt-3 size-20" />
+															<LogoIcon class="fill-background-alt-3 size-15 md:size-20" />
 														</Avatar.Fallback>
 													</Avatar.Root>
 												{:else}
 													<div
 														class="bg-background-alt-2 flex h-full w-full items-center justify-center"
 													>
-														<LogoIcon class="fill-background-alt-3 size-20" />
+														<LogoIcon class="fill-background-alt-3 size-15 md:size-20" />
 													</div>
 												{/if}
 											</div>
