@@ -27,7 +27,8 @@ const (
 	AssetVideo    AssetType = "video"
 	AssetHTML     AssetType = "html"
 	AssetPDF      AssetType = "pdf"
-	AssetMarkdown AssetType = "md"
+	AssetMarkdown AssetType = "markdown"
+	AssetText     AssetType = "text"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -56,6 +57,8 @@ func NewAsset(ext string) *Asset {
 		return &Asset{s: AssetPDF}
 	case "md":
 		return &Asset{s: AssetMarkdown}
+	case "txt":
+		return &Asset{s: AssetText}
 	}
 
 	return nil
@@ -119,9 +122,30 @@ func (a Asset) IsMarkdown() bool {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// SetText sets the asset type to Text
+func (a *Asset) SetText() {
+	a.s = AssetText
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// IsText returns true is the asset is of type Text
+func (a Asset) IsText() bool {
+	return a.s == AssetText
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // String implements the `Stringer` interface
 func (a Asset) String() string {
 	return fmt.Sprint(a.s)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Type returns the type of the asset
+func (a Asset) Type() AssetType {
+	return a.s
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -165,6 +189,8 @@ func (a *Asset) Scan(value any) error {
 		a.s = AssetPDF
 	case string(AssetMarkdown):
 		a.s = AssetMarkdown
+	case string(AssetText):
+		a.s = AssetText
 	default:
 		return errors.New("invalid asset type")
 	}

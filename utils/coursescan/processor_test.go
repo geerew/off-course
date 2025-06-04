@@ -389,7 +389,7 @@ func TestScanner_Processor(t *testing.T) {
 
 		// Add attachment 1
 		{
-			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 attachment 1.txt", course.Path), []byte("attachment 1"), os.ModePerm)
+			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 attachment 1.url", course.Path), []byte("attachment 1"), os.ModePerm)
 
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
@@ -398,14 +398,14 @@ func TestScanner_Processor(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, attachments, 1)
 
-			require.Equal(t, "attachment 1.txt", attachments[0].Title)
+			require.Equal(t, "attachment 1.url", attachments[0].Title)
 			require.Equal(t, assets[0].ID, attachments[0].AssetID)
-			require.Equal(t, filepath.Join(course.Path, "01 attachment 1.txt"), attachments[0].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 attachment 1.url"), attachments[0].Path)
 		}
 
 		// Add another attachment
 		{
-			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 attachment 2.txt", course.Path), []byte("attachment 2"), os.ModePerm)
+			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 attachment 2.url", course.Path), []byte("attachment 2"), os.ModePerm)
 
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
@@ -414,18 +414,18 @@ func TestScanner_Processor(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, attachments, 2)
 
-			require.Equal(t, "attachment 1.txt", attachments[0].Title)
+			require.Equal(t, "attachment 1.url", attachments[0].Title)
 			require.Equal(t, assets[0].ID, attachments[0].AssetID)
-			require.Equal(t, filepath.Join(course.Path, "01 attachment 1.txt"), attachments[0].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 attachment 1.url"), attachments[0].Path)
 
-			require.Equal(t, "attachment 2.txt", attachments[1].Title)
+			require.Equal(t, "attachment 2.url", attachments[1].Title)
 			require.Equal(t, assets[0].ID, attachments[0].AssetID)
-			require.Equal(t, filepath.Join(course.Path, "01 attachment 2.txt"), attachments[1].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 attachment 2.url"), attachments[1].Path)
 		}
 
 		// Delete attachment
 		{
-			scanner.appFs.Fs.Remove(fmt.Sprintf("%s/01 attachment 1.txt", course.Path))
+			scanner.appFs.Fs.Remove(fmt.Sprintf("%s/01 attachment 1.url", course.Path))
 
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
@@ -434,16 +434,16 @@ func TestScanner_Processor(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, attachments, 1)
 
-			require.Equal(t, "attachment 2.txt", attachments[0].Title)
+			require.Equal(t, "attachment 2.url", attachments[0].Title)
 			require.Equal(t, assets[0].ID, attachments[0].AssetID)
-			require.Equal(t, filepath.Join(course.Path, "01 attachment 2.txt"), attachments[0].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 attachment 2.url"), attachments[0].Path)
 		}
 	})
 
 	t.Run("asset priority", func(t *testing.T) {
 		scanner, ctx, _ := setup(t)
 
-		// Priority is VIDEO -> HTML -> PDF
+		// Priority is VIDEO -> HTML -> PDF -> MARKDOWN -> TEXT
 
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, scanner.dao.CreateCourse(ctx, course))
@@ -457,17 +457,13 @@ func TestScanner_Processor(t *testing.T) {
 			ExcludeRelations: []string{models.ASSET_RELATION_PROGRESS},
 		}
 
-		attachmentOptions := &database.Options{
-			OrderBy: []string{models.ATTACHMENT_TABLE_CREATED_AT + " asc"},
-		}
-
 		assets := []*models.Asset{}
-		attachments := []*models.Attachment{}
 
-		// Add PDF asset
+		scanner.appFs.Fs.Mkdir(course.Path, os.ModePerm)
+
+		// Add TEXT asset
 		{
-			scanner.appFs.Fs.Mkdir(course.Path, os.ModePerm)
-			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 doc 1.pdf", course.Path), []byte("doc 1"), os.ModePerm)
+			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 text 1.txt", course.Path), []byte("text 1"), os.ModePerm)
 
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
@@ -476,13 +472,57 @@ func TestScanner_Processor(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, assets, 1)
 
-			require.Equal(t, "doc 1", assets[0].Title)
+			require.Equal(t, "text 1", assets[0].Title)
+			require.Equal(t, course.ID, assets[0].CourseID)
+			require.Equal(t, 1, int(assets[0].Prefix.Int16))
+			require.Empty(t, assets[0].Chapter)
+			require.True(t, assets[0].Type.IsText())
+			require.Equal(t, "900a4469df00ccbfd0c145c6d1e4b7953dd0afafadd7534e3a4019e8d38fc663", assets[0].Hash)
+			require.Len(t, assets[0].Attachments, 0)
+		}
+
+		// Add MARKDOWN asset
+		{
+			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 markdown 1.md", course.Path), []byte("markdown 1"), os.ModePerm)
+
+			err := Processor(ctx, scanner, scan)
+			require.NoError(t, err)
+
+			err = scanner.dao.ListAssets(ctx, &assets, assetOptions)
+			require.NoError(t, err)
+			require.Len(t, assets, 1)
+
+			require.Equal(t, "markdown 1", assets[0].Title)
+			require.Equal(t, course.ID, assets[0].CourseID)
+			require.Equal(t, 1, int(assets[0].Prefix.Int16))
+			require.Empty(t, assets[0].Chapter)
+			require.True(t, assets[0].Type.IsMarkdown())
+			require.Equal(t, "728cfbd456c4734229b7b545d69d182608eecc860c46081f51e3f1f108096eca", assets[0].Hash)
+			require.Len(t, assets[0].Attachments, 1)
+			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), assets[0].Attachments[0].Path)
+		}
+
+		// Add PDF asset
+		{
+			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 pdf 1.pdf", course.Path), []byte("pdf 1"), os.ModePerm)
+
+			err := Processor(ctx, scanner, scan)
+			require.NoError(t, err)
+
+			err = scanner.dao.ListAssets(ctx, &assets, assetOptions)
+			require.NoError(t, err)
+			require.Len(t, assets, 1)
+
+			require.Equal(t, "pdf 1", assets[0].Title)
 			require.Equal(t, course.ID, assets[0].CourseID)
 			require.Equal(t, 1, int(assets[0].Prefix.Int16))
 			require.Empty(t, assets[0].Chapter)
 			require.True(t, assets[0].Type.IsPDF())
-			require.Equal(t, "a41a06f389aa3855fa07fa764b96cac08ff558978f10d9bb027299a85a6677c6", assets[0].Hash)
-			require.Len(t, assets[0].Attachments, 0)
+			require.Equal(t, "9c9bfc90d1a2738f701a22c1ef10d42d5f2c285998a221eba9b7953e202bcf1a", assets[0].Hash)
+			require.Len(t, assets[0].Attachments, 2)
+			require.Equal(t, filepath.Join(course.Path, "01 markdown 1.md"), assets[0].Attachments[0].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), assets[0].Attachments[1].Path)
+
 		}
 
 		// Add HTML asset
@@ -502,12 +542,10 @@ func TestScanner_Processor(t *testing.T) {
 			require.Empty(t, assets[0].Chapter)
 			require.True(t, assets[0].Type.IsHTML())
 			require.Equal(t, "1bc04b5291c26a46d918139138b992d2de976d6851d0893b0476b85bfbdfc6e6", assets[0].Hash)
-			require.Len(t, assets[0].Attachments, 1)
-
-			err = scanner.dao.ListAttachments(ctx, &attachments, attachmentOptions)
-			require.NoError(t, err)
-			require.Len(t, attachments, 1)
-			require.Equal(t, filepath.Join(course.Path, "01 doc 1.pdf"), attachments[0].Path)
+			require.Len(t, assets[0].Attachments, 3)
+			require.Equal(t, filepath.Join(course.Path, "01 markdown 1.md"), assets[0].Attachments[0].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 pdf 1.pdf"), assets[0].Attachments[1].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), assets[0].Attachments[2].Path)
 		}
 
 		// Add VIDEO asset
@@ -527,18 +565,16 @@ func TestScanner_Processor(t *testing.T) {
 			require.Empty(t, assets[0].Chapter)
 			require.True(t, assets[0].Type.IsVideo())
 			require.Equal(t, "0cab1c9617404faf2b24e221e189ca5945813e14d3f766345b09ca13bbe28ffc", assets[0].Hash)
-			require.Len(t, assets[0].Attachments, 2)
-
-			err = scanner.dao.ListAttachments(ctx, &attachments, attachmentOptions)
-			require.NoError(t, err)
-			require.Len(t, attachments, 2)
-			require.Equal(t, filepath.Join(course.Path, "01 doc 1.pdf"), attachments[0].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 index.html"), attachments[1].Path)
+			require.Len(t, assets[0].Attachments, 4)
+			require.Equal(t, filepath.Join(course.Path, "01 index.html"), assets[0].Attachments[0].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 markdown 1.md"), assets[0].Attachments[1].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 pdf 1.pdf"), assets[0].Attachments[2].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), assets[0].Attachments[3].Path)
 		}
 
 		// Add another PDF asset
 		{
-			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 doc 2.pdf", course.Path), []byte("doc 2"), os.ModePerm)
+			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 pdf 2.pdf", course.Path), []byte("pdf 2"), os.ModePerm)
 
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
@@ -553,14 +589,12 @@ func TestScanner_Processor(t *testing.T) {
 			require.Empty(t, assets[0].Chapter)
 			require.True(t, assets[0].Type.IsVideo())
 			require.Equal(t, "0cab1c9617404faf2b24e221e189ca5945813e14d3f766345b09ca13bbe28ffc", assets[0].Hash)
-			require.Len(t, assets[0].Attachments, 3)
-
-			err = scanner.dao.ListAttachments(ctx, &attachments, attachmentOptions)
-			require.NoError(t, err)
-			require.Len(t, attachments, 3)
-			require.Equal(t, filepath.Join(course.Path, "01 doc 1.pdf"), attachments[0].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 index.html"), attachments[1].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 doc 2.pdf"), attachments[2].Path)
+			require.Len(t, assets[0].Attachments, 5)
+			require.Equal(t, filepath.Join(course.Path, "01 index.html"), assets[0].Attachments[0].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 markdown 1.md"), assets[0].Attachments[1].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 pdf 1.pdf"), assets[0].Attachments[2].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), assets[0].Attachments[3].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 pdf 2.pdf"), assets[0].Attachments[4].Path)
 		}
 	})
 
@@ -752,75 +786,159 @@ func TestScanner_ParseFilename(t *testing.T) {
 		}
 
 		for _, tt := range tests {
-			fb := parseFilename(tt)
-			require.Nil(t, fb)
+			parsed := parseFilename(tt)
+			require.Nil(t, parsed)
 		}
 	})
 
 	t.Run("assets", func(t *testing.T) {
 		var tests = []struct {
 			in       string
-			expected *parsedFilename
+			expected *parsedFile
 		}{
-			// Video (with varied filenames)
-			{"0    file 0.avi", &parsedFilename{prefix: 0, title: "file 0", subPrefix: nil, subTitle: "", asset: types.NewAsset("avi")}},
-			{"001 file 1.mp4", &parsedFilename{prefix: 1, title: "file 1", subPrefix: nil, subTitle: "", asset: types.NewAsset("mp4")}},
-			{"1-file.ogg", &parsedFilename{prefix: 1, title: "file", subPrefix: nil, subTitle: "", asset: types.NewAsset("ogg")}},
-			{"2 - file.webm", &parsedFilename{prefix: 2, title: "file", subPrefix: nil, subTitle: "", asset: types.NewAsset("webm")}},
-			{"3 -file.m4a", &parsedFilename{prefix: 3, title: "file", subPrefix: nil, subTitle: "", asset: types.NewAsset("m4a")}},
-			{"4- file.opus", &parsedFilename{prefix: 4, title: "file", subPrefix: nil, subTitle: "", asset: types.NewAsset("opus")}},
-			{"5000 --- file.wav", &parsedFilename{prefix: 5000, title: "file", subPrefix: nil, subTitle: "", asset: types.NewAsset("wav")}},
-			{"0100 file.mp3", &parsedFilename{prefix: 100, title: "file", subPrefix: nil, subTitle: "", asset: types.NewAsset("mp3")}},
-			// PDF
-			{"1 - doc.pdf", &parsedFilename{prefix: 1, title: "doc", subPrefix: nil, subTitle: "", asset: types.NewAsset("pdf")}},
+			// Video (varied)
+			{"0    file 0.avi", &parsedFile{Prefix: 0, Title: "file 0", SubPrefix: nil, SubTitle: "", Ext: "avi", AssetType: types.NewAsset("avi"), IsCard: false, Original: "0    file 0.avi"}},
+			{"001 file 1.mp4", &parsedFile{Prefix: 1, Title: "file 1", SubPrefix: nil, SubTitle: "", Ext: "mp4", AssetType: types.NewAsset("mp4"), IsCard: false, Original: "001 file 1.mp4"}},
+			{"1-file.ogg", &parsedFile{Prefix: 1, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "ogg", AssetType: types.NewAsset("ogg"), IsCard: false, Original: "1-file.ogg"}},
+			{"2 - file.webm", &parsedFile{Prefix: 2, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "webm", AssetType: types.NewAsset("webm"), IsCard: false, Original: "2 - file.webm"}},
+			{"3 -file.m4a", &parsedFile{Prefix: 3, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "m4a", AssetType: types.NewAsset("m4a"), IsCard: false, Original: "3 -file.m4a"}},
+			{"4- file.opus", &parsedFile{Prefix: 4, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "opus", AssetType: types.NewAsset("opus"), IsCard: false, Original: "4- file.opus"}},
+			{"5000 --- file.wav", &parsedFile{Prefix: 5000, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "wav", AssetType: types.NewAsset("wav"), IsCard: false, Original: "5000 --- file.wav"}},
+			{"0100 file.mp3", &parsedFile{Prefix: 100, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "mp3", AssetType: types.NewAsset("mp3"), IsCard: false, Original: "0100 file.mp3"}},
+			// PDF (including mixed case)
+			{"1 - doc.pdf", &parsedFile{Prefix: 1, Title: "doc", SubPrefix: nil, SubTitle: "", Ext: "pdf", AssetType: types.NewAsset("pdf"), IsCard: false, Original: "1 - doc.pdf"}},
+			{"2 - REPORT.PDF", &parsedFile{Prefix: 2, Title: "REPORT", SubPrefix: nil, SubTitle: "", Ext: "pdf", AssetType: types.NewAsset("pdf"), IsCard: false, Original: "2 - REPORT.PDF"}},
 			// HTML
-			{"1 index.html", &parsedFilename{prefix: 1, title: "index", subPrefix: nil, subTitle: "", asset: types.NewAsset("html")}},
-			// With sub-prefix
-			{"01 file 0 {1}.avi", &parsedFilename{prefix: 1, title: "file 0", subPrefix: intPtr(1), subTitle: "", asset: types.NewAsset("avi")}},
-			{"01 file 0 {2}.mp4", &parsedFilename{prefix: 1, title: "file 0", subPrefix: intPtr(2), subTitle: "", asset: types.NewAsset("mp4")}},
-			// // With sub-prefix and sub-title
-			{"01 file 0 {1 Part 1}.avi", &parsedFilename{prefix: 1, title: "file 0", subPrefix: intPtr(1), subTitle: "Part 1", asset: types.NewAsset("avi")}},
-			{"01 file 0 {2 Part 2}.mp4", &parsedFilename{prefix: 1, title: "file 0", subPrefix: intPtr(2), subTitle: "Part 2", asset: types.NewAsset("mp4")}},
-			{"01 file 0 {3 -   Part 3}.mp4", &parsedFilename{prefix: 1, title: "file 0", subPrefix: intPtr(3), subTitle: "Part 3", asset: types.NewAsset("mp4")}},
-			{"01 file 0 {1 - }.mp4", &parsedFilename{prefix: 1, title: "file 0", subPrefix: intPtr(1), subTitle: "", asset: types.NewAsset("mp4")}},
-			{"01 file 0 {1 - }.mp4", &parsedFilename{prefix: 1, title: "file 0", subPrefix: intPtr(1), subTitle: "", asset: types.NewAsset("mp4")}},
-			{"01 file 0 {1 --- Part 1}.mp4", &parsedFilename{prefix: 1, title: "file 0", subPrefix: intPtr(1), subTitle: "Part 1", asset: types.NewAsset("mp4")}},
-			{"01 file 0 {}.mp4", &parsedFilename{prefix: 1, title: "file 0", subPrefix: nil, subTitle: "", asset: types.NewAsset("mp4")}},
+			{"1 index.html", &parsedFile{Prefix: 1, Title: "index", SubPrefix: nil, SubTitle: "", Ext: "html", AssetType: types.NewAsset("html"), IsCard: false, Original: "1 index.html"}},
+			// Markdown
+			{"5 notes.md", &parsedFile{Prefix: 5, Title: "notes", SubPrefix: nil, SubTitle: "", Ext: "md", AssetType: types.NewAsset("md"), IsCard: false, Original: "5 notes.md"}},
+			// Text
+			{"6 readme.txt", &parsedFile{Prefix: 6, Title: "readme", SubPrefix: nil, SubTitle: "", Ext: "txt", AssetType: types.NewAsset("txt"), IsCard: false, Original: "6 readme.txt"}},
+			// With sub-prefix but no subtitle
+			{"01 file 0 {1}.avi", &parsedFile{Prefix: 1, Title: "file 0", SubPrefix: intPtr(1), SubTitle: "", Ext: "avi", AssetType: types.NewAsset("avi"), IsCard: false, Original: "01 file 0 {1}.avi"}},
+			// With sub-prefix and subtitle
+			{"01 file 0 {1 Part 1}.avi", &parsedFile{Prefix: 1, Title: "file 0", SubPrefix: intPtr(1), SubTitle: "Part 1", Ext: "avi", AssetType: types.NewAsset("avi"), IsCard: false, Original: "01 file 0 {1 Part 1}.avi"}},
+			{"01 file 0 {2 -   Part 2}.mp4", &parsedFile{Prefix: 1, Title: "file 0", SubPrefix: intPtr(2), SubTitle: "Part 2", Ext: "mp4", AssetType: types.NewAsset("mp4"), IsCard: false, Original: "01 file 0 {2 -   Part 2}.mp4"}},
+			{"01 file 0 {}.mp4", &parsedFile{Prefix: 1, Title: "file 0", SubPrefix: nil, SubTitle: "", Ext: "mp4", AssetType: types.NewAsset("mp4"), IsCard: false, Original: "01 file 0 {}.mp4"}},
+			// Description-like filenames
+			{"01 description.md", &parsedFile{Prefix: 1, Title: "description", SubPrefix: nil, SubTitle: "", Ext: "md", AssetType: types.NewAsset("md"), IsCard: false, Original: "01 description.md"}},
+			{"02 Description.TXT", &parsedFile{Prefix: 2, Title: "Description", SubPrefix: nil, SubTitle: "", Ext: "txt", AssetType: types.NewAsset("txt"), IsCard: false, Original: "02 Description.TXT"}},
 		}
 
 		for _, tt := range tests {
-			fb := parseFilename(tt.in)
-			require.Equal(t, tt.expected, fb, fmt.Sprintf("error for [%s]", tt.in))
+			parsed := parseFilename(tt.in)
+			require.Equal(t, tt.expected, parsed, fmt.Sprintf("error for [%s]", tt.in))
+
+		}
+	})
+
+	t.Run("cards", func(t *testing.T) {
+		var tests = []struct {
+			in       string
+			expected *parsedFile
+		}{
+			{"card.jpg", &parsedFile{Prefix: 0, Title: "card", SubPrefix: nil, SubTitle: "", Ext: "jpg", AssetType: nil, IsCard: true, Original: "card.jpg"}},
+			{"card.jpeg", &parsedFile{Prefix: 0, Title: "card", SubPrefix: nil, SubTitle: "", Ext: "jpeg", AssetType: nil, IsCard: true, Original: "card.jpeg"}},
+			{"card.png", &parsedFile{Prefix: 0, Title: "card", SubPrefix: nil, SubTitle: "", Ext: "png", AssetType: nil, IsCard: true, Original: "card.png"}},
+		}
+
+		for _, tt := range tests {
+			parsed := parseFilename(tt.in)
+			require.Equal(t, tt.expected, parsed, fmt.Sprintf("error for [%s]", tt.in))
 		}
 	})
 
 	t.Run("attachments", func(t *testing.T) {
 		var tests = []struct {
 			in       string
-			expected *parsedFilename
+			expected *parsedFile
 		}{
 			// No title
-			{"01", &parsedFilename{prefix: 1, title: "01"}},
-			{"200.pdf", &parsedFilename{prefix: 200, title: "200.pdf"}},
-			{"1 -.txt", &parsedFilename{prefix: 1, title: "1 -.txt"}},
-			{"1 - .txt", &parsedFilename{prefix: 1, title: "1 - .txt"}},
-			{"1 .txt", &parsedFilename{prefix: 1, title: "1 .txt"}},
-			{"1     .pdf", &parsedFilename{prefix: 1, title: "1     .pdf"}},
-			// No extension (fileName should have no prefix)
-			{"0    file 0", &parsedFilename{prefix: 0, title: "file 0"}},
-			{"001    file 1", &parsedFilename{prefix: 1, title: "file 1"}},
-			{"1001 - file", &parsedFilename{prefix: 1001, title: "file"}},
-			{"0123-file", &parsedFilename{prefix: 123, title: "file"}},
-			{"1 --- file", &parsedFilename{prefix: 1, title: "file"}},
-			// Non-asset extension (fileName should have no prefix)
-			{"1 file.txt", &parsedFilename{prefix: 1, title: "file.txt"}},
+			{"01", &parsedFile{Prefix: 1, Title: "", SubPrefix: nil, SubTitle: "", Ext: "", AssetType: nil, IsCard: false, Original: "01"}},
+			{"200.pdf", &parsedFile{Prefix: 200, Title: "", SubPrefix: nil, SubTitle: "", Ext: "pdf", AssetType: types.NewAsset("pdf"), IsCard: false, Original: "200.pdf"}},
+			{"1 -.txt", &parsedFile{Prefix: 1, Title: "", SubPrefix: nil, SubTitle: "", Ext: "txt", AssetType: types.NewAsset("txt"), IsCard: false, Original: "1 -.txt"}},
+			{"1 - .txt", &parsedFile{Prefix: 1, Title: "", SubPrefix: nil, SubTitle: "", Ext: "txt", AssetType: types.NewAsset("txt"), IsCard: false, Original: "1 - .txt"}},
+			{"1 .txt", &parsedFile{Prefix: 1, Title: "", SubPrefix: nil, SubTitle: "", Ext: "txt", AssetType: types.NewAsset("txt"), IsCard: false, Original: "1 .txt"}},
+			{"1     .pdf", &parsedFile{Prefix: 1, Title: "", SubPrefix: nil, SubTitle: "", Ext: "pdf", AssetType: types.NewAsset("pdf"), IsCard: false, Original: "1     .pdf"}},
+			// No extension
+			{"1 - file", &parsedFile{Prefix: 1, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "", AssetType: nil, IsCard: false, Original: "1 - file"}},
+			{"2 file", &parsedFile{Prefix: 2, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "", AssetType: nil, IsCard: false, Original: "2 file"}},
+			{"3-file", &parsedFile{Prefix: 3, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "", AssetType: nil, IsCard: false, Original: "3-file"}},
+			{"4 file", &parsedFile{Prefix: 4, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "", AssetType: nil, IsCard: false, Original: "4 file"}},
+			{"6 --- file", &parsedFile{Prefix: 6, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "", AssetType: nil, IsCard: false, Original: "6 --- file"}},
+			// Non-asset extensions
+			{"1 - file.exe", &parsedFile{Prefix: 1, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "exe", AssetType: types.NewAsset("exe"), IsCard: false, Original: "1 - file.exe"}},
 		}
 
 		for _, tt := range tests {
-			fb := parseFilename(tt.in)
-			require.Equal(t, tt.expected, fb, fmt.Sprintf("error for [%s]", tt.in))
+			parsed := parseFilename(tt.in)
+			require.Equal(t, tt.expected, parsed, fmt.Sprintf("error for [%s]", tt.in))
 		}
 	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestScanner_CategorizeFile(t *testing.T) {
+	var tests = []struct {
+		in       string
+		expected FileCategory
+	}{
+		{"file", Ignore},
+		{"file.file", Ignore},
+		{"file.avi", Ignore},
+		{" - file.avi", Ignore},
+		{"- - file.avi", Ignore},
+		{".avi", Ignore},
+		{"-1 - file.avi", Ignore},
+		{"a - file.avi", Ignore},
+		{"1.1 - file.avi", Ignore},
+		{"2.3-file.avi", Ignore},
+		{"1file.avi", Ignore},
+		// Asset
+		{"0    file 0.avi", Asset},
+		{"001 file 1.mp4", Asset},
+		{"1-file.ogg", Asset},
+		{"2 - file.webm", Asset},
+		{"3 -file.m4a", Asset},
+		{"4- file.opus", Asset},
+		{"5000 --- file.wav", Asset},
+		{"0100 file.mp3", Asset},
+		{"1 - doc.pdf", Asset},
+		{"2 - REPORT.PDF", Asset},
+		{"1 index.html", Asset},
+		{"5 notes.md", Asset},
+		{"6 readme.txt", Asset},
+		{"01 file 0 {}.mp4", Asset},
+		// GroupedAsset
+		{"01 file 0 {1}.avi", GroupedAsset},
+		{"01 file 0 {1 Part 1}.avi", GroupedAsset},
+		{"01 file 0 {2 -   Part 2}.mp4", GroupedAsset},
+		// Card
+		{"card.jpg", Card},
+		{"card.jpeg", Card},
+		// Description
+		{"01 description.md", Description},
+		{"02 Description.TXT", Description},
+		// Attachment
+		{"01", Attachment},
+		{"200.pdf", Attachment},
+		{"1 -.txt", Attachment},
+		{"1 - .txt", Attachment},
+		{"1 .txt", Attachment},
+		{"1     .pdf", Attachment},
+		{"1 - file", Attachment},
+		{"2 file", Attachment},
+		{"3-file", Attachment},
+		{"6 --- file", Attachment},
+		{"1 - file.exe", Attachment},
+	}
+
+	for _, tt := range tests {
+		parsed := parseFilename(tt.in)
+		category := categorizeFile(parsed)
+		require.Equal(t, tt.expected, category, fmt.Sprintf("error for [%s]", tt.in))
+	}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -9,11 +9,13 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -248,9 +250,7 @@ func scanFiles(s *CourseScan, coursePath string, courseID string) (*scannedResul
 		return nil, err
 	}
 
-	assetsByChapterPrefix := make(AssetsByChapterPrefix)
-	assetDescriptionsByChapterPrefix := make(AssetDescriptionsByChapterPrefix)
-	attachmentsByChapterPrefix := make(AttachmentsByChapterPrefix)
+	buckets := make(map[string]map[int]*fileBucket)
 	cardPath := ""
 
 	for _, fp := range files {
@@ -259,141 +259,176 @@ func scanFiles(s *CourseScan, coursePath string, courseID string) (*scannedResul
 		dir := filepath.Dir(normalized)
 		inRoot := dir == utils.NormalizeWindowsDrive(coursePath)
 
-		if inRoot && isCard(filename) {
-			if cardPath == "" {
-				cardPath = normalized
-			}
-			continue
-		}
-
 		chapter := ""
 		if !inRoot {
 			chapter = filepath.Base(dir)
 		}
 
 		parsed := parseFilename(filename)
-		if parsed == nil {
+		category := categorizeFile(parsed)
+
+		if category == Ignore {
+			// Ignore files that do not match any category
+			fmt.Println("[Ignoring]", normalized)
 			s.logger.Debug("Ignoring incompatible file", loggerType, slog.String("file", normalized))
 			continue
 		}
 
-		if _, ok := assetsByChapterPrefix[chapter]; !ok {
-			assetsByChapterPrefix[chapter] = make(map[int][]*models.Asset)
+		if buckets[chapter] == nil {
+			buckets[chapter] = make(map[int]*fileBucket)
 		}
 
-		if _, ok := assetDescriptionsByChapterPrefix[chapter]; !ok {
-			assetDescriptionsByChapterPrefix[chapter] = make(map[int]string)
+		var bucket *fileBucket
+		if bucket = buckets[chapter][parsed.Prefix]; bucket == nil {
+			bucket = &fileBucket{}
+			buckets[chapter][parsed.Prefix] = bucket
 		}
 
-		if _, ok := attachmentsByChapterPrefix[chapter]; !ok {
-			attachmentsByChapterPrefix[chapter] = make(map[int][]*models.Attachment)
-		}
+		// Build the buckets of assets, grouped assets, attachments, and description files
+		switch category {
+		case Card:
+			fmt.Println("[Card]", normalized)
 
-		// Add attachment
-		if parsed.asset == nil {
-			attachmentsByChapterPrefix[chapter][parsed.prefix] = append(
-				attachmentsByChapterPrefix[chapter][parsed.prefix],
-				&models.Attachment{
-					Title: parsed.title,
-					Path:  normalized,
-				},
-			)
+			if inRoot && cardPath == "" {
+				cardPath = normalized
+			}
 
-			continue
-		}
-
-		if parsed.asset.IsMarkdown() && strings.ToLower(parsed.title) == "description" {
-			assetDescriptionsByChapterPrefix[chapter][parsed.prefix] = normalized
-			continue
-		}
-
-		stat, err := s.appFs.Fs.Stat(normalized)
-		if err != nil {
-			return nil, err
-		}
-
-		var subPrefix sql.NullInt16
-		if parsed.subPrefix != nil {
-			subPrefix = sql.NullInt16{Int16: int16(*parsed.subPrefix), Valid: true}
-		}
-
-		scannedAsset := &models.Asset{
-			Title:     parsed.title,
-			Prefix:    sql.NullInt16{Int16: int16(parsed.prefix), Valid: true},
-			SubPrefix: subPrefix,
-			SubTitle:  parsed.subTitle,
-			Chapter:   chapter,
-			CourseID:  courseID,
-			Path:      normalized,
-			Type:      *parsed.asset,
-			FileSize:  stat.Size(),
-			ModTime:   stat.ModTime().UTC().Format(time.RFC3339Nano),
-		}
-
-		prefix := parsed.prefix
-		existingAssets := assetsByChapterPrefix[chapter][prefix]
-
-		if parsed.subPrefix == nil {
-			if len(existingAssets) == 0 {
-				assetsByChapterPrefix[chapter][prefix] = []*models.Asset{scannedAsset}
+		case Description:
+			fmt.Println("[Description]", normalized)
+			if bucket.descriptionPath == "" {
+				bucket.descriptionPath = normalized
 			} else {
-				existingAsset := existingAssets[0]
-
-				// Apply asset priority: video > html > pdf
-				if scannedAsset.Type.IsVideo() && !existingAsset.Type.IsVideo() ||
-					scannedAsset.Type.IsHTML() && existingAsset.Type.IsPDF() {
-
-					// Downgrade existing asset to attachment
-					attachmentsByChapterPrefix[chapter][prefix] = append(
-						attachmentsByChapterPrefix[chapter][prefix],
-						&models.Attachment{
-							Title: existingAsset.Title + filepath.Ext(existingAsset.Path),
-							Path:  existingAsset.Path,
-						},
-					)
-
-					scannedAsset.Hash, err = hashFilePartial(s.appFs.Fs, normalized, 1024*1024)
-					if err != nil {
-						return nil, err
-					}
-
-					assetsByChapterPrefix[chapter][prefix] = []*models.Asset{scannedAsset}
-				} else {
-					// Add the new asset as an attachment
-					attachmentsByChapterPrefix[chapter][prefix] = append(
-						attachmentsByChapterPrefix[chapter][prefix],
-						&models.Attachment{
-							Title: parsed.title,
-							Path:  normalized,
-						},
-					)
-				}
+				s.logger.Warn("Multiple description files found, ignoring", loggerType,
+					slog.String("file", normalized),
+					slog.String("existing", bucket.descriptionPath),
+				)
 			}
-		} else {
-			assetsByChapterPrefix[chapter][prefix] = append(
-				assetsByChapterPrefix[chapter][prefix],
-				scannedAsset,
-			)
+
+		case Asset:
+			fmt.Println("[Asset]", normalized)
+
+			stat, err := s.appFs.Fs.Stat(fp)
+			if err != nil {
+				return nil, err
+			}
+
+			bucket.assets = append(bucket.assets, &models.Asset{
+				Title:    parsed.Title,
+				Prefix:   sql.NullInt16{Int16: int16(parsed.Prefix), Valid: true},
+				Chapter:  chapter,
+				CourseID: courseID,
+				Path:     normalized,
+				Type:     *parsed.AssetType,
+				FileSize: stat.Size(),
+				ModTime:  stat.ModTime().UTC().Format(time.RFC3339Nano),
+			})
+
+		case GroupedAsset:
+			fmt.Println("[Grouped Asset]", normalized)
+
+			stat, err := s.appFs.Fs.Stat(fp)
+			if err != nil {
+				return nil, err
+			}
+
+			bucket.groupedAssets = append(bucket.groupedAssets, &models.Asset{
+				Title:     parsed.Title,
+				Prefix:    sql.NullInt16{Int16: int16(parsed.Prefix), Valid: true},
+				SubPrefix: sql.NullInt16{Int16: int16(*parsed.SubPrefix), Valid: true},
+				SubTitle:  parsed.SubTitle,
+				Chapter:   chapter,
+				CourseID:  courseID,
+				Path:      normalized,
+				Type:      *parsed.AssetType,
+				FileSize:  stat.Size(),
+				ModTime:   stat.ModTime().UTC().Format(time.RFC3339Nano),
+			})
+
+		case Attachment:
+			fmt.Println("[Attachment]", normalized)
+
+			bucket.attachments = append(bucket.attachments, &models.Attachment{
+				Title: parsed.Title + filepath.Ext(normalized),
+				Path:  normalized,
+			})
 		}
 	}
 
-	// Attach asset descriptions to the assets
-	for chapter, assetMap := range assetDescriptionsByChapterPrefix {
-		for prefix, descriptionPath := range assetMap {
-			if assets, exists := assetsByChapterPrefix[chapter][prefix]; exists && len(assets) > 0 {
-				// Attach the description to the first asset in the chapter with the prefix
-				assets[0].DescriptionPath = descriptionPath
-			}
-		}
-	}
-
-	scannedResults := &scannedResults{
-		assetsByChapterPrefix:      assetsByChapterPrefix,
-		attachmentsByChapterPrefix: attachmentsByChapterPrefix,
+	results := &scannedResults{
+		assetsByChapterPrefix:      make(AssetsByChapterPrefix),
+		attachmentsByChapterPrefix: make(AttachmentsByChapterPrefix),
 		cardPath:                   cardPath,
 	}
 
-	return scannedResults, nil
+	for chapter, prefixMap := range buckets {
+		results.assetsByChapterPrefix[chapter] = make(map[int][]*models.Asset)
+		results.attachmentsByChapterPrefix[chapter] = make(map[int][]*models.Attachment)
+
+		for prefix, bucket := range prefixMap {
+			if len(bucket.groupedAssets) > 0 {
+				// There are grouped assets, meaning we set demote non-grouped assets to attachments
+
+				// Sort the grouped assets by sub-prefix and set
+				sort.Slice(bucket.groupedAssets, func(i, j int) bool {
+					return bucket.groupedAssets[i].SubPrefix.Int16 < bucket.groupedAssets[j].SubPrefix.Int16
+				})
+				results.assetsByChapterPrefix[chapter][prefix] = bucket.groupedAssets
+
+				// Demote non-grouped assets to attachments
+				for _, asset := range bucket.assets {
+					results.attachmentsByChapterPrefix[chapter][prefix] = append(
+						results.attachmentsByChapterPrefix[chapter][prefix],
+						&models.Attachment{
+							Title: asset.Title + filepath.Ext(asset.Path),
+							Path:  asset.Path,
+						},
+					)
+				}
+
+				// Add attachments
+				results.attachmentsByChapterPrefix[chapter][prefix] = append(
+					results.attachmentsByChapterPrefix[chapter][prefix],
+					bucket.attachments...)
+
+				// Description (Set to the first asset in the group)
+				if bucket.descriptionPath != "" {
+					results.assetsByChapterPrefix[chapter][prefix][0].DescriptionPath = bucket.descriptionPath
+				}
+
+			} else if len(bucket.assets) > 0 {
+				// There are only non-grouped assets
+				priorityIndex := pickBest(bucket.assets)
+				results.assetsByChapterPrefix[chapter][prefix] = []*models.Asset{bucket.assets[priorityIndex]}
+
+				// Demote the other assets to attachments
+				for i, asset := range bucket.assets {
+					if i == priorityIndex {
+						continue
+					}
+
+					results.attachmentsByChapterPrefix[chapter][prefix] = append(
+						results.attachmentsByChapterPrefix[chapter][prefix],
+						&models.Attachment{
+							Title: asset.Title + filepath.Ext(asset.Path),
+							Path:  asset.Path,
+						},
+					)
+				}
+
+				// Add attachments
+				results.attachmentsByChapterPrefix[chapter][prefix] = append(
+					results.attachmentsByChapterPrefix[chapter][prefix],
+					bucket.attachments...)
+
+				// Description
+				if bucket.descriptionPath != "" {
+					results.assetsByChapterPrefix[chapter][prefix][0].DescriptionPath = bucket.descriptionPath
+				}
+			}
+		}
+	}
+
+	return results, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -651,13 +686,70 @@ func applyAttachmentChanges(
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// parsedFilename that holds information following a filename being parsed
-type parsedFilename struct {
-	prefix    int
-	subPrefix *int
-	subTitle  string
-	title     string
-	asset     *types.Asset
+type fileBucket struct {
+	groupedAssets   []*models.Asset
+	assets          []*models.Asset
+	attachments     []*models.Attachment
+	descriptionPath string
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// A priority list for assets when picking a single asset
+var assetPriority = []types.AssetType{
+	types.AssetVideo,
+	types.AssetHTML,
+	types.AssetPDF,
+	types.AssetMarkdown,
+	types.AssetText,
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// pickBest returns the index in candidates of the highest‐priority asset
+func pickBest(candidates []*models.Asset) int {
+	bestIndex := 0
+	bestRank := len(assetPriority)
+
+	for i, a := range candidates {
+		for rank, at := range assetPriority {
+			if a.Type.Type() == at && rank < bestRank {
+				bestRank = rank
+				bestIndex = i
+				break
+			}
+		}
+	}
+	return bestIndex
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// parsedFile represents a parsed file name with its components
+type parsedFile struct {
+	// 1, 2, 03, etc
+	Prefix int
+
+	// Text before `{`
+	Title string
+
+	// If {N ...}
+	SubPrefix *int
+
+	// If {... subtitle}
+	SubTitle string
+
+	// Lowercase extension (without dot)
+	Ext string
+
+	// Non-nill when type is one of video, html, pdf, markdown, text
+	AssetType *types.Asset
+
+	// True when the file is a card
+	IsCard bool
+
+	// The original filename
+	Original string
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -683,7 +775,7 @@ var filenameRegex = regexp.MustCompile(
 		// Optional sub‐group in braces { … }
 		//   - SubPrefix: any number of digits (non‐greedy)
 		//   - Spacer: zero or more spaces, zero or more hyphens, zero or more spaces
-		//   - SubTitle: any chars up to “}” (non‐greedy)
+		//   - SubTitle: any chars up to `}` (non‐greedy)
 		//
 		//  - Ex:
 		// 		`{2}`,
@@ -703,88 +795,122 @@ var filenameRegex = regexp.MustCompile(
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// parseFilename parses a file name and determines if it represents an asset, attachment, or
-// neither
-//
-//   - Asset: `<prefix> <title> {<sub-prefix> <sub-title>}.<ext>` (where <ext> is a valid `types.AssetType`)
-//   - Attachment: `<prefix>`, `<prefix> <title>` or `<prefix> <title>.<ext>` (where <ext> is not
-//     a valid `types.AssetType`)
-func parseFilename(filename string) *parsedFilename {
-	pfn := &parsedFilename{}
+// parseFilename parses a filename into its constituent parts
+func parseFilename(filename string) *parsedFile {
+	// Quick check for card
+	if isCard(filename) {
+		return &parsedFile{
+			Prefix:    0, // Card has no prefix
+			Title:     "card",
+			SubPrefix: nil,
+			SubTitle:  "",
+			Ext:       strings.ToLower(strings.TrimPrefix(filepath.Ext(filename), ".")),
+			AssetType: types.NewAsset(""),
+			IsCard:    true,
+			Original:  filename,
+		}
+	}
 
 	matches := filenameRegex.FindStringSubmatch(filename)
-	if len(matches) == 0 {
+	if matches == nil {
 		return nil
 	}
 
+	// Prefix
 	prefix, err := strconv.Atoi(matches[filenameRegex.SubexpIndex("Prefix")])
 	if err != nil {
 		return nil
 	}
 
-	pfn.prefix = prefix
+	// Title without leading hyphens and spaces
+	title := strings.TrimLeft(strings.TrimSpace(matches[filenameRegex.SubexpIndex("Title")]), " -")
 
-	title := strings.TrimSpace(matches[filenameRegex.SubexpIndex("Title")])
-	title = strings.TrimLeft(title, " -")
-	pfn.title = title
+	// Ext
+	ext := strings.ToLower(matches[filenameRegex.SubexpIndex("Ext")])
 
-	// When title is empty, consider this an attachment
-	if pfn.title == "" {
-		pfn.title = filename
-		return pfn
+	// Asset type
+	var assetType *types.Asset
+	if ext != "" {
+		assetType = types.NewAsset(ext)
 	}
 
-	// Where there is no extension, consider this an attachment
-	ext := matches[filenameRegex.SubexpIndex("Ext")]
-	if ext == "" {
-		return pfn
-	}
-
-	pfn.asset = types.NewAsset(ext)
-
-	// When the extension is not supported, consider this an attachment
-	if pfn.asset == nil {
-		pfn.title = pfn.title + "." + ext
-	}
-
-	// When this is an asset, optionally parse the sub-prefix and sub-title
-	if subPrefixStr := matches[filenameRegex.SubexpIndex("SubPrefix")]; subPrefixStr != "" {
-		if subPrefix, err := strconv.Atoi(subPrefixStr); err == nil {
-			pfn.subPrefix = &subPrefix
+	var subPrefix *int
+	if sp := matches[filenameRegex.SubexpIndex("SubPrefix")]; sp != "" {
+		if v, err := strconv.Atoi(sp); err == nil {
+			subPrefix = &v
 		}
 	}
 
-	subTitle := strings.TrimSpace(matches[filenameRegex.SubexpIndex("SubTitle")])
-	subTitle = strings.Trim(subTitle, " -")
-	pfn.subTitle = subTitle
+	subTitle := strings.Trim(strings.TrimSpace(matches[filenameRegex.SubexpIndex("SubTitle")]), " -")
 
-	return pfn
+	return &parsedFile{
+		Prefix:    prefix,
+		Title:     title,
+		SubPrefix: subPrefix,
+		SubTitle:  subTitle,
+		Ext:       ext,
+		AssetType: assetType,
+		IsCard:    false,
+		Original:  filename,
+	}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// isCard determines if a given file name represents a card based on its name and extension
+// FileCategory enumerates what parse+classify says we’ve got.
+type FileCategory int
+
+const (
+	Ignore FileCategory = iota
+	Card
+	Description
+	Asset
+	GroupedAsset
+	Attachment
+)
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// categorize inspects a parsedFile and tells you which it is.
+func categorizeFile(p *parsedFile) FileCategory {
+	// Ignore
+	if p == nil {
+		return Ignore
+	}
+
+	// Card
+	if p.IsCard {
+		return Card
+	}
+
+	// Description
+	if p.SubPrefix == nil && strings.EqualFold(p.Title, "description") && (p.Ext == "md" || p.Ext == "txt") {
+		return Description
+	}
+
+	// Asset || grouped asset
+	if p.AssetType != nil && p.Title != "" {
+		if p.SubPrefix != nil {
+			return GroupedAsset
+		}
+
+		return Asset
+	}
+
+	// Attachment
+	return Attachment
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// isCard returns true for card.(jpg|jpeg|png|webp|tiff)
 func isCard(filename string) bool {
-	// Get the extension. If there is no extension, return false
-	ext := filepath.Ext(filename)
-	if ext == "" {
-		return false
-	}
+	ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(filename), "."))
 
-	fileWithoutExt := filename[:len(filename)-len(ext)]
-	if fileWithoutExt != "card" {
-		return false
-	}
-
-	// Check if the extension is supported
-	switch ext[1:] {
-	case
-		"jpg",
-		"jpeg",
-		"png",
-		"webp",
-		"tiff":
-		return true
+	switch ext {
+	case "jpg", "jpeg", "png", "webp", "tiff":
+		name := strings.TrimSuffix(filename, "."+ext)
+		return name == "card"
 	}
 
 	return false
