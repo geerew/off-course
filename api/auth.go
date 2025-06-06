@@ -57,7 +57,7 @@ func (api authAPI) signupStatus(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api authAPI) register(c *fiber.Ctx) error {
-	if !api.r.config.SignupEnabled {
+	if api.r.isBootstrapped() && !api.r.config.SignupEnabled {
 		return errorResponse(c, fiber.StatusForbidden, "Sign-up is disabled", nil)
 	}
 
@@ -78,8 +78,7 @@ func (api authAPI) register(c *fiber.Ctx) error {
 	}
 
 	// The first user will always be an admin
-	bootstrapAdmin, ok := c.Locals("bootstrapAdmin").(bool)
-	if ok && bootstrapAdmin {
+	if !api.r.isBootstrapped() {
 		user.Role = types.UserRoleAdmin
 	} else {
 		user.Role = types.UserRoleUser
@@ -105,9 +104,7 @@ func (api authAPI) register(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api authAPI) bootstrap(c *fiber.Ctx) error {
-	c.Locals("bootstrapAdmin", true)
 	err := api.register(c)
-
 	if err == nil {
 		api.r.setBootstrapped()
 	}
