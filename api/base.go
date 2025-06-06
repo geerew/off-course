@@ -39,12 +39,13 @@ type Router struct {
 
 // RouterConfig defines the configuration for the router
 type RouterConfig struct {
-	DbManager    *database.DatabaseManager
-	Logger       *slog.Logger
-	AppFs        *appfs.AppFs
-	CourseScan   *coursescan.CourseScan
-	HttpAddr     string
-	IsProduction bool
+	DbManager     *database.DatabaseManager
+	Logger        *slog.Logger
+	AppFs         *appfs.AppFs
+	CourseScan    *coursescan.CourseScan
+	HttpAddr      string
+	IsProduction  bool
+	SignupEnabled bool
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -375,8 +375,8 @@ func userResponseHelper(users []*models.User) []*userResponse {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-type TokenResponse struct {
-	Token string `json:"token"`
+type signupStatusResponse struct {
+	Enabled bool `json:"enabled"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

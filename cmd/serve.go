@@ -35,6 +35,7 @@ var serveCmd = &cobra.Command{
 		httpAddr, _ := cmd.Flags().GetString("http")
 		isDev, _ := cmd.Flags().GetBool("dev")
 		dataDir, _ := cmd.Flags().GetString("data-dir")
+		disableSignup, _ := cmd.Flags().GetBool("disable-signup")
 
 		appFs := appfs.New(afero.NewOsFs(), nil)
 
@@ -80,12 +81,13 @@ var serveCmd = &cobra.Command{
 		})
 
 		router := api.NewRouter(&api.RouterConfig{
-			DbManager:    dbManager,
-			Logger:       logger,
-			AppFs:        appFs,
-			CourseScan:   courseScan,
-			HttpAddr:     httpAddr,
-			IsProduction: !isDev,
+			DbManager:     dbManager,
+			Logger:        logger,
+			AppFs:         appFs,
+			CourseScan:    courseScan,
+			HttpAddr:      httpAddr,
+			IsProduction:  !isDev,
+			SignupEnabled: !disableSignup,
 		})
 
 		var wg sync.WaitGroup
@@ -127,6 +129,7 @@ func init() {
 	serveCmd.Flags().BoolP("dev", "d", false, "Run in development mode")
 	serveCmd.Flags().String("http", "127.0.0.1:9081", "TCP address to listen for the HTTP server")
 	serveCmd.Flags().String("data-dir", "./oc_data", "Directory to store data files")
+	serveCmd.Flags().Bool("disable-signup", false, "Disable user signup")
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
