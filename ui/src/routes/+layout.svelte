@@ -1,30 +1,52 @@
 <script lang="ts">
+	import '@fontsource/source-sans-pro/400.css';
+	import '@fontsource/source-sans-pro/700.css';
+	import '../app.css';
+
 	import { dev } from '$app/environment';
+	import { page } from '$app/state';
+	import { auth } from '$lib/auth.svelte';
+	import { TailwindIndicator } from '$lib/components';
+	import { Header, Oops, Spinner } from '$lib/components/';
+	import { Tooltip } from 'bits-ui';
+	import { Toaster } from 'svelte-sonner';
 
-	// Theme
-	import { ModeWatcher } from 'mode-watcher';
+	let { children } = $props();
 
-	// Fonts
-	import '@fontsource-variable/inter';
-	import '@fontsource/ubuntu-mono';
-	// Css
-	import '../app.pcss';
+	const isAuthPath = $derived(page.url.pathname.startsWith('/auth'));
 
-	import { TailwindIndicator } from '$components/generic';
-	import { Header } from '$components/header';
-	import { Toaster } from '$lib/components/ui/sonner';
+	$effect(() => {
+		page.url.pathname;
+		if (isAuthPath) return;
+		auth.me();
+	});
 </script>
 
-<ModeWatcher />
+<Toaster theme="dark" richColors />
 
-<Toaster richColors position="top-center" />
+<main>
+	<Tooltip.Provider>
+		{#if !isAuthPath}
+			{#if auth.error !== null}
+				<div class="container-px flex w-full">
+					<Oops message={'Failed to fetch user: ' + auth.error} />
+				</div>
+			{:else if auth.user === null}
+				<div class="flex w-full justify-center pt-14 sm:pt-20">
+					<Spinner class="bg-foreground-alt-3 size-6" />
+				</div>
+			{:else}
+				<Header />
+				<div class="min-h-dvh pt-[calc(var(--header-height)+1px)]">
+					{@render children()}
+				</div>
+			{/if}
+		{:else}
+			{@render children()}
+		{/if}
+	</Tooltip.Provider>
 
-<div class="flex min-h-screen flex-col">
-	<Header />
-	<div class="flex flex-1">
-		<slot />
-	</div>
 	{#if dev}
 		<TailwindIndicator />
 	{/if}
-</div>
+</main>

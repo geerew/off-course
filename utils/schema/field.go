@@ -21,6 +21,9 @@ type field struct {
 	// A db column alias
 	Alias string
 
+	// The name of the aggregate function to wrap the field in
+	AggregateFn string
+
 	// When true, the field cannot be null in the database
 	NotNull bool
 
@@ -53,6 +56,7 @@ func parseField(sf reflect.StructField, config *modelFieldConfig) *field {
 		Name:         sf.Name,
 		Position:     sf.Index,
 		Column:       config.column,
+		AggregateFn:  config.aggregate,
 		Alias:        config.alias,
 		NotNull:      config.notNull,
 		Mutable:      config.mutable,

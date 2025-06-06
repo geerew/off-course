@@ -2,17 +2,16 @@ package api
 
 import (
 	"database/sql"
-	"fmt"
 	"log/slog"
 	"net/url"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
-	"github.com/geerew/off-course/utils/pagination"
+	"github.com/geerew/off-course/utils/queryparser"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -34,64 +33,35 @@ func (r *Router) initTagRoutes() {
 
 	tagGroup := r.api.Group("/tags")
 	tagGroup.Get("", tagsAPI.getTags)
+	tagGroup.Get("/names", tagsAPI.getTagNames)
 	tagGroup.Get("/:name", tagsAPI.getTag)
-	tagGroup.Post("", tagsAPI.createTag)
-	tagGroup.Put("/:id", tagsAPI.updateTag)
-	tagGroup.Delete("/:id", tagsAPI.deleteTag)
+	tagGroup.Post("", protectedRoute, tagsAPI.createTag)
+	tagGroup.Put("/:id", protectedRoute, tagsAPI.updateTag)
+	tagGroup.Delete("/:id", protectedRoute, tagsAPI.deleteTag)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api *tagsAPI) getTags(c *fiber.Ctx) error {
-	filter := c.Query("filter", "")
-	orderBy := c.Query("orderBy", models.TAG_TABLE+".tag asc")
-
-	options := &database.Options{
-		OrderBy:    strings.Split(orderBy, ","),
-		Pagination: pagination.NewFromApi(c),
+	builderOptions := builderOptions{
+		DefaultOrderBy: defaultTagsOrderBy,
+		Paginate:       true,
+		AfterParseHook: tagsAfterParseHook,
 	}
 
-	if filter != "" {
-		options.Where = squirrel.Like{fmt.Sprintf("%s.%s", models.TAG_TABLE, models.TAG_TAG): "%" + filter + "%"}
+	principal, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	options, err := optionsBuilder(c, builderOptions, principal.UserID)
+	if err != nil {
+		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
 	tags := []*models.Tag{}
-	err := api.dao.List(c.Context(), &tags, options)
-	if err != nil {
+	if err = api.dao.ListTags(ctx, &tags, options); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tags", err)
-	}
-
-	if filter != "" {
-		sort.SliceStable(tags, func(i, j int) bool {
-			// Convert tags and filter to lower case for case insensitive comparison
-			iTag, jTag := strings.ToLower(tags[i].Tag), strings.ToLower(tags[j].Tag)
-			filterLower := strings.ToLower(filter)
-
-			// Check for exact matches, starts with, and contains in a case insensitive manner
-			iExact, jExact := iTag == filterLower, jTag == filterLower
-			iStarts, jStarts := strings.HasPrefix(iTag, filterLower), strings.HasPrefix(jTag, filterLower)
-			iContains, jContains := strings.Contains(iTag, filterLower), strings.Contains(jTag, filterLower)
-
-			// Prioritize exact matches first
-			if iExact && !jExact {
-				return true
-			} else if !iExact && jExact {
-				return false
-			}
-
-			// Then prioritize tags starting with the filter
-			if iStarts && !jStarts {
-				return true
-			} else if !iStarts && jStarts {
-				return false
-			}
-
-			// Lastly, sort by those that contain the substring, alphabetically
-			if iContains && jContains {
-				return iTag < jTag
-			}
-			return iContains && !jContains
-		})
 	}
 
 	pResult, err := options.Pagination.BuildResult(tagResponseHelper(tags))
@@ -100,6 +70,33 @@ func (api *tagsAPI) getTags(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(pResult)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func (api *tagsAPI) getTagNames(c *fiber.Ctx) error {
+	builderOptions := builderOptions{
+		DefaultOrderBy: defaultTagsOrderBy,
+		Paginate:       false,
+		AfterParseHook: tagsAfterParseHook,
+	}
+
+	principal, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	options, err := optionsBuilder(c, builderOptions, principal.UserID)
+	if err != nil {
+		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
+	}
+
+	tags, err := dao.ListPluck[[]string](ctx, api.dao, &models.Tag{}, options, models.TAG_TAG)
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tags", err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(tags)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -114,13 +111,15 @@ func (api *tagsAPI) getTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error decoding name parameter", err)
 	}
 
-	options := &database.Options{
-		Where: squirrel.Eq{fmt.Sprintf("%s.%s", models.TAG_TABLE, models.TAG_TAG): name},
+	_, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
+	options := &database.Options{Where: squirrel.Eq{models.TAG_TABLE_TAG: name}}
+
 	tag := &models.Tag{}
-	err = api.dao.Get(c.Context(), tag, options)
-	if err != nil {
+	if err = api.dao.GetTag(ctx, tag, options); err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Tag not found", nil)
 		}
@@ -134,18 +133,22 @@ func (api *tagsAPI) getTag(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api *tagsAPI) createTag(c *fiber.Ctx) error {
-	tag := new(models.Tag)
-	if err := c.BodyParser(tag); err != nil {
+	req := &tagRequest{}
+	if err := c.BodyParser(req); err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
 	}
 
-	if tag.Tag == "" {
+	if req.Tag == "" {
 		return errorResponse(c, fiber.StatusBadRequest, "A tag is required", nil)
 	}
 
-	tag.ID = ""
-	err := api.dao.CreateTag(c.Context(), tag)
+	_, ctx, err := principalCtx(c)
 	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	tag := &models.Tag{Tag: req.Tag}
+	if err := api.dao.CreateTag(ctx, tag); err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return errorResponse(c, fiber.StatusBadRequest, "Tag already exists", err)
 		}
@@ -161,14 +164,18 @@ func (api *tagsAPI) createTag(c *fiber.Ctx) error {
 func (api *tagsAPI) updateTag(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	reqTag := &tagRequest{}
-	if err := c.BodyParser(reqTag); err != nil {
+	tagReq := &tagRequest{}
+	if err := c.BodyParser(tagReq); err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
 	}
 
-	tag := &models.Tag{Base: models.Base{ID: id}}
-	err := api.dao.GetById(c.Context(), tag)
+	_, ctx, err := principalCtx(c)
 	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	tag := &models.Tag{Base: models.Base{ID: id}}
+	if err := api.dao.GetTag(ctx, tag, nil); err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Tag not found", nil)
 		}
@@ -176,16 +183,11 @@ func (api *tagsAPI) updateTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tag", err)
 	}
 
-	tag.Tag = reqTag.Tag
+	tag.Tag = tagReq.Tag
 
-	err = api.dao.UpdateTag(c.Context(), tag)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return errorResponse(c, fiber.StatusBadRequest, "Invalid tag", err)
-		}
-
-		if strings.HasPrefix(err.Error(), "constraint failed") {
-			return errorResponse(c, fiber.StatusBadRequest, "Duplicate tag", err)
+	if err := api.dao.UpdateTag(ctx, tag); err != nil {
+		if strings.HasPrefix(err.Error(), "UNIQUE constraint failed") {
+			return errorResponse(c, fiber.StatusBadRequest, "Tag already exists", err)
 		}
 
 		return errorResponse(c, fiber.StatusInternalServerError, "Error updating tag", err)
@@ -199,11 +201,73 @@ func (api *tagsAPI) updateTag(c *fiber.Ctx) error {
 func (api *tagsAPI) deleteTag(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	tag := &models.Tag{Base: models.Base{ID: id}}
-	err := api.dao.Delete(c.Context(), tag, nil)
+	_, ctx, err := principalCtx(c)
 	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	tag := &models.Tag{Base: models.Base{ID: id}}
+	if err := dao.Delete(ctx, api.dao, tag, nil); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting tag", err)
 	}
 
 	return c.Status(fiber.StatusNoContent).Send(nil)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// tagsAfterParseHook builds the database.Options.Where based on the query expression
+func tagsAfterParseHook(parsed *queryparser.QueryResult, options *database.Options, _ string) {
+	if len(parsed.FreeText) == 0 {
+		return
+	}
+
+	if slices.Contains(parsed.Sort, "special") {
+		// During special ordering, filter by the first filter (there should only be one) and
+		// order by a case expression
+		filter := strings.ToLower(parsed.FreeText[0])
+
+		options.Where = squirrel.Like{models.TAG_TABLE_TAG: "%" + filter + "%"}
+
+		caseExpr := squirrel.Case().
+			When(squirrel.Eq{"LOWER(" + models.TAG_TABLE_TAG + ")": filter}, "0").
+			When(squirrel.Like{"LOWER(" + models.TAG_TABLE_TAG + ")": filter + "%"}, "1").
+			When(squirrel.Like{"LOWER(" + models.TAG_TABLE_TAG + ")": "%" + filter + "%"}, "2")
+
+		sql, args, _ := caseExpr.ToSql()
+		options.OrderByClause = squirrel.Expr(sql+", "+defaultTagsOrderBy[0], args...)
+
+		options.OrderBy = []string{}
+	} else {
+		options.Where = tagsWhereBuilder(parsed.Expr)
+	}
+
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// tagsWhereBuilder builds a squirrel.Sqlizer, for use in a WHERE clause
+//
+// TODO Support count filter (ex HAVING COUNT(courses_tags.id) > 1)
+func tagsWhereBuilder(expr queryparser.QueryExpr) squirrel.Sqlizer {
+	switch node := expr.(type) {
+	case *queryparser.ValueExpr:
+		return squirrel.Like{models.TAG_TABLE_TAG: "%" + node.Value + "%"}
+	case *queryparser.AndExpr:
+		var andSlice []squirrel.Sqlizer
+		for _, child := range node.Children {
+			andSlice = append(andSlice, tagsWhereBuilder(child))
+		}
+
+		return squirrel.And(andSlice)
+	case *queryparser.OrExpr:
+		var orSlice []squirrel.Sqlizer
+		for _, child := range node.Children {
+			orSlice = append(orSlice, tagsWhereBuilder(child))
+		}
+
+		return squirrel.Or(orSlice)
+	default:
+		return nil
+	}
 }

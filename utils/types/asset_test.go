@@ -32,6 +32,10 @@ func TestAsset_NewAsset(t *testing.T) {
 		{"html", AssetHTML},
 		{"htm", AssetHTML},
 		{"pdf", AssetPDF},
+		// markdown
+		{"md", AssetMarkdown},
+		// text
+		{"txt", AssetText},
 	}
 
 	for _, tt := range tests {
@@ -61,6 +65,14 @@ func TestAsset_Set(t *testing.T) {
 	// Set to PDF
 	a.SetPDF()
 	require.Equal(t, AssetPDF, a.s)
+
+	// Set to Markdown
+	a.SetMarkdown()
+	require.Equal(t, AssetMarkdown, a.s)
+
+	// Set to Text
+	a.SetText()
+	require.Equal(t, AssetText, a.s)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -77,6 +89,18 @@ func TestAsset_Is(t *testing.T) {
 	// Is PDF
 	a = NewAsset("pdf")
 	require.True(t, a.IsPDF())
+
+	// Is Markdown
+	a = NewAsset("md")
+	require.True(t, a.IsMarkdown())
+
+	// Is Text
+	a = NewAsset("txt")
+	require.True(t, a.IsText())
+
+	// Is invalid
+	a = NewAsset("test")
+	require.Nil(t, a)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -84,6 +108,18 @@ func TestAsset_Is(t *testing.T) {
 func TestAsset_String(t *testing.T) {
 	a := NewAsset("mp4")
 	require.Equal(t, "video", a.String())
+
+	a = NewAsset("html")
+	require.Equal(t, "html", a.String())
+
+	a = NewAsset("pdf")
+	require.Equal(t, "pdf", a.String())
+
+	a = NewAsset("md")
+	require.Equal(t, "markdown", a.String())
+
+	a = NewAsset("txt")
+	require.Equal(t, "text", a.String())
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -96,6 +132,8 @@ func TestAsset_MarshalJSON(t *testing.T) {
 		{"mp4", `"video"`},
 		{"html", `"html"`},
 		{"pdf", `"pdf"`},
+		{"md", `"markdown"`},
+		{"txt", `"text"`},
 	}
 
 	for _, tt := range tests {
@@ -126,6 +164,8 @@ func TestAsset_UnmarshalJSON(t *testing.T) {
 		{`"video"`, AssetVideo, ""},
 		{`"html"`, AssetHTML, ""},
 		{`"pdf"`, AssetPDF, ""},
+		{`"markdown"`, AssetMarkdown, ""},
+		{`"text"`, AssetText, ""},
 	}
 
 	for _, tt := range tests {
@@ -150,6 +190,8 @@ func TestAsset_Value(t *testing.T) {
 		{"mp4", "video"},
 		{"html", "html"},
 		{"pdf", "pdf"},
+		{"md", "markdown"},
+		{"txt", "text"},
 	}
 
 	for _, tt := range tests {
@@ -179,6 +221,8 @@ func TestAsset_Scan(t *testing.T) {
 			{"video", "video"},
 			{"html", "html"},
 			{"pdf", "pdf"},
+			{"markdown", "markdown"},
+			{"text", "text"},
 		}
 
 		for _, tt := range tests {

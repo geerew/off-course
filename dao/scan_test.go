@@ -61,7 +61,7 @@ func Test_Update(t *testing.T) {
 		require.NoError(t, dao.UpdateScan(ctx, newS))
 
 		scanResult := &models.Scan{Base: models.Base{ID: originalScan.ID}}
-		require.Nil(t, dao.GetById(ctx, scanResult))
+		require.Nil(t, dao.GetScan(ctx, scanResult, nil))
 		require.Equal(t, originalScan.ID, scanResult.ID)                     // No change
 		require.Equal(t, originalScan.CourseID, scanResult.CourseID)         // No change
 		require.True(t, scanResult.CreatedAt.Equal(originalScan.CreatedAt))  // No change
@@ -154,10 +154,11 @@ func Test_ScanDeleteCascade(t *testing.T) {
 	require.NoError(t, dao.CreateCourse(ctx, course))
 
 	scan := &models.Scan{CourseID: course.ID}
-	require.NoError(t, dao.Create(ctx, scan))
+	require.NoError(t, dao.CreateScan(ctx, scan))
 
-	require.Nil(t, dao.Delete(ctx, course, nil))
+	require.Nil(t, Delete(ctx, dao, course, nil))
 
-	err := dao.GetById(ctx, scan)
-	require.ErrorIs(t, err, sql.ErrNoRows)
+	count, err := Count(ctx, dao, &models.Scan{}, nil)
+	require.NoError(t, err)
+	require.Zero(t, count)
 }

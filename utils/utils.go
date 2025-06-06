@@ -4,11 +4,14 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/url"
 	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/fatih/color"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -226,12 +229,14 @@ func DiffSliceOfStructsByKey[T any](left, right []T, key string) ([]T, []T, erro
 // ignore specified keys during the comparison
 //
 // Parameters:
-// - a: The first struct to compare (struct or a pointer to a struct)
-// - b: The second struct to compare (struct or a pointer to a struct)
-// - ignoreKeys: A slice of strings representing the field names to ignore during the comparison
+//   - a: The first struct/struct pointer
+//   - b: The second struct/struct pointer
+//   - ignoreKeys: A slice of strings representing the field names to ignore during the comparison
 //
 // Returns:
-// - true if the structs are equal, false otherwise
+//   - true if the structs are equal, false otherwise
+//
+// TODO Change ignoreKeys to onKeys, as in only compare these keys
 func CompareStructs(a, b interface{}, ignoreKeys []string) bool {
 	if reflect.TypeOf(a) != reflect.TypeOf(b) {
 		return false
@@ -356,4 +361,30 @@ func SnakeCase(s string) string {
 	}
 
 	return strings.ToLower(b.String())
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ErrF is a function that prints an error message with a timestamp in red color
+func Errf(format string, a ...interface{}) {
+	date := new(strings.Builder)
+	log.New(date, "", log.LstdFlags).Print()
+
+	c := color.New(color.Bold, color.FgRed)
+	c.Printf(color.GreenString(strings.TrimSpace(date.String()) + " "))
+	c.Add(color.Reset)
+	c.Printf(format, a...)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// InfoF is a function that prints an info message with a timestamp in green color
+func Infof(format string, a ...interface{}) {
+	date := new(strings.Builder)
+	log.New(date, "", log.LstdFlags).Print()
+
+	c := color.New(color.Bold, color.FgGreen)
+	c.Printf(color.GreenString(strings.TrimSpace(date.String()) + " "))
+	c.Add(color.Reset)
+	c.Printf(format, a...)
 }

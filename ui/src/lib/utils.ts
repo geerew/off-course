@@ -1,20 +1,11 @@
 import { goto } from '$app/navigation';
-import type { Asset, CourseChapters } from '$lib/types/models';
 import { clsx, type ClassValue } from 'clsx';
-import type { SortKey } from 'svelte-headless-table/plugins';
-import { cubicOut } from 'svelte/easing';
-import type { TransitionConfig } from 'svelte/transition';
+import DOMPurify from 'dompurify';
+import MarkdownIt from 'markdown-it';
 import { twMerge } from 'tailwind-merge';
+import type { AssetModel, Chapters } from './models/asset-model';
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-/**
- * Combines class names using `clsx` and then merges them using `twMerge`.
- *
- * @param {...ClassValue[]} inputs - The list of class values to be joined and merged.
- * @returns {string} A string of merged class values.
- *
- */
 
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
@@ -22,73 +13,100 @@ export function cn(...inputs: ClassValue[]) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-/**
- * Checks if the current environment is a browser environment.
- * @returns {boolean} True if the current environment is a browser environment, false otherwise.
- */
-export const IsBrowser = typeof document !== 'undefined';
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-/**
- * Converts a camelCase or PascalCase string to snake_case.
- *
- * @param {string} str - The input string in camelCase or PascalCase.
- * @returns {string} - The converted string in snake_case.
- */
-export function ToSnakeCase(str: string): string {
-	// Replace lowercase followed by uppercase, e.g., 'thisIs' -> 'this_Is'
-	let result = str.replace(/([a-z])([A-Z])/g, '$1_$2');
-
-	// Replace uppercase followed by uppercase then lowercase, e.g., 'AWord' -> 'A_Word'
-	result = result.replace(/([A-Z])([A-Z][a-z])/g, '$1_$2');
-
-	return result.toLowerCase();
+export function capitalizeFirstLetter(str: string) {
+	return String(str).charAt(0).toUpperCase() + String(str).slice(1);
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-/**
- * Converts an array of SortKey objects into a flattened order-by string.
- *
- * @param {SortKey[]} sortKeys - An array of SortKey objects to be converted.
- * @returns {string | undefined} - A flattened order-by string or undefined if the input array is
- * empty.
- */
-export function FlattenOrderBy(sortKeys: SortKey[]): string | undefined {
-	// Return undefined if the array is empty
-	if (sortKeys.length === 0) {
-		return undefined;
+export function buildQueryString(
+	params: Record<string, string | number | boolean | undefined>
+): string {
+	const searchParams = new URLSearchParams();
+
+	Object.entries(params).forEach(([key, value]) => {
+		if (value !== undefined) {
+			searchParams.append(key, value.toString());
+		}
+	});
+
+	return searchParams.toString();
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+export function remCalc(px: number | string, base: number = 16): number {
+	const tempPx = `${px}`.replace('px', '');
+	return (1 / base) * parseInt(tempPx);
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+export async function UpdateQueryParam(key: string, value: string, replaceState: boolean) {
+	if (typeof window === 'undefined') return;
+
+	const url = new URL(window.location.href);
+	url.searchParams.set(key, value);
+
+	await goto(url.toString(), { replaceState, keepFocus: true, noScroll: true });
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Build the course chapter structure
+export function BuildChapterStructure(courseAssets: AssetModel[]): Chapters {
+	const chapters: Chapters = {};
+
+	// Group by chapter
+	const assetsByChapter: Record<string, AssetModel[]> = {};
+	for (const asset of courseAssets) {
+		const chapter = asset.chapter || '(no chapter)';
+		if (!assetsByChapter[chapter]) assetsByChapter[chapter] = [];
+		assetsByChapter[chapter].push(asset);
 	}
 
-	// Convert the array of sort keys to an array of strings
-	const orderStrings = sortKeys.map((sortKey) => `${ToSnakeCase(sortKey.id)} ${sortKey.order}`);
+	// Group by prefix within each chapter to create lessons
+	for (const [chapterName, chapterAssets] of Object.entries(assetsByChapter)) {
+		const lessonMap: Record<number, AssetModel[]> = {};
 
-	// Join the array of strings with a comma and return
-	return orderStrings.join(', ');
-}
+		// Group assets by prefix
+		for (const asset of chapterAssets) {
+			if (!lessonMap[asset.prefix]) lessonMap[asset.prefix] = [];
+			lessonMap[asset.prefix].push(asset);
+		}
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		// Convert to lessons array
+		chapters[chapterName] = Object.entries(lessonMap)
+			.map(([prefix, assets]) => {
+				// Sort assets by subPrefix
+				const sortedAssets = assets.sort((a, b) => {
+					if (a.subPrefix === undefined && b.subPrefix === undefined) return 0;
+					if (a.subPrefix === undefined) return -1;
+					if (b.subPrefix === undefined) return 1;
+					return a.subPrefix - b.subPrefix;
+				});
 
-export const NO_CHAPTER = '(no chapter)';
+				// The group title is the title of the first asset in the sorted list
+				let groupTitle = sortedAssets[0].title;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+				const allAttachments = sortedAssets.flatMap((asset) => asset.attachments);
+				const completedAssets = sortedAssets.filter((asset) => asset.progress?.completed);
+				const startedAssets = sortedAssets.filter(
+					(asset) =>
+						(asset.progress?.videoPos && asset.progress?.videoPos > 0) || asset.progress?.completed
+				);
 
-/**
- * Constructs a chapter-based structure for the given course assets.
- *
- * @function
- * @param {Asset[]} courseAssets - An array of assets associated with a course
- * @returns {CourseChapters} - An object with chapter names as keys and an array of associated
- * assets as values. Assets without a chapter are grouped under the `NO_CHAPTER` key
- */
-export function BuildChapterStructure(courseAssets: Asset[]): CourseChapters {
-	const chapters: CourseChapters = {};
-
-	// Loop through each asset and build the chapter structure
-	for (const courseAsset of courseAssets) {
-		const chapter = courseAsset.chapter || NO_CHAPTER;
-		!chapters[chapter] ? (chapters[chapter] = [courseAsset]) : chapters[chapter]?.push(courseAsset);
+				return {
+					prefix: parseInt(prefix),
+					title: groupTitle,
+					assets: sortedAssets,
+					completed: completedAssets.length === sortedAssets.length,
+					startedAssetCount: startedAssets.length,
+					completedAssetCount: completedAssets.length,
+					attachments: allAttachments
+				};
+			})
+			.sort((a, b) => a.prefix - b.prefix);
 	}
 
 	return chapters;
@@ -96,96 +114,12 @@ export function BuildChapterStructure(courseAssets: Asset[]): CourseChapters {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Properties for the FlyAndScale transition
-type FlyAndScaleParams = {
-	y?: number;
-	x?: number;
-	start?: number;
-	duration?: number;
-};
+// Enable HTML inside MD, linkify URLs, etc—tweak to taste
+const md = new MarkdownIt({ html: true, linkify: true, typographer: true });
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// A fly and scale transition for svelte
-export function FlyAndScale(
-	node: Element,
-	params: FlyAndScaleParams = { y: -8, x: 0, start: 0.95, duration: 150 }
-): TransitionConfig {
-	const style = getComputedStyle(node);
-	const transform = style.transform === 'none' ? '' : style.transform;
-
-	const scaleConversion = (valueA: number, scaleA: [number, number], scaleB: [number, number]) => {
-		const [minA, maxA] = scaleA;
-		const [minB, maxB] = scaleB;
-
-		const percentage = (valueA - minA) / (maxA - minA);
-		const valueB = percentage * (maxB - minB) + minB;
-
-		return valueB;
-	};
-
-	const styleToString = (style: Record<string, number | string | undefined>): string => {
-		return Object.keys(style).reduce((str, key) => {
-			if (style[key] === undefined) return str;
-			return str + `${key}:${style[key]};`;
-		}, '');
-	};
-
-	return {
-		duration: params.duration ?? 200,
-		delay: 0,
-		css: (t) => {
-			const y = scaleConversion(t, [0, 1], [params.y ?? 5, 0]);
-			const x = scaleConversion(t, [0, 1], [params.x ?? 0, 0]);
-			const scale = scaleConversion(t, [0, 1], [params.start ?? 0.95, 1]);
-
-			return styleToString({
-				transform: `${transform} translate3d(${x}px, ${y}px, 0) scale(${scale})`,
-				opacity: t
-			});
-		},
-		easing: cubicOut
-	};
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-export function Throttle<R, A extends unknown[]>(
-	fn: (...args: A) => R,
-	delay: number
-): [(...args: A) => R | undefined, () => void] {
-	let wait = false;
-	let timeout: undefined | number;
-
-	return [
-		(...args: A) => {
-			if (wait) return undefined;
-
-			const val = fn(...args);
-
-			wait = true;
-
-			timeout = window.setTimeout(() => {
-				wait = false;
-			}, delay);
-
-			return val;
-		},
-
-		() => {
-			wait = false;
-			clearTimeout(timeout);
-		}
-	];
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-export function UpdateQueryParam(key: string, value: string, replaceState: boolean) {
-	if (typeof window === 'undefined') return;
-
-	const url = new URL(window.location.href);
-	url.searchParams.set(key, value);
-
-	goto(url.toString(), { replaceState, keepFocus: true, noScroll: true });
+// Sanitize the rendered HTML to prevent XSS attacks
+export function renderMarkdown(raw: string): string {
+	return DOMPurify.sanitize(md.render(raw));
 }

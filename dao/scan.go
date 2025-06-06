@@ -23,7 +23,44 @@ func (dao *DAO) CreateScan(ctx context.Context, scan *models.Scan) error {
 		scan.Status.SetWaiting()
 	}
 
-	return dao.Create(ctx, scan)
+	return Create(ctx, dao, scan)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetScan retrieves a scan
+//
+// When options is nil or options.Where is nil, the models ID will be used
+func (dao *DAO) GetScan(ctx context.Context, scan *models.Scan, options *database.Options) error {
+	if scan == nil {
+		return utils.ErrNilPtr
+	}
+
+	if options == nil {
+		options = &database.Options{}
+	}
+
+	// When there is no where clause, use the ID
+	if options.Where == nil {
+		if scan.Id() == "" {
+			return utils.ErrInvalidId
+		}
+
+		options.Where = squirrel.Eq{models.SCAN_TABLE_ID: scan.Id()}
+	}
+
+	return Get(ctx, dao, scan, options)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ListScans retrieves a list of scans
+func (dao *DAO) ListScans(ctx context.Context, scans *[]*models.Scan, options *database.Options) error {
+	if scans == nil {
+		return utils.ErrNilPtr
+	}
+
+	return List(ctx, dao, scans, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -34,22 +71,22 @@ func (dao *DAO) UpdateScan(ctx context.Context, scan *models.Scan) error {
 		return utils.ErrNilPtr
 	}
 
-	_, err := dao.Update(ctx, scan)
+	_, err := Update(ctx, dao, scan)
 	return err
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Next gets the next scan whose status is `waiting“ based upon the created_at column
-func (dao *DAO) NextWaitingScan(ctx context.Context, model models.Modeler) error {
-	if model == nil {
+// NextWaitingScan gets the next scan whose status is `waiting“ based upon the created_at column
+func (dao *DAO) NextWaitingScan(ctx context.Context, scan *models.Scan) error {
+	if scan == nil {
 		return utils.ErrNilPtr
 	}
 
 	options := &database.Options{
-		Where:   squirrel.Eq{model.Table() + ".status": types.ScanStatusWaiting},
-		OrderBy: []string{model.Table() + ".created_at ASC"},
+		Where:   squirrel.Eq{models.SCAN_TABLE_STATUS: types.ScanStatusWaiting},
+		OrderBy: []string{models.SCAN_TABLE_CREATED_AT + " ASC"},
 	}
 
-	return dao.Get(ctx, model, options)
+	return dao.GetScan(ctx, scan, options)
 }

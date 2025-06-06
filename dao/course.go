@@ -20,15 +20,97 @@ func (dao *DAO) CreateCourse(ctx context.Context, course *models.Course) error {
 		return utils.ErrNilPtr
 	}
 
-	return dao.db.RunInTransaction(ctx, func(txCtx context.Context) error {
-		err := dao.Create(txCtx, course)
-		if err != nil {
-			return err
+	// Ensure initial scan is false and maintenance is true
+	course.InitialScan = false
+	course.Maintenance = true
+
+	return Create(ctx, dao, course)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetCourse retrieves a course
+//
+// When options is nil or options.Where is nil, the models ID will be used
+// When the user role is user, only courses with an initial scan will be returned
+func (dao *DAO) GetCourse(ctx context.Context, course *models.Course, options *database.Options) error {
+	if course == nil {
+		return utils.ErrNilPtr
+	}
+
+	principal, err := principalFromCtx(ctx)
+	if err != nil {
+		return err
+	}
+
+	if options == nil {
+		options = &database.Options{}
+	}
+
+	// When there is no where clause, use the ID
+	if options.Where == nil {
+		if course.Id() == "" {
+			return utils.ErrInvalidId
 		}
 
-		courseProgress := &models.CourseProgress{CourseID: course.Id()}
-		return dao.CreateCourseProgress(txCtx, courseProgress)
-	})
+		options.Where = squirrel.Eq{models.COURSE_TABLE_ID: course.Id()}
+	}
+
+	// When including progress, ensure we set the progress for the user
+	if !slices.Contains(options.ExcludeRelations, models.COURSE_RELATION_PROGRESS) {
+		options.AddRelationFilter(models.COURSE_RELATION_PROGRESS, models.COURSE_PROGRESS_USER_ID, principal.UserID)
+	}
+
+	// If the user role is user, ignore courses without an initial scan
+	if principal.Role == types.UserRoleUser {
+		additionalWhere := squirrel.Eq{models.COURSE_TABLE_INITIAL_SCAN: true}
+
+		if options.Where == nil {
+			options.Where = squirrel.And{additionalWhere}
+		} else {
+			options.Where = squirrel.And{options.Where, additionalWhere}
+		}
+	}
+
+	return Get(ctx, dao, course, options)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ListCourses retrieves a list of courses
+//
+// When the user role is user, only courses with an initial scan will be returned
+func (dao *DAO) ListCourses(ctx context.Context, courses *[]*models.Course, options *database.Options) error {
+	if courses == nil {
+		return utils.ErrNilPtr
+	}
+
+	principal, err := principalFromCtx(ctx)
+	if err != nil {
+		return err
+	}
+
+	if options == nil {
+		options = &database.Options{}
+	}
+
+	// When including progress, ensure we set the progress for the user
+	if !slices.Contains(options.ExcludeRelations, models.COURSE_RELATION_PROGRESS) {
+		options.AddRelationFilter(models.COURSE_RELATION_PROGRESS, models.COURSE_PROGRESS_USER_ID, principal.UserID)
+	}
+
+	// If the user role is user, ignore courses without an initial scan
+	if principal.Role == types.UserRoleUser {
+		additionalWhere := squirrel.Eq{models.COURSE_TABLE_INITIAL_SCAN: true}
+
+		if options.Where == nil {
+			options.Where = squirrel.And{additionalWhere}
+		} else {
+			options.Where = squirrel.And{options.Where, additionalWhere}
+		}
+	}
+
+	return List(ctx, dao, courses, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -39,7 +121,7 @@ func (dao *DAO) UpdateCourse(ctx context.Context, course *models.Course) error {
 		return utils.ErrNilPtr
 	}
 
-	_, err := dao.Update(ctx, course)
+	_, err := Update(ctx, dao, course)
 	return err
 }
 
@@ -71,12 +153,12 @@ func (dao *DAO) ClassifyCoursePaths(ctx context.Context, paths []string) (map[st
 
 	whereClause := make([]squirrel.Sqlizer, len(paths))
 	for i, path := range paths {
-		whereClause[i] = squirrel.Like{course.Table() + ".path": path + "%"}
+		whereClause[i] = squirrel.Like{models.COURSE_TABLE_PATH: path + "%"}
 	}
 
 	query, args, _ := squirrel.
 		StatementBuilder.
-		Select(course.Table() + ".path").
+		Select(models.COURSE_TABLE_PATH).
 		From(course.Table()).
 		Where(squirrel.Or(whereClause)).
 		ToSql()
@@ -119,58 +201,3 @@ func (dao *DAO) ClassifyCoursePaths(ctx context.Context, paths []string) (map[st
 
 	return results, nil
 }
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// // ProcessOrderBy takes an array of strings representing orderBy clauses and returns a processed
-// // version of this array
-// //
-// // It will creates a new list of valid table columns based upon columns() for the current
-// // DAO. Additionally, it handles the special case of 'scan_status' column, which requires custom
-// // sorting logic, via a CASE statement.
-// //
-// // The custom sorting logic is defined as follows:
-// //   - NULL values are treated as the lowest value (sorted first in ASC, last in DESC)
-// //   - 'waiting' status is treated as the second value
-// //   - 'processing' status is treated as the third value
-// func (dao *CourseDao) ProcessOrderBy(orderBy []string, validOrderByColumns []string) []string {
-// 	if len(orderBy) == 0 {
-// 		return orderBy
-// 	}
-
-// 	var processedOrderBy []string
-
-// 	for _, ob := range orderBy {
-// 		t, c := extractTableAndColumn(ob)
-
-// 		// Prefix the table with the dao's table if not found
-// 		if t == "" {
-// 			t = dao.Table()
-// 			ob = t + "." + ob
-// 		}
-
-// 		if isValidOrderBy(t, c, validOrderByColumns) {
-// 			// When the column is 'scan_status', apply the custom sorting logic
-// 			if c == "scan_status" {
-// 				// Determine the sort direction, defaulting to ASC if not specified
-// 				parts := strings.Fields(ob)
-// 				sortDirection := "ASC"
-// 				if len(parts) > 1 {
-// 					sortDirection = strings.ToUpper(parts[1])
-// 				}
-
-// 				caseStmt := "CASE " +
-// 					"WHEN scan_status IS NULL THEN 1 " +
-// 					"WHEN scan_status = 'waiting' THEN 2 " +
-// 					"WHEN scan_status = 'processing' THEN 3 " +
-// 					"END " + sortDirection
-
-// 				processedOrderBy = append(processedOrderBy, caseStmt)
-// 			} else {
-// 				processedOrderBy = append(processedOrderBy, ob)
-// 			}
-// 		}
-// 	}
-
-// 	return processedOrderBy
-// }

@@ -25,16 +25,16 @@ func (dao *DAO) CreateCourseTag(ctx context.Context, courseTag *models.CourseTag
 
 	return dao.db.RunInTransaction(ctx, func(txCtx context.Context) error {
 		if courseTag.TagID != "" {
-			return dao.Create(txCtx, courseTag)
+			return Create(txCtx, dao, courseTag)
 		}
 
 		// Get the tag by tag name (case-insensitive)
 		tag := models.Tag{}
 		options := &database.Options{
-			Where: squirrel.Eq{fmt.Sprintf("%s.%s", models.TAG_TABLE, models.TAG_TAG): courseTag.Tag},
+			Where: squirrel.Eq{models.TAG_TABLE_TAG: courseTag.Tag},
 		}
 
-		err := dao.Get(txCtx, &tag, options)
+		err := dao.GetTag(txCtx, &tag, options)
 		if err != nil && err != sql.ErrNoRows {
 			return err
 		}
@@ -42,7 +42,7 @@ func (dao *DAO) CreateCourseTag(ctx context.Context, courseTag *models.CourseTag
 		// If the tag does not exist, create it
 		if err == sql.ErrNoRows {
 			tag.Tag = courseTag.Tag
-			err = dao.Create(txCtx, &tag)
+			err = dao.CreateTag(txCtx, &tag)
 			if err != nil {
 				return err
 			}
@@ -50,27 +50,47 @@ func (dao *DAO) CreateCourseTag(ctx context.Context, courseTag *models.CourseTag
 
 		courseTag.TagID = tag.ID
 
-		return dao.Create(txCtx, courseTag)
+		return Create(txCtx, dao, courseTag)
 
 	})
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// PluckCourseIDsWithTags returns a list of course IDs where the course has all the tags in the
-// slice
-func (dao *DAO) PluckCourseIDsWithTags(ctx context.Context, tags []string, options *database.Options) ([]string, error) {
-	if len(tags) == 0 {
-		return nil, nil
+// GetCourseTag retrieves a course tag
+//
+// When options is nil or options.Where is nil, the models ID will be used
+func (dao *DAO) GetCourseTag(ctx context.Context, courseTag *models.CourseTag, options *database.Options) error {
+	if courseTag == nil {
+		return utils.ErrNilPtr
 	}
 
 	if options == nil {
 		options = &database.Options{}
 	}
 
-	options.Where = squirrel.Eq{fmt.Sprintf("%s.%s", models.TAG_TABLE, models.TAG_TAG): tags}
-	options.GroupBy = []string{fmt.Sprintf("%s.%s", models.COURSE_TAG_TABLE, models.COURSE_TAG_COURSE_ID)}
-	options.Having = squirrel.Expr("COUNT(DISTINCT "+models.TAG_TABLE+".tag) = ?", len(tags))
+	// When there is no where clause, use the ID
+	if options.Where == nil {
+		if courseTag.Id() == "" {
+			return utils.ErrInvalidId
+		}
 
-	return dao.ListPluck(ctx, &models.CourseTag{}, options, models.COURSE_TAG_COURSE_ID)
+		options.Where = squirrel.Eq{models.COURSE_TAG_TABLE_ID: courseTag.Id()}
+	}
+
+	if options.Where == nil {
+	}
+
+	return Get(ctx, dao, courseTag, options)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ListCourseTags retrieves a list of course tags
+func (dao *DAO) ListCourseTags(ctx context.Context, courseTags *[]*models.CourseTag, options *database.Options) error {
+	if courseTags == nil {
+		return utils.ErrNilPtr
+	}
+
+	return List(ctx, dao, courseTags, options)
 }

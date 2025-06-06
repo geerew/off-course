@@ -1,7 +1,14 @@
-export { default as AddCourseTagsDialog } from './add-course-tags.svelte';
 export { default as AddCoursesDialog } from './add-courses.svelte';
 export { default as AddTagsDialog } from './add-tags.svelte';
+export { default as AddUserDialog } from './add-user.svelte';
+export { default as ClearCourseProgressDialog } from './clear-course-progress.svelte';
 export { default as DeleteCourseDialog } from './delete-course.svelte';
-export { default as DeleteTagsDialog } from './delete-tags.svelte';
+export { default as DeleteScanDialog } from './delete-scan.svelte';
+export { default as DeleteTagDialog } from './delete-tag.svelte';
+export { default as DeleteUserDialog } from './delete-user.svelte';
 export { default as EditCourseTagsDialog } from './edit-course-tags.svelte';
-export { default as RenameTagDialog } from './rename-tag.svelte';
+export { default as EditTagNameDialog } from './edit-tag-name.svelte';
+export { default as EditUserDisplayNameDialog } from './edit-user-display-name.svelte';
+export { default as EditUserPasswordDialog } from './edit-user-password.svelte';
+export { default as EditUserRoleDialog } from './edit-user-role.svelte';
+export { default as RevokeUserSessionsDialog } from './revoke-user-sessions.svelte';

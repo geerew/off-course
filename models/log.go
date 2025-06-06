@@ -17,11 +17,18 @@ type Log struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-var (
+const (
 	LOG_TABLE   = "logs"
 	LOG_LEVEL   = "level"
 	LOG_MESSAGE = "message"
 	LOG_DATA    = "data"
+
+	LOG_TABLE_ID         = LOG_TABLE + "." + BASE_ID
+	LOG_TABLE_CREATED_AT = LOG_TABLE + "." + BASE_CREATED_AT
+	LOG_TABLE_UPDATED_AT = LOG_TABLE + "." + BASE_UPDATED_AT
+	LOG_TABLE_LEVEL      = LOG_TABLE + "." + LOG_LEVEL
+	LOG_TABLE_MESSAGE    = LOG_TABLE + "." + LOG_MESSAGE
+	LOG_TABLE_DATA       = LOG_TABLE + "." + LOG_DATA
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

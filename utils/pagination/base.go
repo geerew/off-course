@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strconv"
 
-	sq "github.com/Masterminds/squirrel"
+	"github.com/Masterminds/squirrel"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -112,7 +112,7 @@ func (p *Pagination) SetCount(count int) {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Apply applies the pagination to a query builder
-func (p *Pagination) Apply(queryBuilder sq.SelectBuilder) sq.SelectBuilder {
+func (p *Pagination) Apply(queryBuilder squirrel.SelectBuilder) squirrel.SelectBuilder {
 	return queryBuilder.Offset(uint64(p.Offset())).Limit(uint64(p.Limit()))
 }
 

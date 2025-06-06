@@ -5,19 +5,166 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/geerew/off-course/models"
+	"github.com/geerew/off-course/utils/pagination"
+	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/require"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+func TestScans_GetScans(t *testing.T) {
+	t.Run("200 (empty)", func(t *testing.T) {
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/scans/", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, _ := unmarshalHelper[scanResponse](t, body)
+		require.Zero(t, int(paginationResp.TotalItems))
+		require.Zero(t, len(paginationResp.Items))
+	})
+
+	t.Run("200 (found)", func(t *testing.T) {
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+
+		for i := range 5 {
+			course := &models.Course{Title: fmt.Sprintf("course %d", i), Path: fmt.Sprintf("/course %d", i)}
+			require.NoError(t, router.dao.CreateCourse(ctx, course))
+
+			scan := &models.Scan{CourseID: course.ID}
+			require.NoError(t, router.dao.CreateScan(ctx, scan))
+		}
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/scans/", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, coursesResp := unmarshalHelper[scanResponse](t, body)
+		require.Equal(t, 5, int(paginationResp.TotalItems))
+		require.Len(t, coursesResp, 5)
+	})
+
+	t.Run("200 (sort)", func(t *testing.T) {
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+
+		scans := []*models.Scan{}
+		for i := range 5 {
+			course := &models.Course{Title: fmt.Sprintf("course %d", i+1), Path: fmt.Sprintf("/course %d", i+1)}
+			require.NoError(t, router.dao.CreateCourse(ctx, course))
+
+			scan := &models.Scan{CourseID: course.ID}
+			require.NoError(t, router.dao.CreateScan(ctx, scan))
+			scans = append(scans, scan)
+			time.Sleep(1 * time.Millisecond)
+		}
+
+		// CREATED_AT ASC
+		q := "sort:\"" + models.SCAN_TABLE_CREATED_AT + " asc\""
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/scans/?q="+url.QueryEscape(q), nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, scanResp := unmarshalHelper[scanResponse](t, body)
+		require.Equal(t, 5, int(paginationResp.TotalItems))
+		require.Len(t, scanResp, 5)
+		require.Equal(t, scans[0].ID, scanResp[0].ID)
+
+		// CREATED_AT DESC
+		q = "sort:\"" + models.SCAN_TABLE_CREATED_AT + " desc\""
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/scans/?q="+url.QueryEscape(q), nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, scanResp = unmarshalHelper[scanResponse](t, body)
+		require.Equal(t, 5, int(paginationResp.TotalItems))
+		require.Len(t, scanResp, 5)
+		require.Equal(t, scans[4].ID, scanResp[0].ID)
+	})
+
+	t.Run("200 (pagination)", func(t *testing.T) {
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+
+		scans := []*models.Scan{}
+		for i := range 17 {
+			course := &models.Course{Title: fmt.Sprintf("course %d", i), Path: fmt.Sprintf("/course %d", i)}
+			require.NoError(t, router.dao.CreateCourse(ctx, course))
+
+			scan := &models.Scan{CourseID: course.ID}
+			require.NoError(t, router.dao.CreateScan(ctx, scan))
+			scans = append(scans, scan)
+
+			time.Sleep(1 * time.Millisecond)
+		}
+
+		// Page 1 (10 scans)
+		params := url.Values{
+			"q":                          {"sort:\"" + models.SCAN_TABLE_CREATED_AT + " asc\""},
+			pagination.PageQueryParam:    {"1"},
+			pagination.PerPageQueryParam: {"10"},
+		}
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/scans/?"+params.Encode(), nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, scanResp := unmarshalHelper[scanResponse](t, body)
+		require.Equal(t, 17, int(paginationResp.TotalItems))
+		require.Len(t, paginationResp.Items, 10)
+		require.Equal(t, scans[0].ID, scanResp[0].ID)
+		require.Equal(t, scans[9].ID, scanResp[9].ID)
+
+		// Page 2 (7 scans)
+		params = url.Values{
+			"q":                          {"sort:\"" + models.SCAN_TABLE_CREATED_AT + " asc\""},
+			pagination.PageQueryParam:    {"2"},
+			pagination.PerPageQueryParam: {"10"},
+		}
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/scans/?"+params.Encode(), nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, scanResp = unmarshalHelper[scanResponse](t, body)
+		require.Equal(t, 17, int(paginationResp.TotalItems))
+		require.Len(t, paginationResp.Items, 7)
+		require.Equal(t, scans[10].ID, scanResp[0].ID)
+		require.Equal(t, scans[16].ID, scanResp[6].ID)
+	})
+
+	t.Run("403 (not admin)", func(t *testing.T) {
+		router, _ := setup(t, "user", types.UserRoleUser)
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/scans/test", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusForbidden, status)
+		require.Equal(t, `{"message":"User is not an admin"}`, string(body))
+	})
+
+	t.Run("500 (internal error)", func(t *testing.T) {
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
+
+		// Drop the courses table
+		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.SCAN_TABLE)
+		require.NoError(t, err)
+
+		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/scans/", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusInternalServerError, status)
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 func TestScans_GetScan(t *testing.T) {
 	t.Run("200 (found)", func(t *testing.T) {
-		router, ctx := setup(t)
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -38,8 +185,17 @@ func TestScans_GetScan(t *testing.T) {
 		require.Equal(t, scan.Status, respData.Status)
 	})
 
+	t.Run("403 (not admin)", func(t *testing.T) {
+		router, _ := setup(t, "user", types.UserRoleUser)
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/scans/test", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusForbidden, status)
+		require.Equal(t, `{"message":"User is not an admin"}`, string(body))
+	})
+
 	t.Run("404 (not found)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		req := httptest.NewRequest(http.MethodGet, "/api/scans/test", nil)
 		status, _, err := requestHelper(t, router, req)
@@ -48,7 +204,7 @@ func TestScans_GetScan(t *testing.T) {
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.SCAN_TABLE)
 		require.NoError(t, err)
@@ -65,7 +221,7 @@ func TestScans_GetScan(t *testing.T) {
 
 func TestScans_CreateScan(t *testing.T) {
 	t.Run("201 (created)", func(t *testing.T) {
-		router, ctx := setup(t)
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -84,7 +240,7 @@ func TestScans_CreateScan(t *testing.T) {
 	})
 
 	t.Run("400 (bind error)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/scans/", strings.NewReader(`{`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -96,7 +252,7 @@ func TestScans_CreateScan(t *testing.T) {
 	})
 
 	t.Run("400 (invalid data)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/scans/", strings.NewReader(`{"courseID": ""}`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -108,7 +264,7 @@ func TestScans_CreateScan(t *testing.T) {
 	})
 
 	t.Run("400 (invalid course id)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/scans/", strings.NewReader(`{"courseID": "test"}`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -119,8 +275,17 @@ func TestScans_CreateScan(t *testing.T) {
 		require.Contains(t, string(body), "Invalid course ID")
 	})
 
+	t.Run("403 (not admin)", func(t *testing.T) {
+		router, _ := setup(t, "user", types.UserRoleUser)
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/scans/test", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusForbidden, status)
+		require.Equal(t, `{"message":"User is not an admin"}`, string(body))
+	})
+
 	t.Run("500 (internal error)", func(t *testing.T) {
-		router, _ := setup(t)
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
 		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.SCAN_TABLE)
 		require.NoError(t, err)

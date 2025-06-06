@@ -9,17 +9,19 @@ import (
 	"testing"
 
 	"github.com/geerew/off-course/database"
-	"github.com/geerew/off-course/utils/appFs"
+	"github.com/geerew/off-course/models"
+	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/pagination"
+	"github.com/geerew/off-course/utils/types"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func setup(t *testing.T) (*Router, context.Context) {
+func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Context) {
 	t.Helper()
 
 	// Logger
@@ -31,19 +33,18 @@ func setup(t *testing.T) (*Router, context.Context) {
 	})
 	require.NoError(t, err, "Failed to initialize logger")
 
-	appFs := appFs.NewAppFs(afero.NewMemMapFs(), logger)
+	appFs := appfs.New(afero.NewMemMapFs(), logger)
 
-	dbManager, err := database.NewSqliteDBManager(&database.DatabaseConfig{
-		IsDebug:  false,
-		DataDir:  "./oc_data",
-		AppFs:    appFs,
-		InMemory: true,
+	dbManager, err := database.NewSQLiteManager(&database.DatabaseManagerConfig{
+		DataDir: "./oc_data",
+		AppFs:   appFs,
+		Testing: true,
 	})
 
 	require.NoError(t, err)
 	require.NotNil(t, dbManager)
 
-	courseScan := coursescan.NewCourseScan(&coursescan.CourseScanConfig{
+	courseScan := coursescan.New(&coursescan.CourseScanConfig{
 		Db:     dbManager.DataDb,
 		AppFs:  appFs,
 		Logger: logger,
@@ -57,9 +58,28 @@ func setup(t *testing.T) (*Router, context.Context) {
 		Logger:     logger,
 	}
 
-	router := NewRouter(config)
+	router := devRouter(config, id, role)
 
-	return router, context.Background()
+	// create the user
+	user := models.User{
+		Base: models.Base{
+			ID: id,
+		},
+		Username:     id,
+		Role:         role,
+		PasswordHash: "password",
+		DisplayName:  "Test User",
+	}
+	require.NoError(t, router.dao.CreateUser(context.Background(), &user))
+
+	ctx := context.Background()
+	principal := types.Principal{
+		UserID: id,
+		Role:   role,
+	}
+	ctx = context.WithValue(ctx, types.PrincipalContextKey, principal)
+
+	return router, ctx
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -67,7 +87,7 @@ func setup(t *testing.T) (*Router, context.Context) {
 func requestHelper(t *testing.T, router *Router, req *http.Request) (int, []byte, error) {
 	t.Helper()
 
-	resp, err := router.router.Test(req)
+	resp, err := router.App.Test(req)
 	if err != nil {
 		return -1, nil, err
 	}

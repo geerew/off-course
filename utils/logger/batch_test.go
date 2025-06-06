@@ -168,7 +168,7 @@ func TestBatch_Handle(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func TestBatch_rWriteAll(t *testing.T) {
+func TestBatch_WriteAll(t *testing.T) {
 	ctx := context.Background()
 
 	beforeLogs := []*Log{}

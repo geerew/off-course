@@ -9,15 +9,21 @@ type Tag struct {
 	Base
 	Tag string
 
-	// Relations
-	CourseTags []*CourseTag
+	// Aggregate fields
+	CourseCount int
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-var (
-	TAG_TABLE = "tags"
-	TAG_TAG   = "tag"
+const (
+	TAG_TABLE        = "tags"
+	TAG_TAG          = "tag"
+	TAG_COURSE_COUNT = "course_count"
+
+	TAG_TABLE_ID         = TAG_TABLE + "." + BASE_ID
+	TAG_TABLE_CREATED_AT = TAG_TABLE + "." + BASE_CREATED_AT
+	TAG_TABLE_UPDATED_AT = TAG_TABLE + "." + BASE_UPDATED_AT
+	TAG_TABLE_TAG        = TAG_TABLE + "." + TAG_TAG
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -35,7 +41,11 @@ func (t *Tag) Define(s *schema.ModelConfig) {
 
 	// Common fields
 	s.Field("Tag").Column(TAG_TAG).NotNull().Mutable()
+	s.Field("CourseCount").AggregateFn("COUNT").JoinTable(COURSE_TAG_TABLE).Column(COURSE_TAG_COURSE_ID).Alias(TAG_COURSE_COUNT)
 
-	// Relation fields
-	s.Relation("CourseTags").MatchOn(COURSE_TAG_TAG_ID)
+	// Joins
+	s.LeftJoin(COURSE_TAG_TABLE).On(TAG_TABLE_ID + " = " + COURSE_TAG_TABLE_TAG_ID)
+
+	// Group by
+	s.GroupBy(TAG_TABLE_ID)
 }

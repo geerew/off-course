@@ -1,191 +1,132 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"mime"
 	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
-	"github.com/geerew/off-course/utils/appFs"
+	"github.com/geerew/off-course/utils/appfs"
+	"github.com/geerew/off-course/utils/pagination"
+	"github.com/geerew/off-course/utils/queryparser"
+	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/spf13/afero"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+var (
+	defaultCoursesOrderBy                = []string{models.COURSE_TABLE_CREATED_AT + " desc"}
+	defaultScansOrderBy                  = []string{models.SCAN_TABLE_CREATED_AT + " desc"}
+	defaultCourseAssetsOrderBy           = []string{models.ASSET_TABLE_CHAPTER + " asc", models.ASSET_TABLE_PREFIX + " asc"}
+	defaultCourseAssetAttachmentsOrderBy = []string{models.ATTACHMENT_TABLE_TITLE + " asc"}
+	defaultTagsOrderBy                   = []string{models.TAG_TABLE_TAG + " asc"}
+	defaultUsersOrderBy                  = []string{models.USER_TABLE_CREATED_AT + " desc"}
+	defaultLogsOrderBy                   = []string{models.LOG_TABLE_CREATED_AT + " desc"}
+)
 
-func courseResponseHelper(courses []*models.Course) []*courseResponse {
-	responses := []*courseResponse{}
-	for _, course := range courses {
-		c := &courseResponse{
-			ID:        course.ID,
-			Title:     course.Title,
-			Path:      course.Path,
-			HasCard:   course.CardPath != "",
-			Available: course.Available,
-			CreatedAt: course.CreatedAt,
-			UpdatedAt: course.UpdatedAt,
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-			// Scan status
-			ScanStatus: course.ScanStatus.String(),
-
-			// Progress
-			Progress: courseProgressResponse{
-				Started:           course.Progress.Started,
-				StartedAt:         course.Progress.StartedAt,
-				Percent:           course.Progress.Percent,
-				CompletedAt:       course.Progress.CompletedAt,
-				ProgressUpdatedAt: course.Progress.UpdatedAt,
-			},
-		}
-
-		responses = append(responses, c)
+// errorResponse is a helper method to return an error response
+func errorResponse(c *fiber.Ctx, status int, message string, err error) error {
+	resp := fiber.Map{
+		"message": message,
 	}
 
-	return responses
+	if err != nil {
+		resp["error"] = err.Error()
+	}
+
+	return c.Status(status).JSON(resp)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func courseTagResponseHelper(courseTags []*models.CourseTag) []*courseTagResponse {
-	responses := []*courseTagResponse{}
-	for _, tag := range courseTags {
-		responses = append(responses, &courseTagResponse{
-			ID:  tag.ID,
-			Tag: tag.Tag,
-		})
-	}
+// builderOptions is a struct to hold the options for the optionsBuilder
+type builderOptions struct {
+	// A default order by clause to use if none is found in the query
+	DefaultOrderBy []string
 
-	return responses
+	// A slice of allowed filters to match on in the query
+	AllowedFilters []string
+
+	// Whether to paginate the results
+	Paginate bool
+
+	// A function to run after the query has been parsed. It will only run if the query is not nil
+	AfterParseHook func(*queryparser.QueryResult, *database.Options, string)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func assetResponseHelper(assets []*models.Asset) []*assetResponse {
-	responses := []*assetResponse{}
-	for _, asset := range assets {
+// optionsBuilder builds a database.Options based on a `q` query parameter
+func optionsBuilder(c *fiber.Ctx, builderOptions builderOptions, userId string) (*database.Options, error) {
+	options := &database.Options{}
 
-		progress := &assetProgressResponse{}
-		if asset.Progress != nil {
-			progress.VideoPos = asset.Progress.VideoPos
-			progress.Completed = asset.Progress.Completed
-			progress.CompletedAt = asset.Progress.CompletedAt
-		}
+	orderBy := []string{models.BASE_CREATED_AT + " desc"}
+	if len(builderOptions.DefaultOrderBy) > 0 {
+		orderBy = builderOptions.DefaultOrderBy
+	}
+	options.OrderBy = orderBy
 
-		responses = append(responses, &assetResponse{
-			ID:        asset.ID,
-			CourseID:  asset.CourseID,
-			Title:     asset.Title,
-			Prefix:    int(asset.Prefix.Int16),
-			Chapter:   asset.Chapter,
-			Path:      asset.Path,
-			Type:      asset.Type,
-			CreatedAt: asset.CreatedAt,
-			UpdatedAt: asset.UpdatedAt,
-
-			Progress:    progress,
-			Attachments: attachmentResponseHelper(asset.Attachments),
-		})
-
+	if builderOptions.Paginate {
+		options.Pagination = pagination.NewFromApi(c)
 	}
 
-	return responses
+	q := c.Query("q", "")
+	if q == "" {
+		return options, nil
+	}
+
+	parsed, err := queryparser.Parse(q, builderOptions.AllowedFilters)
+	if err != nil {
+		return nil, err
+	}
+
+	if parsed == nil {
+		return options, nil
+	}
+
+	if len(parsed.Sort) > 0 {
+		options.OrderBy = parsed.Sort
+	}
+
+	if builderOptions.AfterParseHook != nil {
+		builderOptions.AfterParseHook(parsed, options, userId)
+	}
+
+	return options, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func attachmentResponseHelper(attachments []*models.Attachment) []*attachmentResponse {
-	responses := []*attachmentResponse{}
-	for _, attachment := range attachments {
-		responses = append(responses, &attachmentResponse{
-			ID:        attachment.ID,
-			AssetId:   attachment.AssetID,
-			Title:     attachment.Title,
-			Path:      attachment.Path,
-			CreatedAt: attachment.CreatedAt,
-			UpdatedAt: attachment.UpdatedAt,
-		})
-	}
-
-	return responses
-}
+const bufferSize = 1024 * 8                 // 8KB per chunk, adjust as needed
+const maxInitialChunkSize = 1024 * 1024 * 5 // 5MB, adjust as needed
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func scanResponseHelper(scans []*models.Scan) []*scanResponse {
-	responses := []*scanResponse{}
-	for _, scan := range scans {
-		responses = append(responses, &scanResponse{
-			ID:        scan.ID,
-			CourseID:  scan.CourseID,
-			Status:    scan.Status,
-			CreatedAt: scan.CreatedAt,
-			UpdatedAt: scan.UpdatedAt,
-		})
+// principalCtx is a helper method to get the principal and build a new context
+func principalCtx(c *fiber.Ctx) (types.Principal, context.Context, error) {
+	principal, ok := c.Locals(types.PrincipalContextKey).(types.Principal)
+	if !ok {
+		return types.Principal{}, nil, fmt.Errorf("missing principal")
 	}
 
-	return responses
-}
+	ctx := c.UserContext()
+	ctx = context.WithValue(ctx, types.PrincipalContextKey, principal)
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-func tagResponseHelper(tags []*models.Tag) []*tagResponse {
-	responses := []*tagResponse{}
-
-	for _, tag := range tags {
-		t := &tagResponse{
-			ID:          tag.ID,
-			Tag:         tag.Tag,
-			CreatedAt:   tag.CreatedAt,
-			UpdatedAt:   tag.UpdatedAt,
-			CourseCount: len(tag.CourseTags),
-		}
-
-		// Add the course tags
-		if len(tag.CourseTags) > 0 {
-			courses := []*courseTagResponse{}
-
-			for _, ct := range tag.CourseTags {
-				courses = append(courses, &courseTagResponse{
-					ID:       ct.ID,
-					CourseID: ct.CourseID,
-					Title:    ct.Course,
-				})
-			}
-
-			t.Courses = courses
-		}
-
-		responses = append(responses, t)
-	}
-
-	return responses
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-func logsResponseHelper(logs []*models.Log) []*logResponse {
-	responses := []*logResponse{}
-
-	for _, log := range logs {
-		responses = append(responses, &logResponse{
-			ID:        log.ID,
-			Level:     log.Level,
-			Message:   log.Message,
-			Data:      log.Data,
-			CreatedAt: log.CreatedAt,
-		})
-	}
-
-	return responses
+	return principal, ctx, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // handleVideo handles the video streaming logic
-func handleVideo(c *fiber.Ctx, appFs *appFs.AppFs, asset *models.Asset) error {
+func handleVideo(c *fiber.Ctx, appFs *appfs.AppFs, asset *models.Asset) error {
 	// Open the video
 	file, err := appFs.Fs.Open(asset.Path)
 	if err != nil {
@@ -259,7 +200,7 @@ func handleVideo(c *fiber.Ctx, appFs *appFs.AppFs, asset *models.Asset) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // handleHtml handles serving HTML files
-func handleHtml(c *fiber.Ctx, appFs *appFs.AppFs, asset *models.Asset) error {
+func handleHtml(c *fiber.Ctx, appFs *appfs.AppFs, asset *models.Asset) error {
 	// Open the HTML file
 	file, err := appFs.Fs.Open(asset.Path)
 	if err != nil {
@@ -275,4 +216,43 @@ func handleHtml(c *fiber.Ctx, appFs *appFs.AppFs, asset *models.Asset) error {
 
 	c.Set(fiber.HeaderContentType, "text/html")
 	return c.Status(fiber.StatusOK).Send(content)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// handleText handles serving text files and markdown files
+func handleText(c *fiber.Ctx, appFs *appfs.AppFs, asset *models.Asset) error {
+	file, err := appFs.Fs.Open(asset.Path)
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error opening text file", err)
+	}
+	defer file.Close()
+
+	raw, err := afero.ReadAll(file)
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error reading text file", err)
+	}
+
+	c.Set(fiber.HeaderContentType, "text/plain; charset=utf-8")
+	return c.Status(fiber.StatusOK).Send(raw)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// protectedRoute protects a route
+//
+// Example:
+//
+//	group.Get("/my-route", protectedRoute, myHandler)
+func protectedRoute(c *fiber.Ctx) error {
+	principal, _, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	if principal.Role != types.UserRoleAdmin {
+		return errorResponse(c, fiber.StatusForbidden, "User is not an admin", nil)
+	}
+
+	return c.Next()
 }

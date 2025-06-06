@@ -6,8 +6,7 @@ import (
 
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/utils"
-	"github.com/geerew/off-course/utils/appFs"
-	"github.com/geerew/off-course/utils/types"
+	"github.com/geerew/off-course/utils/appfs"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -15,16 +14,8 @@ import (
 
 type fsAPI struct {
 	logger *slog.Logger
-	appFs  *appFs.AppFs
+	appFs  *appfs.AppFs
 	dao    *dao.DAO
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-type fileInfo struct {
-	Title          string                   `json:"title"`
-	Path           string                   `json:"path"`
-	Classification types.PathClassification `json:"classification"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -37,10 +28,10 @@ func (r *Router) initFsRoutes() {
 		dao:    r.dao,
 	}
 
-	fsGroup := r.api.Group("/fileSystem")
+	fsGroup := r.api.Group("/filesystem")
 
-	fsGroup.Get("", fsAPI.fileSystem)
-	fsGroup.Get("/:path", fsAPI.path)
+	fsGroup.Get("", protectedRoute, fsAPI.fileSystem)
+	fsGroup.Get("/:path", protectedRoute, fsAPI.path)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -56,17 +47,22 @@ func (api fsAPI) fileSystem(c *fiber.Ctx) error {
 		})
 	}
 
-	directories := make([]*fileInfo, 0)
+	directories := make([]*fileInfoResponse, 0)
 
 	normalizedPaths := make([]string, len(drives))
 	for _, d := range drives {
 		normalizedPath := utils.NormalizeWindowsDrive(d)
-		directories = append(directories, &fileInfo{Title: d, Path: normalizedPath})
+		directories = append(directories, &fileInfoResponse{Title: d, Path: normalizedPath})
 		normalizedPaths = append(normalizedPaths, normalizedPath)
 	}
 
+	_, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
 	// Include path classification; ancestor, course, descendant, none
-	if classificationResult, err := api.dao.ClassifyCoursePaths(c.Context(), normalizedPaths); err != nil {
+	if classificationResult, err := api.dao.ClassifyCoursePaths(ctx, normalizedPaths); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "error classifying paths - " + err.Error(),
 		})
@@ -79,7 +75,7 @@ func (api fsAPI) fileSystem(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(&fileSystemResponse{
 		Count:       len(drives),
 		Directories: directories,
-		Files:       []*fileInfo{},
+		Files:       []*fileInfoResponse{},
 	})
 }
 
@@ -94,8 +90,8 @@ func (api fsAPI) path(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 
-	directories := make([]*fileInfo, 0)
-	files := make([]*fileInfo, 0)
+	directories := make([]*fileInfoResponse, 0)
+	files := make([]*fileInfoResponse, 0)
 
 	// Get a string slice of items in a directory
 	items, err := api.appFs.ReadDir(path, true)
@@ -110,11 +106,16 @@ func (api fsAPI) path(c *fiber.Ctx) error {
 		path := utils.NormalizeWindowsDrive(filepath.Join(path, directory.Name()))
 		paths = append(paths, path)
 
-		directories = append(directories, &fileInfo{Title: directory.Name(), Path: path})
+		directories = append(directories, &fileInfoResponse{Title: directory.Name(), Path: path})
+	}
+
+	_, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
 	// Include path classification; ancestor, course, descendant, none
-	if classificationResult, err := api.dao.ClassifyCoursePaths(c.Context(), paths); err != nil {
+	if classificationResult, err := api.dao.ClassifyCoursePaths(ctx, paths); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "error classifying paths - " + err.Error(),
 		})
@@ -125,7 +126,7 @@ func (api fsAPI) path(c *fiber.Ctx) error {
 	}
 
 	for _, file := range items.Files {
-		files = append(files, &fileInfo{Title: file.Name(), Path: filepath.Join(path, file.Name())})
+		files = append(files, &fileInfoResponse{Title: file.Name(), Path: filepath.Join(path, file.Name())})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(&fileSystemResponse{

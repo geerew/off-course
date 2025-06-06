@@ -1,0 +1,135 @@
+@import 'tailwindcss';
+@plugin "tailwindcss-animate";
+@plugin 'tailwind-scrollbar-hide';
+@plugin '@tailwindcss/typography';
+
+@theme {
+	--font-logo: 'Source Sans Pro', 'sans-serif';
+
+	--color-background: hsl(255, 17%, 14%);
+	--color-background-alt-1: hsl(255, 17%, 17%);
+	--color-background-alt-2: hsl(255, 17%, 20%);
+	--color-background-alt-3: hsl(254, 17%, 25%);
+	--color-background-alt-4: hsl(254, 17%, 30%);
+	--color-background-alt-5: hsl(254, 17%, 33%);
+	--color-background-alt-6: hsl(254, 17%, 37%);
+	--color-background-alt-7: hsl(254, 17%, 43%);
+	--color-background-primary: hsl(67, 60%, 50%);
+	--color-background-primary-alt-1: hsl(67, 60%, 40%);
+	--color-background-primary-alt-2: hsl(67, 60%, 30%);
+	--color-background-success: hsl(159, 75%, 30%);
+	--color-background-error: hsl(5, 100%, 21%);
+	--color-background-error-alt-1: hsl(5, 100%, 25%);
+
+	--color-foreground: hsl(360, 0%, 90%);
+	--color-foreground-alt-1: hsl(360, 0%, 80%);
+	--color-foreground-alt-2: hsl(249, 6%, 70%);
+	--color-foreground-alt-3: hsl(249, 6%, 52%);
+	--color-foreground-alt-4: hsl(249, 6%, 37%);
+	--color-foreground-alt-5: hsl(240, 2%, 21%);
+	--color-foreground-alt-6: hsl(256, 45%, 7%);
+	--color-foreground-error: hsl(5, 70%, 45%);
+	--color-foreground-error-alt-1: hsl(5, 70%, 35%);
+
+	--animate-flash: flash 1.5s infinite ease-in-out;
+	--animate-shake: shake 0.82s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+
+	/* Non-tailwind variables */
+	--header-height: 4.5rem;
+	--course-menu-width: 23rem;
+	--settings-menu-width: 18rem;
+
+	@keyframes flash {
+		0% {
+			transform: scale(0);
+		}
+		50% {
+			transform: scale(1);
+		}
+		100% {
+			transform: scale(0);
+		}
+	}
+
+	@keyframes shake {
+		10%,
+		90% {
+			transform: translate3d(-1px, 0, 0);
+		}
+		20%,
+		80% {
+			transform: translate3d(2px, 0, 0);
+		}
+		30%,
+		50%,
+		70% {
+			transform: translate3d(-4px, 0, 0);
+		}
+		40%,
+		60% {
+			transform: translate3d(4px, 0, 0);
+		}
+	}
+}
+
+@layer components {
+	:is(a, button, input, textarea, summary) {
+		@apply outline-none;
+		@apply focus-visible:ring-1 focus-visible:ring-blue-400;
+	}
+}
+
+@layer utilities {
+	.container-px {
+		@apply px-6 lg:px-8;
+	}
+
+	.container-pl {
+		@apply pl-6 lg:pl-8;
+	}
+
+	.container-pr {
+		@apply pr-6 lg:pr-8;
+	}
+
+	.typography {
+		/* TODO set dark:prose-invert when using light/dark */
+		@apply prose prose-invert lg:prose-lg max-w-full;
+		/* p */
+		@apply prose-p:first:mt-0 prose-p:mb-2.5 prose-p:mt-2.5;
+		/* h */
+		@apply prose-h1:first:mt-0 prose-h2:first:mt-0 prose-h3:first:mt-0 prose-h4:first:mt-0 prose-h5:first:mt-0 prose-h6:first:mt-0;
+	}
+}
+
+/* 
+* Custom variants for media player states
+*/
+@custom-variant media-playing {
+	&:where(media-player[data-playing] *) {
+		@slot;
+	}
+}
+
+@custom-variant media-paused {
+	&:where(media-player[data-paused] *) {
+		@slot;
+	}
+}
+
+@custom-variant media-ended {
+	&:where(media-player[data-ended] *) {
+		@slot;
+	}
+}
+@custom-variant media-fullscreen {
+	&:where(media-player[data-fullscreen] *) {
+		@slot;
+	}
+}
+
+@custom-variant media-buffering {
+	&:where(media-player[data-buffering] *) {
+		@slot;
+	}
+}

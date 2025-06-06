@@ -1,5 +1,9 @@
 package api
 
+// TODO When 2 windows are open with bootstrap, and the first one bootstraps, the second should
+//   1) error on submit or
+//   2) redirect to the login page on refresh
+
 import (
 	"encoding/json"
 	"log/slog"
@@ -14,7 +18,7 @@ import (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // loggerMiddleware logs the request and response details
-func loggerMiddleware(config *RouterConfig) func(c *fiber.Ctx) error {
+func loggerMiddleware(config *RouterConfig) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		started := time.Now()
 		err := c.Next()
@@ -81,9 +85,164 @@ func loggerMiddleware(config *RouterConfig) func(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // corsMiddleWare creates a CORS middleware
-func corsMiddleWare() func(c *fiber.Ctx) error {
+func corsMiddleWare() fiber.Handler {
 	return cors.New(cors.Config{
 		AllowOrigins: "*",
 		AllowMethods: "GET, POST, PUT, DELETE, HEAD, PATCH",
 	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// bootstrapMiddleware checks if the app is bootstrapped. If not, it redirects
+// to /auth/bootstrap
+//
+// Bootstrapping is the process of setting up the app for the first time. It involves
+// the creation of 1 admin user, which the /auth/bootstrap endpoint handles
+func bootstrapMiddleware(r *Router) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// If not bootstrapped, for everything through /auth/bootstrap or
+		// /api/auth/bootstrap
+		if !r.isBootstrapped() {
+			if r.isDevUIPath(c) || r.isFavicon(c) {
+				return c.Next()
+			}
+
+			// API check
+			if strings.HasPrefix(c.OriginalURL(), "/api/") {
+				if strings.HasPrefix(c.OriginalURL(), "/api/auth/bootstrap") {
+					c.Locals("bootstrapping", true)
+					return c.Next()
+				} else {
+					return c.SendStatus(fiber.StatusForbidden)
+				}
+			}
+
+			// UI check
+			if strings.HasPrefix(c.OriginalURL(), "/auth/bootstrap") {
+				c.Locals("bootstrapping", true)
+				return c.Next()
+			} else {
+				return c.Redirect("/auth/bootstrap/")
+			}
+		}
+
+		return c.Next()
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// authMiddleware authenticates the request
+func authMiddleware(r *Router) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		if bootstrapping, _ := c.Locals("bootstrapping").(bool); bootstrapping {
+			return c.Next()
+		}
+
+		path := c.Path()
+		isAPI := strings.HasPrefix(path, "/api/")
+		isAuthUI := strings.HasPrefix(path, "/auth/")
+		isMe := strings.HasPrefix(path, "/api/auth/me")
+		isLogout := strings.HasPrefix(path, "/api/auth/logout")
+
+		if r.isDevUIPath(c) || r.isFavicon(c) || isLogout {
+			return c.Next()
+		}
+
+		session, err := r.sessionManager.Get(c)
+		if err != nil {
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+
+		if session.Fresh() {
+			if isAPI {
+				if strings.HasPrefix(path, "/api/auth/login") || strings.HasPrefix(path, "/api/auth/register") {
+					return c.Next()
+				}
+				return c.SendStatus(fiber.StatusForbidden)
+			}
+
+			if isAuthUI {
+				return c.Next()
+			}
+
+			return c.Redirect("/auth/login")
+		}
+
+		if isAuthUI {
+			return c.Redirect("/")
+		}
+
+		if strings.HasPrefix(path, "/api/auth/") && !isMe {
+			return c.SendStatus(fiber.StatusOK)
+		}
+
+		userID, ok1 := session.Get("id").(string)
+		userRole, ok2 := session.Get("role").(string)
+		if !ok1 || !ok2 || userID == "" || userRole == "" {
+			return c.SendStatus(fiber.StatusUnauthorized)
+		}
+
+		if userRole != "admin" && r.isProtectedUIPage(c) {
+			return c.Redirect("/")
+		}
+
+		role := types.UserRole(userRole)
+		principal := types.Principal{
+			UserID: userID,
+			Role:   role,
+		}
+
+		// for your UI/router logic:
+		c.Locals(types.PrincipalContextKey, principal)
+
+		return c.Next()
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// devAuthMiddleware sets the id, role (for use in development only)
+func devAuthMiddleware(id string, role types.UserRole) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		principal := types.Principal{
+			UserID: id,
+			Role:   role,
+		}
+
+		// for your UI/router logic:
+		c.Locals(types.PrincipalContextKey, principal)
+		return c.Next()
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// isDevUIPath checks if the request is for a dev UI path when NOT running in
+// production
+func (r *Router) isDevUIPath(c *fiber.Ctx) bool {
+	if !r.config.IsProduction &&
+		(strings.HasPrefix(c.OriginalURL(), "/node_modules/") ||
+			strings.HasPrefix(c.OriginalURL(), "/.svelte-kit/") ||
+			strings.HasPrefix(c.OriginalURL(), "/src/") ||
+			strings.HasPrefix(c.OriginalURL(), "/@")) {
+		return true
+	}
+
+	return false
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// isProtectedUIPage checks if the request is intended for a protected UI page
+func (r *Router) isProtectedUIPage(c *fiber.Ctx) bool {
+	return strings.HasPrefix(c.OriginalURL(), "/admin")
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// isFavicon checks if the request is for a favicon
+func (r *Router) isFavicon(c *fiber.Ctx) bool {
+	return strings.HasPrefix(c.OriginalURL(), "/favicon.")
 }

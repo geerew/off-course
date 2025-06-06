@@ -1,166 +1,265 @@
+<!-- TODO Open on asset when the course is ongoing -->
+<!-- TODO Rework `load more` to allowing setting the amount to load -->
+<!-- TODO Support marking courses as new (backend work too) -->
+<!-- TODO Don't use the scan status here as normal users cannot access it. Instead when course.maintenance is true, rescan for that course -->
 <script lang="ts">
-	import { CourseCard, Err, Loading, NiceDate, Pagination } from '$components/generic';
-	import { CoursesFilter } from '$components/pages/courses';
-	import { GetCourses } from '$lib/api';
-	import type { Course, CourseProgress, CoursesGetParams } from '$lib/types/models';
-	import type { PaginationParams } from '$lib/types/pagination';
-	import { IsBrowser } from '$lib/utils';
+	import { GetCourses } from '$lib/api/course-api';
+	import { FilterBar } from '$lib/components';
+	import { LogoIcon, WarningIcon } from '$lib/components/icons';
+	import Spinner from '$lib/components/spinner.svelte';
+	import { Badge, Button } from '$lib/components/ui';
+	import type { CoursesModel } from '$lib/models/course-model';
+	import { scanMonitor } from '$lib/scans.svelte';
+	import { cn, remCalc } from '$lib/utils';
+	import { Avatar } from 'bits-ui';
+	import theme from 'tailwindcss/defaultTheme';
 
-	// ----------------------
-	// Variables
-	// ----------------------
+	let courses: CoursesModel = $state([]);
 
-	// The current fetched courses
-	let fetchedCourses: Course[] = [];
-
-	// The titles to filter on
-	let filterTitles: string[] = [];
-
-	// The tags to filter on
-	let filterTags: string[] = [];
-
-	// The progress to filter on
-	let filterProgress: CourseProgress | undefined;
-
-	// Pagination for courses
-	let pagination: PaginationParams = {
-		page: 1,
-		perPage: 12,
-		perPages: [], // not used,
-		totalItems: -1,
-		totalPages: -1
+	let filterValue = $state('');
+	let filterAppliedValue = $state('');
+	let filterOptions = {
+		available: ['true', 'false'],
+		tag: [],
+		progress: ['not started', 'started', 'completed']
 	};
 
-	// A boolean promise that initially fetches the courses. It is used in an `await` block
-	let courses = getCourses();
+	let paginationPage = $state(1);
+	let paginationPerPage = $state<number>();
+	let paginationTotal = $state<number>();
 
-	// ----------------------
-	// Functions
-	// ----------------------
+	let loadingMore = $state(false);
 
-	// Get courses (paginated)
-	async function getCourses(resetPage = false): Promise<boolean> {
-		if (!IsBrowser) return false;
+	let loadPromise = $state(fetchCourses(false));
 
-		const params: CoursesGetParams = {
-			page: resetPage ? 1 : pagination.page,
-			perPage: pagination.perPage
-		};
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-		if (filterTitles && filterTitles.length > 0) {
-			params.titles = filterTitles.join(',');
+	// Stop the scan monitor when the component is destroyed
+	$effect(() => {
+		return () => scanMonitor.clearAll();
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Determine the number of courses to load base on the screen size
+	$effect(() => {
+		setPaginationPerPage(remCalc(window.innerWidth));
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Set the pagination perPage size based on the screen size
+	function setPaginationPerPage(windowWidth: number) {
+		paginationPerPage =
+			windowWidth >= +theme.screens.lg.replace('rem', '')
+				? 15
+				: windowWidth >= +theme.screens.md.replace('rem', '')
+					? 10
+					: 8;
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Fetch courses
+	async function fetchCourses(append: boolean): Promise<void> {
+		if (!paginationPerPage) {
+			setPaginationPerPage(remCalc(window.innerWidth));
 		}
 
-		if (filterTags && filterTags.length > 0) {
-			params.tags = filterTags.join(',');
+		try {
+			const sort = 'sort:"courses.title asc"';
+			const q = filterValue ? `${filterValue} ${sort}` : sort;
+
+			const data = await GetCourses({
+				q,
+				page: paginationPage,
+				perPage: paginationPerPage
+			});
+			paginationTotal = data.totalItems;
+
+			if (append) {
+				courses.push(...data.items);
+			} else {
+				courses = data.items;
+			}
+
+			// TODO change to use maintenance.svelte.ts
+			// const coursesToTrack = courses.filter(
+			// 	(course) => course.scanStatus === 'processing' || course.scanStatus === 'waiting'
+			// );
+
+			// scanMonitor.trackCourses(coursesToTrack);
+		} catch (error) {
+			throw error;
 		}
-
-		params.progress = filterProgress;
-
-		const response = await GetCourses(params);
-		fetchedCourses = response.items as Course[];
-
-		pagination = {
-			...pagination,
-			totalItems: response.totalItems,
-			totalPages: response.totalPages
-		};
-
-		return true;
 	}
 </script>
 
-<div class="main container">
-	<CoursesFilter
-		on:titleFilter={(ev) => {
-			filterTitles = ev.detail;
-			courses = getCourses(true);
-		}}
-		on:tagsFilter={(ev) => {
-			filterTags = ev.detail;
-			courses = getCourses(true);
-		}}
-		on:progressFilter={(ev) => {
-			filterProgress = ev.detail;
-			courses = getCourses(true);
-		}}
-		on:clear={() => {
-			filterTitles = [];
-			filterTags = [];
-			filterProgress = undefined;
-			courses = getCourses(true);
-		}}
-	/>
-
-	<!-- Courses -->
-	<div class="flex h-full w-full">
-		{#await courses}
-			<Loading class="max-h-96" />
-		{:then _}
-			{#if fetchedCourses && fetchedCourses.length === 0}
-				<div class="flex min-h-[6rem] w-full flex-grow flex-col items-center p-10">
-					{#if filterTitles.length > 0 || filterTags.length > 0 || filterProgress}
-						<span class="text-muted-foreground">No courses found with the selected filters.</span>
-					{:else}
-						<span class="text-muted-foreground">No courses.</span>
-					{/if}
-				</div>
-			{:else}
-				<div class="flex w-full flex-col gap-5 overflow-hidden pb-5">
-					<div
-						class="grid w-full auto-cols-fr grid-cols-[repeat(auto-fill,minmax(17.5rem,1fr))] gap-4"
-					>
-						{#each fetchedCourses as course}
-							<a
-								class="group relative grid h-full min-h-36 cursor-pointer grid-cols-2 gap-4 overflow-hidden whitespace-normal rounded-lg bg-muted p-2 sm:flex sm:flex-col sm:gap-0 sm:p-0"
-								href={`/course/?id=${course.id}`}
-							>
-								{#if !course.available}
-									<span
-										class="absolute right-0 top-0 z-10 flex h-1 w-1 items-center justify-center rounded-bl-lg rounded-tr-lg bg-destructive p-3 text-center text-sm"
-									>
-										!
-									</span>
-								{/if}
-
-								<CourseCard
-									courseId={course.id}
-									hasCard={course.hasCard}
-									class="aspect-h-7 aspect-w-16 sm:aspect-h-7 sm:aspect-w-16"
-									imgClass="rounded-lg object-cover object-center sm:rounded-b-none md:object-top"
-									fallbackClass="bg-alt-1 inline-flex grow place-content-center items-center rounded-lg sm:rounded-b-none"
-								/>
-
-								<div
-									class="flex h-full flex-grow flex-col justify-between text-base sm:p-3 sm:text-sm"
-								>
-									<h3 class="font-semibold group-hover:text-secondary">
-										{course.title}
-									</h3>
-
-									<div class="flex flex-row justify-between">
-										<NiceDate date={course.progressUpdatedAt} class="shrink-0 pt-3 text-xs" />
-
-										<span class="flex w-full justify-end pt-3 text-xs">{course.percent}%</span>
-									</div>
-								</div>
-							</a>
-						{/each}
+<div class="flex w-full place-content-center">
+	<div class="flex w-full max-w-7xl flex-col gap-6 px-5 py-10">
+		<div class="flex w-full place-content-center">
+			<div class="flex w-full flex-col gap-8">
+				<div class="flex w-full flex-row items-center justify-between gap-5">
+					<div class="flex max-w-[40rem] flex-1">
+						<FilterBar
+							bind:value={filterValue}
+							disabled={!filterAppliedValue && courses.length === 0}
+							{filterOptions}
+							onApply={async () => {
+								if (filterValue !== filterAppliedValue) {
+									filterAppliedValue = filterValue;
+									paginationPage = 1;
+									loadPromise = fetchCourses(false);
+								}
+							}}
+						/>
 					</div>
 
-					<Pagination
-						type="course"
-						{pagination}
-						showPerPage={false}
-						on:pageChange={(ev) => {
-							pagination.page = ev.detail;
-							courses = getCourses();
-						}}
-					/>
+					{#if courses.length > 0}
+						<div class="flex flex-row justify-end">
+							<Badge class="text-sm">
+								{paginationTotal} courses
+							</Badge>
+						</div>
+					{/if}
 				</div>
-			{/if}
-		{:catch error}
-			<Err class="min-h-[6rem] p-5 text-sm text-muted" imgClass="size-6" errorMessage={error} />
-		{/await}
+
+				{#await loadPromise}
+					<div class="flex justify-center pt-10">
+						<Spinner class="bg-foreground-alt-3 size-4" />
+					</div>
+				{:then _}
+					<div>
+						{#if courses.length === 0}
+							<div class="flex w-full flex-col items-center gap-2 pt-5">
+								<div class="flex flex-col items-center gap-2">
+									<div>No courses</div>
+
+									{#if filterAppliedValue}
+										<div class="text-foreground-alt-3">Try adjusting your filters</div>
+									{/if}
+								</div>
+							</div>
+						{:else}
+							<div class="flex flex-col gap-5">
+								<div class="grid-col-1 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+									{#each courses as course}
+										<Button
+											href={`/course/${course.id}`}
+											variant="ghost"
+											class={cn(
+												'bg-background-alt-1 hover:bg-background-alt-1 group h-auto items-start overflow-hidden rounded-lg p-0 text-start whitespace-normal md:flex-col'
+											)}
+										>
+											<!-- Card -->
+											<div class="h-px min-h-40 w-50 sm:w-90 md:min-h-35 md:w-full">
+												{#if course.hasCard}
+													<Avatar.Root class="h-full w-full">
+														<Avatar.Image
+															src={`/api/courses/${course.id}/card`}
+															class="h-full w-full object-cover"
+															data-card={course.hasCard}
+														/>
+
+														<Avatar.Fallback
+															class="bg-background-alt-2 flex h-full w-full items-center justify-center"
+														>
+															<LogoIcon class="fill-background-alt-3 size-15 md:size-20" />
+														</Avatar.Fallback>
+													</Avatar.Root>
+												{:else}
+													<div
+														class="bg-background-alt-2 flex h-full w-full items-center justify-center"
+													>
+														<LogoIcon class="fill-background-alt-3 size-15 md:size-20" />
+													</div>
+												{/if}
+											</div>
+
+											<div class="flex h-full w-full flex-col justify-between gap-3 p-2.5">
+												<!-- Course Title -->
+												<span
+													class={cn(
+														'font-semibold duration-150',
+														course.available
+															? 'group-hover:text-background-primary'
+															: 'text-foreground-alt-3'
+													)}
+												>
+													{course.title}
+												</span>
+
+												<div class="flex justify-between">
+													<div class="flex gap-2">
+														<!-- Progress -->
+														{#if course.progress}
+															<Badge
+																class={cn(
+																	'text-foreground-alt-2',
+																	course.progress.percent === 100 &&
+																		'bg-background-success text-foreground'
+																)}
+															>
+																{course.progress.percent === 100
+																	? 'Completed'
+																	: course.progress.percent + '%'}
+															</Badge>
+														{/if}
+													</div>
+
+													<div class="flex gap-2 font-medium">
+														<!-- Maintenance -->
+														{#if !course.available || course.maintenance || (course.initialScan !== undefined && !course.initialScan)}
+															{#if course.initialScan !== undefined && !course.initialScan}
+																<Badge class="text-foreground-alt-1 bg-amber-800"
+																	>Initial Scan</Badge
+																>
+															{:else if course.maintenance}
+																<Badge class="text-foreground-alt-6 bg-background-primary-alt-1">
+																	Maintenance
+																</Badge>
+															{:else}
+																<Badge class="bg-background-error">Unavailable</Badge>
+															{/if}
+														{/if}
+													</div>
+												</div>
+											</div>
+										</Button>
+									{/each}
+								</div>
+
+								{#if paginationTotal && paginationTotal > courses.length}
+									<div class="flex w-full justify-center pt-5">
+										<Button
+											variant="default"
+											class="w-full px-4 text-base"
+											disabled={loadingMore}
+											onclick={async () => {
+												paginationPage += 1;
+												loadingMore = true;
+												await fetchCourses(true);
+												loadingMore = false;
+											}}
+										>
+											{#if loadingMore}
+												<Spinner class="bg-background-alt-4 size-4" />
+											{:else}
+												Load more
+											{/if}
+										</Button>
+									</div>
+								{/if}
+							</div>
+						{/if}
+					</div>
+				{:catch error}
+					<div class="flex w-full flex-col items-center gap-2 pt-10">
+						<WarningIcon class="text-foreground-error size-10" />
+						<span class="text-lg">Failed to fetch courses: {error.message}</span>
+					</div>
+				{/await}
+			</div>
+		</div>
 	</div>
 </div>

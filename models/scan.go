@@ -3,8 +3,6 @@ package models
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 import (
-	"fmt"
-
 	"github.com/geerew/off-course/utils/schema"
 	"github.com/geerew/off-course/utils/types"
 )
@@ -23,11 +21,17 @@ type Scan struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-var (
+const (
 	SCAN_TABLE       = "scans"
 	SCAN_COURSE_ID   = "course_id"
 	SCAN_STATUS      = "status"
 	SCAN_COURSE_PATH = "path"
+
+	SCAN_TABLE_ID         = SCAN_TABLE + "." + BASE_ID
+	SCAN_TABLE_CREATED_AT = SCAN_TABLE + "." + BASE_CREATED_AT
+	SCAN_TABLE_UPDATED_AT = SCAN_TABLE + "." + BASE_UPDATED_AT
+	SCAN_TABLE_COURSE_ID  = SCAN_TABLE + "." + SCAN_COURSE_ID
+	SCAN_TABLE_STATUS     = SCAN_TABLE + "." + SCAN_STATUS
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -51,5 +55,5 @@ func (s *Scan) Define(c *schema.ModelConfig) {
 	c.Field("CoursePath").JoinTable(COURSE_TABLE).Column(SCAN_COURSE_PATH).Alias("course_path")
 
 	// Joins
-	c.LeftJoin(COURSE_TABLE).On(fmt.Sprintf("%s.%s = %s.%s", SCAN_TABLE, SCAN_COURSE_ID, COURSE_TABLE, BASE_ID))
+	c.LeftJoin(COURSE_TABLE).On(SCAN_TABLE_COURSE_ID + " = " + COURSE_TABLE_ID)
 }

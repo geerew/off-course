@@ -22,12 +22,12 @@ func (dao *DAO) CreateTag(ctx context.Context, tag *models.Tag) error {
 	// Check if the tag already exists
 	options := &database.Options{
 		Where: squirrel.Expr(
-			fmt.Sprintf("LOWER(%s.%s) = LOWER(?)", models.TAG_TABLE, models.TAG_TAG),
+			fmt.Sprintf("LOWER(%s) = LOWER(?)", models.TAG_TABLE_TAG),
 			tag.Tag,
 		),
 	}
 	existingTag := &models.Tag{}
-	err := dao.Get(ctx, existingTag, options)
+	err := dao.GetTag(ctx, existingTag, options)
 	if err != nil && err != sql.ErrNoRows {
 		return err
 	}
@@ -38,7 +38,44 @@ func (dao *DAO) CreateTag(ctx context.Context, tag *models.Tag) error {
 		tag.Tag = existingTag.Tag
 	}
 
-	return dao.Create(ctx, tag)
+	return Create(ctx, dao, tag)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetTag retrieves a tag
+//
+// When options is nil or options.Where is nil, the models ID will be used
+func (dao *DAO) GetTag(ctx context.Context, tag *models.Tag, options *database.Options) error {
+	if tag == nil {
+		return utils.ErrNilPtr
+	}
+
+	if options == nil {
+		options = &database.Options{}
+	}
+
+	// When there is no where clause, use the ID
+	if options.Where == nil {
+		if tag.Id() == "" {
+			return utils.ErrInvalidId
+		}
+
+		options.Where = squirrel.Eq{models.TAG_TABLE_ID: tag.Id()}
+	}
+
+	return Get(ctx, dao, tag, options)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ListTags retrieves a list of tags
+func (dao *DAO) ListTags(ctx context.Context, tags *[]*models.Tag, options *database.Options) error {
+	if tags == nil {
+		return utils.ErrNilPtr
+	}
+
+	return List(ctx, dao, tags, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -49,6 +86,6 @@ func (dao *DAO) UpdateTag(ctx context.Context, tag *models.Tag) error {
 		return utils.ErrNilPtr
 	}
 
-	_, err := dao.Update(ctx, tag)
+	_, err := Update(ctx, dao, tag)
 	return err
 }

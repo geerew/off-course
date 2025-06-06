@@ -17,26 +17,44 @@ func (dao *DAO) CreateParam(ctx context.Context, param *models.Param) error {
 		return utils.ErrNilPtr
 	}
 
-	return dao.Create(ctx, param)
+	return Create(ctx, dao, param)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetParam gets a parameter by its key
-func (dao *DAO) GetParamByKey(ctx context.Context, param *models.Param) error {
+// GetParam retrieves a parameter
+//
+// When options is nil or options.Where is nil, the models Key will be used
+func (dao *DAO) GetParam(ctx context.Context, param *models.Param, options *database.Options) error {
 	if param == nil {
 		return utils.ErrNilPtr
 	}
 
-	if param.Key == "" {
-		return utils.ErrInvalidKey
+	if options == nil {
+		options = &database.Options{}
 	}
 
-	options := &database.Options{
-		Where: squirrel.Eq{param.Table() + ".key": param.Key},
+	// When there is no where clause, use the key
+	if options.Where == nil {
+		if param.Key == "" {
+			return utils.ErrInvalidKey
+		}
+
+		options.Where = squirrel.Eq{models.PARAM_TABLE_KEY: param.Key}
 	}
 
-	return dao.Get(ctx, param, options)
+	return Get(ctx, dao, param, options)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ListParams retrieves a list of params
+func (dao *DAO) ListParams(ctx context.Context, params *[]*models.Param, options *database.Options) error {
+	if params == nil {
+		return utils.ErrNilPtr
+	}
+
+	return List(ctx, dao, params, options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -47,6 +65,6 @@ func (dao *DAO) UpdateParam(ctx context.Context, param *models.Param) error {
 		return utils.ErrNilPtr
 	}
 
-	_, err := dao.Update(ctx, param)
+	_, err := Update(ctx, dao, param)
 	return err
 }

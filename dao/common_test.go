@@ -12,7 +12,7 @@ import (
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
-	"github.com/geerew/off-course/utils/appFs"
+	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/pagination"
 	"github.com/geerew/off-course/utils/types"
@@ -35,11 +35,10 @@ func setup(tb testing.TB) (*DAO, context.Context) {
 	require.NoError(tb, err, "Failed to initialize logger")
 
 	// DB
-	dbManager, err := database.NewSqliteDBManager(&database.DatabaseConfig{
-		IsDebug:  false,
-		DataDir:  "./oc_data",
-		AppFs:    appFs.NewAppFs(afero.NewMemMapFs(), logger),
-		InMemory: true,
+	dbManager, err := database.NewSQLiteManager(&database.DatabaseManagerConfig{
+		DataDir: "./oc_data",
+		AppFs:   appfs.New(afero.NewMemMapFs(), logger),
+		Testing: true,
 	})
 
 	require.NoError(tb, err)
@@ -47,7 +46,23 @@ func setup(tb testing.TB) (*DAO, context.Context) {
 
 	dao := &DAO{db: dbManager.DataDb}
 
-	return dao, context.Background()
+	// User
+	user := &models.User{
+		Username:     "test-user",
+		DisplayName:  "Test User",
+		PasswordHash: "test-password",
+		Role:         types.UserRoleAdmin,
+	}
+	require.NoError(tb, dao.CreateUser(context.Background(), user))
+
+	ctx := context.Background()
+	principal := types.Principal{
+		UserID: user.ID,
+		Role:   user.Role,
+	}
+	ctx = context.WithValue(ctx, types.PrincipalContextKey, principal)
+
+	return dao, ctx
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -57,7 +72,7 @@ func Test_Count(t *testing.T) {
 		dao, ctx := setup(t)
 
 		course := &models.Course{}
-		count, err := dao.Count(ctx, course, nil)
+		count, err := Count(ctx, dao, course, nil)
 		require.NoError(t, err)
 		require.Zero(t, count)
 	})
@@ -74,7 +89,7 @@ func Test_Count(t *testing.T) {
 		}
 
 		course := &models.Course{}
-		count, err := dao.Count(ctx, course, nil)
+		count, err := Count(ctx, dao, course, nil)
 		require.NoError(t, err)
 		require.Equal(t, count, 5)
 	})
@@ -88,7 +103,7 @@ func Test_Count(t *testing.T) {
 				Title: fmt.Sprintf("Course %d", i),
 				Path:  fmt.Sprintf("/course-%d", i),
 			}
-			require.NoError(t, dao.Create(ctx, course))
+			require.NoError(t, Create(ctx, dao, course))
 			courses = append(courses, course)
 		}
 
@@ -97,21 +112,21 @@ func Test_Count(t *testing.T) {
 		// ----------------------------
 		// EQUALS ID
 		// ----------------------------
-		count, err := dao.Count(ctx, course, &database.Options{Where: squirrel.Eq{course.Table() + ".id": courses[1].ID}})
+		count, err := Count(ctx, dao, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: courses[1].ID}})
 		require.NoError(t, err)
 		require.Equal(t, 1, count)
 
 		// ----------------------------
 		// NOT EQUALS ID
 		// ----------------------------
-		count, err = dao.Count(ctx, course, &database.Options{Where: squirrel.NotEq{course.Table() + ".id": courses[1].ID}})
+		count, err = Count(ctx, dao, course, &database.Options{Where: squirrel.NotEq{models.COURSE_TABLE_ID: courses[1].ID}})
 		require.NoError(t, err)
 		require.Equal(t, 2, count)
 
 		// ----------------------------
 		// ERROR
 		// ----------------------------
-		count, err = dao.Count(ctx, course, &database.Options{Where: squirrel.Eq{"": ""}})
+		count, err = Count(ctx, dao, course, &database.Options{Where: squirrel.Eq{"": ""}})
 		require.ErrorContains(t, err, "syntax error")
 		require.Zero(t, count)
 	})
@@ -119,7 +134,7 @@ func Test_Count(t *testing.T) {
 	t.Run("invalid model", func(t *testing.T) {
 		dao, ctx := setup(t)
 
-		count, err := dao.Count(ctx, nil, nil)
+		count, err := Count(ctx, dao, nil, nil)
 		require.ErrorIs(t, err, utils.ErrNilPtr)
 		require.Zero(t, count)
 	})
@@ -131,7 +146,7 @@ func Test_Count(t *testing.T) {
 		_, err := dao.db.Exec("DROP TABLE IF EXISTS " + course.Table())
 		require.NoError(t, err)
 
-		_, err = dao.Count(ctx, course, nil)
+		_, err = Count(ctx, dao, course, nil)
 		require.ErrorContains(t, err, "no such table: "+course.Table())
 	})
 }
@@ -142,153 +157,273 @@ func Test_Get(t *testing.T) {
 	t.Run("found", func(t *testing.T) {
 		dao, ctx := setup(t)
 
-		// Create course
-		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
-		require.NoError(t, dao.CreateCourse(ctx, course))
-
-		// Get course
-		courseResult := &models.Course{}
-		require.NoError(t, dao.Get(ctx, courseResult, nil))
-		require.Equal(t, course.ID, courseResult.ID)
-		require.True(t, courseResult.CreatedAt.Equal(course.CreatedAt))
-		require.True(t, courseResult.UpdatedAt.Equal(course.UpdatedAt))
-		require.Equal(t, course.Title, courseResult.Title)
-		require.Equal(t, course.Path, courseResult.Path)
-		require.Equal(t, course.CardPath, courseResult.CardPath)
-		require.True(t, courseResult.Available)
-		require.Empty(t, courseResult.ScanStatus)
-		require.NotEmpty(t, courseResult.Progress.ID)
-		require.Equal(t, course.ID, courseResult.Progress.CourseID)
-		require.False(t, courseResult.Progress.Started)
-		require.Zero(t, courseResult.Progress.Percent)
-		require.True(t, courseResult.Progress.StartedAt.IsZero())
-		require.True(t, courseResult.Progress.CompletedAt.IsZero())
-
-		// Create scan
-		scan := &models.Scan{CourseID: course.ID}
-		require.NoError(t, dao.CreateScan(ctx, scan))
-
-		// Get scan
-		scanResult := &models.Scan{}
-		require.NoError(t, dao.Get(ctx, scanResult, nil))
-		require.Equal(t, scan.ID, scanResult.ID)
-		require.True(t, scanResult.CreatedAt.Equal(scan.CreatedAt))
-		require.True(t, scanResult.UpdatedAt.Equal(scan.UpdatedAt))
-		require.Equal(t, scan.CourseID, scanResult.CourseID)
-		require.True(t, scanResult.Status.IsWaiting())
-		require.Equal(t, course.Path, scanResult.CoursePath)
-
-		// Get course (again)
-		courseResult = &models.Course{}
-		require.NoError(t, dao.Get(ctx, courseResult, nil))
-		require.Equal(t, course.ID, courseResult.ID)
-		require.True(t, courseResult.ScanStatus.IsWaiting())
-
-		// Create asset
-		asset := &models.Asset{
-			CourseID: course.ID,
-			Title:    "Asset 1",
-			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     "/course-1/01 asset.mp4",
-			Hash:     "1234",
-		}
-		require.NoError(t, dao.CreateAsset(ctx, asset))
-
-		// Get asset
-		assetResult := &models.Asset{}
-		require.NoError(t, dao.Get(ctx, assetResult, nil))
-		require.Equal(t, asset.ID, assetResult.ID)
-		require.True(t, assetResult.CreatedAt.Equal(asset.CreatedAt))
-		require.True(t, assetResult.UpdatedAt.Equal(asset.UpdatedAt))
-		require.Equal(t, asset.CourseID, assetResult.CourseID)
-		require.Equal(t, asset.Title, assetResult.Title)
-		require.Equal(t, asset.Prefix, assetResult.Prefix)
-		require.Equal(t, asset.Chapter, assetResult.Chapter)
-		require.Equal(t, asset.Type, assetResult.Type)
-		require.Equal(t, asset.Path, assetResult.Path)
-		require.Equal(t, asset.Hash, assetResult.Hash)
-		require.Len(t, assetResult.Attachments, 0)
-
-		// Create attachment
-		attachment := &models.Attachment{
-			AssetID: asset.ID,
-			Title:   "Attachment 1",
-			Path:    "/course-1/01 Attachment 1.txt",
-		}
-		require.NoError(t, dao.CreateAttachment(ctx, attachment))
-
-		// Get attachment
-		attachmentResult := &models.Attachment{}
-		require.NoError(t, dao.Get(ctx, attachmentResult, nil))
-		require.Equal(t, attachment.ID, attachmentResult.ID)
-		require.True(t, attachmentResult.CreatedAt.Equal(attachment.CreatedAt))
-		require.True(t, attachmentResult.UpdatedAt.Equal(attachment.UpdatedAt))
-		require.Equal(t, attachment.AssetID, attachmentResult.AssetID)
-		require.Equal(t, attachment.Title, attachmentResult.Title)
-		require.Equal(t, attachment.Path, attachmentResult.Path)
-
-		// Get asset (again)
-		assetResult = &models.Asset{}
-		require.NoError(t, dao.Get(ctx, assetResult, nil))
-		require.Equal(t, asset.ID, assetResult.ID)
-		require.Len(t, assetResult.Attachments, 1)
-		require.Equal(t, attachment.Title, assetResult.Attachments[0].Title)
-
-		// Create tag
-		tag := &models.Tag{Tag: "Tag 1"}
-		require.NoError(t, dao.CreateTag(ctx, tag))
-
-		// Get tag
-		tagResult := &models.Tag{}
-		require.NoError(t, dao.Get(ctx, tagResult, nil))
-		require.Equal(t, tag.ID, tagResult.ID)
-		require.True(t, tagResult.CreatedAt.Equal(tag.CreatedAt))
-		require.True(t, tagResult.UpdatedAt.Equal(tag.UpdatedAt))
-		require.Equal(t, tag.Tag, tagResult.Tag)
-		require.Len(t, tagResult.CourseTags, 0)
-
-		// Create course tag
-		courseTag := &models.CourseTag{TagID: tag.ID, CourseID: course.ID}
-		require.NoError(t, dao.CreateCourseTag(ctx, courseTag))
-
-		// Get course tag
-		courseTagResult := &models.CourseTag{}
-		require.NoError(t, dao.Get(ctx, courseTagResult, nil))
-		require.Equal(t, courseTag.ID, courseTagResult.ID)
-		require.True(t, courseTagResult.CreatedAt.Equal(courseTag.CreatedAt))
-		require.True(t, courseTagResult.UpdatedAt.Equal(courseTag.UpdatedAt))
-		require.Equal(t, courseTag.TagID, courseTagResult.TagID)
-		require.Equal(t, courseTag.CourseID, courseTagResult.CourseID)
-		require.Equal(t, course.Title, courseTagResult.Course)
-		require.Equal(t, tag.Tag, courseTagResult.Tag)
-
-		// Get tag (again)
-		tagResult = &models.Tag{}
-		require.NoError(t, dao.Get(ctx, tagResult, nil))
-		require.Equal(t, tag.ID, tagResult.ID)
-		require.Len(t, tagResult.CourseTags, 1)
+		course := &models.Course{}
+		scan := &models.Scan{}
+		videoAsset := &models.Asset{}
+		videoAssetProgress := &models.AssetProgress{}
+		videoMetadata := &models.VideoMetadata{}
+		attachment := &models.Attachment{}
+		tag := &models.Tag{}
 
 		// Create user
-		user := &models.User{Username: "user1", PasswordHash: "1234", Role: types.UserRoleAdmin}
-		require.NoError(t, dao.CreateUser(ctx, user))
+		{
+			user := &models.User{Username: "user1", DisplayName: "User 1", PasswordHash: "1234", Role: types.UserRoleAdmin}
+			require.NoError(t, dao.CreateUser(ctx, user))
 
-		// Get user
-		userResult := &models.User{}
-		require.NoError(t, dao.Get(ctx, userResult, nil))
-		require.Equal(t, user.ID, userResult.ID)
-		require.True(t, userResult.CreatedAt.Equal(user.CreatedAt))
-		require.True(t, userResult.UpdatedAt.Equal(user.UpdatedAt))
-		require.Equal(t, user.Username, userResult.Username)
-		require.Equal(t, user.PasswordHash, userResult.PasswordHash)
-		require.Equal(t, user.Role, userResult.Role)
+			// Get user
+			userResult := &models.User{}
+			require.NoError(t, Get(ctx, dao, userResult, &database.Options{Where: squirrel.Eq{models.USER_TABLE_ID: user.ID}}))
+			require.Equal(t, user.ID, userResult.ID)
+			require.True(t, userResult.CreatedAt.Equal(user.CreatedAt))
+			require.True(t, userResult.UpdatedAt.Equal(user.UpdatedAt))
+			require.Equal(t, user.Username, userResult.Username)
+			require.Equal(t, user.PasswordHash, userResult.PasswordHash)
+			require.Equal(t, user.Role, userResult.Role)
+		}
+
+		// Create course
+		{
+			course = &models.Course{Title: "Course 1", Path: "/course 1", Available: true, CardPath: "/course 1/card 1.jpg"}
+			require.NoError(t, dao.CreateCourse(ctx, course))
+
+			// Get course
+			courseResult := &models.Course{}
+			require.NoError(t, dao.GetCourse(ctx, courseResult, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: course.ID}}))
+			require.Equal(t, course.ID, courseResult.ID)
+			require.True(t, courseResult.CreatedAt.Equal(course.CreatedAt))
+			require.True(t, courseResult.UpdatedAt.Equal(course.UpdatedAt))
+			require.Equal(t, course.Title, courseResult.Title)
+			require.Equal(t, course.Path, courseResult.Path)
+			require.Equal(t, course.CardPath, courseResult.CardPath)
+			require.True(t, courseResult.Available)
+			require.False(t, courseResult.InitialScan)
+			require.True(t, courseResult.Maintenance)
+			require.Nil(t, courseResult.Progress)
+		}
+
+		// Create scan
+		{
+			scan = &models.Scan{CourseID: course.ID}
+			require.NoError(t, dao.CreateScan(ctx, scan))
+
+			scanResult := &models.Scan{}
+			require.NoError(t, Get(ctx, dao, scanResult, nil))
+			require.Equal(t, scan.ID, scanResult.ID)
+			require.True(t, scanResult.CreatedAt.Equal(scan.CreatedAt))
+			require.True(t, scanResult.UpdatedAt.Equal(scan.UpdatedAt))
+			require.Equal(t, scan.CourseID, scanResult.CourseID)
+			require.True(t, scanResult.Status.IsWaiting())
+			require.Equal(t, course.Path, scanResult.CoursePath)
+		}
+
+		// Create video asset
+		{
+			videoAsset = &models.Asset{
+				CourseID: course.ID,
+				Title:    "Asset 1",
+				Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+				Chapter:  "Chapter 1",
+				Type:     *types.NewAsset("mp4"),
+				Path:     "/course 1/Chapter 1/01 videoAsset.mp4",
+				FileSize: 1024,
+				ModTime:  time.Now().Format(time.RFC3339Nano),
+				Hash:     "1234",
+			}
+			require.NoError(t, dao.CreateAsset(ctx, videoAsset))
+
+			videoAssetResult := &models.Asset{}
+			require.NoError(t, Get(ctx, dao, videoAssetResult, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_ID: videoAsset.ID}}))
+			require.Equal(t, videoAsset.ID, videoAssetResult.ID)
+			require.True(t, videoAssetResult.CreatedAt.Equal(videoAsset.CreatedAt))
+			require.True(t, videoAssetResult.UpdatedAt.Equal(videoAsset.UpdatedAt))
+			require.Equal(t, videoAsset.CourseID, videoAssetResult.CourseID)
+			require.Equal(t, videoAsset.Title, videoAssetResult.Title)
+			require.Equal(t, videoAsset.Prefix, videoAssetResult.Prefix)
+			require.Equal(t, videoAsset.Chapter, videoAssetResult.Chapter)
+			require.Equal(t, videoAsset.Type, videoAssetResult.Type)
+			require.Equal(t, videoAsset.Path, videoAssetResult.Path)
+			require.Equal(t, videoAsset.FileSize, videoAssetResult.FileSize)
+			require.Equal(t, videoAsset.ModTime, videoAssetResult.ModTime)
+			require.Equal(t, videoAsset.Hash, videoAssetResult.Hash)
+			require.Len(t, videoAssetResult.Attachments, 0)
+			require.Nil(t, videoAssetResult.VideoMetadata)
+			require.Nil(t, videoAssetResult.Progress)
+		}
+
+		// Create attachment
+		{
+			attachment = &models.Attachment{
+				AssetID: videoAsset.ID,
+				Title:   "Attachment 1",
+				Path:    "/course 1/01 Attachment 1.txt",
+			}
+			require.NoError(t, dao.CreateAttachment(ctx, attachment))
+
+			// Get attachment
+			attachmentResult := &models.Attachment{}
+			require.NoError(t, Get(ctx, dao, attachmentResult, nil))
+			require.Equal(t, attachment.ID, attachmentResult.ID)
+			require.True(t, attachmentResult.CreatedAt.Equal(attachment.CreatedAt))
+			require.True(t, attachmentResult.UpdatedAt.Equal(attachment.UpdatedAt))
+			require.Equal(t, attachment.AssetID, attachmentResult.AssetID)
+			require.Equal(t, attachment.Title, attachmentResult.Title)
+			require.Equal(t, attachment.Path, attachmentResult.Path)
+		}
+
+		// Get video asset and check attachments
+		{
+			videoAssetResult := &models.Asset{}
+			require.NoError(t, Get(ctx, dao, videoAssetResult, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_ID: videoAsset.ID}}))
+			require.Equal(t, videoAsset.ID, videoAssetResult.ID)
+			require.Len(t, videoAssetResult.Attachments, 1)
+			require.Equal(t, attachment.Title, videoAssetResult.Attachments[0].Title)
+		}
+
+		// Create video metadata
+		{
+			videoMetadata = &models.VideoMetadata{
+				AssetID:    videoAsset.ID,
+				Duration:   120,
+				Width:      1280,
+				Height:     720,
+				Codec:      "h264",
+				Resolution: "720p",
+			}
+			require.NoError(t, dao.CreateVideoMetadata(ctx, videoMetadata))
+
+			// Get video metadata
+			videoMetadataResult := &models.VideoMetadata{}
+			require.NoError(t, Get(ctx, dao, videoMetadataResult, nil))
+			require.Equal(t, videoMetadata.ID, videoMetadataResult.ID)
+			require.True(t, videoMetadataResult.CreatedAt.Equal(videoMetadata.CreatedAt))
+			require.True(t, videoMetadataResult.UpdatedAt.Equal(videoMetadata.UpdatedAt))
+			require.Equal(t, videoMetadata.AssetID, videoMetadataResult.AssetID)
+			require.Equal(t, videoMetadata.Duration, videoMetadataResult.Duration)
+			require.Equal(t, videoMetadata.Width, videoMetadataResult.Width)
+			require.Equal(t, videoMetadata.Height, videoMetadataResult.Height)
+			require.Equal(t, videoMetadata.Codec, videoMetadataResult.Codec)
+			require.Equal(t, videoMetadata.Resolution, videoMetadataResult.Resolution)
+		}
+
+		// Get video asset and check video metadata
+		{
+			videoAssetResult := &models.Asset{}
+			require.NoError(t, Get(ctx, dao, videoAssetResult, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_ID: videoAsset.ID}}))
+			require.Equal(t, videoAsset.ID, videoAssetResult.ID)
+			require.NotNil(t, videoAssetResult.VideoMetadata)
+			require.Equal(t, videoAssetResult.VideoMetadata.ID, videoMetadata.ID)
+		}
+
+		// Create video asset progress. It will be created for the user within the context
+		{
+			videoAssetProgress = &models.AssetProgress{
+				AssetID:   videoAsset.ID,
+				VideoPos:  60,
+				Completed: false,
+			}
+			require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, course.ID, videoAssetProgress))
+
+			// Get video asset progress
+			videoAssetProgressResult := &models.AssetProgress{}
+			require.NoError(t, Get(ctx, dao, videoAssetProgressResult, &database.Options{Where: squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: videoAssetProgress.ID}}))
+			require.Equal(t, videoAssetProgress.ID, videoAssetProgressResult.ID)
+			require.True(t, videoAssetProgressResult.CreatedAt.Equal(videoAssetProgress.CreatedAt))
+			require.True(t, videoAssetProgressResult.UpdatedAt.Equal(videoAssetProgress.UpdatedAt))
+			require.Equal(t, videoAssetProgress.AssetID, videoAssetProgressResult.AssetID)
+			require.Equal(t, videoAssetProgress.VideoPos, videoAssetProgressResult.VideoPos)
+			require.Equal(t, videoAssetProgress.Completed, videoAssetProgressResult.Completed)
+		}
+
+		// Get course (again) and check progress for the user
+		{
+			courseResult := &models.Course{}
+			require.NoError(t, dao.GetCourse(ctx, courseResult, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: course.ID}}))
+			require.Equal(t, course.ID, courseResult.ID)
+			require.NotNil(t, courseResult.Progress)
+			require.True(t, courseResult.Progress.Started)
+			require.Equal(t, 50, courseResult.Progress.Percent)
+		}
+
+		// Create pdf asset
+		{
+			pdfAsset := &models.Asset{
+				CourseID: course.ID,
+				Title:    "Asset 2",
+				Prefix:   sql.NullInt16{Int16: 2, Valid: true},
+				Chapter:  "Chapter 1",
+				Type:     *types.NewAsset("pdf"),
+				Path:     "/course 1/Chapter 1/02 pdfAsset.pdf",
+				FileSize: 1024,
+				ModTime:  time.Now().Format(time.RFC3339Nano),
+				Hash:     "4321",
+			}
+			require.NoError(t, dao.CreateAsset(ctx, pdfAsset))
+
+			// Get pdf asset
+			pdfAssetResult := &models.Asset{}
+			require.NoError(t, Get(ctx, dao, pdfAssetResult, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_ID: pdfAsset.ID}}))
+			require.Equal(t, pdfAsset.ID, pdfAssetResult.ID)
+			require.True(t, pdfAssetResult.CreatedAt.Equal(pdfAsset.CreatedAt))
+			require.True(t, pdfAssetResult.UpdatedAt.Equal(pdfAsset.UpdatedAt))
+			require.Equal(t, pdfAsset.CourseID, pdfAssetResult.CourseID)
+			require.Equal(t, pdfAsset.Title, pdfAssetResult.Title)
+			require.Equal(t, pdfAsset.Prefix, pdfAssetResult.Prefix)
+			require.Equal(t, pdfAsset.Chapter, pdfAssetResult.Chapter)
+			require.Equal(t, pdfAsset.Type, pdfAssetResult.Type)
+			require.Equal(t, pdfAsset.Path, pdfAssetResult.Path)
+			require.Equal(t, pdfAsset.FileSize, pdfAssetResult.FileSize)
+			require.Equal(t, pdfAsset.ModTime, pdfAssetResult.ModTime)
+			require.Equal(t, pdfAsset.Hash, pdfAssetResult.Hash)
+			require.Len(t, pdfAssetResult.Attachments, 0)
+			require.Nil(t, pdfAssetResult.VideoMetadata)
+			require.Nil(t, pdfAssetResult.Progress)
+		}
+
+		// Create tag
+		{
+			tag = &models.Tag{Tag: "Tag 1"}
+			require.NoError(t, dao.CreateTag(ctx, tag))
+
+			// Get tag
+			tagResult := &models.Tag{}
+			require.NoError(t, Get(ctx, dao, tagResult, nil))
+			require.Equal(t, tag.ID, tagResult.ID)
+			require.True(t, tagResult.CreatedAt.Equal(tag.CreatedAt))
+			require.True(t, tagResult.UpdatedAt.Equal(tag.UpdatedAt))
+			require.Equal(t, tag.Tag, tagResult.Tag)
+			require.Zero(t, tagResult.CourseCount)
+		}
+
+		// Create course tag
+		{
+			courseTag := &models.CourseTag{TagID: tag.ID, CourseID: course.ID}
+			require.NoError(t, dao.CreateCourseTag(ctx, courseTag))
+
+			// Get course tag
+			courseTagResult := &models.CourseTag{}
+			require.NoError(t, Get(ctx, dao, courseTagResult, nil))
+			require.Equal(t, courseTag.ID, courseTagResult.ID)
+			require.True(t, courseTagResult.CreatedAt.Equal(courseTag.CreatedAt))
+			require.True(t, courseTagResult.UpdatedAt.Equal(courseTag.UpdatedAt))
+			require.Equal(t, courseTag.TagID, courseTagResult.TagID)
+			require.Equal(t, courseTag.CourseID, courseTagResult.CourseID)
+			require.Equal(t, course.Title, courseTagResult.Course)
+			require.Equal(t, tag.Tag, courseTagResult.Tag)
+		}
+
+		// Get tag (again) and check course count
+		{
+			tagResult := &models.Tag{}
+			require.NoError(t, Get(ctx, dao, tagResult, nil))
+			require.Equal(t, tag.ID, tagResult.ID)
+			require.Equal(t, 1, tagResult.CourseCount)
+		}
 	})
 
 	t.Run("not found", func(t *testing.T) {
 		dao, ctx := setup(t)
 		course := &models.Course{}
-		err := dao.Get(ctx, course, &database.Options{Where: squirrel.Eq{course.Table() + ".path": "1234"}})
+		err := Get(ctx, dao, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_PATH: "1234"}})
 		require.ErrorIs(t, err, sql.ErrNoRows)
 	})
 
@@ -301,13 +436,13 @@ func Test_Get(t *testing.T) {
 				Title: fmt.Sprintf("Course %d", i),
 				Path:  fmt.Sprintf("/course-%d", i),
 			}
-			require.NoError(t, dao.Create(ctx, course))
+			require.NoError(t, Create(ctx, dao, course))
 			courses = append(courses, course)
 			time.Sleep(1 * time.Millisecond)
 		}
 
 		courseResult := &models.Course{}
-		require.NoError(t, dao.Get(ctx, courseResult, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE + ".path": courses[1].Path}}))
+		require.NoError(t, Get(ctx, dao, courseResult, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_PATH: courses[1].Path}}))
 		require.Equal(t, courses[1].ID, courseResult.ID)
 	})
 
@@ -320,27 +455,27 @@ func Test_Get(t *testing.T) {
 				Title: fmt.Sprintf("Course %d", i),
 				Path:  fmt.Sprintf("/course-%d", i),
 			}
-			require.NoError(t, dao.Create(ctx, course))
+			require.NoError(t, Create(ctx, dao, course))
 			courses = append(courses, course)
 			time.Sleep(1 * time.Millisecond)
 		}
 
 		result := &models.Course{}
-		options := &database.Options{OrderBy: []string{fmt.Sprintf("%s.title DESC", models.COURSE_TABLE)}}
-		require.NoError(t, dao.Get(ctx, result, options))
+		options := &database.Options{OrderBy: []string{models.COURSE_TABLE_TITLE + " DESC"}}
+		require.NoError(t, Get(ctx, dao, result, options))
 		require.Equal(t, courses[2].ID, result.ID)
 	})
 
 	t.Run("invalid model", func(t *testing.T) {
 		dao, ctx := setup(t)
-		err := dao.Get(ctx, nil, nil)
+		err := Get(ctx, dao, nil, nil)
 		require.ErrorIs(t, err, utils.ErrNilPtr)
 	})
 
 	t.Run("invalid where", func(t *testing.T) {
 		dao, ctx := setup(t)
-		err := dao.Get(ctx, &models.Course{}, &database.Options{Where: squirrel.Eq{"`": "`"}})
-		require.ErrorContains(t, err, "SQL logic error: unrecognized token")
+		err := Get(ctx, dao, &models.Course{}, &database.Options{Where: squirrel.Eq{"`": "`"}})
+		require.ErrorContains(t, err, "unrecognized token")
 	})
 
 	t.Run("db error", func(t *testing.T) {
@@ -350,41 +485,8 @@ func Test_Get(t *testing.T) {
 		_, err := dao.db.Exec("DROP TABLE IF EXISTS " + course.Table())
 		require.NoError(t, err)
 
-		err = dao.Get(ctx, course, nil)
+		err = Get(ctx, dao, course, nil)
 		require.ErrorContains(t, err, "no such table: "+course.Table())
-	})
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-func Test_GetById(t *testing.T) {
-	t.Run("found", func(t *testing.T) {
-		dao, ctx := setup(t)
-
-		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
-		require.NoError(t, dao.CreateCourse(ctx, course))
-
-		courseResult := &models.Course{Base: models.Base{ID: course.ID}}
-		require.NoError(t, dao.GetById(ctx, courseResult))
-		require.Equal(t, course.ID, courseResult.ID)
-	})
-
-	t.Run("not found", func(t *testing.T) {
-		dao, ctx := setup(t)
-		err := dao.GetById(ctx, &models.Course{Base: models.Base{ID: "1234"}})
-		require.ErrorIs(t, err, sql.ErrNoRows)
-	})
-
-	t.Run("invalid model", func(t *testing.T) {
-		dao, ctx := setup(t)
-		err := dao.GetById(ctx, nil)
-		require.ErrorIs(t, err, utils.ErrNilPtr)
-	})
-
-	t.Run("invalid id", func(t *testing.T) {
-		dao, ctx := setup(t)
-		err := dao.GetById(ctx, &models.Course{})
-		require.ErrorIs(t, err, utils.ErrInvalidId)
 	})
 }
 
@@ -395,7 +497,7 @@ func Test_List(t *testing.T) {
 		dao, ctx := setup(t)
 
 		courses := []*models.Course{}
-		err := dao.List(ctx, &courses, nil)
+		err := List(ctx, dao, &courses, nil)
 		require.NoError(t, err)
 		require.Empty(t, courses)
 	})
@@ -408,11 +510,11 @@ func Test_List(t *testing.T) {
 				Title: fmt.Sprintf("Course %d", i),
 				Path:  fmt.Sprintf("/course-%d", i),
 			}
-			require.NoError(t, dao.Create(ctx, course))
+			require.NoError(t, Create(ctx, dao, course))
 		}
 
 		courses := []*models.Course{}
-		err := dao.List(ctx, &courses, nil)
+		err := List(ctx, dao, &courses, nil)
 		require.NoError(t, err)
 		require.Len(t, courses, 5)
 	})
@@ -426,7 +528,7 @@ func Test_List(t *testing.T) {
 				Title: fmt.Sprintf("Course %d", i),
 				Path:  fmt.Sprintf("/course-%d", i),
 			}
-			require.NoError(t, dao.Create(ctx, course))
+			require.NoError(t, Create(ctx, dao, course))
 			courses = append(courses, course)
 			time.Sleep(1 * time.Millisecond)
 		}
@@ -435,7 +537,7 @@ func Test_List(t *testing.T) {
 
 		// Page 1 (10 items)
 		p := pagination.New(1, 10)
-		require.NoError(t, dao.List(ctx, &coursesResult, &database.Options{Pagination: p}))
+		require.NoError(t, List(ctx, dao, &coursesResult, &database.Options{Pagination: p}))
 		require.Len(t, coursesResult, 10)
 		require.Equal(t, 17, p.TotalItems())
 		require.Equal(t, courses[0].ID, coursesResult[0].ID)
@@ -443,7 +545,7 @@ func Test_List(t *testing.T) {
 
 		// Page 2 (7 items)
 		p = pagination.New(2, 10)
-		require.NoError(t, dao.List(ctx, &coursesResult, &database.Options{Pagination: p}))
+		require.NoError(t, List(ctx, dao, &coursesResult, &database.Options{Pagination: p}))
 		require.Len(t, coursesResult, 7)
 		require.Equal(t, 17, p.TotalItems())
 		require.Equal(t, courses[10].ID, coursesResult[0].ID)
@@ -459,53 +561,17 @@ func Test_List(t *testing.T) {
 				Title: fmt.Sprintf("Course %d", i),
 				Path:  fmt.Sprintf("/course-%d", i),
 			}
-			require.NoError(t, dao.Create(ctx, course))
+			require.NoError(t, Create(ctx, dao, course))
 			courses = append(courses, course)
 			time.Sleep(1 * time.Millisecond)
 		}
 
 		// CREATED_AT DESC
 		coursesResult := []*models.Course{}
-		options := &database.Options{OrderBy: []string{models.COURSE_TABLE + ".title DESC"}}
-		require.NoError(t, dao.List(ctx, &coursesResult, options))
+		options := &database.Options{OrderBy: []string{models.COURSE_TABLE_TITLE + " DESC"}}
+		require.NoError(t, List(ctx, dao, &coursesResult, options))
 		require.Len(t, coursesResult, 3)
 		require.Equal(t, courses[2].ID, coursesResult[0].ID)
-
-		// 	// // ----------------------------
-		// 	// // SCAN_STATUS DESC
-		// 	// // ----------------------------
-
-		// 	// // Create a scan for course 2 and 3
-		// 	// scanDao := NewScanDao(db)
-
-		// 	// testData[1].Scan = &models.Scan{CourseID: testData[1].ID}
-		// 	// require.Nil(t, scanDao.Create(testData[1].Scan, nil))
-		// 	// testData[2].Scan = &models.Scan{CourseID: testData[2].ID}
-		// 	// require.Nil(t, scanDao.Create(testData[2].Scan, nil))
-
-		// 	// // Set course 3 to processing
-		// 	// testData[2].Scan.Status = types.NewScanStatus(types.ScanStatusProcessing)
-		// 	// require.Nil(t, scanDao.Update(testData[2].Scan, nil))
-
-		// 	// result, err = dao.List(&database.DatabaseParams{OrderBy: []string{dao.Table() + ".scan_status desc"}}, nil)
-		// 	// require.Nil(t, err)
-		// 	// require.Len(t, result, 3)
-
-		// 	// require.Equal(t, testData[0].ID, result[2].ID)
-		// 	// require.Equal(t, testData[1].ID, result[1].ID)
-		// 	// require.Equal(t, testData[2].ID, result[0].ID)
-
-		// 	// // ----------------------------
-		// 	// // SCAN_STATUS ASC
-		// 	// // ----------------------------
-		// 	// result, err = dao.List(&database.DatabaseParams{OrderBy: []string{dao.Table() + ".scan_status asc"}}, nil)
-		// 	// require.Nil(t, err)
-		// 	// require.Len(t, result, 3)
-
-		// 	// require.Equal(t, testData[0].ID, result[0].ID)
-		// 	// require.Equal(t, testData[1].ID, result[1].ID)
-		// 	// require.Equal(t, testData[2].ID, result[2].ID)
-
 	})
 
 	t.Run("where", func(t *testing.T) {
@@ -517,7 +583,7 @@ func Test_List(t *testing.T) {
 				Title: fmt.Sprintf("Course %d", i),
 				Path:  fmt.Sprintf("/course-%d", i),
 			}
-			require.NoError(t, dao.Create(ctx, course))
+			require.NoError(t, Create(ctx, dao, course))
 			courses = append(courses, course)
 			time.Sleep(1 * time.Millisecond)
 		}
@@ -526,12 +592,12 @@ func Test_List(t *testing.T) {
 		coursesResult := []*models.Course{}
 		options := &database.Options{
 			Where: squirrel.Or{
-				squirrel.Eq{models.COURSE_TABLE + ".id": courses[1].ID},
-				squirrel.Eq{models.COURSE_TABLE + ".id": courses[2].ID},
+				squirrel.Eq{models.COURSE_TABLE_ID: courses[1].ID},
+				squirrel.Eq{models.COURSE_TABLE_ID: courses[2].ID},
 			},
-			OrderBy: []string{models.COURSE_TABLE + ".created_at ASC"},
+			OrderBy: []string{models.COURSE_TABLE_CREATED_AT + " ASC"},
 		}
-		require.NoError(t, dao.List(ctx, &coursesResult, options))
+		require.NoError(t, List(ctx, dao, &coursesResult, options))
 		require.Len(t, coursesResult, 2)
 		require.Equal(t, courses[1].ID, coursesResult[0].ID)
 		require.Equal(t, courses[2].ID, coursesResult[1].ID)
@@ -541,10 +607,10 @@ func Test_List(t *testing.T) {
 		dao, ctx := setup(t)
 
 		// Nil
-		require.ErrorIs(t, dao.List(ctx, nil, nil), utils.ErrNilPtr)
+		require.ErrorIs(t, List(ctx, dao, nil, nil), utils.ErrNilPtr)
 
 		// Not a pointer
-		require.ErrorIs(t, dao.List(ctx, []*models.Course{}, nil), utils.ErrNotPtr)
+		require.ErrorIs(t, List(ctx, dao, []*models.Course{}, nil), utils.ErrNotPtr)
 	})
 }
 
@@ -554,7 +620,7 @@ func Test_ListPluck(t *testing.T) {
 	t.Run("no entries", func(t *testing.T) {
 		dao, ctx := setup(t)
 
-		ids, err := dao.ListPluck(ctx, &models.Course{}, nil, models.BASE_ID)
+		ids, err := ListPluck[[]string](ctx, dao, &models.Course{}, nil, models.BASE_ID)
 		require.NoError(t, err)
 		require.Empty(t, ids)
 	})
@@ -568,15 +634,15 @@ func Test_ListPluck(t *testing.T) {
 				Title: fmt.Sprintf("Course %d", i),
 				Path:  fmt.Sprintf("/course-%d", i),
 			}
-			require.NoError(t, dao.Create(ctx, course))
+			require.NoError(t, Create(ctx, dao, course))
 			courses = append(courses, course)
 			time.Sleep(1 * time.Millisecond)
 		}
 
-		options := &database.Options{OrderBy: []string{models.COURSE_TABLE + ".created_at ASC"}}
+		options := &database.Options{OrderBy: []string{models.COURSE_TABLE_CREATED_AT + " ASC"}}
 
 		// Course IDs
-		ids, err := dao.ListPluck(ctx, &models.Course{}, options, models.BASE_ID)
+		ids, err := ListPluck[[]string](ctx, dao, &models.Course{}, options, models.BASE_ID)
 		require.NoError(t, err)
 		require.Len(t, ids, 5)
 		for i := range 5 {
@@ -584,7 +650,7 @@ func Test_ListPluck(t *testing.T) {
 		}
 
 		// Course paths
-		paths, err := dao.ListPluck(ctx, &models.Course{}, options, models.COURSE_PATH)
+		paths, err := ListPluck[[]string](ctx, dao, &models.Course{}, options, models.COURSE_PATH)
 		require.NoError(t, err)
 		require.Len(t, paths, 5)
 		for i := range 5 {
@@ -600,27 +666,26 @@ func Test_Delete(t *testing.T) {
 		dao, ctx := setup(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
-		require.NoError(t, dao.Create(ctx, course))
+		require.NoError(t, Create(ctx, dao, course))
 
-		require.NoError(t, dao.Delete(ctx, course, &database.Options{Where: squirrel.Eq{course.Table() + ".path": course.Path}}))
+		require.NoError(t, Delete(ctx, dao, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_PATH: course.Path}}))
 	})
 
 	t.Run("nil model", func(t *testing.T) {
 		dao, ctx := setup(t)
-		err := dao.Delete(ctx, nil, &database.Options{Where: squirrel.Eq{"path": "1234"}})
+		err := Delete(ctx, dao, nil, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_PATH: "1234"}})
 		require.ErrorIs(t, err, utils.ErrNilPtr)
 	})
 
 	t.Run("nil where", func(t *testing.T) {
 		dao, ctx := setup(t)
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
-		require.NoError(t, dao.Create(ctx, course))
-		require.NoError(t, dao.Delete(ctx, course, nil))
+		require.NoError(t, Create(ctx, dao, course))
+		require.NoError(t, Delete(ctx, dao, course, nil))
 
 		// Check if it was deleted
 		courseResult := &models.Course{Base: models.Base{ID: course.ID}}
-		err := dao.GetById(ctx, courseResult)
-		require.ErrorIs(t, err, sql.ErrNoRows)
+		require.ErrorIs(t, Get(ctx, dao, courseResult, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: course.ID}}), sql.ErrNoRows)
 	})
 
 	t.Run("db error", func(t *testing.T) {
@@ -630,14 +695,69 @@ func Test_Delete(t *testing.T) {
 		_, err := dao.db.Exec("DROP TABLE IF EXISTS " + course.Table())
 		require.NoError(t, err)
 
-		err = dao.Delete(ctx, course, &database.Options{Where: squirrel.Eq{"path": "1234"}})
+		err = Delete(ctx, dao, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_PATH: "1234"}})
 		require.ErrorContains(t, err, "no such table: "+course.Table())
 	})
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func Benchmark_GetById(b *testing.B) {
+func Test_RawQuery(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1"}
+		require.NoError(t, Create(ctx, dao, course))
+
+		courses := []*models.Course{}
+		err := RawQuery(ctx, dao, &courses, "SELECT * FROM "+course.Table()+" WHERE "+models.COURSE_TABLE_PATH+" = ?", course.Path)
+		require.NoError(t, err)
+		require.Len(t, courses, 1)
+		require.Equal(t, course.ID, courses[0].ID)
+	})
+
+	t.Run("nil model", func(t *testing.T) {
+		dao, ctx := setup(t)
+		err := RawQuery(ctx, dao, nil, "SELECT * FROM courses")
+		require.ErrorIs(t, err, utils.ErrNilPtr)
+	})
+
+	t.Run("invalid query", func(t *testing.T) {
+		dao, ctx := setup(t)
+		courses := []*models.Course{}
+		err := RawQuery(ctx, dao, &courses, "SELECT * FROM abcd1234")
+		require.ErrorContains(t, err, "no such table: abcd1234")
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func Test_RawExec(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1"}
+		require.NoError(t, Create(ctx, dao, course))
+
+		_, err := RawExec(ctx, dao, "DELETE FROM "+course.Table()+" WHERE "+models.COURSE_TABLE_PATH+" = ?", course.Path)
+		require.NoError(t, err)
+
+		courses := []*models.Course{}
+		err = RawQuery(ctx, dao, &courses, "SELECT * FROM "+course.Table()+" WHERE "+models.COURSE_TABLE_PATH+" = ?", course.Path)
+		require.NoError(t, err)
+		require.Empty(t, courses)
+	})
+
+	t.Run("invalid query", func(t *testing.T) {
+		dao, ctx := setup(t)
+		_, err := RawExec(ctx, dao, "DELETE FROM abcd1234 WHERE id = ?", "123")
+		require.ErrorContains(t, err, "no such table: abcd1234")
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func Benchmark_Get(b *testing.B) {
 	dao, ctx := setup(b)
 
 	for i := 0; i < 1000; i++ {
@@ -646,15 +766,16 @@ func Benchmark_GetById(b *testing.B) {
 		course.Title = fmt.Sprintf("Course %d", i)
 		course.Path = fmt.Sprintf("/course-%d", i)
 		require.NoError(b, dao.CreateCourse(ctx, course))
+		require.NoError(b, dao.RefreshCourseProgress(ctx, course.ID))
 
 		courseProgress := &models.CourseProgress{}
-		require.NoError(b, dao.Get(ctx, courseProgress, &database.Options{Where: squirrel.Eq{courseProgress.Table() + ".course_id": course.ID}}))
+		require.NoError(b, Get(ctx, dao, courseProgress, &database.Options{Where: squirrel.Eq{models.COURSE_PROGRESS_TABLE_COURSE_ID: course.ID}}))
 	}
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		courseResult := &models.Course{Base: models.Base{ID: fmt.Sprintf("%d", (i % 1000))}}
-		require.NoError(b, dao.GetById(ctx, courseResult))
+		require.NoError(b, Get(ctx, dao, courseResult, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: courseResult.ID}}))
 	}
 }

@@ -3,6 +3,8 @@ package dao
 import (
 	"context"
 
+	"github.com/Masterminds/squirrel"
+	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 )
@@ -15,7 +17,7 @@ func (dao *DAO) CreateAttachment(ctx context.Context, attachment *models.Attachm
 		return utils.ErrNilPtr
 	}
 
-	return dao.Create(ctx, attachment)
+	return Create(ctx, dao, attachment)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -26,6 +28,43 @@ func (dao *DAO) UpdateAttachment(ctx context.Context, attachment *models.Attachm
 		return utils.ErrNilPtr
 	}
 
-	_, err := dao.Update(ctx, attachment)
+	_, err := Update(ctx, dao, attachment)
 	return err
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetAttachment retrieves an attachment
+//
+// When options is nil or options.Where is nil, the models ID will be used
+func (dao *DAO) GetAttachment(ctx context.Context, attachment *models.Attachment, options *database.Options) error {
+	if attachment == nil {
+		return utils.ErrNilPtr
+	}
+
+	if options == nil {
+		options = &database.Options{}
+	}
+
+	// When there is no where clause, use the IDs
+	if options.Where == nil {
+		if attachment.Id() == "" {
+			return utils.ErrInvalidId
+		}
+
+		options.Where = squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachment.Id()}
+	}
+
+	return Get(ctx, dao, attachment, options)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ListAttachments retrieves a list of attachments
+func (dao *DAO) ListAttachments(ctx context.Context, attachments *[]*models.Attachment, options *database.Options) error {
+	if attachments == nil {
+		return utils.ErrNilPtr
+	}
+
+	return List(ctx, dao, attachments, options)
 }

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/geerew/off-course/utils/appFs"
+	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
@@ -24,14 +24,13 @@ func setupSqliteDB(t *testing.T) *DatabaseManager {
 	require.NoError(t, err, "Failed to initialize logger")
 
 	// Filesystem
-	appFs := appFs.NewAppFs(afero.NewMemMapFs(), logger)
+	appFs := appfs.New(afero.NewMemMapFs(), logger)
 
 	// DB
-	dbManager, err := NewSqliteDBManager(&DatabaseConfig{
-		IsDebug:  false,
-		DataDir:  "./oc_data",
-		AppFs:    appFs,
-		InMemory: true,
+	dbManager, err := NewSQLiteManager(&DatabaseManagerConfig{
+		DataDir: "./oc_data",
+		AppFs:   appFs,
+		Testing: true,
 	})
 
 	require.NoError(t, err)
@@ -54,15 +53,14 @@ func TestSqliteDb_Bootstrap(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		appFs := appFs.NewAppFs(afero.NewMemMapFs(), logger)
+		appFs := appfs.New(afero.NewMemMapFs(), logger)
 
-		db, err := NewSqliteDB(&DatabaseConfig{
-			IsDebug:    false,
+		db, err := newSqliteDb(&databaseConfig{
 			DataDir:    "./oc_data",
 			DSN:        "data.db",
 			MigrateDir: "data",
 			AppFs:      appFs,
-			InMemory:   true,
+			Testing:    true,
 		})
 
 		require.NoError(t, err)
@@ -70,22 +68,21 @@ func TestSqliteDb_Bootstrap(t *testing.T) {
 
 	})
 
-	t.Run("error creating data dir", func(t *testing.T) {
+	t.Run("error creating data.db", func(t *testing.T) {
 		logger, _, err := logger.InitLogger(&logger.BatchOptions{
 			BatchSize: 1,
 			WriteFn:   logger.NilWriteFn(),
 		})
 		require.NoError(t, err)
 
-		appFs := appFs.NewAppFs(afero.NewReadOnlyFs(afero.NewMemMapFs()), logger)
+		appFs := appfs.New(afero.NewReadOnlyFs(afero.NewMemMapFs()), logger)
 
-		db, err := NewSqliteDB(&DatabaseConfig{
-			IsDebug:    false,
+		db, err := newSqliteDb(&databaseConfig{
 			DataDir:    "./oc_data",
 			DSN:        "data.db",
 			MigrateDir: "data",
 			AppFs:      appFs,
-			InMemory:   true,
+			Testing:    true,
 		})
 
 		require.NotNil(t, err)
@@ -100,15 +97,14 @@ func TestSqliteDb_Bootstrap(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		appFs := appFs.NewAppFs(afero.NewMemMapFs(), logger)
+		appFs := appfs.New(afero.NewMemMapFs(), logger)
 
-		db, err := NewSqliteDB(&DatabaseConfig{
-			IsDebug:    false,
+		db, err := newSqliteDb(&databaseConfig{
 			DataDir:    "./oc_data",
 			DSN:        "data.db",
 			MigrateDir: "test",
 			AppFs:      appFs,
-			InMemory:   true,
+			Testing:    true,
 		})
 
 		require.NotNil(t, err)
@@ -173,7 +169,6 @@ func TestSqliteDb_Exec(t *testing.T) {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func TestSqliteDb_RunInTransaction(t *testing.T) {
-
 	t.Run(("error"), func(t *testing.T) {
 		dbManager := setupSqliteDB(t)
 

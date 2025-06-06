@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	sq "github.com/Masterminds/squirrel"
+	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/require"
@@ -293,8 +293,8 @@ func Test_BuildResult(t *testing.T) {
 func Test_Apply(t *testing.T) {
 	p := New(1, 10)
 
-	builder := sq.StatementBuilder.
-		PlaceholderFormat(sq.Question).
+	builder := squirrel.StatementBuilder.
+		PlaceholderFormat(squirrel.Question).
 		Select("*").
 		From("dummy")
 

@@ -1,13 +1,14 @@
 package cron
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/dao"
+	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
-	"github.com/geerew/off-course/utils/appFs"
+	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/mocks"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
@@ -17,10 +18,9 @@ import (
 
 func TestCourseAvailability_Run(t *testing.T) {
 	t.Run("update", func(t *testing.T) {
-		db, appFs, logger, _ := setup(t)
+		db, appFs, ctx, logger, _ := setup(t)
 
-		dao := dao.NewDAO(db)
-		ctx := context.Background()
+		dao := dao.New(db)
 
 		courses := []*models.Course{}
 		for i := range 3 {
@@ -48,17 +48,16 @@ func TestCourseAvailability_Run(t *testing.T) {
 		require.NoError(t, err)
 
 		for _, course := range courses {
-			err := dao.GetById(ctx, course)
+			err := dao.GetCourse(ctx, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: course.ID}})
 			require.NoError(t, err)
 			require.True(t, course.Available)
 		}
 	})
 
 	t.Run("stat error", func(t *testing.T) {
-		db, _, logger, logs := setup(t)
+		db, _, ctx, logger, logs := setup(t)
 
-		dao := dao.NewDAO(db)
-		ctx := context.Background()
+		dao := dao.New(db)
 
 		course := &models.Course{Title: "course 1", Path: "/course-1", Available: false}
 		require.NoError(t, dao.CreateCourse(ctx, course))
@@ -71,7 +70,7 @@ func TestCourseAvailability_Run(t *testing.T) {
 		ca := &courseAvailability{
 			db:        db,
 			dao:       dao,
-			appFs:     appFs.NewAppFs(fsWithError, logger),
+			appFs:     appfs.New(fsWithError, logger),
 			logger:    logger,
 			batchSize: 1,
 		}
@@ -85,14 +84,14 @@ func TestCourseAvailability_Run(t *testing.T) {
 	})
 
 	t.Run("db error", func(t *testing.T) {
-		db, appFs, logger, logs := setup(t)
+		db, appFs, _, logger, logs := setup(t)
 
 		_, err := db.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)
 
 		ca := &courseAvailability{
 			db:        db,
-			dao:       dao.NewDAO(db),
+			dao:       dao.New(db),
 			appFs:     appFs,
 			logger:    logger,
 			batchSize: 1,

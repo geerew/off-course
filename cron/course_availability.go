@@ -8,14 +8,15 @@ import (
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
-	"github.com/geerew/off-course/utils/appFs"
+	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/pagination"
+	"github.com/geerew/off-course/utils/types"
 )
 
 type courseAvailability struct {
 	db        database.Database
 	dao       *dao.DAO
-	appFs     *appFs.AppFs
+	appFs     *appfs.AppFs
 	logger    *slog.Logger
 	batchSize int
 }
@@ -30,15 +31,23 @@ func (ca *courseAvailability) run() error {
 
 	coursesBatch := make([]*models.Course, 0, ca.batchSize)
 
-	ctx := context.Background()
+	// Create an admin principal context for the cron job
+	principal := types.Principal{
+		UserID: "availability-cron",
+		Role:   types.UserRoleAdmin,
+	}
+	ctx := context.WithValue(context.Background(), types.PrincipalContextKey, principal)
 
 	for page <= totalPages {
 		p := pagination.New(page, perPage)
-		options := &database.Options{Pagination: p}
+		options := &database.Options{
+			Pagination:       p,
+			ExcludeRelations: []string{models.COURSE_RELATION_PROGRESS},
+		}
 
 		// Fetch a batch of courses
 		courses := []*models.Course{}
-		err := ca.dao.List(ctx, &courses, options)
+		err := ca.dao.ListCourses(ctx, &courses, options)
 		if err != nil {
 			attrs := []any{
 				loggerType,

@@ -12,17 +12,27 @@ type User struct {
 	Base
 
 	Username     string
+	DisplayName  string
 	PasswordHash string
 	Role         types.UserRole
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-var (
+const (
 	USER_TABLE         = "users"
 	USER_USERNAME      = "username"
+	USER_DISPLAY_NAME  = "display_name"
 	USER_PASSWORD_HASH = "password_hash"
 	USER_ROLE          = "role"
+
+	USER_TABLE_ID            = USER_TABLE + "." + BASE_ID
+	USER_TABLE_CREATED_AT    = USER_TABLE + "." + BASE_CREATED_AT
+	USER_TABLE_UPDATED_AT    = USER_TABLE + "." + BASE_UPDATED_AT
+	USER_TABLE_USERNAME      = USER_TABLE + "." + USER_USERNAME
+	USER_TABLE_DISPLAY_NAME  = USER_TABLE + "." + USER_DISPLAY_NAME
+	USER_TABLE_PASSWORD_HASH = USER_TABLE + "." + USER_PASSWORD_HASH
+	USER_TABLE_ROLE          = USER_TABLE + "." + USER_ROLE
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -40,6 +50,7 @@ func (u *User) Define(s *schema.ModelConfig) {
 
 	// Common fields
 	s.Field("Username").Column(USER_USERNAME).NotNull()
-	s.Field("PasswordHash").Column(USER_PASSWORD_HASH).NotNull()
-	s.Field("Role").Column(USER_ROLE).NotNull()
+	s.Field("DisplayName").Column(USER_DISPLAY_NAME).NotNull().Mutable()
+	s.Field("PasswordHash").Column(USER_PASSWORD_HASH).NotNull().Mutable()
+	s.Field("Role").Column(USER_ROLE).NotNull().Mutable()
 }

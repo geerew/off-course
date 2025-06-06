@@ -27,7 +27,7 @@ type Base struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-var (
+const (
 	BASE_ID         = "id"
 	BASE_CREATED_AT = "created_at"
 	BASE_UPDATED_AT = "updated_at"

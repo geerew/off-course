@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Masterminds/squirrel"
+	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/stretchr/testify/require"
@@ -29,7 +31,7 @@ func Test_CreateParam(t *testing.T) {
 		param := &models.Param{Key: "param 1", Value: "value 1"}
 		require.NoError(t, dao.CreateParam(ctx, param))
 
-		require.ErrorContains(t, dao.CreateParam(ctx, param), "UNIQUE constraint failed: "+models.PARAM_TABLE+".key")
+		require.ErrorContains(t, dao.CreateParam(ctx, param), "UNIQUE constraint failed: "+models.PARAM_TABLE_KEY)
 	})
 }
 
@@ -40,7 +42,7 @@ func Test_GetParamByKey(t *testing.T) {
 		require.NoError(t, dao.CreateParam(ctx, param))
 
 		paramResult := &models.Param{Key: param.Key}
-		require.NoError(t, dao.GetParamByKey(ctx, paramResult))
+		require.NoError(t, dao.GetParam(ctx, paramResult, nil))
 		require.Equal(t, param.ID, paramResult.ID)
 	})
 
@@ -48,11 +50,11 @@ func Test_GetParamByKey(t *testing.T) {
 		dao, ctx := setup(t)
 
 		// Nil model
-		require.ErrorIs(t, dao.GetParamByKey(ctx, nil), utils.ErrNilPtr)
+		require.ErrorIs(t, dao.GetParam(ctx, nil, nil), utils.ErrNilPtr)
 
 		// Invalid key
 		param := &models.Param{Base: models.Base{ID: "1234"}}
-		require.ErrorIs(t, dao.GetParamByKey(ctx, param), utils.ErrInvalidKey)
+		require.ErrorIs(t, dao.GetParam(ctx, param, nil), utils.ErrInvalidKey)
 	})
 
 	t.Run("duplicate", func(t *testing.T) {
@@ -61,7 +63,7 @@ func Test_GetParamByKey(t *testing.T) {
 		param := &models.Param{Key: "param 1", Value: "value 1"}
 		require.NoError(t, dao.CreateParam(ctx, param))
 
-		require.ErrorContains(t, dao.CreateParam(ctx, param), "UNIQUE constraint failed: "+models.PARAM_TABLE+".key")
+		require.ErrorContains(t, dao.CreateParam(ctx, param), "UNIQUE constraint failed: "+models.PARAM_TABLE_KEY)
 	})
 }
 
@@ -81,8 +83,8 @@ func Test_UpdateParam(t *testing.T) {
 		}
 		require.NoError(t, dao.UpdateParam(ctx, newParam))
 
-		paramResult := &models.Param{Base: models.Base{ID: originalParam.ID}}
-		require.NoError(t, dao.GetById(ctx, paramResult))
+		paramResult := &models.Param{}
+		require.NoError(t, dao.GetParam(ctx, paramResult, &database.Options{Where: squirrel.Eq{models.PARAM_TABLE_ID: originalParam.ID}}))
 		require.Equal(t, originalParam.ID, paramResult.ID)                     // No change
 		require.Equal(t, originalParam.Key, paramResult.Key)                   // No change
 		require.True(t, paramResult.CreatedAt.Equal(originalParam.CreatedAt))  // No change

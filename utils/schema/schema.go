@@ -1,5 +1,7 @@
 package schema
 
+// TODO clean up leftjoin and join
+
 import (
 	"database/sql"
 	"fmt"
@@ -31,6 +33,9 @@ type Schema struct {
 
 	// A slice of left joins
 	LeftJoins []string
+
+	// A slice of group by fields
+	GroupBy []string
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -105,6 +110,9 @@ func Parse(model any) (*Schema, error) {
 		s.LeftJoins = append(s.LeftJoins, fmt.Sprintf("%s ON %s", join.table, join.on))
 	}
 
+	// Build the group by fields
+	s.GroupBy = config.groupBy
+
 	// Store the schema in the cache
 	if v, loaded := cache.LoadOrStore(rt, s); loaded {
 		s := v.(*Schema)
@@ -118,10 +126,55 @@ func Parse(model any) (*Schema, error) {
 // CALLERS
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+func (s *Schema) RawSelect(model any, query string, args []any, db database.Querier) error {
+	rv := reflect.ValueOf(model)
+
+	if rv.Kind() != reflect.Ptr {
+		return utils.ErrNotPtr
+	}
+
+	if rv.IsNil() {
+		return utils.ErrNilPtr
+	}
+
+	var err error
+	var rows Rows
+
+	concreteRv, err := concreteReflectValue(reflect.ValueOf(model))
+	if err != nil {
+		return err
+	}
+
+	rows, err = db.Query(query, args...)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	if concreteRv.Kind() == reflect.Slice {
+		err = s.ScanMany(rows, rv, false)
+		if err != nil {
+			return err
+		}
+
+		err = s.loadRelationsMany(concreteRv, nil, db)
+	} else {
+		err = s.ScanOne(rows, rv, false)
+		if err != nil {
+			return err
+		}
+
+		err = s.loadRelationsOne(concreteRv, nil, db)
+	}
+
+	return err
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // Count calls the CountBuilder and executes the query, returning the count
 func (s *Schema) Count(options *database.Options, db database.Querier) (int, error) {
 	query, args, _ := s.CountBuilder(options).ToSql()
-
 	var count int
 	err := db.QueryRow(query, args...).Scan(&count)
 	return count, err
@@ -130,8 +183,8 @@ func (s *Schema) Count(options *database.Options, db database.Querier) (int, err
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Insert calls the InsertBuilder and executes the query, inserting a row
-func (s *Schema) Insert(model any, db database.Querier) (sql.Result, error) {
-	query, args, _ := s.InsertBuilder(model).ToSql()
+func (s *Schema) Insert(model any, options *database.Options, db database.Querier) (sql.Result, error) {
+	query, args, _ := s.InsertBuilder(model, options).ToSql()
 	return db.Exec(query, args...)
 }
 
@@ -172,9 +225,10 @@ func (s *Schema) Select(model any, options *database.Options, db database.Querie
 			return err
 		}
 
-		err = s.loadRelationsMany(concreteRv, db)
+		err = s.loadRelationsMany(concreteRv, options, db)
 	} else {
 		query, args, _ := s.SelectBuilder(options).Limit(1).ToSql()
+
 		rows, err = db.Query(query, args...)
 		if err != nil {
 			return err
@@ -186,7 +240,7 @@ func (s *Schema) Select(model any, options *database.Options, db database.Querie
 			return err
 		}
 
-		err = s.loadRelationsOne(concreteRv, db)
+		err = s.loadRelationsOne(concreteRv, options, db)
 	}
 
 	return err
@@ -251,7 +305,7 @@ func (s *Schema) Pluck(column string, result any, options *database.Options, db 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Insert calls the InsertBuilder and executes the query, inserting a row
+// Update calls the UpdateBuilder and executes the query, updating a row
 func (s *Schema) Update(model any, options *database.Options, db database.Querier) (sql.Result, error) {
 	builder, err := s.UpdateBuilder(model, options)
 	if err != nil {
@@ -282,43 +336,37 @@ func (s *Schema) CountBuilder(options *database.Options) squirrel.SelectBuilder 
 		Select("COUNT(DISTINCT " + s.Table + ".id)").
 		From(s.Table)
 
-	if options != nil && options.Where != nil {
-		builder = builder.Where(options.Where)
-	}
-
-	return builder
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// InsertBuilder creates a squirrel InsertBuilder for the model
-func (s *Schema) InsertBuilder(model any) squirrel.InsertBuilder {
-	data := make(map[string]any, len(s.Fields))
-
-	for _, f := range s.Fields {
-		// Ignore fields that part of a join
-		if f.JoinTable != "" {
-			continue
-		}
-
-		val, zero := f.ValueOf(reflect.ValueOf(model))
-
-		// When the field cannot be null and the value is zero, set the value to nil
-		if f.NotNull && zero {
-			if f.IgnoreIfNull {
-				continue
+	if options != nil {
+		for _, join := range options.Joins {
+			switch join.Type {
+			case "LEFT JOIN":
+				builder = builder.LeftJoin(fmt.Sprintf("%s ON %s", join.Table, join.Condition))
+			case "RIGHT JOIN":
+				builder = builder.RightJoin(fmt.Sprintf("%s ON %s", join.Table, join.Condition))
+			case "JOIN", "INNER JOIN", "":
+				builder = builder.Join(fmt.Sprintf("%s ON %s", join.Table, join.Condition))
 			}
+		}
 
-			data[f.Column] = nil
-		} else {
-			data[f.Column] = val
+		builder = builder.Where(options.Where).
+			GroupBy(options.GroupBy...)
+
+		if options.OrderByClause != nil {
+			builder = builder.OrderByClause(options.OrderByClause)
+		}
+
+		if options.Having != nil {
+			builder = builder.Having(options.Having)
+		}
+
+		// When there is a GroupBy and Having clause, we need to wrap the query in a subquery
+		if len(options.GroupBy) > 0 && options.Having != nil {
+			builder = squirrel.StatementBuilder.
+				PlaceholderFormat(squirrel.Question).
+				Select("COUNT(*)").
+				FromSelect(builder, "sub")
 		}
 	}
-
-	builder := squirrel.
-		StatementBuilder.
-		Insert(s.Table).
-		SetMap(data)
 
 	return builder
 }
@@ -340,10 +388,19 @@ func (s *Schema) SelectBuilder(options *database.Options) squirrel.SelectBuilder
 			table = f.JoinTable
 		}
 
-		if f.Alias != "" {
-			builder = builder.Column(fmt.Sprintf("%s.%s AS %s", table, f.Column, f.Alias))
+		// Build the column string, including the aggregate function if present
+		var col string
+		if f.AggregateFn != "" {
+			col = fmt.Sprintf("%s(%s.%s)", f.AggregateFn, table, f.Column)
 		} else {
-			builder = builder.Column(fmt.Sprintf("%s.%s", table, f.Column))
+			col = fmt.Sprintf("%s.%s", table, f.Column)
+		}
+
+		// Add the column to the builder
+		if f.Alias != "" {
+			builder = builder.Column(fmt.Sprintf("%s AS %s", col, f.Alias))
+		} else {
+			builder = builder.Column(col)
 		}
 	}
 
@@ -351,10 +408,34 @@ func (s *Schema) SelectBuilder(options *database.Options) squirrel.SelectBuilder
 		builder = builder.LeftJoin(join)
 	}
 
+	if len(s.GroupBy) > 0 {
+		builder = builder.GroupBy(s.GroupBy...)
+	}
+
 	if options != nil {
+		for _, join := range options.Joins {
+			switch join.Type {
+			case "LEFT JOIN":
+				builder = builder.LeftJoin(fmt.Sprintf("%s ON %s", join.Table, join.Condition))
+			case "RIGHT JOIN":
+				builder = builder.RightJoin(fmt.Sprintf("%s ON %s", join.Table, join.Condition))
+			case "JOIN", "INNER JOIN", "":
+				builder = builder.Join(fmt.Sprintf("%s ON %s", join.Table, join.Condition))
+			}
+		}
+
 		builder = builder.Where(options.Where).
-			OrderBy(options.OrderBy...).
-			GroupBy(options.GroupBy...)
+			OrderBy(options.OrderBy...)
+
+		if options.OrderByClause != nil {
+			builder = builder.OrderByClause(options.OrderByClause)
+		}
+
+		builder = builder.GroupBy(options.GroupBy...)
+
+		if options.Having != nil {
+			builder = builder.Having(options.Having)
+		}
 
 		if options.Pagination != nil {
 			builder = builder.
@@ -398,10 +479,30 @@ func (s *Schema) PluckBuilder(column string, options *database.Options) squirrel
 		builder = builder.LeftJoin(join)
 	}
 
+	if len(s.GroupBy) > 0 {
+		builder = builder.GroupBy(s.GroupBy...)
+	}
+
 	if options != nil {
+		for _, join := range options.Joins {
+			switch join.Type {
+			case "LEFT JOIN":
+				builder = builder.LeftJoin(fmt.Sprintf("%s ON %s", join.Table, join.Condition))
+			case "RIGHT JOIN":
+				builder = builder.RightJoin(fmt.Sprintf("%s ON %s", join.Table, join.Condition))
+			case "JOIN", "INNER JOIN", "":
+				builder = builder.Join(fmt.Sprintf("%s ON %s", join.Table, join.Condition))
+			}
+		}
+
 		builder = builder.Where(options.Where).
-			OrderBy(options.OrderBy...).
-			GroupBy(options.GroupBy...)
+			OrderBy(options.OrderBy...)
+
+		if options.OrderByClause != nil {
+			builder = builder.OrderByClause(options.OrderByClause)
+		}
+
+		builder = builder.GroupBy(options.GroupBy...)
 
 		if options.Having != nil {
 			builder = builder.Having(options.Having)
@@ -413,6 +514,44 @@ func (s *Schema) PluckBuilder(column string, options *database.Options) squirrel
 				Limit(uint64(options.Pagination.Limit()))
 		}
 	}
+
+	return builder
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// InsertBuilder creates a squirrel InsertBuilder for the model
+func (s *Schema) InsertBuilder(model any, options *database.Options) squirrel.InsertBuilder {
+	data := make(map[string]any, len(s.Fields))
+
+	for _, f := range s.Fields {
+		// Ignore fields that part of a join or an aggregate function
+		if f.JoinTable != "" || f.AggregateFn != "" {
+			continue
+		}
+
+		val, zero := f.ValueOf(reflect.ValueOf(model))
+
+		// When the field cannot be null and the value is zero, set the value to nil
+		if f.NotNull && zero {
+			if f.IgnoreIfNull {
+				continue
+			}
+
+			data[f.Column] = nil
+		} else {
+			data[f.Column] = val
+		}
+	}
+
+	var builder squirrel.InsertBuilder
+	if options != nil && options.Replace {
+		builder = squirrel.Replace(s.Table)
+	} else {
+		builder = squirrel.StatementBuilder.Insert(s.Table)
+	}
+
+	builder = builder.SetMap(data)
 
 	return builder
 }
@@ -523,8 +662,8 @@ func (s *Schema) Scan(rows Rows, model any) error {
 				if field := s.FieldsByColumn[column]; field != nil {
 					v := concreteInstance
 					for _, pos := range field.Position {
-						// TODO - If value is a pointer and nil, initialize it
-						// TODO - If value is a map and nil, initialize it
+						// TODO If value is a pointer and nil, initialize it
+						// TODO If value is a map and nil, initialize it
 						v = reflect.Indirect(v).Field(pos)
 					}
 
@@ -558,8 +697,8 @@ func (s *Schema) Scan(rows Rows, model any) error {
 			if field := s.FieldsByColumn[column]; field != nil {
 				v := rv
 				for _, pos := range field.Position {
-					// TODO - If value is a pointer and nil, initialize it
-					// TODO - If value is a map and nil, initialize it
+					// TODO If value is a pointer and nil, initialize it
+					// TODO If value is a map and nil, initialize it
 					v = reflect.Indirect(v).Field(pos)
 				}
 
@@ -636,8 +775,8 @@ func (s *Schema) ScanMany(rows Rows, rv reflect.Value, pluck bool) error {
 				if field := s.FieldsByColumn[column]; field != nil {
 					v := concreteInstance
 					for _, pos := range field.Position {
-						// TODO - If value is a pointer and nil, initialize it
-						// TODO - If value is a map and nil, initialize it
+						// TODO If value is a pointer and nil, initialize it
+						// TODO If value is a map and nil, initialize it
 						v = reflect.Indirect(v).Field(pos)
 					}
 
@@ -706,8 +845,8 @@ func (s *Schema) ScanOne(rows Rows, rv reflect.Value, pluck bool) error {
 				v := rv
 
 				for _, pos := range field.Position {
-					// TODO - If value is a pointer and nil, initialize it
-					// TODO - If value is a map and nil, initialize it
+					// TODO If value is a pointer and nil, initialize it
+					// TODO If value is a map and nil, initialize it
 					v = reflect.Indirect(v).Field(pos)
 				}
 
@@ -736,7 +875,7 @@ func (s *Schema) ScanOne(rows Rows, rv reflect.Value, pluck bool) error {
 
 // loadRelationsOne loads the relations for a single model, handling both one-to-one and
 // one-to-many relationships
-func (s *Schema) loadRelationsOne(concreteRv reflect.Value, db database.Querier) error {
+func (s *Schema) loadRelationsOne(concreteRv reflect.Value, options *database.Options, db database.Querier) error {
 	if concreteRv.Kind() != reflect.Struct {
 		return utils.ErrNotStruct
 	}
@@ -756,8 +895,17 @@ func (s *Schema) loadRelationsOne(concreteRv reflect.Value, db database.Querier)
 		// Get the field in the struct to set the related model on
 		structField := getStructField(concreteRv, rel.Position)
 
-		// Create the options to select related rows
-		options := &database.Options{Where: squirrel.Eq{rel.MatchOn: id}}
+		whereConditions := squirrel.Eq{rel.MatchOn: id}
+
+		if options != nil && options.RelationFilters != nil {
+			if filters, exists := options.RelationFilters[rel.Name]; exists {
+				for field, value := range filters {
+					whereConditions[field] = value
+				}
+			}
+		}
+
+		relationOptions := &database.Options{Where: whereConditions}
 
 		if rel.HasMany {
 			structFieldType := structField.Type()
@@ -775,12 +923,12 @@ func (s *Schema) loadRelationsOne(concreteRv reflect.Value, db database.Querier)
 				structFieldPtr = structField.Addr()
 			}
 
-			err = relatedSchema.Select(structFieldPtr.Interface(), options, db)
+			err = relatedSchema.Select(structFieldPtr.Interface(), relationOptions, db)
 			if err != nil && err != sql.ErrNoRows {
 				return err
 			}
 		} else {
-			err = relatedSchema.Select(relatedModelPtr.Interface(), options, db)
+			err = relatedSchema.Select(relatedModelPtr.Interface(), relationOptions, db)
 			if err != nil {
 				if err == sql.ErrNoRows {
 					continue
@@ -800,7 +948,7 @@ func (s *Schema) loadRelationsOne(concreteRv reflect.Value, db database.Querier)
 
 // loadRelationsMany loads the relations for a slice of models, handling both many-to-one and
 // many-to-many relationships
-func (s *Schema) loadRelationsMany(concreteRv reflect.Value, db database.Querier) error {
+func (s *Schema) loadRelationsMany(concreteRv reflect.Value, options *database.Options, db database.Querier) error {
 	if concreteRv.Kind() != reflect.Slice {
 		return utils.ErrNotSlice
 	}
@@ -830,9 +978,19 @@ func (s *Schema) loadRelationsMany(concreteRv reflect.Value, db database.Querier
 		relatedSlicePtr := reflect.New(reflect.SliceOf(rel.RelatedType))
 		relatedSlice := relatedSlicePtr.Interface()
 
-		// Create the options to select related rows
-		options := &database.Options{Where: squirrel.Eq{rel.MatchOn: ids}}
-		err = relatedSchema.Select(relatedSlice, options, db)
+		whereConditions := squirrel.Eq{rel.MatchOn: ids}
+
+		if options != nil && options.RelationFilters != nil {
+			if filters, exists := options.RelationFilters[rel.Name]; exists {
+				for field, value := range filters {
+					whereConditions[field] = value
+				}
+			}
+		}
+
+		relationOptions := &database.Options{Where: whereConditions}
+
+		err = relatedSchema.Select(relatedSlice, relationOptions, db)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				return nil
