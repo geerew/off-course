@@ -159,14 +159,20 @@ func authMiddleware(r *Router) fiber.Handler {
 		}
 
 		if session.Fresh() {
+
 			if isAPI {
-				if strings.HasPrefix(path, "/api/auth/login") || strings.HasPrefix(path, "/api/auth/register") {
+				if strings.HasPrefix(path, "/api/auth/login") || (r.config.SignupEnabled && strings.HasPrefix(path, "/api/auth/register")) ||
+					strings.HasPrefix(path, "/api/auth/signup-status") {
 					return c.Next()
 				}
 				return c.SendStatus(fiber.StatusForbidden)
 			}
 
 			if isAuthUI {
+				if !r.config.SignupEnabled && strings.HasPrefix(path, "/auth/register") {
+					return c.Redirect("/auth/login")
+				}
+
 				return c.Next()
 			}
 

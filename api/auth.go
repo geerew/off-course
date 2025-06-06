@@ -35,6 +35,7 @@ func (r *Router) initAuthRoutes() {
 
 	authGroup := r.api.Group("/auth")
 
+	authGroup.Get("/signup-status", authAPI.signupStatus)
 	authGroup.Post("/bootstrap", authAPI.bootstrap)
 	authGroup.Post("/register", authAPI.register)
 	authGroup.Post("/login", authAPI.login)
@@ -47,7 +48,19 @@ func (r *Router) initAuthRoutes() {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+func (api authAPI) signupStatus(c *fiber.Ctx) error {
+	return c.Status(fiber.StatusOK).JSON(signupStatusResponse{
+		Enabled: api.r.config.SignupEnabled,
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 func (api authAPI) register(c *fiber.Ctx) error {
+	if !api.r.config.SignupEnabled {
+		return errorResponse(c, fiber.StatusForbidden, "Sign-up is disabled", nil)
+	}
+
 	userReq := &userRequest{}
 
 	if err := c.BodyParser(userReq); err != nil {
