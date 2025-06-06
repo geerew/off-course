@@ -1,0 +1,9 @@
+ui_old/
+oc_data/
+dist/
+assets/
+
+Dockerfile
+resource_windows.syso
+README.md
+TODO.md
