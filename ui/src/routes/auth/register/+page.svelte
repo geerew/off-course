@@ -16,7 +16,12 @@
 
 		<div class="text-foreground-alt-3 text-center">
 			Already have an account?
-			<Button href="/auth/login/" variant="ghost" class="hover:text-background-primary h-auto px-1">
+			<Button
+				href="/auth/login/"
+				variant="ghost"
+				class="hover:text-background-primary h-auto px-1"
+				data-sveltekit-reload
+			>
 				Login
 			</Button>
 		</div>
