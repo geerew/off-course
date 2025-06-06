@@ -32,10 +32,14 @@ var serveCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
 
+		httpAddr, _ := cmd.Flags().GetString("http")
+		isDev, _ := cmd.Flags().GetBool("dev")
+		dataDir, _ := cmd.Flags().GetString("data-dir")
+
 		appFs := appfs.New(afero.NewOsFs(), nil)
 
 		dbManager, err := database.NewSQLiteManager(&database.DatabaseManagerConfig{
-			DataDir: "./oc_data",
+			DataDir: dataDir,
 			AppFs:   appFs,
 		})
 
@@ -74,9 +78,6 @@ var serveCmd = &cobra.Command{
 			AppFs:  appFs,
 			Logger: logger,
 		})
-
-		httpAddr, _ := cmd.Flags().GetString("http")
-		isDev, _ := cmd.Flags().GetBool("dev")
 
 		router := api.NewRouter(&api.RouterConfig{
 			DbManager:    dbManager,
@@ -125,6 +126,7 @@ func init() {
 	rootCmd.AddCommand(serveCmd)
 	serveCmd.Flags().BoolP("dev", "d", false, "Run in development mode")
 	serveCmd.Flags().String("http", "127.0.0.1:9081", "TCP address to listen for the HTTP server")
+	serveCmd.Flags().String("data-dir", "./oc_data", "Directory to store data files")
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

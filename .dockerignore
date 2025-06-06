@@ -1,0 +1,14 @@
+assets/
+dist/
+oc_data/
+tmp/
+ui_old/
+
+README.md
+TODO.md
+
+.dockerignore
+Dockerfile
+
+.goreleaser.yaml
+resource_windows.syso

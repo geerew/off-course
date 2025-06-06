@@ -104,13 +104,16 @@ func bootstrapMiddleware(r *Router) fiber.Handler {
 		// If not bootstrapped, for everything through /auth/bootstrap or
 		// /api/auth/bootstrap
 		if !r.isBootstrapped() {
-			if r.isDevUIPath(c) || r.isFavicon(c) {
+
+			path := c.Path()
+
+			if r.isDevUIPath(path) || r.isProdUIPath(path) || r.isFavicon(path) {
 				return c.Next()
 			}
 
 			// API check
-			if strings.HasPrefix(c.OriginalURL(), "/api/") {
-				if strings.HasPrefix(c.OriginalURL(), "/api/auth/bootstrap") {
+			if strings.HasPrefix(path, "/api/") {
+				if strings.HasPrefix(path, "/api/auth/bootstrap") {
 					c.Locals("bootstrapping", true)
 					return c.Next()
 				} else {
@@ -119,7 +122,7 @@ func bootstrapMiddleware(r *Router) fiber.Handler {
 			}
 
 			// UI check
-			if strings.HasPrefix(c.OriginalURL(), "/auth/bootstrap") {
+			if strings.HasPrefix(path, "/auth/bootstrap") {
 				c.Locals("bootstrapping", true)
 				return c.Next()
 			} else {
@@ -146,7 +149,7 @@ func authMiddleware(r *Router) fiber.Handler {
 		isMe := strings.HasPrefix(path, "/api/auth/me")
 		isLogout := strings.HasPrefix(path, "/api/auth/logout")
 
-		if r.isDevUIPath(c) || r.isFavicon(c) || isLogout {
+		if r.isDevUIPath(path) || r.isProdUIPath(path) || r.isFavicon(path) || isLogout {
 			return c.Next()
 		}
 
@@ -184,7 +187,7 @@ func authMiddleware(r *Router) fiber.Handler {
 			return c.SendStatus(fiber.StatusUnauthorized)
 		}
 
-		if userRole != "admin" && r.isProtectedUIPage(c) {
+		if userRole != "admin" && r.isProtectedUIPage(path) {
 			return c.Redirect("/")
 		}
 
@@ -219,14 +222,24 @@ func devAuthMiddleware(id string, role types.UserRole) fiber.Handler {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// isDevUIPath checks if the request is for a dev UI path when NOT running in
-// production
-func (r *Router) isDevUIPath(c *fiber.Ctx) bool {
+// isProdUIPath checks if the request is for a sveltekit asset when running in production mode
+func (r *Router) isProdUIPath(path string) bool {
+	if r.config.IsProduction && strings.HasPrefix(path, "/_app/") {
+		return true
+	}
+
+	return false
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// isDevUIPath checks if the request is for a sveltekit path when running in dev mode
+func (r *Router) isDevUIPath(path string) bool {
 	if !r.config.IsProduction &&
-		(strings.HasPrefix(c.OriginalURL(), "/node_modules/") ||
-			strings.HasPrefix(c.OriginalURL(), "/.svelte-kit/") ||
-			strings.HasPrefix(c.OriginalURL(), "/src/") ||
-			strings.HasPrefix(c.OriginalURL(), "/@")) {
+		(strings.HasPrefix(path, "/node_modules/") ||
+			strings.HasPrefix(path, "/.svelte-kit/") ||
+			strings.HasPrefix(path, "/src/") ||
+			strings.HasPrefix(path, "/@")) {
 		return true
 	}
 
@@ -236,13 +249,13 @@ func (r *Router) isDevUIPath(c *fiber.Ctx) bool {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // isProtectedUIPage checks if the request is intended for a protected UI page
-func (r *Router) isProtectedUIPage(c *fiber.Ctx) bool {
-	return strings.HasPrefix(c.OriginalURL(), "/admin")
+func (r *Router) isProtectedUIPage(path string) bool {
+	return strings.HasPrefix(path, "/admin")
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // isFavicon checks if the request is for a favicon
-func (r *Router) isFavicon(c *fiber.Ctx) bool {
-	return strings.HasPrefix(c.OriginalURL(), "/favicon.")
+func (r *Router) isFavicon(path string) bool {
+	return strings.HasPrefix(path, "/favicon.")
 }
