@@ -21,6 +21,8 @@ func TestAuth_Register(t *testing.T) {
 	t.Run("201 (created)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
+		router.setBootstrapped()
+
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(`{"username": "test", "password": "abcd1234" }`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 
