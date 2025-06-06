@@ -220,6 +220,25 @@ func handleHtml(c *fiber.Ctx, appFs *appfs.AppFs, asset *models.Asset) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// handleText handles serving text files and markdown files
+func handleText(c *fiber.Ctx, appFs *appfs.AppFs, asset *models.Asset) error {
+	file, err := appFs.Fs.Open(asset.Path)
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error opening text file", err)
+	}
+	defer file.Close()
+
+	raw, err := afero.ReadAll(file)
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error reading text file", err)
+	}
+
+	c.Set(fiber.HeaderContentType, "text/plain; charset=utf-8")
+	return c.Status(fiber.StatusOK).Send(raw)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // protectedRoute protects a route
 //
 // Example:

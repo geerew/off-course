@@ -396,6 +396,8 @@ func (api coursesAPI) serveAsset(c *fiber.Ctx) error {
 		return handleVideo(c, api.appFs, asset)
 	} else if asset.Type.IsHTML() {
 		return handleHtml(c, api.appFs, asset)
+	} else if asset.Type.IsText() || asset.Type.IsMarkdown() {
+		return handleText(c, api.appFs, asset)
 	}
 
 	// TODO Handle PDF and HTML
