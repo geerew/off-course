@@ -174,6 +174,7 @@ export async function GetCourseAssets(
 		const data = (await response.json()) as AssetPaginationModel;
 		const result = safeParse(AssetPaginationSchema, data);
 
+		console.log(result.issues);
 		if (!result.success) throw new APIError(response.status, 'Invalid response from the server');
 		return result.output;
 	} else {
@@ -234,7 +235,24 @@ export async function UpdateCourseAssetProgress(
 	}
 }
 
-export async function GetCourseAssetDescription(
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Serve a course asset
+export async function ServeCourseAsset(courseId: string, assetId: string): Promise<string> {
+	const response = await apiFetch(`/api/courses/${courseId}/assets/${assetId}/serve`);
+
+	if (response.ok) {
+		return await response.text();
+	} else {
+		const data = await response.json();
+		throw new APIError(response.status, data.message || 'Unknown error');
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Serve the description of a course asset
+export async function ServeCourseAssetDescription(
 	courseId: string,
 	assetId: string
 ): Promise<string> {

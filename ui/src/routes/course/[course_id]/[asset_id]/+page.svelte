@@ -8,7 +8,8 @@
 	import {
 		GetAllCourseAssets,
 		GetCourse,
-		GetCourseAssetDescription,
+		ServeCourseAsset,
+		ServeCourseAssetDescription,
 		UpdateCourseAssetProgress
 	} from '$lib/api/course-api';
 	import { Spinner } from '$lib/components';
@@ -30,6 +31,7 @@
 	let selectedAssetGroup = $state<AssetGroup>();
 	let selectedAsset = $state<AssetModel>();
 
+	let renderedContent = $state<string>('');
 	let renderedDescription = $state<string>();
 
 	let loadPromise = $state(fetchCourseAndAsset());
@@ -62,11 +64,13 @@
 
 			selectedAssetGroup = result.group;
 			selectedAsset = findAssetInGroup(page.params.asset_id, result.group);
-			if (!selectedAsset) {
-				throw new Error('Asset not found');
+			if (!selectedAsset) throw new Error('Asset not found');
+
+			if (selectedAsset.assetType === 'markdown' || selectedAsset.assetType === 'text') {
+				renderedContent = await setRenderedContent(selectedAsset);
 			}
 
-			await setRenderedDescription(selectedAsset);
+			renderedDescription = await setRenderedDescription(selectedAsset);
 
 			initDone = true;
 		} catch (error) {
@@ -89,17 +93,35 @@
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Set the rendered description for the asset
-	async function setRenderedDescription(asset: AssetModel): Promise<void> {
-		if (!course || !asset || !asset.hasDescription) {
-			renderedDescription = '';
-			return;
+	async function setRenderedContent(asset: AssetModel): Promise<string> {
+		if (!course || !asset || (asset.assetType !== 'markdown' && asset.assetType !== 'text')) {
+			return '';
 		}
 
-		const desc = await GetCourseAssetDescription(course.id, asset.id);
-		if (!desc) {
-			renderedDescription = '';
+		const content = await ServeCourseAsset(course.id, asset.id);
+		if (!content) {
+			return '';
+		} else if (asset.assetType === 'text') {
+			return content;
 		} else {
-			renderedDescription = renderMarkdown(desc);
+			return renderMarkdown(content);
+		}
+	}
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Get the rendered description for the asset and render as markdown
+	async function setRenderedDescription(asset: AssetModel): Promise<string> {
+		if (!course || !asset || !asset.hasDescription) {
+			return '';
+		}
+
+		const description = await ServeCourseAssetDescription(course.id, asset.id);
+		if (!description) {
+			return '';
+		} else if (asset.descriptionType === 'text') {
+			return description;
+		} else {
+			return renderMarkdown(description);
 		}
 	}
 
@@ -141,6 +163,21 @@
 				selectedAsset = findAssetInGroup(assetId, result.group);
 			}
 		}
+
+		if (!selectedAsset) {
+			toast.error('Asset not found');
+			return;
+		}
+
+		if (selectedAsset.assetType === 'markdown' || selectedAsset.assetType === 'text') {
+			setRenderedContent(selectedAsset).then((content) => {
+				renderedContent = content;
+			});
+		}
+
+		setRenderedDescription(selectedAsset).then((description) => {
+			renderedDescription = description;
+		});
 	});
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -421,7 +458,7 @@
 
 						<!-- Asset(s) -->
 						{#each selectedAssetGroup.assets as asset}
-							<div class="flex w-full flex-col gap-2">
+							<div class="flex w-full flex-col gap-4">
 								{#if selectedAssetGroup.assets.length > 1}
 									<span class="text-lg font-medium">
 										{asset.subPrefix}. {asset.subTitle ? asset.subTitle : asset.title}
@@ -468,30 +505,30 @@
 												selectedAssetGroup.completed = true;
 										}}
 									/>
+								{:else if asset.assetType === 'markdown'}
+									<div class="typography">
+										{@html renderedContent}
+									</div>
+								{:else if asset.assetType === 'text'}
+									<div class="whitespace-pre-wrap">
+										{renderedContent}
+									</div>
 								{/if}
 							</div>
 						{/each}
 
 						<!-- Description -->
-
-						<div>
-							{#if renderedDescription}
-								<div
-									class="prose prose-p:mb-2.5 prose-p:mt-2.5 md:prose-lg prose-invert max-w-none"
-								>
-									<h4>Description</h4>
-									{@html renderedDescription}
-								</div>
-							{/if}
-
-							{#if selectedAssetGroup.attachments.length > 0}
-								<Attachments
-									attachments={selectedAssetGroup.attachments}
-									courseId={course.id}
-									assetId={selectedAsset.id}
-								/>
-							{/if}
-						</div>
+						{#if renderedDescription}
+							<div
+								class={cn(
+									'typography',
+									selectedAsset.descriptionType === 'text' && 'whitespace-pre-wrap'
+								)}
+							>
+								<h3>Description</h3>
+								{@html renderedDescription}
+							</div>
+						{/if}
 					</div>
 				</div>
 			</main>
