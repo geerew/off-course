@@ -1,9 +1,14 @@
-ui_old/
-oc_data/
-dist/
 assets/
+dist/
+oc_data/
+tmp/
+ui_old/
 
-Dockerfile
-resource_windows.syso
 README.md
 TODO.md
+
+.dockerignore
+Dockerfile
+
+.goreleaser.yaml
+resource_windows.syso

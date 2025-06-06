@@ -14,6 +14,13 @@ RUN pnpm run build
 
 FROM golang:1.23-alpine AS backend
 
+RUN apk add --no-cache \
+    gcc \
+    musl-dev \
+    sqlite-dev
+
+ENV CGO_ENABLED=1 
+
 WORKDIR /src/
 
 COPY . .
@@ -22,9 +29,6 @@ RUN rm -rf ui
 COPY --from=ui /src/ui/build ./ui/build
 COPY --from=ui /src/ui/embed.go ./ui/embed.go
 
-RUN echo 1
-RUN ls -l 
-
 RUN go mod download
 RUN go build -o offcourse .
 
@@ -32,10 +36,16 @@ RUN go build -o offcourse .
 
 FROM alpine:latest
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache \
+    ca-certificates \
+    ffmpeg
 
 COPY  --from=backend /src/offcourse /usr/local/bin/offcourse
 
-EXPOSE 9081
+RUN chmod +x /usr/local/bin/offcourse
 
-ENTRYPOINT [ "/usr/local/bin/offcourse", "serve" ]
+EXPOSE 80
+
+VOLUME [ "/offcourse" ]
+
+ENTRYPOINT [ "/usr/local/bin/offcourse", "serve", "--data-dir", "/offcourse", "--http", "0.0.0.0:80" ]
