@@ -151,18 +151,19 @@ type assetVideoMetadataResponse struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type assetResponse struct {
-	ID             string         `json:"id"`
-	CourseID       string         `json:"courseId"`
-	Title          string         `json:"title"`
-	Prefix         int            `json:"prefix"`
-	SubPrefix      int            `json:"subPrefix,omitempty"`
-	SubTitle       string         `json:"subTitle,omitempty"`
-	Chapter        string         `json:"chapter"`
-	Path           string         `json:"path"`
-	Type           types.Asset    `json:"assetType"`
-	HasDescription bool           `json:"hasDescription"`
-	CreatedAt      types.DateTime `json:"createdAt"`
-	UpdatedAt      types.DateTime `json:"updatedAt"`
+	ID              string            `json:"id"`
+	CourseID        string            `json:"courseId"`
+	Title           string            `json:"title"`
+	Prefix          int               `json:"prefix"`
+	SubPrefix       int               `json:"subPrefix,omitempty"`
+	SubTitle        string            `json:"subTitle,omitempty"`
+	Chapter         string            `json:"chapter"`
+	Path            string            `json:"path"`
+	Type            types.Asset       `json:"assetType"`
+	HasDescription  bool              `json:"hasDescription"`
+	DescriptionType types.Description `json:"descriptionType,omitempty"`
+	CreatedAt       types.DateTime    `json:"createdAt"`
+	UpdatedAt       types.DateTime    `json:"updatedAt"`
 
 	// Relations
 	VideoMetadata *assetVideoMetadataResponse `json:"videoMetadata,omitempty"`
@@ -196,16 +197,17 @@ func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 		}
 
 		response := &assetResponse{
-			ID:             asset.ID,
-			CourseID:       asset.CourseID,
-			Title:          asset.Title,
-			Prefix:         int(asset.Prefix.Int16),
-			Chapter:        asset.Chapter,
-			Path:           asset.Path,
-			Type:           asset.Type,
-			HasDescription: asset.DescriptionPath != "",
-			CreatedAt:      asset.CreatedAt,
-			UpdatedAt:      asset.UpdatedAt,
+			ID:              asset.ID,
+			CourseID:        asset.CourseID,
+			Title:           asset.Title,
+			Prefix:          int(asset.Prefix.Int16),
+			Chapter:         asset.Chapter,
+			Path:            asset.Path,
+			Type:            asset.Type,
+			HasDescription:  asset.DescriptionPath != "",
+			DescriptionType: asset.DescriptionType,
+			CreatedAt:       asset.CreatedAt,
+			UpdatedAt:       asset.UpdatedAt,
 
 			VideoMetadata: videoMetadata,
 			Progress:      progress,

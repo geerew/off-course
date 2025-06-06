@@ -761,6 +761,7 @@ func TestScanner_Processor(t *testing.T) {
 
 			require.Equal(t, "video 1", assets[0].Title)
 			require.Equal(t, fmt.Sprintf("%s/01 description.md", course.Path), assets[0].DescriptionPath)
+			require.True(t, assets[0].DescriptionType.IsMarkdown())
 		}
 	})
 }

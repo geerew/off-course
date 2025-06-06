@@ -26,6 +26,7 @@ type Asset struct {
 	ModTime         string
 	Hash            string
 	DescriptionPath string
+	DescriptionType types.Description
 
 	// Relations
 	VideoMetadata *VideoMetadata
@@ -52,6 +53,7 @@ const (
 	ASSET_COMPLETED        = "completed"
 	ASSET_COMPLETED_AT     = "completed_at"
 	ASSET_DESCRIPTION_PATH = "description_path"
+	ASSET_DESCRIPTION_TYPE = "description_type"
 
 	ASSET_TABLE_ID               = ASSET_TABLE + "." + BASE_ID
 	ASSET_TABLE_CREATED_AT       = ASSET_TABLE + "." + BASE_CREATED_AT
@@ -68,6 +70,7 @@ const (
 	ASSET_TABLE_COMPLETED        = ASSET_TABLE + "." + ASSET_COMPLETED
 	ASSET_TABLE_COMPLETED_AT     = ASSET_TABLE + "." + ASSET_COMPLETED_AT
 	ASSET_TABLE_DESCRIPTION_PATH = ASSET_TABLE + "." + ASSET_DESCRIPTION_PATH
+	ASSET_TABLE_DESCRIPTION_TYPE = ASSET_TABLE + "." + ASSET_DESCRIPTION_TYPE
 
 	ASSET_RELATION_PROGRESS = "Progress"
 )
@@ -98,6 +101,7 @@ func (a *Asset) Define(s *schema.ModelConfig) {
 	s.Field("ModTime").Column(ASSET_MOD_TIME).NotNull().Mutable()
 	s.Field("Hash").Column(ASSET_HASH).NotNull().Mutable()
 	s.Field("DescriptionPath").Column(ASSET_DESCRIPTION_PATH).Mutable()
+	s.Field("DescriptionType").Column(ASSET_DESCRIPTION_TYPE).Mutable()
 
 	// Relation fields
 	s.Relation("VideoMetadata").MatchOn(VIDEO_METADATA_ASSET_ID)

@@ -1,6 +1,5 @@
 package coursescan
 
-// TODO support <prefix> description.txt for assets
 // TODO support author.txt/md for course
 // TODO support description.txt/md for course
 
@@ -33,7 +32,6 @@ import (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type AssetsByChapterPrefix map[string]map[int][]*models.Asset
-type AssetDescriptionsByChapterPrefix map[string]map[int]string
 type AttachmentsByChapterPrefix map[string]map[int][]*models.Attachment
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -284,7 +282,7 @@ func scanFiles(s *CourseScan, coursePath string, courseID string) (*scannedResul
 			buckets[chapter][parsed.Prefix] = bucket
 		}
 
-		// Build the buckets of assets, grouped assets, attachments, and description files
+		// Build the buckets of assets, grouped assets, attachments, and descriptions
 		switch category {
 		case Card:
 			fmt.Println("[Card]", normalized)
@@ -392,9 +390,17 @@ func scanFiles(s *CourseScan, coursePath string, courseID string) (*scannedResul
 
 				// Description (Set to the first asset in the group)
 				if bucket.descriptionPath != "" {
-					results.assetsByChapterPrefix[chapter][prefix][0].DescriptionPath = bucket.descriptionPath
+					ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(bucket.descriptionPath), "."))
+					if descriptionType := types.NewDescription(ext); descriptionType != nil && descriptionType.IsSupported() {
+						results.assetsByChapterPrefix[chapter][prefix][0].DescriptionType = *descriptionType
+						results.assetsByChapterPrefix[chapter][prefix][0].DescriptionPath = bucket.descriptionPath
+					} else {
+						s.logger.Warn("Ignoring incompatible description file", loggerType,
+							slog.String("file", bucket.descriptionPath),
+							slog.String("type", ext),
+						)
+					}
 				}
-
 			} else if len(bucket.assets) > 0 {
 				// There are only non-grouped assets
 				priorityIndex := pickBest(bucket.assets)
@@ -422,7 +428,17 @@ func scanFiles(s *CourseScan, coursePath string, courseID string) (*scannedResul
 
 				// Description
 				if bucket.descriptionPath != "" {
-					results.assetsByChapterPrefix[chapter][prefix][0].DescriptionPath = bucket.descriptionPath
+					// Get the ext of the description file
+					ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(bucket.descriptionPath), "."))
+					if descriptionType := types.NewDescription(ext); descriptionType != nil && descriptionType.IsSupported() {
+						results.assetsByChapterPrefix[chapter][prefix][0].DescriptionType = *descriptionType
+						results.assetsByChapterPrefix[chapter][prefix][0].DescriptionPath = bucket.descriptionPath
+					} else {
+						s.logger.Warn("Ignoring incompatible description file", loggerType,
+							slog.String("file", bucket.descriptionPath),
+							slog.String("type", ext),
+						)
+					}
 				}
 			}
 		}
@@ -871,7 +887,7 @@ const (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// categorize inspects a parsedFile and tells you which it is.
+// categorize inspects a parsedFile and tells you which it is
 func categorizeFile(p *parsedFile) FileCategory {
 	// Ignore
 	if p == nil {
@@ -884,8 +900,10 @@ func categorizeFile(p *parsedFile) FileCategory {
 	}
 
 	// Description
-	if p.SubPrefix == nil && strings.EqualFold(p.Title, "description") && (p.Ext == "md" || p.Ext == "txt") {
-		return Description
+	if p.SubPrefix == nil && strings.EqualFold(p.Title, "description") {
+		if descriptionType := types.NewDescription(strings.ToLower(p.Ext)); descriptionType != nil {
+			return Description
+		}
 	}
 
 	// Asset || grouped asset
