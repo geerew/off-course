@@ -52,10 +52,11 @@ func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Conte
 
 	// Router
 	config := &RouterConfig{
-		DbManager:  dbManager,
-		AppFs:      appFs,
-		CourseScan: courseScan,
-		Logger:     logger,
+		DbManager:     dbManager,
+		AppFs:         appFs,
+		CourseScan:    courseScan,
+		Logger:        logger,
+		SignupEnabled: true,
 	}
 
 	router := devRouter(config, id, role)
