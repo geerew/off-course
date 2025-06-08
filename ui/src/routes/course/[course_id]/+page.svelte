@@ -298,7 +298,7 @@
 							</div>
 						</div>
 
-						<Accordion.Root class="w-full" type="multiple" value={[Object.keys(chapters)[0]]}>
+						<Accordion.Root class="w-full" type="multiple">
 							{#each Object.keys(chapters) as chapter}
 								<Accordion.Item
 									value={chapter}
