@@ -4,6 +4,8 @@ package api
 //   1) error on submit or
 //   2) redirect to the login page on refresh
 
+// TODO Tidy the middleware code, it is a bit messy
+
 import (
 	"encoding/json"
 	"log/slog"
@@ -144,10 +146,8 @@ func authMiddleware(r *Router) fiber.Handler {
 		}
 
 		path := c.Path()
-		isAPI := strings.HasPrefix(path, "/api/")
-		isAuthUI := strings.HasPrefix(path, "/auth/")
-		isMe := strings.HasPrefix(path, "/api/auth/me")
 		isLogout := strings.HasPrefix(path, "/api/auth/logout")
+		isAuthUI := strings.HasPrefix(path, "/auth/")
 
 		if r.isDevUIPath(path) || r.isProdUIPath(path) || r.isFavicon(path) || isLogout {
 			return c.Next()
@@ -159,8 +159,8 @@ func authMiddleware(r *Router) fiber.Handler {
 		}
 
 		if session.Fresh() {
-
-			if isAPI {
+			// Is API request
+			if strings.HasPrefix(path, "/api/") {
 				if strings.HasPrefix(path, "/api/auth/login") || (r.config.SignupEnabled && strings.HasPrefix(path, "/api/auth/register")) ||
 					strings.HasPrefix(path, "/api/auth/signup-status") {
 					return c.Next()
@@ -183,7 +183,7 @@ func authMiddleware(r *Router) fiber.Handler {
 			return c.Redirect("/")
 		}
 
-		if strings.HasPrefix(path, "/api/auth/") && !isMe {
+		if strings.HasPrefix(path, "/api/auth/") && !strings.HasPrefix(path, "/api/auth/me") {
 			return c.SendStatus(fiber.StatusOK)
 		}
 
