@@ -153,6 +153,9 @@
 		const assetId = page.params.asset_id;
 		if (!initDone || !selectedAssetGroup) return;
 
+		// Ensure the body is scrolled to the top when the asset changes
+		if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+
 		selectedAsset = findAssetInGroup(assetId, selectedAssetGroup);
 
 		// If asset not found in current group, need to find new group
