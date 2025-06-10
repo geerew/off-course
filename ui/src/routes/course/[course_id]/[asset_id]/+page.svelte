@@ -34,7 +34,6 @@
 	let renderedDescription = $state<string>();
 
 	let loadPromise = $state(fetchCourseAndAsset());
-	let initDone = false;
 
 	let mainEl = $state() as HTMLElement;
 	const mainSize = new ElementSize(() => mainEl);
@@ -72,8 +71,6 @@
 			renderedDescription = await setRenderedDescription(selectedAsset);
 
 			console.log('renderedDescription', renderedDescription);
-
-			initDone = true;
 		} catch (error) {
 			throw error;
 		}
