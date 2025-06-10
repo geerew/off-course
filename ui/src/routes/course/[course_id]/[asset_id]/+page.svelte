@@ -34,7 +34,6 @@
 	let renderedDescription = $state<string>();
 
 	let loadPromise = $state(fetchCourseAndAsset());
-	let initDone = false;
 
 	let mainEl = $state() as HTMLElement;
 	const mainSize = new ElementSize(() => mainEl);
@@ -70,10 +69,6 @@
 			}
 
 			renderedDescription = await setRenderedDescription(selectedAsset);
-
-			console.log('renderedDescription', renderedDescription);
-
-			initDone = true;
 		} catch (error) {
 			throw error;
 		}
@@ -95,10 +90,8 @@
 
 	// Set the rendered description for the asset
 	async function setRenderedContent(asset: AssetModel): Promise<string> {
-		if (!course || !asset || (asset.assetType !== 'markdown' && asset.assetType !== 'text')) {
-			console.log('No content for asset', asset);
+		if (!course || !asset || (asset.assetType !== 'markdown' && asset.assetType !== 'text'))
 			return '';
-		}
 
 		const content = await ServeCourseAsset(course.id, asset.id);
 		if (!content) {
