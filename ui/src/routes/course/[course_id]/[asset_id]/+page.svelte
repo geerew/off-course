@@ -2,6 +2,7 @@
 <!-- TODO find a way to show which assets are completed when page contains a group of assets -->
 <!-- TODO rework description to support description type so we can render md vs txt -->
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import type { APIError } from '$lib/api-error.svelte';
 	import {
@@ -34,6 +35,7 @@
 	let renderedDescription = $state<string>();
 
 	let loadPromise = $state(fetchCourseAndAsset());
+	let initDone = false;
 
 	let mainEl = $state() as HTMLElement;
 	const mainSize = new ElementSize(() => mainEl);
@@ -69,6 +71,8 @@
 			}
 
 			renderedDescription = await setRenderedDescription(selectedAsset);
+
+			initDone = true;
 		} catch (error) {
 			throw error;
 		}
@@ -90,8 +94,9 @@
 
 	// Set the rendered description for the asset
 	async function setRenderedContent(asset: AssetModel): Promise<string> {
-		if (!course || !asset || (asset.assetType !== 'markdown' && asset.assetType !== 'text'))
+		if (!course || !asset || (asset.assetType !== 'markdown' && asset.assetType !== 'text')) {
 			return '';
+		}
 
 		const content = await ServeCourseAsset(course.id, asset.id);
 		if (!content) {
@@ -141,6 +146,40 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	// Update the selected asset when the page changes
+	$effect(() => {
+		const assetId = page.params.asset_id;
+		if (!initDone || !selectedAssetGroup) return;
+
+		// Ensure the body is scrolled to the top when the asset changes
+		if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+
+		selectedAsset = findAssetInGroup(assetId, selectedAssetGroup);
+
+		// If asset not found in current group, need to find new group
+		if (!selectedAsset) {
+			const result = findAssetGroup(assetId, chapters);
+			if (result) {
+				selectedAssetGroup = result.group;
+				selectedAsset = findAssetInGroup(assetId, result.group);
+			}
+		}
+
+		if (!selectedAsset) throw new Error('Asset not found');
+
+		if (selectedAsset.assetType === 'markdown' || selectedAsset.assetType === 'text') {
+			setRenderedContent(selectedAsset).then((content) => {
+				renderedContent = content;
+			});
+		}
+
+		setRenderedDescription(selectedAsset).then((description) => {
+			renderedDescription = description;
+		});
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	// As the main content of the page resizes, control whether we show the popup menu or the
 	// static menu
 	$effect(() => {
@@ -185,14 +224,17 @@
 				<div class="ml-auto flex flex-col pt-4 pb-3">
 					{#each chapters[chapter] as assetGroup, index}
 						<Button
-							href={`/course/${course.id}/${assetGroup.assets[0].id}`}
 							variant="ghost"
 							class={cn(
 								'text-foreground-alt-2 hover:bg-background-alt-2 hover:text-foreground-alt-1 h-auto w-full justify-start rounded-none text-start whitespace-normal',
 								selectedAsset?.id === assetGroup.assets[0].id &&
 									'text-foreground-alt-1 bg-background-alt-2'
 							)}
-							data-sveltekit-reload
+							onclick={async () => {
+								if (!course || assetGroup.assets[0].id === selectedAsset?.id) return;
+								if (menuPopupMode) dialogOpen = false;
+								goto(`/course/${course.id}/${assetGroup.assets[0].id}`, {});
+							}}
 						>
 							<div class="flex w-full flex-row gap-3 py-2 pr-2.5 pl-1.5">
 								<Checkbox
