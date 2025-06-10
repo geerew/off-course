@@ -174,7 +174,6 @@ export async function GetCourseAssets(
 		const data = (await response.json()) as AssetPaginationModel;
 		const result = safeParse(AssetPaginationSchema, data);
 
-		console.log(result.issues);
 		if (!result.success) throw new APIError(response.status, 'Invalid response from the server');
 		return result.output;
 	} else {

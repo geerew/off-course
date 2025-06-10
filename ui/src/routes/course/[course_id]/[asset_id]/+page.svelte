@@ -2,7 +2,6 @@
 <!-- TODO find a way to show which assets are completed when page contains a group of assets -->
 <!-- TODO rework description to support description type so we can render md vs txt -->
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import type { APIError } from '$lib/api-error.svelte';
 	import {
@@ -72,6 +71,8 @@
 
 			renderedDescription = await setRenderedDescription(selectedAsset);
 
+			console.log('renderedDescription', renderedDescription);
+
 			initDone = true;
 		} catch (error) {
 			throw error;
@@ -95,6 +96,7 @@
 	// Set the rendered description for the asset
 	async function setRenderedContent(asset: AssetModel): Promise<string> {
 		if (!course || !asset || (asset.assetType !== 'markdown' && asset.assetType !== 'text')) {
+			console.log('No content for asset', asset);
 			return '';
 		}
 
@@ -111,9 +113,7 @@
 
 	// Get the rendered description for the asset and render as markdown
 	async function setRenderedDescription(asset: AssetModel): Promise<string> {
-		if (!course || !asset || !asset.hasDescription) {
-			return '';
-		}
+		if (!course || !asset || !asset.hasDescription) return '';
 
 		const description = await ServeCourseAssetDescription(course.id, asset.id);
 		if (!description) {
@@ -145,43 +145,6 @@
 	export function findAssetInGroup(assetId: string, group: AssetGroup): AssetModel | undefined {
 		return group.assets.find((asset) => asset.id === assetId);
 	}
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	// Update the selected asset when the page changes
-	$effect(() => {
-		const assetId = page.params.asset_id;
-		if (!initDone || !selectedAssetGroup) return;
-
-		// Ensure the body is scrolled to the top when the asset changes
-		if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
-
-		selectedAsset = findAssetInGroup(assetId, selectedAssetGroup);
-
-		// If asset not found in current group, need to find new group
-		if (!selectedAsset) {
-			const result = findAssetGroup(assetId, chapters);
-			if (result) {
-				selectedAssetGroup = result.group;
-				selectedAsset = findAssetInGroup(assetId, result.group);
-			}
-		}
-
-		if (!selectedAsset) {
-			toast.error('Asset not found');
-			return;
-		}
-
-		if (selectedAsset.assetType === 'markdown' || selectedAsset.assetType === 'text') {
-			setRenderedContent(selectedAsset).then((content) => {
-				renderedContent = content;
-			});
-		}
-
-		setRenderedDescription(selectedAsset).then((description) => {
-			renderedDescription = description;
-		});
-	});
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -229,19 +192,14 @@
 				<div class="ml-auto flex flex-col pt-4 pb-3">
 					{#each chapters[chapter] as assetGroup, index}
 						<Button
+							href={`/course/${course.id}/${assetGroup.assets[0].id}`}
 							variant="ghost"
 							class={cn(
 								'text-foreground-alt-2 hover:bg-background-alt-2 hover:text-foreground-alt-1 h-auto w-full justify-start rounded-none text-start whitespace-normal',
 								selectedAsset?.id === assetGroup.assets[0].id &&
 									'text-foreground-alt-1 bg-background-alt-2'
 							)}
-							onclick={async () => {
-								if (!course || assetGroup.assets[0].id === selectedAsset?.id) return;
-								if (menuPopupMode) dialogOpen = false;
-								goto(`/course/${course.id}/${assetGroup.assets[0].id}`, {});
-								selectedAsset = assetGroup.assets[0];
-								await setRenderedDescription(selectedAsset);
-							}}
+							data-sveltekit-reload
 						>
 							<div class="flex w-full flex-row gap-3 py-2 pr-2.5 pl-1.5">
 								<Checkbox
@@ -306,26 +264,6 @@
 											</div>
 										{/each}
 									</div>
-
-									<!-- <div class="flex w-full flex-row items-center">
-										<span class="text-foreground-alt-3">{assetGroup.assets[0].assetType}</span>
-
-										{#if assetGroup.assets[0].videoMetadata}
-											<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
-											<span class="text-foreground-alt-3">
-												{prettyMs(assetGroup.assets[0].videoMetadata.duration * 1000)}
-											</span>
-										{/if}
-
-										{#if assetGroup.attachments.length > 0}
-											<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
-											<Attachments
-												attachments={assetGroup.attachments}
-												courseId={course?.id ?? ''}
-												assetId={assetGroup.assets[0].id}
-											/>
-										{/if}
-									</div> -->
 								</div>
 							</div>
 						</Button>
