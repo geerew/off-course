@@ -17,7 +17,9 @@
 		BurgerMenuIcon,
 		DotIcon,
 		DotsIcon,
+		LeftChevronIcon,
 		OverviewIcon,
+		RightChevronIcon,
 		TickIcon,
 		WarningIcon
 	} from '$lib/components/icons';
@@ -37,6 +39,9 @@
 
 	let selectedAssetGroup = $state<AssetGroup>();
 	let selectedAsset = $state<AssetModel>();
+
+	let previousGroup = $state<AssetGroup>();
+	let nextGroup = $state<AssetGroup>();
 
 	let renderedContent = $state<string>('');
 	let renderedDescription = $state<string>();
@@ -79,6 +84,9 @@
 
 			renderedDescription = await setRenderedDescription(selectedAsset);
 
+			previousGroup = findPreviousAssetGroup();
+			nextGroup = findNextAssetGroup();
+
 			initDone = true;
 		} catch (error) {
 			throw error;
@@ -99,6 +107,46 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	// Find the previous asset group in the course structure
+	function findPreviousAssetGroup(): AssetGroup | undefined {
+		if (!selectedAssetGroup || !chapters) return undefined;
+
+		const allGroups: AssetGroup[] = [];
+
+		// Flatten all asset groups from all chapters in order
+		for (const chapterGroups of Object.values(chapters)) {
+			allGroups.push(...chapterGroups);
+		}
+
+		const currentIndex = allGroups.findIndex((group) =>
+			group.assets.some((asset) => asset.id === selectedAsset?.id)
+		);
+
+		return currentIndex > 0 ? allGroups[currentIndex - 1] : undefined;
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Find the next asset group in the course structure
+	function findNextAssetGroup(): AssetGroup | undefined {
+		if (!selectedAssetGroup || !chapters) return undefined;
+
+		const allGroups: AssetGroup[] = [];
+
+		// Flatten all asset groups from all chapters in order
+		for (const chapterGroups of Object.values(chapters)) {
+			allGroups.push(...chapterGroups);
+		}
+
+		const currentIndex = allGroups.findIndex((group) =>
+			group.assets.some((asset) => asset.id === selectedAsset?.id)
+		);
+
+		return currentIndex < allGroups.length - 1 ? allGroups[currentIndex + 1] : undefined;
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	// Set the rendered description for the asset
 	async function setRenderedContent(asset: AssetModel): Promise<string> {
 		if (!course || !asset || (asset.assetType !== 'markdown' && asset.assetType !== 'text')) {
@@ -114,6 +162,7 @@
 			return renderMarkdown(content);
 		}
 	}
+
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Get the rendered description for the asset and render as markdown
@@ -183,6 +232,9 @@
 		setRenderedDescription(selectedAsset).then((description) => {
 			renderedDescription = description;
 		});
+
+		previousGroup = findPreviousAssetGroup();
+		nextGroup = findNextAssetGroup();
 	});
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -397,51 +449,6 @@
 									</span>
 								</div>
 
-								<!-- <div
-									class={cn(
-										'flex justify-end text-sm',
-										selectedAssetGroup.assets.length > 1 ? 'w-70' : 'w-50'
-									)}
-								>
-									<Button
-										variant="secondary"
-										class={cn(
-											selectedAssetGroup.completed
-												? 'text-foreground bg-background-success border-background-success hover:bg-background-success hover:brightness-110'
-												: ''
-										)}
-										onclick={async () => {
-											if (!selectedAssetGroup) return;
-
-											selectedAssetGroup.completed = !selectedAssetGroup.completed;
-
-											selectedAssetGroup.assets.forEach((asset) => {
-												if (!asset.progress) {
-													asset.progress = {
-														completed: true,
-														completedAt: '',
-														videoPos: 0
-													};
-												} else {
-													asset.progress.completed = selectedAssetGroup?.completed || false;
-												}
-											});
-
-											await Promise.all(
-												selectedAssetGroup.assets.map((asset) => updateAssetProgress(asset))
-											);
-										}}
-									>
-										<div class="flex flex-row items-center justify-between gap-2 text-sm">
-											<span>
-												Mark {selectedAssetGroup.assets.length > 1 ? 'collection' : ''}
-												{selectedAssetGroup.completed ? 'unwatched' : 'watched'}
-											</span>
-
-											<TickIcon class="size-3 stroke-[4]" />
-										</div>
-									</Button>
-								</div> -->
 								<Tooltip
 									delayDuration={100}
 									contentProps={{ side: 'bottom', sideOffset: 8 }}
@@ -565,6 +572,45 @@
 								{@html renderedDescription}
 							</div>
 						{/if}
+
+						<div class="flex w-full flex-col gap-4 md:flex-row md:gap-6">
+							<div class="flex w-full md:w-1/2">
+								{#if previousGroup}
+									<Button
+										variant="outline"
+										class="text-foreground-alt-2 hover:text-foreground hover:border-background-alt-6 flex h-auto w-full flex-row justify-start gap-2 p-4 text-left hover:bg-transparent"
+										onclick={() => {
+											if (!course || !previousGroup || !previousGroup.assets[0]) return;
+											goto(`/course/${course.id}/${previousGroup.assets[0].id}`);
+										}}
+									>
+										<LeftChevronIcon class="size-5 stroke-[1.5]" />
+										<span class="text-base leading-tight font-medium">
+											{previousGroup.title}
+										</span>
+									</Button>
+								{/if}
+							</div>
+
+							<!-- Next Button -->
+							<div class="flex w-full md:w-1/2">
+								{#if nextGroup}
+									<Button
+										variant="outline"
+										class="text-foreground-alt-2 hover:text-foreground hover:border-background-alt-6 flex h-auto w-full  flex-row justify-end gap-2 p-4 text-left hover:bg-transparent"
+										onclick={() => {
+											if (!course || !nextGroup || !nextGroup.assets[0]) return;
+											goto(`/course/${course.id}/${nextGroup.assets[0].id}`);
+										}}
+									>
+										<span class="text-base leading-tight font-medium">
+											{nextGroup.title}
+										</span>
+										<RightChevronIcon class="size-5 stroke-[1.5]" />
+									</Button>
+								{/if}
+							</div>
+						</div>
 					</div>
 				</div>
 			</main>
