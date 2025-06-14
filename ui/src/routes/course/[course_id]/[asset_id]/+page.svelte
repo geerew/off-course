@@ -578,7 +578,7 @@
 								{#if previousGroup}
 									<Button
 										variant="outline"
-										class="text-foreground-alt-2 hover:text-foreground hover:border-background-alt-6 flex h-auto w-full flex-row justify-start gap-2 p-4 text-left hover:bg-transparent"
+										class="text-foreground-alt-2 hover:text-foreground hover:border-background-alt-6 flex h-auto w-full flex-row justify-start gap-4 p-4 text-left whitespace-normal hover:bg-transparent"
 										onclick={() => {
 											if (!course || !previousGroup || !previousGroup.assets[0]) return;
 											goto(`/course/${course.id}/${previousGroup.assets[0].id}`);
@@ -597,7 +597,7 @@
 								{#if nextGroup}
 									<Button
 										variant="outline"
-										class="text-foreground-alt-2 hover:text-foreground hover:border-background-alt-6 flex h-auto w-full  flex-row justify-end gap-2 p-4 text-left hover:bg-transparent"
+										class="text-foreground-alt-2 hover:text-foreground hover:border-background-alt-6 flex h-auto w-full flex-row  justify-end gap-4 p-4 text-left whitespace-normal hover:bg-transparent"
 										onclick={() => {
 											if (!course || !nextGroup || !nextGroup.assets[0]) return;
 											goto(`/course/${course.id}/${nextGroup.assets[0].id}`);
