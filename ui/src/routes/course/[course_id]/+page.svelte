@@ -10,26 +10,38 @@
 	import { NiceDate, Spinner } from '$lib/components';
 	import { ClearCourseProgressDialog } from '$lib/components/dialogs';
 	import {
+		AddedIcon,
+		ClearProgressIcon,
 		DotIcon,
+		DotsIcon,
+		DurationIcon,
+		FilesIcon,
 		LogoIcon,
 		MediaPlayIcon,
+		ModulesIcon,
+		PathIcon,
 		RightChevronIcon,
+		UpdatedIcon,
 		WarningIcon
 	} from '$lib/components/icons';
 	import MediaRestart from '$lib/components/icons/media-restart.svelte';
-	import { Badge, Dialog } from '$lib/components/ui';
+	import { Badge, Dropdown } from '$lib/components/ui';
 	import Attachments from '$lib/components/ui/attachments.svelte';
 	import Button from '$lib/components/ui/button.svelte';
 	import type { Chapters } from '$lib/models/asset-model';
 	import type { CourseModel, CourseTagsModel } from '$lib/models/course-model';
 	import { BuildChapterStructure, cn } from '$lib/utils';
-	import { Accordion, Avatar, Progress, useId } from 'bits-ui';
+	import { Accordion, useId } from 'bits-ui';
 	import prettyMs from 'pretty-ms';
 	import { slide } from 'svelte/transition';
 
 	let course = $state<CourseModel>();
 	let chapters = $state<Chapters>({});
 	let tags = $state<CourseTagsModel>([]);
+	let courseImageUrl = $state<string | null>(null);
+	let courseImageLoaded = $state<boolean>(false);
+
+	let openCourseProgressDialog = $state(false);
 
 	const labelId = useId();
 
@@ -40,6 +52,13 @@
 			for (const assetGroup of chapter) {
 				count += assetGroup.assets.length;
 			}
+		}
+		return count;
+	});
+	let assetGroupCount = $derived.by(() => {
+		let count = 0;
+		for (const chapter of Object.values(chapters)) {
+			count += chapter.length;
 		}
 		return count;
 	});
@@ -96,10 +115,39 @@
 			});
 
 			chapters = BuildChapterStructure(assets);
+
+			await loadCourseImage(course.id);
 		} catch (error) {
 			throw error;
 		}
 	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	async function loadCourseImage(courseId: string): Promise<void> {
+		try {
+			const response = await fetch(`/api/courses/${courseId}/card`);
+			if (response.ok) {
+				const blob = await response.blob();
+				courseImageUrl = URL.createObjectURL(blob);
+				courseImageLoaded = true;
+			} else {
+				courseImageLoaded = false;
+			}
+		} catch (error) {
+			courseImageLoaded = false;
+		}
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	$effect(() => {
+		return () => {
+			if (courseImageUrl) {
+				URL.revokeObjectURL(courseImageUrl);
+			}
+		};
+	});
 </script>
 
 {#await loadPromise}
@@ -111,173 +159,224 @@
 		<div class="flex w-full flex-col">
 			<div class="bg-background-alt-1 flex w-full place-content-center">
 				<div class="container-px flex w-full max-w-7xl flex-col gap-6 py-10">
-					<div class="grid w-full grid-cols-1 gap-6 md:grid-cols-[minmax(0,22.6rem)_1fr] md:gap-10">
-						<!-- Card -->
-						<Avatar.Root
-							class="relative z-0 flex h-full max-h-70 w-full items-center justify-center overflow-hidden rounded-lg [background-image:repeating-linear-gradient(-45deg,var(--color-background-alt-1),var(--color-background-alt-1)13px,var(--color-background-alt-2)13px,var(--color-background-alt-2)14px)] bg-[size:40px_40px]"
-						>
-							<Avatar.Image
-								src={`/api/courses/${course.id}/card`}
-								class="h-auto max-h-full w-auto max-w-full object-contain"
-							/>
-
-							<Avatar.Fallback
-								class="bg-background-alt-2 flex h-50 w-full max-w-90 place-content-center rounded-lg"
-							>
-								<LogoIcon class="fill-background-alt-3 w-16 md:w-20" />
-							</Avatar.Fallback>
-						</Avatar.Root>
-
+					<div class="grid w-full grid-cols-1 gap-6 lg:grid-cols-[1fr_minmax(0,23rem)] lg:gap-10">
 						<!-- Information -->
-						<div class="flex h-full w-full flex-col gap-5">
-							<div class="text-foreground-alt-1 text-2xl font-semibold">
-								{course.title}
-							</div>
-
-							<div class="flex flex-col gap-1.5 text-sm">
-								<!-- Path -->
-								{#if auth.user?.role === 'admin'}
-									<div class="grid grid-cols-[6.5rem_1fr]">
-										<span class="text-foreground-alt-3 font-medium">PATH</span>
-										<span
-											class="text-foreground-alt-1 wrap-anywhere whitespace-normal"
-											title={course.path}>{course.path}</span
-										>
-									</div>
-								{/if}
-
-								<!-- Created At -->
-								<div class="grid grid-cols-[6.5rem_1fr]">
-									<span class="text-foreground-alt-3 font-medium">ADDED</span>
-									<span class="text-foreground-alt-1"><NiceDate date={course.createdAt} /></span>
+						<div class="order-2 flex h-full w-full flex-col justify-between gap-5 lg:order-1">
+							<div class="flex h-full w-full flex-col gap-5">
+								<div class="text-foreground-alt-1 text-2xl font-semibold">
+									{course.title}
 								</div>
 
-								<!-- Updated At -->
-								<div class="grid grid-cols-[6.5rem_1fr]">
-									<span class="text-foreground-alt-3 font-medium">UPDATED</span>
-									<span class="text-foreground-alt-1"><NiceDate date={course.updatedAt} /></span>
-								</div>
-
-								<!-- Status -->
-								{#if !course.available || course.maintenance || (course.initialScan !== undefined && !course.initialScan)}
-									<div class="grid grid-cols-[6.5rem_1fr]">
-										<span class="text-foreground-alt-3 font-medium">STATUS</span>
-
-										{#if !course.initialScan}
-											<span class="text-amber-600">Initial scan</span>
-										{:else if course.maintenance}
-											<span class="text-background-success">Maintenance</span>
-										{:else}
-											<span class="text-foreground-error">Unavailable</span>
-										{/if}
-									</div>
-								{/if}
-
-								<!-- Duration -->
-								<div class="grid grid-cols-[6.5rem_1fr]">
-									<span class="text-foreground-alt-3 font-medium">DURATION</span>
-									<span class={course.duration ? 'text-foreground-alt-1' : 'text-foreground-alt-3'}>
-										{course.duration
-											? prettyMs(course.duration * 1000, { hideSeconds: true })
-											: '-'}
-									</span>
-								</div>
-
-								<!-- Progress -->
-								<div class="grid grid-cols-[6.5rem_1fr]">
-									<span class="text-foreground-alt-3 font-medium">PROGRESS</span>
-									{#if course.progress}
-										<div class="flex flex-row gap-2">
-											<div class="relative flex w-30 items-center">
-												<Progress.Root
-													aria-labelledby={labelId}
-													value={course.progress.percent}
-													max={100}
-													class="bg-background-alt-3 relative h-2.5 w-full overflow-hidden rounded-full"
-												>
-													<div
-														class="bg-background-primary-alt-1 h-full w-full flex-1 rounded-full transition-all duration-1000 ease-in-out"
-														style={`transform: translateX(-${100 - (100 * (course.progress.percent ?? 0)) / 100}%)`}
-													></div>
-												</Progress.Root>
-											</div>
-											<span id={labelId} class="text-foreground-alt-1 text-sm">
-												{course.progress.percent}%
+								<!-- Course overview -->
+								<div class="flex flex-col gap-5 text-sm">
+									<div class="flex flex-row items-center gap-3">
+										<!-- Modules -->
+										<div class="flex flex-row items-center gap-2 font-semibold">
+											<ModulesIcon class="text-foreground-alt-3 size-4.5" />
+											<span>
+												{chapterCount} module{chapterCount != 1 ? 's' : ''}
 											</span>
 										</div>
-									{:else}
-										<span class="text-foreground-alt-3">-</span>
-									{/if}
+
+										<DotIcon class="text-foreground-alt-3 text-xl" />
+
+										<!-- Assets -->
+										<div class="flex flex-row items-center gap-2 font-semibold">
+											<FilesIcon class="text-foreground-alt-3 size-4.5" />
+											<span>
+												{assetGroupCount} lesson{assetGroupCount != 1 ? 's' : ''}
+											</span>
+										</div>
+
+										<DotIcon class="text-foreground-alt-3 text-xl" />
+
+										<!-- Duration -->
+										<div class="flex flex-row items-center gap-2 font-semibold">
+											<DurationIcon class="text-foreground-alt-3 size-4.5" />
+											<span
+												class={course.duration ? 'text-foreground-alt-1' : 'text-foreground-alt-3'}
+											>
+												{course.duration
+													? prettyMs(course.duration * 1000, { hideSeconds: true })
+													: '-'}
+											</span>
+										</div>
+									</div>
 								</div>
+
+								<!-- Path, Created At, Updated At, Status -->
+								<div class="flex flex-col gap-2">
+									{#if auth.user?.role === 'admin'}
+										<div class="text-foreground-alt-2 flex flex-row items-start gap-2">
+											<PathIcon class="text-foreground-alt-3 mt-[3px] size-4.5 shrink-0" />
+											<span class="wrap-anywhere whitespace-normal" title={course.path}
+												>{course.path}</span
+											>
+										</div>
+									{/if}
+
+									<div class="text-foreground-alt-2 flex flex-row items-center gap-3">
+										<!-- Added -->
+										<div class="flex flex-row items-center gap-2">
+											<AddedIcon class="text-foreground-alt-3 size-4.5" />
+											<span>
+												<NiceDate date={course.createdAt} prefix="Added:" />
+											</span>
+										</div>
+
+										<DotIcon class="text-xl" />
+
+										<!-- Updated -->
+										<div class="flex flex-row items-center gap-2">
+											<UpdatedIcon class="text-foreground-alt-3 size-4.5" />
+											<span>
+												<NiceDate date={course.updatedAt} prefix="Updated:" />
+											</span>
+										</div>
+
+										{#if !course.available || course.maintenance || (course.initialScan !== undefined && !course.initialScan)}
+											<DotIcon class="text-xl" />
+
+											<div class="flex flex-row items-center gap-2">
+												{#if !course.initialScan}
+													<span class="text-amber-600">Initial scan</span>
+												{:else if course.maintenance}
+													<span class="text-background-success">Maintenance</span>
+												{:else}
+													<span class="text-foreground-error">Unavailable</span>
+												{/if}
+											</div>
+										{/if}
+									</div>
+								</div>
+
+								<!-- Tags -->
+								<div class="flex flex-wrap gap-2">
+									{#each tags as tag}
+										<Badge class="text-sm  select-none">
+											{tag.tag}
+										</Badge>
+									{/each}
+								</div>
+							</div>
+
+							{#if assetCount > 0}
+								<div class="flex flex-row place-items-end gap-2.5">
+									<Button
+										href={`/course/${course.id}/${assetToResume?.id}`}
+										variant="default"
+										class="w-auto px-4"
+										disabled={course.maintenance || !course.available}
+										onclick={(e) => {
+											if (course?.maintenance || !course?.available) {
+												e.preventDefault();
+												e.stopPropagation();
+											}
+										}}
+									>
+										{#if course.progress}
+											Resume Course
+										{:else}
+											Start Course
+										{/if}
+									</Button>
+
+									<Dropdown.Root>
+										<Dropdown.Trigger
+											class="bg-background-alt-3 data-[state=open]:bg-background-alt-4 hover:bg-background-alt-4 w-auto rounded-lg border-none"
+										>
+											<DotsIcon class="size-5 stroke-[1.5]" />
+										</Dropdown.Trigger>
+
+										<Dropdown.Content class="z-60 w-38">
+											<Dropdown.Item
+												class="data-disabled:pointer-events-none"
+												disabled={!course?.progress}
+												onclick={async () => {
+													openCourseProgressDialog = true;
+												}}
+											>
+												<ClearProgressIcon class="size-4 stroke-[1.5]" />
+												<span>Clear Progress</span>
+											</Dropdown.Item>
+										</Dropdown.Content>
+									</Dropdown.Root>
+
+									<ClearCourseProgressDialog
+										bind:open={openCourseProgressDialog}
+										{course}
+										successFn={() => {
+											if (!course) return;
+											course.progress = undefined;
+
+											// Clear progress for all assets in all chapters
+											const allChapters = Object.values(chapters);
+											for (const chapter of allChapters) {
+												for (const assetGroup of chapter) {
+													assetGroup.completed = false;
+													assetGroup.startedAssetCount = 0;
+													assetGroup.completedAssetCount = 0;
+													assetGroup.assets.forEach((asset) => {
+														asset.progress = undefined;
+													});
+												}
+											}
+										}}
+									/>
+								</div>
+							{/if}
+						</div>
+
+						<!-- Card -->
+						<div class="relative order-1 flex w-full overflow-hidden rounded-lg lg:order-2">
+							<!-- Image Container -->
+							<div
+								class="relative flex h-full max-h-70 w-full items-center justify-center overflow-hidden [background-image:repeating-linear-gradient(-45deg,var(--color-background-alt-1),var(--color-background-alt-1)13px,var(--color-background-alt-2)13px,var(--color-background-alt-2)14px)] bg-[size:40px_40px]"
+							>
+								{#if courseImageLoaded && courseImageUrl}
+									<img
+										src={courseImageUrl}
+										alt={course?.title}
+										class="h-auto max-h-full w-auto max-w-full rounded-lg object-contain"
+									/>
+								{:else}
+									<!-- Fallback -->
+									<div
+										class="bg-background-alt-2 flex h-50 w-full max-w-90 items-center justify-center rounded-lg"
+									>
+										<LogoIcon class="fill-background-alt-3 w-16 md:w-20" />
+									</div>
+								{/if}
+
+								<!-- Progress Bar Overlay -->
+								{#if course?.progress}
+									<div class="absolute right-0 bottom-0 left-0 w-full">
+										<div
+											class="bg-background-alt-3/80 relative h-5 w-full overflow-hidden backdrop-blur-sm"
+											aria-labelledby={labelId}
+											role="progressbar"
+											aria-valuenow={course.progress.percent}
+											aria-valuemin="0"
+											aria-valuemax="100"
+										>
+											<div
+												class="bg-background-primary-alt-1/70 h-full transition-all duration-1000 ease-in-out"
+												style={`width: ${course.progress.percent}%`}
+											></div>
+
+											<!-- Progress Text Inside Bar -->
+											<div
+												id={labelId}
+												class="text-foreground-alt-1 absolute inset-0 flex items-center justify-center text-xs font-medium drop-shadow-sm"
+											>
+												{course.progress.percent}%
+											</div>
+										</div>
+									</div>
+								{/if}
 							</div>
 						</div>
 					</div>
-
-					<!-- Tags -->
-					<div class="flex flex-col gap-2.5">
-						<span class="text-lg font-medium">Tags</span>
-						<div class="flex flex-wrap gap-2">
-							{#if tags.length === 0}
-								<span class="text-foreground-alt-3">-</span>
-							{:else}
-								{#each tags as tag}
-									<Badge class="text-sm  select-none">
-										{tag.tag}
-									</Badge>
-								{/each}
-							{/if}
-						</div>
-					</div>
-
-					{#if assetCount > 0}
-						<div class="flex flex-row gap-2.5">
-							<Button
-								href={`/course/${course.id}/${assetToResume?.id}`}
-								variant="default"
-								class="w-auto px-4"
-								disabled={course.maintenance || !course.available}
-								onclick={(e) => {
-									if (course?.maintenance || !course?.available) {
-										e.preventDefault();
-										e.stopPropagation();
-									}
-								}}
-							>
-								{#if course.progress}
-									Resume
-								{:else}
-									Start
-								{/if}
-							</Button>
-
-							<ClearCourseProgressDialog
-								{course}
-								successFn={() => {
-									if (!course) return;
-									course.progress = undefined;
-
-									// Clear progress for all assets in all chapters
-									const allChapters = Object.values(chapters);
-									for (const chapter of allChapters) {
-										for (const assetGroup of chapter) {
-											assetGroup.completed = false;
-											assetGroup.startedAssetCount = 0;
-											assetGroup.completedAssetCount = 0;
-											assetGroup.assets.forEach((asset) => {
-												asset.progress = undefined;
-											});
-										}
-									}
-								}}
-							>
-								{#snippet trigger()}
-									<Dialog.Trigger class="w-auto px-4" disabled={!course?.progress}>
-										Clear Progress
-									</Dialog.Trigger>
-								{/snippet}
-							</ClearCourseProgressDialog>
-						</div>
-					{/if}
 				</div>
 			</div>
 
