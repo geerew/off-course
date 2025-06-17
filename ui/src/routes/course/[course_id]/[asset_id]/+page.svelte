@@ -267,7 +267,7 @@
 						<DotsIcon class="size-5 stroke-[1.5]" />
 					</Dropdown.Trigger>
 
-					<Dropdown.Content class="w-38">
+					<Dropdown.Content class="z-60 w-38">
 						<Dropdown.Item
 							onclick={async () => {
 								if (!course) return;
