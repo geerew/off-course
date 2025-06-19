@@ -386,8 +386,8 @@
 
 			<!-- Course Content -->
 			<div class="bg-background flex w-full place-content-center">
-				<div class="container-px flex w-full max-w-7xl flex-col py-7">
-					<div class="text-foreground-alt-1 flex flex-col gap-16">
+				<div class="container-px flex w-full max-w-7xl flex-col pt-0 sm:py-7">
+					<div class="text-foreground-alt-1 flex flex-col gap-12 sm:gap-16">
 						{#each Object.keys(chapters) as chapter, index}
 							<section class="border-background-alt-2 grid grid-cols-4 border-t">
 								<div class="col-span-full sm:col-span-1">
@@ -406,7 +406,7 @@
 										</div>
 
 										<!-- Module details -->
-										<ol class="mt-10 space-y-6">
+										<ol class="mt-8 space-y-6 sm:mt-10">
 											{#each chapters[chapter] as assetGroup}
 												{@const isCollection = assetGroup.assets.length > 1}
 												{@const totalVideoDuration = assetGroup.assets.reduce(
@@ -494,20 +494,6 @@
 								</div>
 							</section>
 						{/each}
-
-						<div class="flex flex-row gap-3 text-sm">
-							<span>Asset Status:</span>
-							<div class="flex flex-row gap-3">
-								<div class="flex flex-row items-center gap-2">
-									<div class="bg-background-success mt-px size-4 rounded-md"></div>
-									<span>Completed</span>
-								</div>
-								<div class="flex flex-row items-center gap-2">
-									<div class="mt-px size-4 rounded-md bg-amber-600"></div>
-									<span>In-progress</span>
-								</div>
-							</div>
-						</div>
 					</div>
 				</div>
 			</div>
