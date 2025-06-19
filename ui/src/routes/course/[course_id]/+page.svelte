@@ -401,9 +401,11 @@
 								<div class="col-span-full pt-6 sm:col-span-3 sm:pt-10">
 									<div class="max-w-2xl">
 										<!-- Module title -->
-										<div class="text-2xl font-medium text-pretty">
-											{chapter}
-										</div>
+										{#if chapter !== '(no chapter)'}
+											<div class="text-2xl font-medium text-pretty">
+												{chapter}
+											</div>
+										{/if}
 
 										<!-- Module details -->
 										<ol class="mt-8 space-y-6 sm:mt-10">
