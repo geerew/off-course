@@ -1,6 +1,4 @@
 <script lang="ts">
-	import '@fontsource/source-sans-pro/400.css';
-	import '@fontsource/source-sans-pro/700.css';
 	import '../app.css';
 
 	import { dev } from '$app/environment';

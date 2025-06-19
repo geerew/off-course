@@ -17,9 +17,11 @@
 		BurgerMenuIcon,
 		DotIcon,
 		DotsIcon,
+		EllipsisCircleIcon,
 		LeftChevronIcon,
 		OverviewIcon,
 		RightChevronIcon,
+		TickCircleIcon,
 		TickIcon,
 		WarningIcon
 	} from '$lib/components/icons';
@@ -317,12 +319,15 @@
 								goto(`/course/${course.id}/${assetGroup.assets[0].id}`);
 							}}
 						>
+							<!-- Lesson status -->
 							{#if assetGroup.completed}
-								<div
-									class="bg-background-success hover:bg-background-success border-background-success absolute top-0.5 -left-2 flex size-4 shrink-0 items-center justify-center rounded-full border"
-								>
-									<TickIcon class="text-foreground size-2 stroke-[3]" />
-								</div>
+								<TickCircleIcon
+									class="stroke-background-success fill-background-success [&_path]:stroke-foreground absolute -left-2.5 size-5 place-self-start stroke-1 [&_path]:stroke-1"
+								/>
+							{:else if assetGroup.startedAssetCount > 0}
+								<EllipsisCircleIcon
+									class="[&_path]:fill-foreground-alt-1 [&_path]:stroke-foreground-alt-1 absolute -left-2.5 size-5 place-self-start fill-amber-700 stroke-amber-700 stroke-1 [&_path]:stroke-2"
+								/>
 							{/if}
 
 							<div class="flex w-full flex-row gap-3 pr-2.5 pl-2.5">
@@ -332,7 +337,7 @@
 									</span>
 
 									<div class="relative flex w-full flex-col gap-0 text-sm select-none">
-										<div class="flex w-full flex-row flex-wrap items-center">
+										<div class="flex w-full flex-row flex-wrap items-center gap-2">
 											<!-- Type -->
 											<span class="text-foreground-alt-3 whitespace-nowrap">
 												{#if isCollection}
@@ -344,7 +349,7 @@
 
 											<!-- Video duration -->
 											{#if totalVideoDuration > 0}
-												<DotIcon class="text-foreground-alt-3 mt-0.5 -mr-1 -ml-1 size-7" />
+												<DotIcon class="text-foreground-alt-3 text-xl" />
 												<span class="text-foreground-alt-3 whitespace-nowrap">
 													{prettyMs(totalVideoDuration * 1000)}
 												</span>
@@ -352,7 +357,7 @@
 
 											<!-- Attachments -->
 											{#if assetGroup.attachments.length > 0}
-												<DotIcon class="text-foreground-alt-3 mt-0.5 -mr-1 -ml-1 size-7" />
+												<DotIcon class="text-foreground-alt-3 text-xl" />
 												<Attachments
 													attachments={assetGroup.attachments}
 													courseId={course?.id ?? ''}
@@ -524,6 +529,9 @@
 											}
 
 											updateAssetProgress(asset);
+
+											if (!selectedAssetGroup) return;
+											selectedAssetGroup.startedAssetCount = 1;
 										}}
 										onCompleted={(time: number) => {
 											if (!asset.progress) {

@@ -22,7 +22,7 @@
 	</div>
 	<div
 		class={cn(
-			'font-logo hidden font-normal tracking-wide md:flex',
+			'hidden font-normal tracking-wide md:flex',
 			{ 'text-3xl': size === 'small' },
 			{ 'text-4xl': size === 'medium' },
 			{ 'text-5xl': size === 'large' }

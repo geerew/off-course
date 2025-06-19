@@ -3,6 +3,7 @@
 <!-- TODO Change asset play/restart button to a menu with play/restart, clear progress  -->
 <!-- TODO Don't allow clicking the start button when in maintenance -->
 <!-- TODO Hide the asset play button when in maintenance -->
+<!-- TODO Add mark Complete -->
 <script lang="ts">
 	import { page } from '$app/state';
 	import { GetAllCourseAssets, GetCourse, GetCourseTags } from '$lib/api/course-api';
@@ -15,25 +16,24 @@
 		DotIcon,
 		DotsIcon,
 		DurationIcon,
+		EllipsisCircleIcon,
 		FilesIcon,
 		LogoIcon,
-		MediaPlayIcon,
 		ModulesIcon,
 		PathIcon,
-		RightChevronIcon,
+		PlayCircleIcon,
+		TickCircleIcon,
 		UpdatedIcon,
 		WarningIcon
 	} from '$lib/components/icons';
-	import MediaRestart from '$lib/components/icons/media-restart.svelte';
 	import { Badge, Dropdown } from '$lib/components/ui';
 	import Attachments from '$lib/components/ui/attachments.svelte';
 	import Button from '$lib/components/ui/button.svelte';
 	import type { Chapters } from '$lib/models/asset-model';
 	import type { CourseModel, CourseTagsModel } from '$lib/models/course-model';
-	import { BuildChapterStructure, cn } from '$lib/utils';
-	import { Accordion, useId } from 'bits-ui';
+	import { BuildChapterStructure } from '$lib/utils';
+	import { useId } from 'bits-ui';
 	import prettyMs from 'pretty-ms';
-	import { slide } from 'svelte/transition';
 
 	let course = $state<CourseModel>();
 	let chapters = $state<Chapters>({});
@@ -141,6 +141,10 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	const pad2 = (n: number) => String(n).padStart(2, '0');
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	$effect(() => {
 		return () => {
 			if (courseImageUrl) {
@@ -157,7 +161,7 @@
 {:then _}
 	{#if course}
 		<div class="flex w-full flex-col">
-			<div class="bg-background-alt-1 flex w-full place-content-center">
+			<div class="flex w-full place-content-center">
 				<div class="container-px flex w-full max-w-7xl flex-col gap-6 py-10">
 					<div class="grid w-full grid-cols-1 gap-6 lg:grid-cols-[1fr_minmax(0,23rem)] lg:gap-10">
 						<!-- Information -->
@@ -205,10 +209,10 @@
 								</div>
 
 								<!-- Path, Created At, Updated At, Status -->
-								<div class="flex flex-col gap-2">
+								<div class="flex flex-col gap-2 text-sm">
 									{#if auth.user?.role === 'admin'}
 										<div class="text-foreground-alt-2 flex flex-row items-start gap-2">
-											<PathIcon class="text-foreground-alt-3 mt-[3px] size-4.5 shrink-0" />
+											<PathIcon class="text-foreground-alt-3 size-4.5 shrink-0" />
 											<span class="wrap-anywhere whitespace-normal" title={course.path}
 												>{course.path}</span
 											>
@@ -331,7 +335,7 @@
 						<div class="relative order-1 flex w-full overflow-hidden rounded-lg lg:order-2">
 							<!-- Image Container -->
 							<div
-								class="relative flex h-full max-h-70 w-full items-center justify-center overflow-hidden [background-image:repeating-linear-gradient(-45deg,var(--color-background-alt-1),var(--color-background-alt-1)13px,var(--color-background-alt-2)13px,var(--color-background-alt-2)14px)] bg-[size:40px_40px]"
+								class="relative flex h-full max-h-70 w-full items-center justify-center overflow-hidden [background-image:repeating-linear-gradient(-45deg,var(--color-background),var(--color-background)13px,var(--color-background-alt-1)13px,var(--color-background-alt-1)14px)] bg-[size:40px_40px]"
 							>
 								{#if courseImageLoaded && courseImageUrl}
 									<img
@@ -383,143 +387,113 @@
 			<!-- Course Content -->
 			<div class="bg-background flex w-full place-content-center">
 				<div class="container-px flex w-full max-w-7xl flex-col py-7">
-					<div class="flex flex-col gap-5">
-						<div class="flex flex-col gap-2.5">
-							<div class="flex flex-col gap-1.5">
-								<span class="text-xl font-medium">Course Content</span>
-								<span class="text-foreground-alt-3 flex items-center text-sm font-medium">
-									{chapterCount} chapter{chapterCount != 1 ? 's' : ''}
-									<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
-									{assetCount} asset{assetCount != 1 ? 's' : ''}
-									<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
-									{attachmentCount} attachment{attachmentCount != 1 ? 's' : ''}
-								</span>
-							</div>
-						</div>
+					<div class="text-foreground-alt-1 flex flex-col gap-16">
+						{#each Object.keys(chapters) as chapter, index}
+							<section class="border-background-alt-2 grid grid-cols-4 border-t">
+								<div class="col-span-full sm:col-span-1">
+									<div class="border-foreground-alt-2 -mt-px inline-flex border-t pt-px">
+										<div class="text-background-primary-alt-1 pt-6 font-semibold sm:pt-10">
+											Module {pad2(index + 1)}
+										</div>
+									</div>
+								</div>
 
-						<Accordion.Root class="w-full" type="multiple">
-							{#each Object.keys(chapters) as chapter}
-								<Accordion.Item
-									value={chapter}
-									class="bg-background-alt-1 border-background last:border-background-alt-2 overflow-hidden border-b duration-150 first:rounded-t-lg last:rounded-b-lg"
-								>
-									<Accordion.Header>
-										<Accordion.Trigger
-											class="group/trigger hover:bg-background-alt-2 flex w-full flex-1 items-center justify-between p-5 font-medium transition-all select-none hover:cursor-pointer"
-										>
-											<span class="w-full text-left">
-												{chapter}
-											</span>
+								<div class="col-span-full pt-6 sm:col-span-3 sm:pt-10">
+									<div class="max-w-2xl">
+										<!-- Module title -->
+										<div class="text-2xl font-medium text-pretty">
+											{chapter}
+										</div>
 
-											<div class="flex shrink-0 flex-row items-center gap-2.5">
-												<span class="text-foreground-alt-3 text-xs">
-													{chapters[chapter].reduce(
-														(acc, assetGroup) => acc + assetGroup.completedAssetCount,
-														0
-													)}
-													/ {chapters[chapter].reduce(
-														(acc, assetGroup) => acc + assetGroup.assets.length,
-														0
-													)}
-												</span>
-												<RightChevronIcon
-													class="size-[18px] rotate-90 stroke-2 transition-transform duration-200 group-data-[state=open]/trigger:-rotate-90"
-												/>
-											</div>
-										</Accordion.Trigger>
-									</Accordion.Header>
+										<!-- Module details -->
+										<ol class="mt-10 space-y-6">
+											{#each chapters[chapter] as assetGroup}
+												{@const isCollection = assetGroup.assets.length > 1}
+												{@const totalVideoDuration = assetGroup.assets.reduce(
+													(acc, asset) => acc + (asset.videoMetadata?.duration || 0),
+													0
+												)}
 
-									<Accordion.Content
-										forceMount={true}
-										class="bg-background border-background-alt-2 flex flex-col border-x"
-									>
-										{#snippet child({ props, open })}
-											{#if open}
-												<div {...props} transition:slide={{ duration: 200 }}>
-													{#each chapters[chapter] as assetGroup}
-														<div
-															class="border-background-alt-2 text-foreground-alt-1 group relative flex flex-row items-center justify-between gap-2 overflow-hidden rounded-none border-b px-5 py-2 last:border-none"
+												<li>
+													<div class="flow-root">
+														<Button
+															href={`/course/${course.id}/${assetGroup.assets[0].id}`}
+															variant="ghost"
+															class="hover:bg-background-alt-2 -mx-3 -my-2 flex h-auto justify-start gap-3 py-2 text-sm whitespace-normal"
+															disabled={course.maintenance || !course.available}
+															onclick={(e) => {
+																if (course?.maintenance || !course?.available) {
+																	e.preventDefault();
+																	e.stopPropagation();
+																}
+															}}
 														>
-															{#if assetGroup.completed || assetGroup.startedAssetCount > 0}
-																<div
-																	class={cn(
-																		'absolute top-1/2 left-1 inline-block h-[calc(100%-30px)] w-0.5 -translate-y-1/2 opacity-60',
-																		assetGroup.completed
-																			? 'bg-background-success'
-																			: assetGroup.startedAssetCount > 0
-																				? 'bg-amber-600'
-																				: ''
-																	)}
-																></div>
+															<!-- Lesson status -->
+															{#if assetGroup.completed}
+																<TickCircleIcon
+																	class="stroke-background-success fill-background-success [&_path]:stroke-foreground size-5 place-self-start stroke-1 [&_path]:stroke-1"
+																/>
+															{:else if assetGroup.startedAssetCount > 0}
+																<EllipsisCircleIcon
+																	class="[&_path]:fill-foreground-alt-1 [&_path]:stroke-foreground size-5 place-self-start fill-amber-700 stroke-amber-700 stroke-1 [&_path]:stroke-2"
+																/>
+															{:else}
+																<PlayCircleIcon
+																	class="stroke-foreground-alt-3 fill-background [&_polygon]:stroke-foreground-alt-2 [&_polygon]:fill-foreground-alt-2 size-5 place-self-start stroke-1"
+																/>
 															{/if}
 
-															<div class="flex w-full flex-col gap-2 py-2 text-sm">
-																<span class="w-full">{assetGroup.prefix}. {assetGroup.title}</span>
+															<div class="flex w-full flex-col gap-1.5">
+																<!-- Lesson title -->
+																<span class="text-foreground-alt-2 w-full font-semibold"
+																	>{assetGroup.prefix}. {assetGroup.title}</span
+																>
 
-																<!-- Main metadata row -->
+																<!-- Lesson details -->
 																<div
 																	class="relative flex w-full flex-col gap-0 text-sm select-none"
 																>
-																	<!-- Attachments -->
-																	{#if assetGroup.attachments.length > 0}
-																		<div
-																			class="flex h-7 w-full flex-row flex-wrap items-center pl-2.5"
-																		>
+																	<div class="flex w-full flex-row flex-wrap items-center gap-2">
+																		<!-- Type -->
+																		<span class="text-foreground-alt-3 whitespace-nowrap">
+																			{#if isCollection}
+																				collection
+																			{:else}
+																				{assetGroup.assets[0].assetType}
+																			{/if}
+																		</span>
+
+																		<!-- Video duration -->
+																		{#if totalVideoDuration > 0}
+																			<DotIcon class="text-foreground-alt-3 text-xl" />
+
+																			<span class="text-foreground-alt-3 whitespace-nowrap">
+																				{prettyMs(totalVideoDuration * 1000)}
+																			</span>
+																		{/if}
+
+																		<!-- Attachments -->
+																		{#if assetGroup.attachments.length > 0}
+																			<DotIcon class="text-foreground-alt-3 text-xl" />
+
 																			<Attachments
 																				attachments={assetGroup.attachments}
 																				courseId={course?.id ?? ''}
 																				assetId={assetGroup.assets[0].id}
 																			/>
-																		</div>
-																	{/if}
-
-																	{#each assetGroup.assets as asset}
-																		<div class="flex w-full flex-row flex-wrap items-center">
-																			<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
-
-																			<!-- Asset Title -->
-																			<span class="text-foreground-alt-3 whitespace-nowrap">
-																				{asset.assetType}
-																			</span>
-
-																			<!-- Video duration -->
-																			{#if asset.videoMetadata}
-																				<DotIcon class="text-foreground-alt-3 mt-0.5 size-7" />
-																				<span class="text-foreground-alt-3 whitespace-nowrap">
-																					{prettyMs(asset.videoMetadata.duration * 1000)}
-																				</span>
-																			{/if}
-																		</div>
-																	{/each}
+																		{/if}
+																	</div>
 																</div>
 															</div>
-
-															<!-- Play button -->
-															<Button
-																href={`/course/${course?.id}/${assetGroup.assets[0].id}`}
-																variant="secondary"
-																class="bg-background-alt-2 hover:bg-background-alt-3 h-auto w-auto rounded-full p-2 opacity-0 duration-150 ease-in group-hover:opacity-100 disabled:opacity-0 aria-disabled:opacity-0 pointer-coarse:opacity-100"
-																disabled={course?.maintenance || !course?.available}
-															>
-																{#if assetGroup.completed}
-																	<MediaRestart
-																		class="stroke-foreground-alt-1 size-5 fill-transparent stroke-[1.5] pointer-coarse:size-4"
-																	/>
-																{:else}
-																	<MediaPlayIcon
-																		class="fill-foreground-alt-1 size-5 pointer-coarse:size-4"
-																	/>
-																{/if}
-															</Button>
-														</div>
-													{/each}
-												</div>
-											{/if}
-										{/snippet}
-									</Accordion.Content>
-								</Accordion.Item>
-							{/each}
-						</Accordion.Root>
+														</Button>
+													</div>
+												</li>
+											{/each}
+										</ol>
+									</div>
+								</div>
+							</section>
+						{/each}
 
 						<div class="flex flex-row gap-3 text-sm">
 							<span>Asset Status:</span>
