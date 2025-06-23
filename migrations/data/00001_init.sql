@@ -63,8 +63,6 @@ CREATE TABLE assets (
 	file_size        INTEGER NOT NULL DEFAULT 0,
 	mod_time         TEST NOT NULL DEFAULT '',
 	hash	         TEXT NOT NULL,
-	description_path TEXT,
-	description_type TEXT,
 	created_at       TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	updated_at       TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	---

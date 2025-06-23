@@ -51,27 +51,29 @@ func (r *Router) initCourseRoutes() {
 	courseGroup.Post("", protectedRoute, coursesAPI.createCourse)
 	courseGroup.Delete("/:id", protectedRoute, coursesAPI.deleteCourse)
 
-	// Course progress
+	// Progress
 	courseGroup.Delete("/:id/progress", coursesAPI.deleteCourseProgress)
 
-	// Course card
+	// Card
 	courseGroup.Head("/:id/card", coursesAPI.getCard)
 	courseGroup.Get("/:id/card", coursesAPI.getCard)
 
-	// Course asset
-	courseGroup.Get("/:id/assets", coursesAPI.getAssets)
-	courseGroup.Get("/:id/assets/:asset", coursesAPI.getAsset)
-	courseGroup.Get("/:id/assets/:asset/serve", coursesAPI.serveAsset)
-	courseGroup.Get("/:id/assets/:asset/description", coursesAPI.serveAssetDescription)
-	courseGroup.Put("/:id/assets/:asset/progress", coursesAPI.updateAssetProgress)
-	courseGroup.Delete("/:id/assets/:asset/progress", coursesAPI.deleteAssetProgress)
+	// Asset groups
+	courseGroup.Get("/:id/groups", coursesAPI.getAssetGroups)
+	courseGroup.Get("/:id/groups/:group", coursesAPI.getAssetGroup)
+	courseGroup.Get("/:id/groups/:group/description", coursesAPI.serveAssetGroupDescription)
 
-	// Course asset attachments
-	courseGroup.Get("/:id/assets/:asset/attachments", coursesAPI.getAttachments)
-	courseGroup.Get("/:id/assets/:asset/attachments/:attachment", coursesAPI.getAttachment)
-	courseGroup.Get("/:id/assets/:asset/attachments/:attachment/serve", coursesAPI.serveAttachment)
+	// Asset group attachments
+	courseGroup.Get("/:id/groups/:group/attachments", coursesAPI.getAttachments)
+	courseGroup.Get("/:id/groups/:group/attachments/:attachment", coursesAPI.getAttachment)
+	courseGroup.Get("/:id/groups/:group/attachments/:attachment/serve", coursesAPI.serveAttachment)
 
-	// Course tags
+	// Asset
+	courseGroup.Get("/:id/groups/:group/assets/:asset/serve", coursesAPI.serveAsset)
+	courseGroup.Put("/:id/groups/:group/assets/:asset/progress", coursesAPI.updateAssetProgress)
+	courseGroup.Delete("/:id/groups/:group/assets/:asset/progress", coursesAPI.deleteAssetProgress)
+
+	// Tags
 	courseGroup.Get("/:id/tags", coursesAPI.getTags)
 	courseGroup.Post("/:id/tags", protectedRoute, coursesAPI.createTag)
 	courseGroup.Delete("/:id/tags/:tagId", protectedRoute, coursesAPI.deleteTag)
@@ -291,11 +293,11 @@ func (api coursesAPI) getCard(c *fiber.Ctx) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func (api coursesAPI) getAssets(c *fiber.Ctx) error {
+func (api coursesAPI) getAssetGroups(c *fiber.Ctx) error {
 	id := c.Params("id")
 
 	builderOptions := builderOptions{
-		DefaultOrderBy: defaultCourseAssetsOrderBy,
+		DefaultOrderBy: defaultCourseAssetGroupsOrderBy,
 		Paginate:       true,
 	}
 
@@ -309,14 +311,14 @@ func (api coursesAPI) getAssets(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
-	options.Where = squirrel.Eq{models.ASSET_TABLE_COURSE_ID: id}
+	options.Where = squirrel.Eq{models.ASSET_GROUP_TABLE_COURSE_ID: id}
 
-	assets := []*models.Asset{}
-	if err = api.dao.ListAssets(ctx, &assets, options); err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up assets", err)
+	assetGroups := []*models.AssetGroup{}
+	if err = api.dao.ListAssetGroups(ctx, &assetGroups, options); err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up asset groups", err)
 	}
 
-	pResult, err := options.Pagination.BuildResult(assetResponseHelper(assets))
+	pResult, err := options.Pagination.BuildResult(assetGroupResponseHelper(assetGroups))
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error building pagination result", err)
 	}
@@ -326,17 +328,17 @@ func (api coursesAPI) getAssets(c *fiber.Ctx) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func (api coursesAPI) getAsset(c *fiber.Ctx) error {
+func (api coursesAPI) getAssetGroup(c *fiber.Ctx) error {
 	id := c.Params("id")
-	assetId := c.Params("asset")
+	assetGroupId := c.Params("group")
 
 	options := &database.Options{}
 
 	// Join the course table
-	options.AddJoin(models.COURSE_TABLE, models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
+	options.AddJoin(models.COURSE_TABLE, models.ASSET_GROUP_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
 
 	options.Where = squirrel.And{
-		squirrel.Eq{models.ASSET_TABLE_ID: assetId},
+		squirrel.Eq{models.ASSET_GROUP_TABLE_ID: assetGroupId},
 		squirrel.Eq{models.COURSE_TABLE_ID: id},
 	}
 
@@ -345,32 +347,196 @@ func (api coursesAPI) getAsset(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	asset := &models.Asset{}
-	if err := api.dao.GetAsset(ctx, asset, options); err != nil {
+	assetGroup := &models.AssetGroup{}
+	if err := api.dao.GetAssetGroup(ctx, assetGroup, options); err != nil {
 		if err == sql.ErrNoRows {
-			return errorResponse(c, fiber.StatusNotFound, "Asset not found", nil)
+			return errorResponse(c, fiber.StatusNotFound, "Asset group not found", nil)
 		}
 
-		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up asset", err)
+		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up asset group", err)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(assetResponseHelper([]*models.Asset{asset})[0])
+	return c.Status(fiber.StatusOK).JSON(assetGroupResponseHelper([]*models.AssetGroup{assetGroup})[0])
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func (api coursesAPI) serveAssetGroupDescription(c *fiber.Ctx) error {
+	id := c.Params("id")
+	assetGroupId := c.Params("group")
+
+	options := &database.Options{}
+
+	// Join the course table
+	options.AddJoin(models.COURSE_TABLE, models.ASSET_GROUP_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
+
+	options.Where = squirrel.And{
+		squirrel.Eq{models.ASSET_GROUP_TABLE_ID: assetGroupId},
+		squirrel.Eq{models.COURSE_TABLE_ID: id},
+	}
+
+	_, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	assetGroup := &models.AssetGroup{}
+	if err := api.dao.GetAssetGroup(ctx, assetGroup, options); err != nil {
+		if err == sql.ErrNoRows {
+			return errorResponse(c, fiber.StatusNotFound, "Asset group not found", nil)
+		}
+
+		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up asset group", err)
+	}
+
+	if assetGroup.DescriptionPath == "" {
+		return errorResponse(c, fiber.StatusNotFound, "Asset group has no description", nil)
+	}
+
+	if exists, err := afero.Exists(api.appFs.Fs, assetGroup.DescriptionPath); err != nil || !exists {
+		return errorResponse(c, fiber.StatusBadRequest, "Asset group description does not exist", err)
+	}
+
+	return filesystem.SendFile(c, afero.NewHttpFs(api.appFs.Fs), assetGroup.DescriptionPath)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func (api coursesAPI) getAttachments(c *fiber.Ctx) error {
+	id := c.Params("id")
+	assetGroupId := c.Params("group")
+
+	builderOptions := builderOptions{
+		DefaultOrderBy: defaultCourseAssetGroupAttachmentsOrderBy,
+		Paginate:       true,
+	}
+
+	principal, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	options, err := optionsBuilder(c, builderOptions, principal.UserID)
+	if err != nil {
+		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
+	}
+
+	// Join the asset group and course tables
+	options.AddJoin(models.ASSET_GROUP_TABLE, models.ATTACHMENT_TABLE_ASSET_GROUP_ID+" = "+models.ASSET_GROUP_TABLE_ID)
+	options.AddJoin(models.COURSE_TABLE, models.ASSET_GROUP_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
+
+	options.Where = squirrel.And{
+		squirrel.Eq{models.ATTACHMENT_TABLE_ASSET_GROUP_ID: assetGroupId},
+		squirrel.Eq{models.COURSE_TABLE_ID: id},
+	}
+
+	attachments := []*models.Attachment{}
+	if err = api.dao.ListAttachments(ctx, &attachments, options); err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up attachments", err)
+	}
+
+	pResult, err := options.Pagination.BuildResult(attachmentResponseHelper(attachments))
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error building pagination result", err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(pResult)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func (api coursesAPI) getAttachment(c *fiber.Ctx) error {
+	id := c.Params("id")
+	assetGroupId := c.Params("group")
+	attachmentId := c.Params("attachment")
+
+	_, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	options := &database.Options{}
+
+	// Join the asset and course tables
+	options.AddJoin(models.ASSET_GROUP_TABLE, models.ATTACHMENT_TABLE_ASSET_GROUP_ID+" = "+models.ASSET_GROUP_TABLE_ID)
+	options.AddJoin(models.COURSE_TABLE, models.ASSET_GROUP_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
+
+	options.Where = squirrel.And{
+		squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachmentId},
+		squirrel.Eq{models.ASSET_GROUP_TABLE_ID: assetGroupId},
+		squirrel.Eq{models.COURSE_TABLE_ID: id},
+	}
+
+	attachment := &models.Attachment{}
+	if err := api.dao.GetAttachment(ctx, attachment, options); err != nil {
+		if err == sql.ErrNoRows {
+			return errorResponse(c, fiber.StatusNotFound, "Attachment not found", nil)
+		}
+
+		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up attachment", err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(attachmentResponseHelper([]*models.Attachment{attachment})[0])
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func (api coursesAPI) serveAttachment(c *fiber.Ctx) error {
+	id := c.Params("id")
+	assetGroupId := c.Params("group")
+	attachmentId := c.Params("attachment")
+
+	_, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	options := &database.Options{}
+
+	// Join the asset and course tables
+	options.AddJoin(models.ASSET_GROUP_TABLE, models.ATTACHMENT_TABLE_ASSET_GROUP_ID+" = "+models.ASSET_GROUP_TABLE_ID)
+	options.AddJoin(models.COURSE_TABLE, models.ASSET_GROUP_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
+
+	options.Where = squirrel.And{
+		squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachmentId},
+		squirrel.Eq{models.ASSET_GROUP_TABLE_ID: assetGroupId},
+		squirrel.Eq{models.COURSE_TABLE_ID: id},
+	}
+
+	attachment := &models.Attachment{}
+	if err := api.dao.GetAttachment(ctx, attachment, options); err != nil {
+		if err == sql.ErrNoRows {
+			return errorResponse(c, fiber.StatusNotFound, "Attachment not found", nil)
+		}
+
+		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up attachment", err)
+	}
+
+	if exists, err := afero.Exists(api.appFs.Fs, attachment.Path); err != nil || !exists {
+		return errorResponse(c, fiber.StatusBadRequest, "Attachment does not exist", err)
+	}
+
+	c.Set(fiber.HeaderContentDisposition, `attachment; filename="`+attachment.Title+`"`)
+	return filesystem.SendFile(c, afero.NewHttpFs(api.appFs.Fs), attachment.Path)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api coursesAPI) serveAsset(c *fiber.Ctx) error {
 	id := c.Params("id")
+	assetGroupId := c.Params("group")
 	assetId := c.Params("asset")
 
 	options := &database.Options{}
 
 	// Join the course table
-	options.AddJoin(models.COURSE_TABLE, models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
+	options.AddJoin(models.COURSE_TABLE, models.ASSET_GROUP_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
+	options.AddJoin(models.ASSET_GROUP_TABLE, models.ASSET_ASSET_GROUP_ID+" = "+models.ASSET_GROUP_TABLE_ID)
 
 	options.Where = squirrel.And{
-		squirrel.Eq{models.ASSET_TABLE_ID: assetId},
 		squirrel.Eq{models.COURSE_TABLE_ID: id},
+		squirrel.Eq{models.ASSET_GROUP_TABLE_ID: assetGroupId},
+		squirrel.Eq{models.ASSET_TABLE_ID: assetId},
 	}
 
 	_, ctx, err := principalCtx(c)
@@ -402,47 +568,6 @@ func (api coursesAPI) serveAsset(c *fiber.Ctx) error {
 
 	// TODO Handle PDF and HTML
 	return c.Status(fiber.StatusOK).SendString("done")
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-func (api coursesAPI) serveAssetDescription(c *fiber.Ctx) error {
-	id := c.Params("id")
-	assetId := c.Params("asset")
-
-	options := &database.Options{}
-
-	// Join the course table
-	options.AddJoin(models.COURSE_TABLE, models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
-
-	options.Where = squirrel.And{
-		squirrel.Eq{models.ASSET_TABLE_ID: assetId},
-		squirrel.Eq{models.COURSE_TABLE_ID: id},
-	}
-
-	_, ctx, err := principalCtx(c)
-	if err != nil {
-		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
-	}
-
-	asset := &models.Asset{}
-	if err := api.dao.GetAsset(ctx, asset, options); err != nil {
-		if err == sql.ErrNoRows {
-			return errorResponse(c, fiber.StatusNotFound, "Asset not found", nil)
-		}
-
-		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up asset", err)
-	}
-
-	if asset.DescriptionPath == "" {
-		return errorResponse(c, fiber.StatusNotFound, "Asset has no description", nil)
-	}
-
-	if exists, err := afero.Exists(api.appFs.Fs, asset.DescriptionPath); err != nil || !exists {
-		return errorResponse(c, fiber.StatusBadRequest, "Asset description does not exist", err)
-	}
-
-	return filesystem.SendFile(c, afero.NewHttpFs(api.appFs.Fs), asset.DescriptionPath)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -503,127 +628,6 @@ func (api coursesAPI) deleteAssetProgress(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusNoContent).Send(nil)
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-func (api coursesAPI) getAttachments(c *fiber.Ctx) error {
-	id := c.Params("id")
-	assetId := c.Params("asset")
-
-	builderOptions := builderOptions{
-		DefaultOrderBy: defaultCourseAssetAttachmentsOrderBy,
-		Paginate:       true,
-	}
-
-	principal, ctx, err := principalCtx(c)
-	if err != nil {
-		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
-	}
-
-	options, err := optionsBuilder(c, builderOptions, principal.UserID)
-	if err != nil {
-		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
-	}
-
-	// Join the asset and course tables to ensure the asset belongs to the course
-	// Join the asset and course tables
-	options.AddJoin(models.ASSET_TABLE, models.ATTACHMENT_TABLE_ASSET_ID+" = "+models.ASSET_TABLE_ID)
-	options.AddJoin(models.COURSE_TABLE, models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
-
-	options.Where = squirrel.And{
-		squirrel.Eq{models.ATTACHMENT_TABLE_ASSET_ID: assetId},
-		squirrel.Eq{models.COURSE_TABLE_ID: id},
-	}
-
-	attachments := []*models.Attachment{}
-	if err = api.dao.ListAttachments(ctx, &attachments, options); err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up attachments", err)
-	}
-
-	pResult, err := options.Pagination.BuildResult(attachmentResponseHelper(attachments))
-	if err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error building pagination result", err)
-	}
-
-	return c.Status(fiber.StatusOK).JSON(pResult)
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-func (api coursesAPI) getAttachment(c *fiber.Ctx) error {
-	id := c.Params("id")
-	assetId := c.Params("asset")
-	attachmentId := c.Params("attachment")
-
-	_, ctx, err := principalCtx(c)
-	if err != nil {
-		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
-	}
-
-	options := &database.Options{}
-
-	// Join the asset and course tables
-	options.AddJoin(models.ASSET_TABLE, models.ATTACHMENT_TABLE_ASSET_ID+" = "+models.ASSET_TABLE_ID)
-	options.AddJoin(models.COURSE_TABLE, models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
-
-	options.Where = squirrel.And{
-		squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachmentId},
-		squirrel.Eq{models.ASSET_TABLE_ID: assetId},
-		squirrel.Eq{models.COURSE_TABLE_ID: id},
-	}
-
-	attachment := &models.Attachment{}
-	if err := api.dao.GetAttachment(ctx, attachment, options); err != nil {
-		if err == sql.ErrNoRows {
-			return errorResponse(c, fiber.StatusNotFound, "Attachment not found", nil)
-		}
-
-		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up attachment", err)
-	}
-
-	return c.Status(fiber.StatusOK).JSON(attachmentResponseHelper([]*models.Attachment{attachment})[0])
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-func (api coursesAPI) serveAttachment(c *fiber.Ctx) error {
-	id := c.Params("id")
-	assetId := c.Params("asset")
-	attachmentId := c.Params("attachment")
-
-	_, ctx, err := principalCtx(c)
-	if err != nil {
-		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
-	}
-
-	options := &database.Options{}
-
-	// Join the asset and course tables
-	options.AddJoin(models.ASSET_TABLE, models.ATTACHMENT_TABLE_ASSET_ID+" = "+models.ASSET_TABLE_ID)
-	options.AddJoin(models.COURSE_TABLE, models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
-
-	options.Where = squirrel.And{
-		squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachmentId},
-		squirrel.Eq{models.ASSET_TABLE_ID: assetId},
-		squirrel.Eq{models.COURSE_TABLE_ID: id},
-	}
-
-	attachment := &models.Attachment{}
-	if err := api.dao.GetAttachment(ctx, attachment, options); err != nil {
-		if err == sql.ErrNoRows {
-			return errorResponse(c, fiber.StatusNotFound, "Attachment not found", nil)
-		}
-
-		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up attachment", err)
-	}
-
-	if exists, err := afero.Exists(api.appFs.Fs, attachment.Path); err != nil || !exists {
-		return errorResponse(c, fiber.StatusBadRequest, "Attachment does not exist", err)
-	}
-
-	c.Set(fiber.HeaderContentDisposition, `attachment; filename="`+attachment.Title+`"`)
-	return filesystem.SendFile(c, afero.NewHttpFs(api.appFs.Fs), attachment.Path)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

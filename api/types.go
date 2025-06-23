@@ -124,6 +124,60 @@ func courseTagResponseHelper(courseTags []*models.CourseTag) []*courseTagRespons
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Asset Group
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+type assetGroupResponse struct {
+	ID              string             `json:"id"`
+	CourseID        string             `json:"courseId"`
+	Title           string             `json:"title"`
+	Prefix          int                `json:"prefix"`
+	Module          string             `json:"module"`
+	HasDescription  bool               `json:"hasDescription"`
+	DescriptionType *types.Description `json:"descriptionType,omitempty"`
+	CreatedAt       types.DateTime     `json:"createdAt"`
+	UpdatedAt       types.DateTime     `json:"updatedAt"`
+
+	// Relations
+	Assets      []*assetResponse      `json:"assets"`
+	Attachments []*attachmentResponse `json:"attachments"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func assetGroupResponseHelper(assetGroups []*models.AssetGroup) []*assetGroupResponse {
+	responses := []*assetGroupResponse{}
+	for _, assetGroup := range assetGroups {
+		response := &assetGroupResponse{
+			ID:             assetGroup.ID,
+			CourseID:       assetGroup.CourseID,
+			Title:          assetGroup.Title,
+			Prefix:         int(assetGroup.Prefix.Int16),
+			Module:         assetGroup.Module,
+			HasDescription: assetGroup.DescriptionPath != "",
+			CreatedAt:      assetGroup.CreatedAt,
+			UpdatedAt:      assetGroup.UpdatedAt,
+
+			Assets:      assetResponseHelper(assetGroup.Assets),
+			Attachments: attachmentResponseHelper(assetGroup.Attachments),
+		}
+
+		// Set the description type if supported
+		var descriptionType *types.Description
+		if assetGroup.DescriptionType.IsSupported() {
+			descriptionType = &assetGroup.DescriptionType
+		}
+		response.DescriptionType = descriptionType
+
+		responses = append(responses, response)
+	}
+
+	return responses
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Asset
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type assetProgressRequest struct {
 	VideoPos  int  `json:"videoPos"`
@@ -151,24 +205,21 @@ type assetVideoMetadataResponse struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type assetResponse struct {
-	ID              string             `json:"id"`
-	CourseID        string             `json:"courseId"`
-	Title           string             `json:"title"`
-	Prefix          int                `json:"prefix"`
-	SubPrefix       int                `json:"subPrefix,omitempty"`
-	SubTitle        string             `json:"subTitle,omitempty"`
-	Chapter         string             `json:"chapter"`
-	Path            string             `json:"path"`
-	Type            types.Asset        `json:"assetType"`
-	HasDescription  bool               `json:"hasDescription"`
-	DescriptionType *types.Description `json:"descriptionType,omitempty"`
-	CreatedAt       types.DateTime     `json:"createdAt"`
-	UpdatedAt       types.DateTime     `json:"updatedAt"`
+	ID        string         `json:"id"`
+	CourseID  string         `json:"courseId"`
+	Title     string         `json:"title"`
+	Prefix    int            `json:"prefix"`
+	SubPrefix int            `json:"subPrefix,omitempty"`
+	SubTitle  string         `json:"subTitle,omitempty"`
+	Module    string         `json:"module"`
+	Path      string         `json:"path"`
+	Type      types.Asset    `json:"assetType"`
+	CreatedAt types.DateTime `json:"createdAt"`
+	UpdatedAt types.DateTime `json:"updatedAt"`
 
 	// Relations
 	VideoMetadata *assetVideoMetadataResponse `json:"videoMetadata,omitempty"`
 	Progress      *assetProgressResponse      `json:"progress,omitempty"`
-	Attachments   []*attachmentResponse       `json:"attachments"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -197,28 +248,19 @@ func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 		}
 
 		response := &assetResponse{
-			ID:             asset.ID,
-			CourseID:       asset.CourseID,
-			Title:          asset.Title,
-			Prefix:         int(asset.Prefix.Int16),
-			Chapter:        asset.Chapter,
-			Path:           asset.Path,
-			Type:           asset.Type,
-			HasDescription: asset.DescriptionPath != "",
-			CreatedAt:      asset.CreatedAt,
-			UpdatedAt:      asset.UpdatedAt,
+			ID:        asset.ID,
+			CourseID:  asset.CourseID,
+			Title:     asset.Title,
+			Prefix:    int(asset.Prefix.Int16),
+			Module:    asset.Module,
+			Path:      asset.Path,
+			Type:      asset.Type,
+			CreatedAt: asset.CreatedAt,
+			UpdatedAt: asset.UpdatedAt,
 
 			VideoMetadata: videoMetadata,
 			Progress:      progress,
-			Attachments:   attachmentResponseHelper(asset.Attachments),
 		}
-
-		// Set the description type if supported
-		var descriptionType *types.Description
-		if asset.DescriptionType.IsSupported() {
-			descriptionType = &asset.DescriptionType
-		}
-		response.DescriptionType = descriptionType
 
 		// Set sub-prefix and sub-title if available
 		if asset.SubPrefix.Valid {
@@ -233,32 +275,34 @@ func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Attachment
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type attachmentResponse struct {
-	ID        string         `json:"id"`
-	AssetId   string         `json:"assetId"`
-	Title     string         `json:"title"`
-	Path      string         `json:"path"`
-	CreatedAt types.DateTime `json:"createdAt"`
-	UpdatedAt types.DateTime `json:"updatedAt"`
+	ID           string         `json:"id"`
+	AssetGroupID string         `json:"assetGroupId"`
+	Title        string         `json:"title"`
+	Path         string         `json:"path"`
+	CreatedAt    types.DateTime `json:"createdAt"`
+	UpdatedAt    types.DateTime `json:"updatedAt"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func attachmentResponseHelper(attachments []*models.Attachment) []*attachmentResponse {
 	if len(attachments) == 0 {
-		return []*attachmentResponse{} // ← empty slice, not nil
+		return []*attachmentResponse{}
 	}
 
 	responses := []*attachmentResponse{}
 	for _, attachment := range attachments {
 		responses = append(responses, &attachmentResponse{
-			ID:        attachment.ID,
-			AssetId:   attachment.AssetID,
-			Title:     attachment.Title,
-			Path:      attachment.Path,
-			CreatedAt: attachment.CreatedAt,
-			UpdatedAt: attachment.UpdatedAt,
+			ID:           attachment.ID,
+			AssetGroupID: attachment.AssetGroupID,
+			Title:        attachment.Title,
+			Path:         attachment.Path,
+			CreatedAt:    attachment.CreatedAt,
+			UpdatedAt:    attachment.UpdatedAt,
 		})
 	}
 
