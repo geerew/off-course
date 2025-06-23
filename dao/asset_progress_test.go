@@ -25,16 +25,25 @@ func Test_CreateOrUpdateAssetProgress(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		asset := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID: course.ID,
-			Title:    "Asset 1",
+			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     "/course-1/01 asset.mp4",
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     "1234",
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+
+		asset := &models.Asset{
+			CourseID:     course.ID,
+			AssetGroupID: assetGroup.ID,
+			Title:        "Asset 1",
+			Prefix:       sql.NullInt16{Int16: 1, Valid: true},
+			Module:       "Module 1",
+			Type:         *types.NewAsset("mp4"),
+			Path:         "/course-1/01 asset.mp4",
+			FileSize:     1024,
+			ModTime:      time.Now().Format(time.RFC3339Nano),
+			Hash:         "1234",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
 
@@ -61,16 +70,25 @@ func Test_CreateOrUpdateAssetProgress(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		asset := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID: course.ID,
-			Title:    "Asset 1",
+			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     "/course-1/01 asset.mp4",
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     "1234",
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+
+		asset := &models.Asset{
+			CourseID:     course.ID,
+			AssetGroupID: assetGroup.ID,
+			Title:        "Asset 1",
+			Prefix:       sql.NullInt16{Int16: 1, Valid: true},
+			Module:       "Module 1",
+			Type:         *types.NewAsset("mp4"),
+			Path:         "/course-1/01 asset.mp4",
+			FileSize:     1024,
+			ModTime:      time.Now().Format(time.RFC3339Nano),
+			Hash:         "1234",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
 
@@ -146,16 +164,25 @@ func Test_AssetProgressDeleteCascade(t *testing.T) {
 	course := &models.Course{Title: "Course", Path: "/course"}
 	require.NoError(t, dao.CreateCourse(ctx, course))
 
-	asset := &models.Asset{
+	assetGroup := &models.AssetGroup{
 		CourseID: course.ID,
-		Title:    "Asset 1",
+		Title:    "Asset Group 1",
 		Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-		Chapter:  "Chapter 1",
-		Type:     *types.NewAsset("mp4"),
-		Path:     "/course-1/01 asset.mp4",
-		FileSize: 1024,
-		ModTime:  time.Now().Format(time.RFC3339Nano),
-		Hash:     "1234",
+		Module:   "Module 1",
+	}
+	require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+
+	asset := &models.Asset{
+		CourseID:     course.ID,
+		AssetGroupID: assetGroup.ID,
+		Title:        "Asset 1",
+		Prefix:       sql.NullInt16{Int16: 1, Valid: true},
+		Module:       "Module 1",
+		Type:         *types.NewAsset("mp4"),
+		Path:         "/course-1/01 asset.mp4",
+		FileSize:     1024,
+		ModTime:      time.Now().Format(time.RFC3339Nano),
+		Hash:         "1234",
 	}
 	require.NoError(t, dao.CreateAsset(ctx, asset))
 

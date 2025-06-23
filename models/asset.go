@@ -14,24 +14,22 @@ import (
 // Asset defines the model for an asset
 type Asset struct {
 	Base
-	CourseID        string
-	Title           string
-	Prefix          sql.NullInt16
-	SubPrefix       sql.NullInt16
-	SubTitle        string
-	Chapter         string
-	Type            types.Asset
-	Path            string
-	FileSize        int64
-	ModTime         string
-	Hash            string
-	DescriptionPath string
-	DescriptionType types.Description
+	CourseID     string
+	AssetGroupID string
+	Title        string
+	Prefix       sql.NullInt16
+	SubPrefix    sql.NullInt16
+	SubTitle     string
+	Module       string
+	Type         types.Asset
+	Path         string
+	FileSize     int64
+	ModTime      string
+	Hash         string
 
 	// Relations
 	VideoMetadata *VideoMetadata
 	Progress      *AssetProgress
-	Attachments   []*Attachment
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -39,11 +37,12 @@ type Asset struct {
 const (
 	ASSET_TABLE            = "assets"
 	ASSET_COURSE_ID        = "course_id"
+	ASSET_ASSET_GROUP_ID   = "asset_group_id"
 	ASSET_TITLE            = "title"
 	ASSET_PREFIX           = "prefix"
 	ASSET_SUB_PREFIX       = "sub_prefix"
 	ASSET_SUB_TITLE        = "sub_title"
-	ASSET_CHAPTER          = "chapter"
+	ASSET_MODULE           = "module"
 	ASSET_TYPE             = "type"
 	ASSET_PATH             = "path"
 	ASSET_FILE_SIZE        = "file_size"
@@ -59,10 +58,11 @@ const (
 	ASSET_TABLE_CREATED_AT       = ASSET_TABLE + "." + BASE_CREATED_AT
 	ASSET_TABLE_UPDATED_AT       = ASSET_TABLE + "." + BASE_UPDATED_AT
 	ASSET_TABLE_COURSE_ID        = ASSET_TABLE + "." + ASSET_COURSE_ID
+	ASSET_TABLE_ASSET_GROUP_ID   = ASSET_TABLE + "." + ASSET_ASSET_GROUP_ID
 	ASSET_TABLE_TITLE            = ASSET_TABLE + "." + ASSET_TITLE
 	ASSET_TABLE_PREFIX           = ASSET_TABLE + "." + ASSET_PREFIX
 	ASSET_TABLE_SUB_PREFIX       = ASSET_TABLE + "." + ASSET_SUB_PREFIX
-	ASSET_TABLE_CHAPTER          = ASSET_TABLE + "." + ASSET_CHAPTER
+	ASSET_TABLE_MODULE           = ASSET_TABLE + "." + ASSET_MODULE
 	ASSET_TABLE_TYPE             = ASSET_TABLE + "." + ASSET_TYPE
 	ASSET_TABLE_PATH             = ASSET_TABLE + "." + ASSET_PATH
 	ASSET_TABLE_HASH             = ASSET_TABLE + "." + ASSET_HASH
@@ -90,11 +90,12 @@ func (a *Asset) Define(s *schema.ModelConfig) {
 
 	// Common fields
 	s.Field("CourseID").Column(ASSET_COURSE_ID).NotNull()
+	s.Field("AssetGroupID").Column(ASSET_ASSET_GROUP_ID).NotNull()
 	s.Field("Title").Column(ASSET_TITLE).NotNull().Mutable()
 	s.Field("Prefix").Column(ASSET_PREFIX).Mutable()
 	s.Field("SubPrefix").Column(ASSET_SUB_PREFIX).Mutable()
 	s.Field("SubTitle").Column(ASSET_SUB_TITLE).Mutable()
-	s.Field("Chapter").Column(ASSET_CHAPTER).Mutable()
+	s.Field("Module").Column(ASSET_MODULE).Mutable()
 	s.Field("Type").Column(ASSET_TYPE).NotNull().Mutable()
 	s.Field("Path").Column(ASSET_PATH).NotNull().Mutable()
 	s.Field("FileSize").Column(ASSET_FILE_SIZE).NotNull().Mutable()
@@ -106,5 +107,4 @@ func (a *Asset) Define(s *schema.ModelConfig) {
 	// Relation fields
 	s.Relation("VideoMetadata").MatchOn(VIDEO_METADATA_ASSET_ID)
 	s.Relation("Progress").MatchOn(ASSET_PROGRESS_ASSET_ID)
-	s.Relation("Attachments").MatchOn(ATTACHMENT_ASSET_ID)
 }

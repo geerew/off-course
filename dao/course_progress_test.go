@@ -51,17 +51,26 @@ func Test_RefreshCourseProgress(t *testing.T) {
 		require.NoError(t, dao.CreateCourse(ctx, course))
 		require.Nil(t, course.Progress)
 
+		assetGroup := &models.AssetGroup{
+			CourseID: course.ID,
+			Title:    "Asset Group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+
 		// Create asset
 		asset1 := &models.Asset{
-			CourseID: course.ID,
-			Title:    "Asset 1",
-			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     "/course-1/01 asset.mp4",
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     "1234",
+			CourseID:     course.ID,
+			AssetGroupID: assetGroup.ID,
+			Title:        "Asset 1",
+			Prefix:       sql.NullInt16{Int16: 1, Valid: true},
+			Module:       "Module 1",
+			Type:         *types.NewAsset("mp4"),
+			Path:         "/course-1/01 asset.mp4",
+			FileSize:     1024,
+			ModTime:      time.Now().Format(time.RFC3339Nano),
+			Hash:         "1234",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset1))
 
@@ -119,15 +128,16 @@ func Test_RefreshCourseProgress(t *testing.T) {
 
 		// Add another asset
 		asset2 := &models.Asset{
-			CourseID: course.ID,
-			Title:    "Asset 2",
-			Prefix:   sql.NullInt16{Int16: 2, Valid: true},
-			Chapter:  "Chapter 2",
-			Type:     *types.NewAsset("mp4"),
-			Path:     "/course-1/02 asset.mp4",
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     "5678",
+			CourseID:     course.ID,
+			AssetGroupID: assetGroup.ID,
+			Title:        "Asset 2",
+			Prefix:       sql.NullInt16{Int16: 2, Valid: true},
+			Module:       "Module 2",
+			Type:         *types.NewAsset("mp4"),
+			Path:         "/course-1/02 asset.mp4",
+			FileSize:     1024,
+			ModTime:      time.Now().Format(time.RFC3339Nano),
+			Hash:         "5678",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset2))
 

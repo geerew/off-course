@@ -32,15 +32,32 @@ CREATE TABLE courses_progress (
 	UNIQUE(course_id, user_id)
 );
 
+--- Asset groups
+CREATE TABLE asset_groups (
+	id          TEXT PRIMARY KEY NOT NULL,
+	course_id   TEXT NOT NULL,
+	title       TEXT NOT NULL,
+	prefix      INTEGER NOT NULL,
+	module      TEXT,
+	description_path TEXT,
+	description_type TEXT,
+	created_at  TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+	updated_at  TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+	---
+	FOREIGN KEY (course_id) REFERENCES courses (id) ON DELETE CASCADE,
+	UNIQUE(course_id, prefix, module)
+);
+
 --- Assets
 CREATE TABLE assets (
 	id               TEXT PRIMARY KEY NOT NULL,
 	course_id        TEXT NOT NULL,
+	asset_group_id   TEXT NOT NULL,
 	title            TEXT NOT NULL,
 	prefix           INTEGER NOT NULL,
 	sub_prefix       INTEGER,
 	sub_title	     TEXT,
-	chapter          TEXT,
+	module          TEXT,
 	type             TEXT NOT NULL,
 	path             TEXT UNIQUE NOT NULL,
 	file_size        INTEGER NOT NULL DEFAULT 0,
@@ -51,7 +68,8 @@ CREATE TABLE assets (
 	created_at       TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	updated_at       TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	---
-	FOREIGN KEY (course_id) REFERENCES courses (id) ON DELETE CASCADE
+	FOREIGN KEY (course_id) REFERENCES courses (id) ON DELETE CASCADE,
+	FOREIGN KEY (asset_group_id) REFERENCES asset_groups (id) ON DELETE CASCADE
 );
 
 --- Asset metadata
@@ -86,16 +104,16 @@ CREATE TABLE assets_progress (
 	UNIQUE(asset_id, user_id)
 );
 
---- Attachments
+--- Attachments (related to asset groups)
 CREATE TABLE attachments (
 	id          TEXT PRIMARY KEY NOT NULL,
-	asset_id    TEXT NOT NULL,
+	asset_group_id    TEXT NOT NULL,
 	title       TEXT NOT NULL,
 	path        TEXT UNIQUE NOT NULL,
 	created_at  TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	updated_at  TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	---
-	FOREIGN KEY (asset_id) REFERENCES assets (id) ON DELETE CASCADE
+	FOREIGN KEY (asset_group_id) REFERENCES asset_groups (id) ON DELETE CASCADE
 );
 
 --- Scan jobs

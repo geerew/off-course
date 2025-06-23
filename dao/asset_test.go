@@ -23,16 +23,25 @@ func Test_CreateAsset(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		asset := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID: course.ID,
-			Title:    "Asset 1",
+			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     "/course-1/01 asset.mp4",
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     "1234",
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+
+		asset := &models.Asset{
+			CourseID:     course.ID,
+			AssetGroupID: assetGroup.ID,
+			Title:        "Asset 1",
+			Prefix:       sql.NullInt16{Int16: 1, Valid: true},
+			Module:       "Module 1",
+			Type:         *types.NewAsset("mp4"),
+			Path:         "/course-1/01 asset.mp4",
+			FileSize:     1024,
+			ModTime:      time.Now().Format(time.RFC3339Nano),
+			Hash:         "1234",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
 
@@ -60,16 +69,25 @@ func Test_GetAsset(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		asset := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID: course.ID,
-			Title:    "Asset 1",
+			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     "/course-1/01 asset.mp4",
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     "1234",
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+
+		asset := &models.Asset{
+			CourseID:     course.ID,
+			AssetGroupID: assetGroup.ID,
+			Title:        "Asset 1",
+			Prefix:       sql.NullInt16{Int16: 1, Valid: true},
+			Module:       "Module 1",
+			Type:         *types.NewAsset("mp4"),
+			Path:         "/course-1/01 asset.mp4",
+			FileSize:     1024,
+			ModTime:      time.Now().Format(time.RFC3339Nano),
+			Hash:         "1234",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
 
@@ -79,7 +97,6 @@ func Test_GetAsset(t *testing.T) {
 
 		require.Nil(t, assetResult.VideoMetadata)
 		require.Nil(t, assetResult.Progress)
-		require.Empty(t, assetResult.Attachments)
 
 		// Create Asset Progress
 		assetProgress := &models.AssetProgress{AssetID: asset.ID}
@@ -113,29 +130,39 @@ func Test_ListAssets(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		asset1 := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID: course.ID,
-			Title:    "Asset 1",
+			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     "/course-1/01 asset.mp4",
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     "1234",
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+
+		asset1 := &models.Asset{
+			CourseID:     course.ID,
+			AssetGroupID: assetGroup.ID,
+			Title:        "Asset 1",
+			Prefix:       sql.NullInt16{Int16: 1, Valid: true},
+			Module:       "Module 1",
+			Type:         *types.NewAsset("mp4"),
+			Path:         "/course-1/01 asset.mp4",
+			FileSize:     1024,
+			ModTime:      time.Now().Format(time.RFC3339Nano),
+			Hash:         "1234",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset1))
 
 		asset2 := &models.Asset{
-			CourseID: course.ID,
-			Title:    "Asset 2",
-			Prefix:   sql.NullInt16{Int16: 2, Valid: true},
-			Chapter:  "Chapter 2",
-			Type:     *types.NewAsset("mp4"),
-			Path:     "/course-1/02 asset.mp4",
-			FileSize: 2048,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     "5678",
+			CourseID:     course.ID,
+			AssetGroupID: assetGroup.ID,
+			Title:        "Asset 2",
+			Prefix:       sql.NullInt16{Int16: 2, Valid: true},
+			Module:       "Module 2",
+			Type:         *types.NewAsset("mp4"),
+			Path:         "/course-1/02 asset.mp4",
+			FileSize:     2048,
+			ModTime:      time.Now().Format(time.RFC3339Nano),
+			Hash:         "5678",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset2))
 
@@ -166,16 +193,25 @@ func Test_UpdateAsset(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		originalAsset := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID: course.ID,
-			Title:    "Asset 1",
+			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     "/course-1/01 asset.mp4",
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     "1234",
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+
+		originalAsset := &models.Asset{
+			CourseID:     course.ID,
+			AssetGroupID: assetGroup.ID,
+			Title:        "Asset 1",
+			Prefix:       sql.NullInt16{Int16: 1, Valid: true},
+			Module:       "Module 1",
+			Type:         *types.NewAsset("mp4"),
+			Path:         "/course-1/01 asset.mp4",
+			FileSize:     1024,
+			ModTime:      time.Now().Format(time.RFC3339Nano),
+			Hash:         "1234",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, originalAsset))
 
@@ -185,7 +221,7 @@ func Test_UpdateAsset(t *testing.T) {
 			Base:     originalAsset.Base,
 			Title:    "Asset 2",                            // Mutable
 			Prefix:   sql.NullInt16{Int16: 2, Valid: true}, // Mutable
-			Chapter:  "Chapter 2",                          // Mutable
+			Module:   "Module 2",                           // Mutable
 			Type:     *types.NewAsset("html"),              // Mutable
 			Path:     "/course-1/02 asset.html",            // Mutable
 			FileSize: 2048,                                 // Mutable
@@ -200,7 +236,7 @@ func Test_UpdateAsset(t *testing.T) {
 		require.True(t, newAsset.CreatedAt.Equal(originalAsset.CreatedAt))      // No change
 		require.Equal(t, newAsset.Title, assertResult.Title)                    // Changed
 		require.Equal(t, newAsset.Prefix, assertResult.Prefix)                  // Changed
-		require.Equal(t, newAsset.Chapter, assertResult.Chapter)                // Changed
+		require.Equal(t, newAsset.Module, assertResult.Module)                  // Changed
 		require.Equal(t, newAsset.Type, assertResult.Type)                      // Changed
 		require.Equal(t, newAsset.Path, assertResult.Path)                      // Changed
 		require.Equal(t, newAsset.FileSize, assertResult.FileSize)              // Changed
@@ -223,16 +259,25 @@ func Test_UpdateAsset(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		asset := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID: course.ID,
-			Title:    "Asset 1",
+			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     "/course-1/01 asset.mp4",
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     "1234",
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+
+		asset := &models.Asset{
+			CourseID:     course.ID,
+			AssetGroupID: assetGroup.ID,
+			Title:        "Asset 1",
+			Prefix:       sql.NullInt16{Int16: 1, Valid: true},
+			Module:       "Module 1",
+			Type:         *types.NewAsset("mp4"),
+			Path:         "/course-1/01 asset.mp4",
+			FileSize:     1024,
+			ModTime:      time.Now().Format(time.RFC3339Nano),
+			Hash:         "1234",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
 
@@ -250,25 +295,71 @@ func Test_UpdateAsset(t *testing.T) {
 func Test_AssetDeleteCascade(t *testing.T) {
 	dao, ctx := setup(t)
 
-	course := &models.Course{Title: "Course", Path: "/course"}
-	require.NoError(t, dao.CreateCourse(ctx, course))
+	t.Run("course", func(t *testing.T) {
 
-	asset := &models.Asset{
-		CourseID: course.ID,
-		Title:    "Asset 1",
-		Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-		Chapter:  "Chapter 1",
-		Type:     *types.NewAsset("mp4"),
-		Path:     "/course-1/01 asset.mp4",
-		FileSize: 1024,
-		ModTime:  time.Now().Format(time.RFC3339Nano),
-		Hash:     "1234",
-	}
-	require.NoError(t, dao.CreateAsset(ctx, asset))
+		course := &models.Course{Title: "Course", Path: "/course"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
 
-	require.Nil(t, Delete(ctx, dao, course, nil))
+		assetGroup := &models.AssetGroup{
+			CourseID: course.ID,
+			Title:    "Asset Group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
 
-	count, err := Count(ctx, dao, &models.Asset{}, nil)
-	require.NoError(t, err)
-	require.Zero(t, count)
+		asset := &models.Asset{
+			CourseID:     course.ID,
+			AssetGroupID: assetGroup.ID,
+			Title:        "Asset 1",
+			Prefix:       sql.NullInt16{Int16: 1, Valid: true},
+			Module:       "Module 1",
+			Type:         *types.NewAsset("mp4"),
+			Path:         "/course-1/01 asset.mp4",
+			FileSize:     1024,
+			ModTime:      time.Now().Format(time.RFC3339Nano),
+			Hash:         "1234",
+		}
+		require.NoError(t, dao.CreateAsset(ctx, asset))
+
+		require.Nil(t, Delete(ctx, dao, course, nil))
+
+		count, err := Count(ctx, dao, &models.Asset{}, nil)
+		require.NoError(t, err)
+		require.Zero(t, count)
+	})
+
+	t.Run("asset group", func(t *testing.T) {
+		course := &models.Course{Title: "Course", Path: "/course"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		assetGroup := &models.AssetGroup{
+			CourseID: course.ID,
+			Title:    "Asset Group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+
+		asset := &models.Asset{
+			CourseID:     course.ID,
+			AssetGroupID: assetGroup.ID,
+
+			Title:    "Asset 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+			Type:     *types.NewAsset("mp4"),
+			Path:     "/course-1/01 asset.mp4",
+			FileSize: 1024,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
+			Hash:     "1234",
+		}
+		require.NoError(t, dao.CreateAsset(ctx, asset))
+
+		require.Nil(t, Delete(ctx, dao, assetGroup, nil))
+
+		count, err := Count(ctx, dao, &models.Asset{}, nil)
+		require.NoError(t, err)
+		require.Zero(t, count)
+	})
 }

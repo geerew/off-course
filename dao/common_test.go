@@ -159,6 +159,7 @@ func Test_Get(t *testing.T) {
 
 		course := &models.Course{}
 		scan := &models.Scan{}
+		assetGroup := &models.AssetGroup{}
 		videoAsset := &models.Asset{}
 		videoAssetProgress := &models.AssetProgress{}
 		videoMetadata := &models.VideoMetadata{}
@@ -216,18 +217,42 @@ func Test_Get(t *testing.T) {
 			require.Equal(t, course.Path, scanResult.CoursePath)
 		}
 
+		// Create asset group
+		{
+			assetGroup = &models.AssetGroup{
+				CourseID: course.ID,
+				Title:    "Asset Group 1",
+				Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+				Module:   "Module 1",
+			}
+			require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+
+			assetGroupResult := &models.AssetGroup{}
+			require.NoError(t, Get(ctx, dao, assetGroupResult, &database.Options{Where: squirrel.Eq{models.ASSET_GROUP_TABLE_ID: assetGroup.ID}}))
+			require.Equal(t, assetGroup.ID, assetGroupResult.ID)
+			require.True(t, assetGroupResult.CreatedAt.Equal(assetGroup.CreatedAt))
+			require.True(t, assetGroupResult.UpdatedAt.Equal(assetGroup.UpdatedAt))
+			require.Equal(t, assetGroup.CourseID, assetGroupResult.CourseID)
+			require.Equal(t, assetGroup.Title, assetGroupResult.Title)
+			require.Equal(t, assetGroup.Prefix, assetGroupResult.Prefix)
+			require.Equal(t, assetGroup.Module, assetGroupResult.Module)
+			require.Empty(t, assetGroupResult.Assets)
+			require.Empty(t, assetGroupResult.Attachments)
+		}
+
 		// Create video asset
 		{
 			videoAsset = &models.Asset{
-				CourseID: course.ID,
-				Title:    "Asset 1",
-				Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-				Chapter:  "Chapter 1",
-				Type:     *types.NewAsset("mp4"),
-				Path:     "/course 1/Chapter 1/01 videoAsset.mp4",
-				FileSize: 1024,
-				ModTime:  time.Now().Format(time.RFC3339Nano),
-				Hash:     "1234",
+				CourseID:     course.ID,
+				AssetGroupID: assetGroup.ID,
+				Title:        "Asset 1",
+				Prefix:       sql.NullInt16{Int16: 1, Valid: true},
+				Module:       "Module 1",
+				Type:         *types.NewAsset("mp4"),
+				Path:         "/course 1/Module 1/01 videoAsset.mp4",
+				FileSize:     1024,
+				ModTime:      time.Now().Format(time.RFC3339Nano),
+				Hash:         "1234",
 			}
 			require.NoError(t, dao.CreateAsset(ctx, videoAsset))
 
@@ -237,15 +262,15 @@ func Test_Get(t *testing.T) {
 			require.True(t, videoAssetResult.CreatedAt.Equal(videoAsset.CreatedAt))
 			require.True(t, videoAssetResult.UpdatedAt.Equal(videoAsset.UpdatedAt))
 			require.Equal(t, videoAsset.CourseID, videoAssetResult.CourseID)
+			require.Equal(t, videoAsset.AssetGroupID, videoAssetResult.AssetGroupID)
 			require.Equal(t, videoAsset.Title, videoAssetResult.Title)
 			require.Equal(t, videoAsset.Prefix, videoAssetResult.Prefix)
-			require.Equal(t, videoAsset.Chapter, videoAssetResult.Chapter)
+			require.Equal(t, videoAsset.Module, videoAssetResult.Module)
 			require.Equal(t, videoAsset.Type, videoAssetResult.Type)
 			require.Equal(t, videoAsset.Path, videoAssetResult.Path)
 			require.Equal(t, videoAsset.FileSize, videoAssetResult.FileSize)
 			require.Equal(t, videoAsset.ModTime, videoAssetResult.ModTime)
 			require.Equal(t, videoAsset.Hash, videoAssetResult.Hash)
-			require.Len(t, videoAssetResult.Attachments, 0)
 			require.Nil(t, videoAssetResult.VideoMetadata)
 			require.Nil(t, videoAssetResult.Progress)
 		}
@@ -253,9 +278,9 @@ func Test_Get(t *testing.T) {
 		// Create attachment
 		{
 			attachment = &models.Attachment{
-				AssetID: videoAsset.ID,
-				Title:   "Attachment 1",
-				Path:    "/course 1/01 Attachment 1.txt",
+				AssetGroupID: assetGroup.ID,
+				Title:        "Attachment 1",
+				Path:         "/course 1/01 Attachment 1.txt",
 			}
 			require.NoError(t, dao.CreateAttachment(ctx, attachment))
 
@@ -265,18 +290,18 @@ func Test_Get(t *testing.T) {
 			require.Equal(t, attachment.ID, attachmentResult.ID)
 			require.True(t, attachmentResult.CreatedAt.Equal(attachment.CreatedAt))
 			require.True(t, attachmentResult.UpdatedAt.Equal(attachment.UpdatedAt))
-			require.Equal(t, attachment.AssetID, attachmentResult.AssetID)
+			require.Equal(t, attachment.AssetGroupID, attachmentResult.AssetGroupID)
 			require.Equal(t, attachment.Title, attachmentResult.Title)
 			require.Equal(t, attachment.Path, attachmentResult.Path)
 		}
 
-		// Get video asset and check attachments
+		// Get asset group and check attachments
 		{
-			videoAssetResult := &models.Asset{}
-			require.NoError(t, Get(ctx, dao, videoAssetResult, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_ID: videoAsset.ID}}))
-			require.Equal(t, videoAsset.ID, videoAssetResult.ID)
-			require.Len(t, videoAssetResult.Attachments, 1)
-			require.Equal(t, attachment.Title, videoAssetResult.Attachments[0].Title)
+			assetGroupResult := &models.AssetGroup{}
+			require.NoError(t, Get(ctx, dao, assetGroupResult, &database.Options{Where: squirrel.Eq{models.ASSET_GROUP_TABLE_ID: assetGroup.ID}}))
+			require.Equal(t, assetGroup.ID, assetGroupResult.ID)
+			require.Len(t, assetGroupResult.Attachments, 1)
+			require.Equal(t, attachment.Title, assetGroupResult.Attachments[0].Title)
 		}
 
 		// Create video metadata
@@ -347,15 +372,16 @@ func Test_Get(t *testing.T) {
 		// Create pdf asset
 		{
 			pdfAsset := &models.Asset{
-				CourseID: course.ID,
-				Title:    "Asset 2",
-				Prefix:   sql.NullInt16{Int16: 2, Valid: true},
-				Chapter:  "Chapter 1",
-				Type:     *types.NewAsset("pdf"),
-				Path:     "/course 1/Chapter 1/02 pdfAsset.pdf",
-				FileSize: 1024,
-				ModTime:  time.Now().Format(time.RFC3339Nano),
-				Hash:     "4321",
+				CourseID:     course.ID,
+				AssetGroupID: assetGroup.ID,
+				Title:        "Asset 2",
+				Prefix:       sql.NullInt16{Int16: 2, Valid: true},
+				Module:       "Module 1",
+				Type:         *types.NewAsset("pdf"),
+				Path:         "/course 1/Module 1/02 pdfAsset.pdf",
+				FileSize:     1024,
+				ModTime:      time.Now().Format(time.RFC3339Nano),
+				Hash:         "4321",
 			}
 			require.NoError(t, dao.CreateAsset(ctx, pdfAsset))
 
@@ -366,15 +392,15 @@ func Test_Get(t *testing.T) {
 			require.True(t, pdfAssetResult.CreatedAt.Equal(pdfAsset.CreatedAt))
 			require.True(t, pdfAssetResult.UpdatedAt.Equal(pdfAsset.UpdatedAt))
 			require.Equal(t, pdfAsset.CourseID, pdfAssetResult.CourseID)
+			require.Equal(t, pdfAsset.AssetGroupID, pdfAssetResult.AssetGroupID)
 			require.Equal(t, pdfAsset.Title, pdfAssetResult.Title)
 			require.Equal(t, pdfAsset.Prefix, pdfAssetResult.Prefix)
-			require.Equal(t, pdfAsset.Chapter, pdfAssetResult.Chapter)
+			require.Equal(t, pdfAsset.Module, pdfAssetResult.Module)
 			require.Equal(t, pdfAsset.Type, pdfAssetResult.Type)
 			require.Equal(t, pdfAsset.Path, pdfAssetResult.Path)
 			require.Equal(t, pdfAsset.FileSize, pdfAssetResult.FileSize)
 			require.Equal(t, pdfAsset.ModTime, pdfAssetResult.ModTime)
 			require.Equal(t, pdfAsset.Hash, pdfAssetResult.Hash)
-			require.Len(t, pdfAssetResult.Attachments, 0)
 			require.Nil(t, pdfAssetResult.VideoMetadata)
 			require.Nil(t, pdfAssetResult.Progress)
 		}
