@@ -143,10 +143,6 @@ func (c *compositeDb) Exec(query string, args ...any) (sql.Result, error) {
 	for attempt := 0; attempt <= defaultMaxLockRetries; attempt++ {
 		res, err = c.write.Exec(query, args...)
 		if err == nil {
-			// if attempt > 0 {
-			// 	fmt.Printf("[db] Exec succeeded after %d retries\n", attempt)
-			// }
-
 			return res, nil
 		}
 
@@ -156,7 +152,6 @@ func (c *compositeDb) Exec(query string, args ...any) (sql.Result, error) {
 		}
 
 		delay := getRetryInterval(attempt)
-		// fmt.Printf("[db] Lock error on attempt %d: %v; retrying in %v\n", attempt, err, delay)
 
 		// On the last attempt, stop retrying
 		if attempt == defaultMaxLockRetries {
@@ -166,7 +161,6 @@ func (c *compositeDb) Exec(query string, args ...any) (sql.Result, error) {
 		time.Sleep(delay)
 	}
 
-	// fmt.Printf("[db] Exec failed after %d retries: %v\n", defaultMaxLockRetries, err)
 	return res, fmt.Errorf("%w after %d retries", err, defaultMaxLockRetries)
 }
 

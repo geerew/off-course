@@ -165,16 +165,25 @@ func TestCourses_GetCourses(t *testing.T) {
 		// Add asset for each course
 		assets := []*models.Asset{}
 		for i, c := range courses {
-			asset := &models.Asset{
+			assetGroup := &models.AssetGroup{
 				CourseID: c.ID,
-				Title:    "asset 1",
-				Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-				Chapter:  "Chapter 1",
-				Type:     *types.NewAsset("mp4"),
-				Path:     fmt.Sprintf("/course %d/chapter 1/01 asset 1.mp4", i+1),
-				FileSize: 1024,
-				ModTime:  time.Now().Format(time.RFC3339Nano),
-				Hash:     security.RandomString(64),
+				Title:    fmt.Sprintf("asset group %d", i+1),
+				Prefix:   sql.NullInt16{Int16: int16(i + 1), Valid: true},
+				Module:   "Module 1",
+			}
+			require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
+
+			asset := &models.Asset{
+				CourseID:     c.ID,
+				AssetGroupID: assetGroup.ID,
+				Title:        "asset 1",
+				Prefix:       sql.NullInt16{Int16: 1, Valid: true},
+				Module:       "Module 1",
+				Type:         *types.NewAsset("mp4"),
+				Path:         fmt.Sprintf("/course %d/chapter 1/01 asset 1.mp4", i+1),
+				FileSize:     1024,
+				ModTime:      time.Now().Format(time.RFC3339Nano),
+				Hash:         security.RandomString(64),
 			}
 			require.NoError(t, router.dao.CreateAsset(ctx, asset))
 			assets = append(assets, asset)
@@ -580,7 +589,7 @@ func TestCourses_GetCard(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func TestCourses_GetAssets(t *testing.T) {
+func TestCourses_GetAssetGroups(t *testing.T) {
 	t.Run("200 (empty)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
@@ -591,11 +600,11 @@ func TestCourses_GetAssets(t *testing.T) {
 			courses = append(courses, course)
 		}
 
-		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+courses[1].ID+"/assets", nil))
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+courses[1].ID+"/groups", nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
-		paginationResp, _ := unmarshalHelper[assetResponse](t, body)
+		paginationResp, _ := unmarshalHelper[assetGroupResponse](t, body)
 		require.Zero(t, int(paginationResp.TotalItems))
 		require.Zero(t, len(paginationResp.Items))
 	})
@@ -604,6 +613,7 @@ func TestCourses_GetAssets(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		courses := []*models.Course{}
+		assetGroups := []*models.AssetGroup{}
 		assets := []*models.Asset{}
 		attachments := []*models.Attachment{}
 
@@ -613,49 +623,70 @@ func TestCourses_GetAssets(t *testing.T) {
 			courses = append(courses, course)
 		}
 
+		// Create 2 asset groups, with 1 attachment with 2 assets each for each course
 		for _, c := range courses {
 			for j := range 2 {
-				asset := &models.Asset{
+				assetGroup := &models.AssetGroup{
 					CourseID: c.ID,
-					Title:    fmt.Sprintf("asset %d", j+1),
+					Title:    fmt.Sprintf("asset group %d", j+1),
 					Prefix:   sql.NullInt16{Int16: int16(j + 1), Valid: true},
-					Chapter:  fmt.Sprintf("Chapter %d", j+1),
-					Type:     *types.NewAsset("mp4"),
-					Path:     fmt.Sprintf("/%s/asset %d", security.RandomString(4), j+1),
-					FileSize: 1024,
-					ModTime:  time.Now().Format(time.RFC3339Nano),
-					Hash:     security.RandomString(64),
+					Module:   "Module 1",
 				}
-				require.NoError(t, router.dao.CreateAsset(ctx, asset))
-				assets = append(assets, asset)
-				time.Sleep(1 * time.Millisecond)
-			}
-		}
+				require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
+				assetGroups = append(assetGroups, assetGroup)
 
-		for _, asset := range assets {
-			for j := range 2 {
 				attachment := &models.Attachment{
-					AssetID: asset.ID,
-					Title:   fmt.Sprintf("attachment %d", j+1),
-					Path:    fmt.Sprintf("/%s/attachment %d", security.RandomString(4), j+1),
+					AssetGroupID: assetGroup.ID,
+					Title:        fmt.Sprintf("attachment %d", j+1),
+					Path:         fmt.Sprintf("/%s/attachment %d", security.RandomString(4), j+1),
 				}
 				require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
 				attachments = append(attachments, attachment)
+
+				for k := range 2 {
+					asset := &models.Asset{
+						CourseID:     c.ID,
+						AssetGroupID: assetGroup.ID,
+						Title:        fmt.Sprintf("asset %d", k+1),
+						Prefix:       sql.NullInt16{Int16: int16(k + 1), Valid: true},
+						Module:       fmt.Sprintf("Chapter %d", k+1),
+						Type:         *types.NewAsset("mp4"),
+						Path:         fmt.Sprintf("/%s/asset %d", security.RandomString(4), k+1),
+						FileSize:     1024,
+						ModTime:      time.Now().Format(time.RFC3339Nano),
+						Hash:         security.RandomString(64),
+					}
+					require.NoError(t, router.dao.CreateAsset(ctx, asset))
+					assets = append(assets, asset)
+					time.Sleep(1 * time.Millisecond)
+				}
 			}
 		}
 
-		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+courses[1].ID+"/assets", nil))
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+courses[1].ID+"/groups", nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
-		paginationResp, assetsResp := unmarshalHelper[assetResponse](t, body)
+		paginationResp, assetGroupsResp := unmarshalHelper[assetGroupResponse](t, body)
 		require.Equal(t, 2, int(paginationResp.TotalItems))
 		require.Len(t, paginationResp.Items, 2)
-		require.Equal(t, assets[2].ID, assetsResp[0].ID)
-		require.Equal(t, assets[3].ID, assetsResp[1].ID)
-		require.Len(t, assetsResp[0].Attachments, 2)
-		require.Equal(t, attachments[4].ID, assetsResp[0].Attachments[0].ID)
-		require.Equal(t, attachments[5].ID, assetsResp[0].Attachments[1].ID)
+
+		require.Equal(t, assetGroups[2].ID, assetGroupsResp[0].ID)
+		require.Equal(t, assetGroups[3].ID, assetGroupsResp[1].ID)
+
+		// Attachments
+		require.Len(t, assetGroupsResp[0].Attachments, 1)
+		require.Equal(t, assetGroupsResp[0].Attachments[0].ID, attachments[2].ID)
+		require.Len(t, assetGroupsResp[1].Attachments, 1)
+		require.Equal(t, assetGroupsResp[1].Attachments[0].ID, attachments[3].ID)
+
+		// Assets
+		require.Len(t, assetGroupsResp[0].Assets, 2)
+		require.Equal(t, assets[4].ID, assetGroupsResp[0].Assets[0].ID)
+		require.Equal(t, assets[5].ID, assetGroupsResp[0].Assets[1].ID)
+		require.Len(t, assetGroupsResp[1].Assets, 2)
+		require.Equal(t, assets[6].ID, assetGroupsResp[1].Assets[0].ID)
+		require.Equal(t, assets[7].ID, assetGroupsResp[1].Assets[1].ID)
 	})
 
 	t.Run("200 (orderBy)", func(t *testing.T) {
@@ -668,49 +699,44 @@ func TestCourses_GetAssets(t *testing.T) {
 			courses = append(courses, course)
 		}
 
-		assets := []*models.Asset{}
-		for i, c := range courses {
+		assetGroups := []*models.AssetGroup{}
+		for _, c := range courses {
 			for j := range 2 {
-				asset := &models.Asset{
+				assetGroup := &models.AssetGroup{
 					CourseID: c.ID,
-					Title:    fmt.Sprintf("asset %d", j+1),
+					Title:    fmt.Sprintf("Asset group %d", j+1),
 					Prefix:   sql.NullInt16{Int16: int16(j + 1), Valid: true},
-					Chapter:  fmt.Sprintf("Chapter %d", j+1),
-					Type:     *types.NewAsset("mp4"),
-					Path:     fmt.Sprintf("/course %d/chapter %d/01 asset %d.mp4", i+1, j+1, j+1),
-					FileSize: 1024,
-					ModTime:  time.Now().Format(time.RFC3339Nano),
-					Hash:     security.RandomString(64),
+					Module:   fmt.Sprintf("Chapter %d", j+1),
 				}
-				require.NoError(t, router.dao.CreateAsset(ctx, asset))
-				assets = append(assets, asset)
+				require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
+				assetGroups = append(assetGroups, assetGroup)
 				time.Sleep(1 * time.Millisecond)
 			}
 		}
 
 		// CREATED_AT ASC
-		q := "sort:\"" + models.ASSET_TABLE_CREATED_AT + " asc\""
-		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+courses[1].ID+"/assets/?q="+url.QueryEscape(q), nil))
+		q := "sort:\"" + models.ASSET_GROUP_TABLE_CREATED_AT + " asc\""
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+courses[1].ID+"/groups/?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
-		paginationResp, assetsResp := unmarshalHelper[assetResponse](t, body)
+		paginationResp, assetGroupsResp := unmarshalHelper[assetGroupResponse](t, body)
 		require.Equal(t, 2, int(paginationResp.TotalItems))
 		require.Len(t, paginationResp.Items, 2)
-		require.Equal(t, assets[2].ID, assetsResp[0].ID)
-		require.Equal(t, assets[3].ID, assetsResp[1].ID)
+		require.Equal(t, assetGroups[2].ID, assetGroupsResp[0].ID)
+		require.Equal(t, assetGroups[3].ID, assetGroupsResp[1].ID)
 
 		// CREATED_AT DESC
-		q = "sort:\"" + models.ASSET_TABLE_CREATED_AT + " desc\""
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+courses[1].ID+"/assets/?q="+url.QueryEscape(q), nil))
+		q = "sort:\"" + models.ASSET_GROUP_TABLE_CREATED_AT + " desc\""
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+courses[1].ID+"/groups/?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
-		paginationResp, assetsResp = unmarshalHelper[assetResponse](t, body)
+		paginationResp, assetGroupsResp = unmarshalHelper[assetGroupResponse](t, body)
 		require.Equal(t, 2, int(paginationResp.TotalItems))
 		require.Len(t, paginationResp.Items, 2)
-		require.Equal(t, assets[3].ID, assetsResp[0].ID)
-		require.Equal(t, assets[2].ID, assetsResp[1].ID)
+		require.Equal(t, assetGroups[3].ID, assetGroupsResp[0].ID)
+		require.Equal(t, assetGroups[2].ID, assetGroupsResp[1].ID)
 	})
 
 	t.Run("200 (pagination)", func(t *testing.T) {
@@ -719,59 +745,54 @@ func TestCourses_GetAssets(t *testing.T) {
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
 
-		assets := []*models.Asset{}
+		assetGroups := []*models.AssetGroup{}
 		for i := range 17 {
-			asset := &models.Asset{
+			assetGroup := &models.AssetGroup{
 				CourseID: course.ID,
 				Title:    fmt.Sprintf("asset %d", i+1),
 				Prefix:   sql.NullInt16{Int16: int16(i + 1), Valid: true},
-				Chapter:  fmt.Sprintf("Chapter %d", i+1),
-				Type:     *types.NewAsset("mp4"),
-				Path:     fmt.Sprintf("/%s/asset %d", security.RandomString(4), i+1),
-				FileSize: 1024,
-				ModTime:  time.Now().Format(time.RFC3339Nano),
-				Hash:     security.RandomString(64),
+				Module:   fmt.Sprintf("Chapter %d", i+1),
 			}
-			require.NoError(t, router.dao.CreateAsset(ctx, asset))
-			assets = append(assets, asset)
+			require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
+			assetGroups = append(assetGroups, assetGroup)
 			time.Sleep(1 * time.Millisecond)
 		}
 
-		// Get the first page (10 assets)
+		// Get the first page (10 asset groups)
 		params := url.Values{
-			"q":                          {"sort:\"" + models.ASSET_TABLE_CREATED_AT + " asc\""},
+			"q":                          {"sort:\"" + models.ASSET_GROUP_TABLE_CREATED_AT + " asc\""},
 			pagination.PageQueryParam:    {"1"},
 			pagination.PerPageQueryParam: {"10"},
 		}
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/?"+params.Encode(), nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/?"+params.Encode(), nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
-		paginationResp, assetsResp := unmarshalHelper[assetResponse](t, body)
+		paginationResp, assetGroupsResp := unmarshalHelper[assetGroupResponse](t, body)
 		require.Equal(t, 17, int(paginationResp.TotalItems))
 		require.Len(t, paginationResp.Items, 10)
-		require.Equal(t, assets[0].ID, assetsResp[0].ID)
-		require.Equal(t, assets[9].ID, assetsResp[9].ID)
+		require.Equal(t, assetGroups[0].ID, assetGroupsResp[0].ID)
+		require.Equal(t, assetGroups[9].ID, assetGroupsResp[9].ID)
 
-		// Get the second page (7 assets)
+		// Get the second page (7 asset groups)
 		params = url.Values{
-			"q":                          {"sort:\"" + models.ASSET_TABLE_CREATED_AT + " asc\""},
+			"q":                          {"sort:\"" + models.ASSET_GROUP_TABLE_CREATED_AT + " asc\""},
 			pagination.PageQueryParam:    {"2"},
 			pagination.PerPageQueryParam: {"10"},
 		}
 
-		req = httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/?"+params.Encode(), nil)
+		req = httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/?"+params.Encode(), nil)
 		status, body, err = requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
-		paginationResp, assetsResp = unmarshalHelper[assetResponse](t, body)
+		paginationResp, assetGroupsResp = unmarshalHelper[assetGroupResponse](t, body)
 		require.Equal(t, 17, int(paginationResp.TotalItems))
 		require.Len(t, paginationResp.Items, 7)
-		require.Equal(t, assets[10].ID, assetsResp[0].ID)
-		require.Equal(t, assets[16].ID, assetsResp[6].ID)
+		require.Equal(t, assetGroups[10].ID, assetGroupsResp[0].ID)
+		require.Equal(t, assetGroups[16].ID, assetGroupsResp[6].ID)
 	})
 
 	t.Run("500 (asset internal error)", func(t *testing.T) {
@@ -780,10 +801,10 @@ func TestCourses_GetAssets(t *testing.T) {
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.ASSET_TABLE)
+		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.ASSET_GROUP_TABLE)
 		require.NoError(t, err)
 
-		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/", nil))
+		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/", nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusInternalServerError, status)
 	})
@@ -791,62 +812,56 @@ func TestCourses_GetAssets(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func TestCourses_GetAsset(t *testing.T) {
+func TestCourses_GetAssetGroup(t *testing.T) {
 	t.Run("200 (found)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
 
-		assets := []*models.Asset{}
+		assetGroups := []*models.AssetGroup{}
 		attachments := []*models.Attachment{}
 
 		for j := range 2 {
-			asset := &models.Asset{
+			assetGroup := &models.AssetGroup{
 				CourseID: course.ID,
-				Title:    fmt.Sprintf("asset %d", j+1),
+				Title:    fmt.Sprintf("asset group %d", j+1),
 				Prefix:   sql.NullInt16{Int16: int16(j + 1), Valid: true},
-				Chapter:  fmt.Sprintf("Chapter %d", j+1),
-				Type:     *types.NewAsset("mp4"),
-				Path:     fmt.Sprintf("/%s/asset %d", security.RandomString(4), j+1),
-				FileSize: 1024,
-				ModTime:  time.Now().Format(time.RFC3339Nano),
-				Hash:     security.RandomString(64),
+				Module:   fmt.Sprintf("Chapter %d", j+1),
 			}
-			require.NoError(t, router.dao.CreateAsset(ctx, asset))
-			assets = append(assets, asset)
+			require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
+			assetGroups = append(assetGroups, assetGroup)
 			time.Sleep(1 * time.Millisecond)
 		}
 
-		for _, asset := range assets {
+		for _, assetGroup := range assetGroups {
 			for j := range 2 {
 				attachment := &models.Attachment{
-					AssetID: asset.ID,
-					Title:   fmt.Sprintf("attachment %d", j+1),
-					Path:    fmt.Sprintf("/%s/attachment %d", security.RandomString(4), j+1),
+					AssetGroupID: assetGroup.ID,
+					Title:        fmt.Sprintf("attachment %d", j+1),
+					Path:         fmt.Sprintf("/%s/attachment %d", security.RandomString(4), j+1),
 				}
 				require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
 				attachments = append(attachments, attachment)
 			}
 		}
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+assets[1].ID, nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/"+assetGroups[1].ID, nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
-		var assetResp assetResponse
-		err = json.Unmarshal(body, &assetResp)
+		var assetGroupResp assetGroupResponse
+		err = json.Unmarshal(body, &assetGroupResp)
 		require.NoError(t, err)
-		require.Equal(t, assets[1].ID, assetResp.ID)
-		require.Equal(t, assets[1].Title, assetResp.Title)
-		require.Equal(t, assets[1].Path, assetResp.Path)
-		require.Len(t, assetResp.Attachments, 2)
-		require.Equal(t, attachments[2].ID, assetResp.Attachments[0].ID)
-		require.Equal(t, attachments[3].ID, assetResp.Attachments[1].ID)
+		require.Equal(t, assetGroups[1].ID, assetGroupResp.ID)
+		require.Equal(t, assetGroups[1].Title, assetGroupResp.Title)
+		require.Len(t, assetGroupResp.Attachments, 2)
+		require.Equal(t, attachments[2].ID, assetGroupResp.Attachments[0].ID)
+		require.Equal(t, attachments[3].ID, assetGroupResp.Attachments[1].ID)
 	})
 
-	t.Run("404 (invalid asset for course)", func(t *testing.T) {
+	t.Run("404 (invalid asset group for course)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		course1 := &models.Course{Title: "course 1", Path: "/course 1"}
@@ -855,256 +870,47 @@ func TestCourses_GetAsset(t *testing.T) {
 		course2 := &models.Course{Title: "course 2", Path: "/course 2"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course2))
 
-		asset := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID: course2.ID,
 			Title:    "Asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     "/course 1/Chapter 1/01 Asset 1.mp4",
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
+			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
 
-		// Request an asset that does not belong to the course
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course1.ID+"/assets/"+asset.ID, nil)
+		// Request an asset group that does not belong to the course
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course1.ID+"/groups/"+assetGroup.ID, nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNotFound, status)
-		require.Contains(t, string(body), "Asset not found")
+		require.Contains(t, string(body), "Asset group not found")
 	})
 
-	t.Run("404 (asset not found)", func(t *testing.T) {
+	t.Run("404 (asset group not found)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/invalid", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/invalid", nil)
 		status, _, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNotFound, status)
 	})
 
-	t.Run("500 (asset internal error)", func(t *testing.T) {
+	t.Run("500 (asset group internal error)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.ASSET_TABLE)
+		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.ASSET_GROUP_TABLE)
 		require.NoError(t, err)
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/invalid", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/invalid", nil)
 		status, _, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusInternalServerError, status)
-	})
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-func TestCourses_ServeAsset(t *testing.T) {
-	t.Run("200 (full video)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
-
-		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
-
-		asset := &models.Asset{
-			CourseID: course.ID,
-			Title:    "asset 1",
-			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
-		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
-
-		require.Nil(t, router.config.AppFs.Fs.MkdirAll(filepath.Dir(asset.Path), os.ModePerm))
-		require.Nil(t, afero.WriteFile(router.config.AppFs.Fs, asset.Path, []byte("video"), os.ModePerm))
-
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/serve", nil)
-		status, body, err := requestHelper(t, router, req)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
-		require.Equal(t, "video", string(body))
-	})
-
-	t.Run("200 (stream video)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
-
-		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
-
-		asset := &models.Asset{
-			CourseID: course.ID,
-			Title:    "asset 1",
-			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
-		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
-
-		require.Nil(t, router.config.AppFs.Fs.MkdirAll(filepath.Dir(asset.Path), os.ModePerm))
-		require.Nil(t, afero.WriteFile(router.config.AppFs.Fs, asset.Path, []byte("video"), os.ModePerm))
-
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/serve", nil)
-		req.Header.Add("Range", "bytes=0-")
-
-		status, body, err := requestHelper(t, router, req)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusPartialContent, status)
-		require.Equal(t, "video", string(body))
-	})
-
-	t.Run("200 (html)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
-
-		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
-
-		asset := &models.Asset{
-			CourseID: course.ID,
-			Title:    "asset 1",
-			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("html"),
-			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
-		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
-
-		require.Nil(t, router.config.AppFs.Fs.MkdirAll(filepath.Dir(asset.Path), os.ModePerm))
-		require.Nil(t, afero.WriteFile(router.config.AppFs.Fs, asset.Path, []byte("html data"), os.ModePerm))
-
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/serve", nil)
-		status, body, err := requestHelper(t, router, req)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
-		require.Equal(t, "html data", string(body))
-	})
-
-	t.Run("400 (invalid path)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
-
-		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
-
-		asset := &models.Asset{
-			CourseID: course.ID,
-			Title:    "asset 1",
-			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
-		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
-
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/serve", nil)
-		status, body, err := requestHelper(t, router, req)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusBadRequest, status)
-		require.Contains(t, string(body), "Asset does not exist")
-	})
-
-	t.Run("400 (invalid video range)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
-
-		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
-
-		asset := &models.Asset{
-			CourseID: course.ID,
-			Title:    "asset 1",
-			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
-		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
-
-		require.Nil(t, router.config.AppFs.Fs.MkdirAll(filepath.Dir(asset.Path), os.ModePerm))
-		require.Nil(t, afero.WriteFile(router.config.AppFs.Fs, asset.Path, []byte("video"), os.ModePerm))
-
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/serve", nil)
-		req.Header.Add("Range", "bytes=10-1")
-
-		status, body, err := requestHelper(t, router, req)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusBadRequest, status)
-		require.Contains(t, string(body), "Range start cannot be greater than end")
-	})
-
-	t.Run("404 (invalid asset for course)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
-
-		course1 := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course1))
-
-		course2 := &models.Course{Title: "Course 2", Path: "/course/2"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course2))
-
-		asset := &models.Asset{
-			CourseID: course2.ID,
-			Title:    "asset 1",
-			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
-		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
-
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course1.ID+"/assets/"+asset.ID+"/serve", nil)
-		status, body, err := requestHelper(t, router, req)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusNotFound, status)
-		require.Contains(t, string(body), "Asset not found")
-	})
-
-	t.Run("404 (not found)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
-
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/invalid/assets/invalid/serve", nil)
-		status, body, err := requestHelper(t, router, req)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusNotFound, status)
-		require.Contains(t, string(body), "Asset not found")
-	})
-
-	t.Run("500 (internal error)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
-
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.ASSET_TABLE)
-		require.NoError(t, err)
-
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/invalid/assets/invalid/serve", nil)
-		req.Header.Set("Content-Type", "application/json")
-
-		status, body, err := requestHelper(t, router, req)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusInternalServerError, status)
-		require.Contains(t, string(body), "Error looking up asset")
 	})
 }
 
@@ -1117,27 +923,19 @@ func TestCourses_ServeAssetDescription(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
 
-		asset := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID:        course.ID,
 			Title:           "asset 1",
 			Prefix:          sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:         "Chapter 1",
-			Type:            *types.NewAsset("mp4"),
-			Path:            "/Course 1/Chapter 1/01 asset.mp4",
-			FileSize:        1024,
-			ModTime:         time.Now().Format(time.RFC3339Nano),
-			Hash:            security.RandomString(64),
-			DescriptionPath: "/Course 1/Chapter 1/01 description.md",
+			Module:          "Module 1",
+			DescriptionPath: "/Course 1/Module 1/01 description.md",
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
 
-		require.Nil(t, router.config.AppFs.Fs.MkdirAll(filepath.Dir(asset.Path), os.ModePerm))
-		require.Nil(t, afero.WriteFile(router.config.AppFs.Fs, asset.Path, []byte("video"), os.ModePerm))
+		require.Nil(t, router.config.AppFs.Fs.MkdirAll(filepath.Dir(assetGroup.DescriptionPath), os.ModePerm))
+		require.Nil(t, afero.WriteFile(router.config.AppFs.Fs, assetGroup.DescriptionPath, []byte("description"), os.ModePerm))
 
-		require.Nil(t, router.config.AppFs.Fs.MkdirAll(filepath.Dir(asset.DescriptionPath), os.ModePerm))
-		require.Nil(t, afero.WriteFile(router.config.AppFs.Fs, asset.DescriptionPath, []byte("description"), os.ModePerm))
-
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/description", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/"+assetGroup.ID+"/description", nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -1150,25 +948,20 @@ func TestCourses_ServeAssetDescription(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
 
-		asset := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID:        course.ID,
 			Title:           "asset 1",
 			Prefix:          sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:         "Chapter 1",
-			Type:            *types.NewAsset("mp4"),
-			Path:            "/Course 1/Chapter 1/01 asset.mp4",
-			FileSize:        1024,
-			ModTime:         time.Now().Format(time.RFC3339Nano),
-			Hash:            security.RandomString(64),
-			DescriptionPath: "/Course 1/Chapter 1/01 description.md",
+			Module:          "Module 1",
+			DescriptionPath: "/Course 1/Module 1/01 description.md",
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/description", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/"+assetGroup.ID+"/description", nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusBadRequest, status)
-		require.Contains(t, string(body), "Asset description does not exist")
+		require.Contains(t, string(body), "Asset group description does not exist")
 	})
 
 	t.Run("404 (no description)", func(t *testing.T) {
@@ -1177,33 +970,25 @@ func TestCourses_ServeAssetDescription(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
 
-		asset := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID:        course.ID,
 			Title:           "asset 1",
 			Prefix:          sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:         "Chapter 1",
-			Type:            *types.NewAsset("mp4"),
-			Path:            "/Course 1/Chapter 1/01 asset.mp4",
-			FileSize:        1024,
-			ModTime:         time.Now().Format(time.RFC3339Nano),
-			Hash:            security.RandomString(64),
+			Module:          "Module 1",
 			DescriptionPath: "",
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
 
-		require.Nil(t, router.config.AppFs.Fs.MkdirAll(filepath.Dir(asset.Path), os.ModePerm))
-		require.Nil(t, afero.WriteFile(router.config.AppFs.Fs, asset.Path, []byte("video"), os.ModePerm))
-
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/description", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/"+assetGroup.ID+"/description", nil)
 		req.Header.Add("Range", "bytes=10-1")
 
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNotFound, status)
-		require.Contains(t, string(body), "Asset has no description")
+		require.Contains(t, string(body), "Asset group has no description")
 	})
 
-	t.Run("404 (invalid asset for course)", func(t *testing.T) {
+	t.Run("404 (invalid asset group for course)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		course1 := &models.Course{Title: "Course 1", Path: "/Course 1"}
@@ -1212,186 +997,44 @@ func TestCourses_ServeAssetDescription(t *testing.T) {
 		course2 := &models.Course{Title: "Course 2", Path: "/course/2"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course2))
 
-		asset := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID: course2.ID,
 			Title:    "asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
+			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course1.ID+"/assets/"+asset.ID+"/description", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course1.ID+"/groups/"+assetGroup.ID+"/description", nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNotFound, status)
-		require.Contains(t, string(body), "Asset not found")
+		require.Contains(t, string(body), "Asset group not found")
 	})
 
 	t.Run("404 (not found)", func(t *testing.T) {
 		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/invalid/assets/invalid/description", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/invalid/groups/invalid/description", nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNotFound, status)
-		require.Contains(t, string(body), "Asset not found")
+		require.Contains(t, string(body), "Asset group not found")
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.ASSET_TABLE)
+		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.ASSET_GROUP_TABLE)
 		require.NoError(t, err)
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/invalid/assets/invalid/description", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/invalid/groups/invalid/description", nil)
 		req.Header.Set("Content-Type", "application/json")
 
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusInternalServerError, status)
-		require.Contains(t, string(body), "Error looking up asset")
-	})
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-func TestCourses_UpdateAssetProgress(t *testing.T) {
-	t.Run("200 (found)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
-
-		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
-
-		asset := &models.Asset{
-			CourseID: course.ID,
-			Title:    "asset 1",
-			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
-		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
-
-		// Update video position
-		assetProgress := &assetProgressRequest{
-			VideoPos: 45,
-		}
-
-		data, err := json.Marshal(assetProgress)
-		require.NoError(t, err)
-
-		req := httptest.NewRequest(http.MethodPut, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/progress", strings.NewReader(string(data)))
-		req.Header.Set("Content-Type", "application/json")
-
-		status, _, err := requestHelper(t, router, req)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusNoContent, status)
-
-		assetResult := &models.Asset{}
-		require.NoError(t, router.dao.GetAsset(ctx, assetResult, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_ID: asset.ID}}))
-		require.Equal(t, 45, assetResult.Progress.VideoPos)
-		require.False(t, assetResult.Progress.Completed)
-		require.True(t, assetResult.Progress.CompletedAt.IsZero())
-
-		// Set completed to true
-		assetProgress.Completed = true
-
-		data, err = json.Marshal(assetProgress)
-		require.NoError(t, err)
-
-		req = httptest.NewRequest(http.MethodPut, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/progress", strings.NewReader(string(data)))
-		req.Header.Set("Content-Type", "application/json")
-
-		status, _, err = requestHelper(t, router, req)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusNoContent, status)
-
-		require.NoError(t, router.dao.GetAsset(ctx, assetResult, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_ID: asset.ID}}))
-		require.Equal(t, 45, assetResult.Progress.VideoPos)
-		require.True(t, assetResult.Progress.Completed)
-		require.False(t, assetResult.Progress.CompletedAt.IsZero())
-
-		// Set video position to 10 and completed to false
-		assetProgress.VideoPos = 10
-		assetProgress.Completed = false
-
-		data, err = json.Marshal(assetProgress)
-		require.NoError(t, err)
-
-		req = httptest.NewRequest(http.MethodPut, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/progress", strings.NewReader(string(data)))
-		req.Header.Set("Content-Type", "application/json")
-
-		status, _, err = requestHelper(t, router, req)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusNoContent, status)
-
-		require.NoError(t, router.dao.GetAsset(ctx, assetResult, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_ID: asset.ID}}))
-		require.Equal(t, 10, assetResult.Progress.VideoPos)
-		require.False(t, assetResult.Progress.Completed)
-		require.True(t, assetResult.Progress.CompletedAt.IsZero())
-	})
-
-	t.Run("400 (invalid data)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
-
-		req := httptest.NewRequest(http.MethodPut, "/api/courses/invalid/assets/invalid/progress", strings.NewReader(`bob`))
-		req.Header.Set("Content-Type", "application/json")
-
-		status, body, err := requestHelper(t, router, req)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusBadRequest, status)
-		require.Contains(t, string(body), "Error parsing data")
-	})
-
-	t.Run("404 (asset not found)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
-
-		req := httptest.NewRequest(http.MethodPut, "/api/courses/invalid/assets/invalid/progress", strings.NewReader(`{"videoPos": 10}`))
-		req.Header.Set("Content-Type", "application/json")
-
-		status, body, err := requestHelper(t, router, req)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusNotFound, status)
-		require.Contains(t, string(body), "Asset not found")
-	})
-
-	t.Run("404 (invalid asset for course)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
-
-		course1 := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course1))
-
-		course2 := &models.Course{Title: "Course 2", Path: "/course/2"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course2))
-
-		asset := &models.Asset{
-			CourseID: course2.ID,
-			Title:    "asset 1",
-			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
-		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
-
-		req := httptest.NewRequest(http.MethodPut, "/api/courses/"+course1.ID+"/assets/"+asset.ID+"/progress", strings.NewReader(`{"videoPos": 10}`))
-		req.Header.Set("Content-Type", "application/json")
-
-		status, body, err := requestHelper(t, router, req)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusNotFound, status)
-		require.Contains(t, string(body), "Asset not found")
+		require.Contains(t, string(body), "Error looking up asset group")
 	})
 }
 
@@ -1404,20 +1047,15 @@ func TestCourses_GetAttachments(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
 
-		asset := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID: course.ID,
-			Title:    "asset 1",
+			Title:    "asset group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
+			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/attachments", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/"+assetGroup.ID+"/attachments", nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -1433,31 +1071,26 @@ func TestCourses_GetAttachments(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
 
-		asset := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID: course.ID,
 			Title:    "asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
+			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
 
 		attachments := []*models.Attachment{}
 		for i := range 2 {
 			attachment := &models.Attachment{
-				AssetID: asset.ID,
-				Title:   fmt.Sprintf("attachment %d", i+1),
-				Path:    fmt.Sprintf("/%s/attachment %d", security.RandomString(4), i+1),
+				AssetGroupID: assetGroup.ID,
+				Title:        fmt.Sprintf("attachment %d", i+1),
+				Path:         fmt.Sprintf("/%s/attachment %d", security.RandomString(4), i+1),
 			}
 			require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
 			attachments = append(attachments, attachment)
 		}
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/attachments", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/"+assetGroup.ID+"/attachments", nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -1475,25 +1108,20 @@ func TestCourses_GetAttachments(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
 
-		asset := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID: course.ID,
 			Title:    "asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
+			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
 
 		attachments := []*models.Attachment{}
 		for i := range 2 {
 			attachment := &models.Attachment{
-				AssetID: asset.ID,
-				Title:   fmt.Sprintf("attachment %d", i+1),
-				Path:    fmt.Sprintf("/%s/attachment %d", security.RandomString(4), i+1),
+				AssetGroupID: assetGroup.ID,
+				Title:        fmt.Sprintf("attachment %d", i+1),
+				Path:         fmt.Sprintf("/%s/attachment %d", security.RandomString(4), i+1),
 			}
 			require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
 			attachments = append(attachments, attachment)
@@ -1502,7 +1130,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 
 		// CREATED_AT ASC
 		q := "sort:\"" + models.ATTACHMENT_TABLE_CREATED_AT + " asc\""
-		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/attachments?q="+url.QueryEscape(q), nil))
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/"+assetGroup.ID+"/attachments?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
@@ -1514,7 +1142,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 
 		// CREATED_AT DESC
 		q = "sort:\"" + models.ATTACHMENT_TABLE_CREATED_AT + " desc\""
-		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/attachments?q="+url.QueryEscape(q), nil))
+		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/"+assetGroup.ID+"/attachments?q="+url.QueryEscape(q), nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
@@ -1532,25 +1160,20 @@ func TestCourses_GetAttachments(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
 
-		asset := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID: course.ID,
 			Title:    "asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
+			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
 
 		attachments := []*models.Attachment{}
 		for i := range 17 {
 			attachment := &models.Attachment{
-				AssetID: asset.ID,
-				Title:   fmt.Sprintf("attachment %d", i+1),
-				Path:    fmt.Sprintf("/%s/attachment %d", security.RandomString(4), i+1),
+				AssetGroupID: assetGroup.ID,
+				Title:        fmt.Sprintf("attachment %d", i+1),
+				Path:         fmt.Sprintf("/%s/attachment %d", security.RandomString(4), i+1),
 			}
 			require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
 			attachments = append(attachments, attachment)
@@ -1564,7 +1187,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 			pagination.PerPageQueryParam: {"10"},
 		}
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/attachments?"+params.Encode(), nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/"+assetGroup.ID+"/attachments?"+params.Encode(), nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -1582,7 +1205,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 			pagination.PerPageQueryParam: {"10"},
 		}
 
-		req = httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/attachments?"+params.Encode(), nil)
+		req = httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/"+assetGroup.ID+"/attachments?"+params.Encode(), nil)
 		status, body, err = requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -1594,13 +1217,13 @@ func TestCourses_GetAttachments(t *testing.T) {
 		require.Equal(t, attachments[16].ID, attachmentResp[6].ID)
 	})
 
-	t.Run("200 (invalid asset)", func(t *testing.T) {
+	t.Run("200 (invalid asset group)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/invalid/attachments", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/invalid/attachments", nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -1610,7 +1233,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 		require.Zero(t, len(paginationResp.Items))
 	})
 
-	t.Run("200 (invalid asset for course)", func(t *testing.T) {
+	t.Run("200 (invalid asset group for course)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		course1 := &models.Course{Title: "Course 1", Path: "/Course 1"}
@@ -1619,20 +1242,15 @@ func TestCourses_GetAttachments(t *testing.T) {
 		course2 := &models.Course{Title: "Course 2", Path: "/course/2"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course2))
 
-		asset := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID: course2.ID,
 			Title:    "asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
+			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course1.ID+"/assets/"+asset.ID+"/attachments", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course1.ID+"/groups/"+assetGroup.ID+"/attachments", nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -1652,27 +1270,22 @@ func TestCourses_GetAttachment(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
 
-		asset := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID: course.ID,
-			Title:    "asset 1",
+			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
+			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
 
 		attachment := &models.Attachment{
-			AssetID: asset.ID,
-			Title:   "attachment 1",
-			Path:    fmt.Sprintf("/%s/attachment 1", security.RandomString(4)),
+			AssetGroupID: assetGroup.ID,
+			Title:        "attachment 1",
+			Path:         fmt.Sprintf("/%s/attachment 1", security.RandomString(4)),
 		}
 		require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/attachments/"+attachment.ID, nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/"+assetGroup.ID+"/attachments/"+attachment.ID, nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -1683,7 +1296,7 @@ func TestCourses_GetAttachment(t *testing.T) {
 		require.Equal(t, attachment.ID, respData.ID)
 	})
 
-	t.Run("404 (invalid asset for course)", func(t *testing.T) {
+	t.Run("404 (invalid asset group for course)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		course1 := &models.Course{Title: "Course 1", Path: "/Course 1"}
@@ -1692,66 +1305,51 @@ func TestCourses_GetAttachment(t *testing.T) {
 		course2 := &models.Course{Title: "Course 2", Path: "/course/2"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course2))
 
-		asset := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID: course2.ID,
-			Title:    "asset 1",
+			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
+			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course1.ID+"/assets/"+asset.ID+"/attachments/invalid", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course1.ID+"/groups/"+assetGroup.ID+"/attachments/invalid", nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNotFound, status)
 		require.Contains(t, string(body), "Attachment not found")
 	})
 
-	t.Run("404 (invalid attachment for asset)", func(t *testing.T) {
+	t.Run("404 (invalid attachment for asset groups)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
 
-		asset1 := &models.Asset{
+		assetGroup1 := &models.AssetGroup{
 			CourseID: course.ID,
-			Title:    "asset 1",
+			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
+			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset1))
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup1))
 
-		asset2 := &models.Asset{
+		assetGroup2 := &models.AssetGroup{
 			CourseID: course.ID,
-			Title:    "asset 2",
-			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 2",
-			Type:     *types.NewAsset("mp4"),
-			Path:     fmt.Sprintf("/%s/asset 2", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
+			Title:    "Asset Group 2",
+			Prefix:   sql.NullInt16{Int16: 2, Valid: true},
+			Module:   "Module 2",
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset2))
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup2))
 
 		attachment := &models.Attachment{
-			AssetID: asset1.ID,
-			Title:   "attachment 1",
-			Path:    fmt.Sprintf("/%s/attachment 1", security.RandomString(4)),
+			AssetGroupID: assetGroup1.ID,
+			Title:        "attachment 1",
+			Path:         fmt.Sprintf("/%s/attachment 1", security.RandomString(4)),
 		}
 		require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset2.ID+"/attachments/"+attachment.ID, nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/"+assetGroup2.ID+"/attachments/"+attachment.ID, nil)
 
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
@@ -1762,19 +1360,19 @@ func TestCourses_GetAttachment(t *testing.T) {
 	t.Run("404 (course not found)", func(t *testing.T) {
 		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/invalid/assets/invalid/attachments/invalid", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/invalid/groups/invalid/attachments/invalid", nil)
 		status, _, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNotFound, status)
 	})
 
-	t.Run("404 (asset not found)", func(t *testing.T) {
+	t.Run("404 (asset group not found)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/invalid/attachments/invalid", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/invalid/attachments/invalid", nil)
 		status, _, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNotFound, status)
@@ -1786,20 +1384,15 @@ func TestCourses_GetAttachment(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
 
-		asset := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID: course.ID,
 			Title:    "asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
+			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/attachments/invalid", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/"+assetGroup.ID+"/attachments/invalid", nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNotFound, status)
@@ -1816,30 +1409,25 @@ func TestCourses_ServeAttachment(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
 
-		asset := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID: course.ID,
 			Title:    "asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
+			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
 
 		attachment := &models.Attachment{
-			AssetID: asset.ID,
-			Title:   "attachment 1",
-			Path:    fmt.Sprintf("/%s/attachment 1", security.RandomString(4)),
+			AssetGroupID: assetGroup.ID,
+			Title:        "attachment 1",
+			Path:         fmt.Sprintf("/%s/attachment 1", security.RandomString(4)),
 		}
 		require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
 
 		require.Nil(t, router.config.AppFs.Fs.MkdirAll(filepath.Dir(attachment.Path), os.ModePerm))
 		require.Nil(t, afero.WriteFile(router.config.AppFs.Fs, attachment.Path, []byte("hello"), os.ModePerm))
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/attachments/"+attachment.ID+"/serve", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/"+assetGroup.ID+"/attachments/"+attachment.ID+"/serve", nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -1852,34 +1440,29 @@ func TestCourses_ServeAttachment(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
 
-		asset := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID: course.ID,
-			Title:    "asset 1",
+			Title:    "asset group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
+			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
 
 		attachment := &models.Attachment{
-			AssetID: asset.ID,
-			Title:   "attachment 1",
-			Path:    fmt.Sprintf("/%s/attachment 1", security.RandomString(4)),
+			AssetGroupID: assetGroup.ID,
+			Title:        "attachment 1",
+			Path:         fmt.Sprintf("/%s/attachment 1", security.RandomString(4)),
 		}
 		require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/attachments/"+attachment.ID+"/serve", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/"+assetGroup.ID+"/attachments/"+attachment.ID+"/serve", nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusBadRequest, status)
 		require.Contains(t, string(body), "Attachment does not exist")
 	})
 
-	t.Run("404 (invalid asset for course)", func(t *testing.T) {
+	t.Run("404 (invalid asset group for course)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		course1 := &models.Course{Title: "Course 1", Path: "/Course 1"}
@@ -1888,57 +1471,47 @@ func TestCourses_ServeAttachment(t *testing.T) {
 		course2 := &models.Course{Title: "Course 2", Path: "/course/2"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course2))
 
-		asset := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID: course2.ID,
-			Title:    "asset 1",
+			Title:    "asset group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
+			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course1.ID+"/assets/"+asset.ID+"/attachments/invalid/serve", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course1.ID+"/groups/"+assetGroup.ID+"/attachments/invalid/serve", nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNotFound, status)
 		require.Contains(t, string(body), "Attachment not found")
 	})
 
-	t.Run("404 (invalid attachment for asset)", func(t *testing.T) {
+	t.Run("404 (invalid attachment for asset group)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
 
-		assets := []*models.Asset{}
+		assetGroups := []*models.AssetGroup{}
 		for j := range 2 {
-			asset := &models.Asset{
+			assetGroup := &models.AssetGroup{
 				CourseID: course.ID,
 				Title:    fmt.Sprintf("asset %d", j+1),
 				Prefix:   sql.NullInt16{Int16: int16(j + 1), Valid: true},
-				Chapter:  fmt.Sprintf("Chapter %d", j+1),
-				Type:     *types.NewAsset("mp4"),
-				Path:     fmt.Sprintf("/%s/asset %d", security.RandomString(4), j+1),
-				FileSize: 1024,
-				ModTime:  time.Now().Format(time.RFC3339Nano),
-				Hash:     security.RandomString(64),
+				Module:   fmt.Sprintf("Chapter %d", j+1),
 			}
-			require.NoError(t, router.dao.CreateAsset(ctx, asset))
-			assets = append(assets, asset)
+			require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
+			assetGroups = append(assetGroups, assetGroup)
 		}
 
 		attachment := &models.Attachment{
-			AssetID: assets[0].ID,
-			Title:   "attachment 1",
-			Path:    fmt.Sprintf("/%s/attachment 1", security.RandomString(4)),
+			AssetGroupID: assetGroups[0].ID,
+			Title:        "attachment 1",
+			Path:         fmt.Sprintf("/%s/attachment 1", security.RandomString(4)),
 		}
 		require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+assets[1].ID+"/attachments/"+attachment.ID+"/serve", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/"+assetGroups[1].ID+"/attachments/"+attachment.ID+"/serve", nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNotFound, status)
@@ -1951,7 +1524,7 @@ func TestCourses_ServeAttachment(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/invalid/attachments/invalid/serve", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/invalid/attachments/invalid/serve", nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNotFound, status)
@@ -1964,24 +1537,432 @@ func TestCourses_ServeAttachment(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
 
-		asset := &models.Asset{
+		assetGroup := &models.AssetGroup{
 			CourseID: course.ID,
 			Title:    "asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
+			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
 
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/assets/"+asset.ID+"/attachments/invalid/serve", nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/"+assetGroup.ID+"/attachments/invalid/serve", nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNotFound, status)
 		require.Contains(t, string(body), "Attachment not found")
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestCourses_ServeAsset(t *testing.T) {
+	t.Run("200 (full video)", func(t *testing.T) {
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+
+		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
+		require.NoError(t, router.dao.CreateCourse(ctx, course))
+
+		assetGroup := &models.AssetGroup{
+			CourseID: course.ID,
+			Title:    "asset group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
+
+		asset := &models.Asset{
+			CourseID:     course.ID,
+			AssetGroupID: assetGroup.ID,
+			Title:        "asset 1",
+			Prefix:       sql.NullInt16{Int16: 1, Valid: true},
+			Module:       "Module 1",
+			Type:         *types.NewAsset("mp4"),
+			Path:         fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize:     1024,
+			ModTime:      time.Now().Format(time.RFC3339Nano),
+			Hash:         security.RandomString(64),
+		}
+		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+
+		require.Nil(t, router.config.AppFs.Fs.MkdirAll(filepath.Dir(asset.Path), os.ModePerm))
+		require.Nil(t, afero.WriteFile(router.config.AppFs.Fs, asset.Path, []byte("video"), os.ModePerm))
+
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/"+assetGroup.ID+"/assets/"+asset.ID+"/serve", nil)
+		status, body, err := requestHelper(t, router, req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+		require.Equal(t, "video", string(body))
+	})
+
+	t.Run("200 (stream video)", func(t *testing.T) {
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+
+		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
+		require.NoError(t, router.dao.CreateCourse(ctx, course))
+
+		assetGroup := &models.AssetGroup{
+			CourseID: course.ID,
+			Title:    "asset group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
+
+		asset := &models.Asset{
+			CourseID:     course.ID,
+			AssetGroupID: assetGroup.ID,
+			Title:        "asset 1",
+			Prefix:       sql.NullInt16{Int16: 1, Valid: true},
+			Module:       "Module 1",
+			Type:         *types.NewAsset("mp4"),
+			Path:         fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize:     1024,
+			ModTime:      time.Now().Format(time.RFC3339Nano),
+			Hash:         security.RandomString(64),
+		}
+		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+
+		require.Nil(t, router.config.AppFs.Fs.MkdirAll(filepath.Dir(asset.Path), os.ModePerm))
+		require.Nil(t, afero.WriteFile(router.config.AppFs.Fs, asset.Path, []byte("video"), os.ModePerm))
+
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/"+assetGroup.ID+"/assets/"+asset.ID+"/serve", nil)
+		req.Header.Add("Range", "bytes=0-")
+
+		status, body, err := requestHelper(t, router, req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusPartialContent, status)
+		require.Equal(t, "video", string(body))
+	})
+
+	t.Run("200 (html)", func(t *testing.T) {
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+
+		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
+		require.NoError(t, router.dao.CreateCourse(ctx, course))
+
+		assetGroup := &models.AssetGroup{
+			CourseID: course.ID,
+			Title:    "asset group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
+
+		asset := &models.Asset{
+			CourseID:     course.ID,
+			AssetGroupID: assetGroup.ID,
+			Title:        "asset 1",
+			Prefix:       sql.NullInt16{Int16: 1, Valid: true},
+			Module:       "Module 1",
+			Type:         *types.NewAsset("html"),
+			Path:         fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize:     1024,
+			ModTime:      time.Now().Format(time.RFC3339Nano),
+			Hash:         security.RandomString(64),
+		}
+		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+
+		require.Nil(t, router.config.AppFs.Fs.MkdirAll(filepath.Dir(asset.Path), os.ModePerm))
+		require.Nil(t, afero.WriteFile(router.config.AppFs.Fs, asset.Path, []byte("html data"), os.ModePerm))
+
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/"+assetGroup.ID+"/assets/"+asset.ID+"/serve", nil)
+		status, body, err := requestHelper(t, router, req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+		require.Equal(t, "html data", string(body))
+	})
+
+	t.Run("400 (invalid path)", func(t *testing.T) {
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+
+		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
+		require.NoError(t, router.dao.CreateCourse(ctx, course))
+
+		assetGroup := &models.AssetGroup{
+			CourseID: course.ID,
+			Title:    "asset group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
+
+		asset := &models.Asset{
+			CourseID:     course.ID,
+			AssetGroupID: assetGroup.ID,
+			Title:        "asset 1",
+			Prefix:       sql.NullInt16{Int16: 1, Valid: true},
+			Module:       "Module 1",
+			Type:         *types.NewAsset("mp4"),
+			Path:         fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize:     1024,
+			ModTime:      time.Now().Format(time.RFC3339Nano),
+			Hash:         security.RandomString(64),
+		}
+		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/"+assetGroup.ID+"/assets/"+asset.ID+"/serve", nil)
+		status, body, err := requestHelper(t, router, req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, status)
+		require.Contains(t, string(body), "Asset does not exist")
+	})
+
+	t.Run("400 (invalid video range)", func(t *testing.T) {
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+
+		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
+		require.NoError(t, router.dao.CreateCourse(ctx, course))
+
+		assetGroup := &models.AssetGroup{
+			CourseID: course.ID,
+			Title:    "asset group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
+
+		asset := &models.Asset{
+			CourseID:     course.ID,
+			AssetGroupID: assetGroup.ID,
+			Title:        "asset 1",
+			Prefix:       sql.NullInt16{Int16: 1, Valid: true},
+			Module:       "Module 1",
+			Type:         *types.NewAsset("mp4"),
+			Path:         fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize:     1024,
+			ModTime:      time.Now().Format(time.RFC3339Nano),
+			Hash:         security.RandomString(64),
+		}
+		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+
+		require.Nil(t, router.config.AppFs.Fs.MkdirAll(filepath.Dir(asset.Path), os.ModePerm))
+		require.Nil(t, afero.WriteFile(router.config.AppFs.Fs, asset.Path, []byte("video"), os.ModePerm))
+
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/groups/"+assetGroup.ID+"/assets/"+asset.ID+"/serve", nil)
+		req.Header.Add("Range", "bytes=10-1")
+
+		status, body, err := requestHelper(t, router, req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, status)
+		require.Contains(t, string(body), "Range start cannot be greater than end")
+	})
+
+	t.Run("404 (invalid asset for course)", func(t *testing.T) {
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+
+		course1 := &models.Course{Title: "Course 1", Path: "/Course 1"}
+		require.NoError(t, router.dao.CreateCourse(ctx, course1))
+
+		course2 := &models.Course{Title: "Course 2", Path: "/course/2"}
+		require.NoError(t, router.dao.CreateCourse(ctx, course2))
+
+		assetGroup := &models.AssetGroup{
+			CourseID: course2.ID,
+			Title:    "asset group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
+
+		asset := &models.Asset{
+			CourseID:     course2.ID,
+			AssetGroupID: assetGroup.ID,
+			Title:        "asset 1",
+			Prefix:       sql.NullInt16{Int16: 1, Valid: true},
+			Module:       "Module 1",
+			Type:         *types.NewAsset("mp4"),
+			Path:         fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize:     1024,
+			ModTime:      time.Now().Format(time.RFC3339Nano),
+			Hash:         security.RandomString(64),
+		}
+		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course1.ID+"/groups/"+assetGroup.ID+"/assets/"+asset.ID+"/serve", nil)
+		status, body, err := requestHelper(t, router, req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNotFound, status)
+		require.Contains(t, string(body), "Asset not found")
+	})
+
+	t.Run("404 (not found)", func(t *testing.T) {
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
+
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/invalid/groups/invalid/assets/invalid/serve", nil)
+		status, body, err := requestHelper(t, router, req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNotFound, status)
+		require.Contains(t, string(body), "Asset not found")
+	})
+
+	t.Run("500 (internal error)", func(t *testing.T) {
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
+
+		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.ASSET_TABLE)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/invalid/groups/invalid/assets/invalid/serve", nil)
+		req.Header.Set("Content-Type", "application/json")
+
+		status, body, err := requestHelper(t, router, req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusInternalServerError, status)
+		require.Contains(t, string(body), "Error looking up asset")
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestCourses_UpdateAssetProgress(t *testing.T) {
+	t.Run("200 (found)", func(t *testing.T) {
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+
+		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
+		require.NoError(t, router.dao.CreateCourse(ctx, course))
+
+		assetGroup := &models.AssetGroup{
+			CourseID: course.ID,
+			Title:    "asset group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
+
+		asset := &models.Asset{
+			CourseID:     course.ID,
+			AssetGroupID: assetGroup.ID,
+			Title:        "asset 1",
+			Prefix:       sql.NullInt16{Int16: 1, Valid: true},
+			Module:       "Module 1",
+			Type:         *types.NewAsset("mp4"),
+			Path:         fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize:     1024,
+			ModTime:      time.Now().Format(time.RFC3339Nano),
+			Hash:         security.RandomString(64),
+		}
+		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+
+		// Update video position
+		assetProgress := &assetProgressRequest{
+			VideoPos: 45,
+		}
+
+		data, err := json.Marshal(assetProgress)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodPut, "/api/courses/"+course.ID+"/groups/"+assetGroup.ID+"/assets/"+asset.ID+"/progress", strings.NewReader(string(data)))
+		req.Header.Set("Content-Type", "application/json")
+
+		status, _, err := requestHelper(t, router, req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNoContent, status)
+
+		assetResult := &models.Asset{}
+		require.NoError(t, router.dao.GetAsset(ctx, assetResult, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_ID: asset.ID}}))
+		require.Equal(t, 45, assetResult.Progress.VideoPos)
+		require.False(t, assetResult.Progress.Completed)
+		require.True(t, assetResult.Progress.CompletedAt.IsZero())
+
+		// Set completed to true
+		assetProgress.Completed = true
+
+		data, err = json.Marshal(assetProgress)
+		require.NoError(t, err)
+
+		req = httptest.NewRequest(http.MethodPut, "/api/courses/"+course.ID+"/groups/"+assetGroup.ID+"/assets/"+asset.ID+"/progress", strings.NewReader(string(data)))
+		req.Header.Set("Content-Type", "application/json")
+
+		status, _, err = requestHelper(t, router, req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNoContent, status)
+
+		require.NoError(t, router.dao.GetAsset(ctx, assetResult, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_ID: asset.ID}}))
+		require.Equal(t, 45, assetResult.Progress.VideoPos)
+		require.True(t, assetResult.Progress.Completed)
+		require.False(t, assetResult.Progress.CompletedAt.IsZero())
+
+		// Set video position to 10 and completed to false
+		assetProgress.VideoPos = 10
+		assetProgress.Completed = false
+
+		data, err = json.Marshal(assetProgress)
+		require.NoError(t, err)
+
+		req = httptest.NewRequest(http.MethodPut, "/api/courses/"+course.ID+"/groups/"+assetGroup.ID+"/assets/"+asset.ID+"/progress", strings.NewReader(string(data)))
+		req.Header.Set("Content-Type", "application/json")
+
+		status, _, err = requestHelper(t, router, req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNoContent, status)
+
+		require.NoError(t, router.dao.GetAsset(ctx, assetResult, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_ID: asset.ID}}))
+		require.Equal(t, 10, assetResult.Progress.VideoPos)
+		require.False(t, assetResult.Progress.Completed)
+		require.True(t, assetResult.Progress.CompletedAt.IsZero())
+	})
+
+	t.Run("400 (invalid data)", func(t *testing.T) {
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
+
+		req := httptest.NewRequest(http.MethodPut, "/api/courses/invalid/groups/invalid/assets/invalid/progress", strings.NewReader(`bob`))
+		req.Header.Set("Content-Type", "application/json")
+
+		status, body, err := requestHelper(t, router, req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, status)
+		require.Contains(t, string(body), "Error parsing data")
+	})
+
+	t.Run("404 (asset not found)", func(t *testing.T) {
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
+
+		req := httptest.NewRequest(http.MethodPut, "/api/courses/invalid/groups/invalid/assets/invalid/progress", strings.NewReader(`{"videoPos": 10}`))
+		req.Header.Set("Content-Type", "application/json")
+
+		status, body, err := requestHelper(t, router, req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNotFound, status)
+		require.Contains(t, string(body), "Asset not found")
+	})
+
+	t.Run("404 (invalid asset for course)", func(t *testing.T) {
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+
+		course1 := &models.Course{Title: "Course 1", Path: "/Course 1"}
+		require.NoError(t, router.dao.CreateCourse(ctx, course1))
+
+		course2 := &models.Course{Title: "Course 2", Path: "/course/2"}
+		require.NoError(t, router.dao.CreateCourse(ctx, course2))
+
+		assetGroup := &models.AssetGroup{
+			CourseID: course2.ID,
+			Title:    "asset group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
+
+		asset := &models.Asset{
+			CourseID:     course2.ID,
+			AssetGroupID: assetGroup.ID,
+			Title:        "asset 1",
+			Prefix:       sql.NullInt16{Int16: 1, Valid: true},
+			Module:       "Module 1",
+			Type:         *types.NewAsset("mp4"),
+			Path:         fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
+			FileSize:     1024,
+			ModTime:      time.Now().Format(time.RFC3339Nano),
+			Hash:         security.RandomString(64),
+		}
+		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+
+		req := httptest.NewRequest(http.MethodPut, "/api/courses/"+course1.ID+"/groups/"+assetGroup.ID+"/assets/"+asset.ID+"/progress", strings.NewReader(`{"videoPos": 10}`))
+		req.Header.Set("Content-Type", "application/json")
+
+		status, body, err := requestHelper(t, router, req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNotFound, status)
+		require.Contains(t, string(body), "Asset not found")
 	})
 }
 

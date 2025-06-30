@@ -7,25 +7,25 @@ import "github.com/geerew/off-course/utils/schema"
 // Attachment defines the model for an attachment
 type Attachment struct {
 	Base
-	AssetID string
-	Title   string
-	Path    string
+	AssetGroupID string
+	Title        string
+	Path         string
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 const (
-	ATTACHMENT_TABLE    = "attachments"
-	ATTACHMENT_ASSET_ID = "asset_id"
-	ATTACHMENT_TITLE    = "title"
-	ATTACHMENT_PATH     = "path"
+	ATTACHMENT_TABLE          = "attachments"
+	ATTACHMENT_ASSET_GROUP_ID = "asset_group_id"
+	ATTACHMENT_TITLE          = "title"
+	ATTACHMENT_PATH           = "path"
 
-	ATTACHMENT_TABLE_ID         = ATTACHMENT_TABLE + "." + BASE_ID
-	ATTACHMENT_TABLE_CREATED_AT = ATTACHMENT_TABLE + "." + BASE_CREATED_AT
-	ATTACHMENT_TABLE_UPDATED_AT = ATTACHMENT_TABLE + "." + BASE_UPDATED_AT
-	ATTACHMENT_TABLE_ASSET_ID   = ATTACHMENT_TABLE + "." + ATTACHMENT_ASSET_ID
-	ATTACHMENT_TABLE_TITLE      = ATTACHMENT_TABLE + "." + ATTACHMENT_TITLE
-	ATTACHMENT_TABLE_PATH       = ATTACHMENT_TABLE + "." + ATTACHMENT_PATH
+	ATTACHMENT_TABLE_ID             = ATTACHMENT_TABLE + "." + BASE_ID
+	ATTACHMENT_TABLE_CREATED_AT     = ATTACHMENT_TABLE + "." + BASE_CREATED_AT
+	ATTACHMENT_TABLE_UPDATED_AT     = ATTACHMENT_TABLE + "." + BASE_UPDATED_AT
+	ATTACHMENT_TABLE_ASSET_GROUP_ID = ATTACHMENT_TABLE + "." + ATTACHMENT_ASSET_GROUP_ID
+	ATTACHMENT_TABLE_TITLE          = ATTACHMENT_TABLE + "." + ATTACHMENT_TITLE
+	ATTACHMENT_TABLE_PATH           = ATTACHMENT_TABLE + "." + ATTACHMENT_PATH
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -41,7 +41,7 @@ func (a *Attachment) Table() string {
 func (a *Attachment) Define(s *schema.ModelConfig) {
 	s.Embedded("Base")
 
-	s.Field("AssetID").Column(ATTACHMENT_ASSET_ID).NotNull()
+	s.Field("AssetGroupID").Column(ATTACHMENT_ASSET_GROUP_ID).NotNull()
 	s.Field("Title").Column(ATTACHMENT_TITLE).NotNull().Mutable()
 	s.Field("Path").Column(ATTACHMENT_PATH).NotNull().Mutable()
 }
