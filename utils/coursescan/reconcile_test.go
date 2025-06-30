@@ -1,12 +1,30 @@
 package coursescan
 
 import (
+	"database/sql"
 	"testing"
 
 	"github.com/geerew/off-course/models"
+	"github.com/geerew/off-course/utils/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func newAssetGroup(id, module string, prefix int16, title, descPath, descType string) *models.AssetGroup {
+	ag := &models.AssetGroup{
+		Base:            models.Base{ID: id},
+		Module:          module,
+		Prefix:          sql.NullInt16{Int16: prefix, Valid: true},
+		Title:           title,
+		DescriptionPath: descPath,
+	}
+	if dt := types.NewDescription(descType); dt != nil {
+		ag.DescriptionType = *dt
+	}
+	return ag
+}
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -27,6 +45,127 @@ func newAttachment(id, path string) *models.Attachment {
 		Base: models.Base{ID: id},
 		Path: path,
 	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestReconcileAssetGroups_NoOp(t *testing.T) {
+	existing := []*models.AssetGroup{
+		newAssetGroup("g1", "mod1", 1, "Title", "path.md", "md"),
+	}
+	scanned := []*models.AssetGroup{
+		newAssetGroup("", "mod1", 1, "Title", "path.md", "md"),
+	}
+
+	ops := reconcileAssetGroups(scanned, existing)
+	require.Len(t, ops, 1)
+
+	op, ok := ops[0].(NoAssetGroupOp)
+	require.True(t, ok)
+	assert.Equal(t, NoOp, op.Type())
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestReconcileAssetGroups_Create(t *testing.T) {
+	existing := []*models.AssetGroup{}
+	scanned := []*models.AssetGroup{
+		newAssetGroup("", "mod2", 2, "NewTitle", "new.md", "md"),
+	}
+
+	ops := reconcileAssetGroups(scanned, existing)
+	require.Len(t, ops, 1)
+
+	op, ok := ops[0].(CreateAssetGroupOp)
+	require.True(t, ok)
+	assert.Equal(t, CreateOp, op.Type())
+	assert.Equal(t, "mod2", op.New.Module)
+	assert.Equal(t, int16(2), op.New.Prefix.Int16)
+	assert.Equal(t, "NewTitle", op.New.Title)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestReconcileAssetGroups_Update(t *testing.T) {
+	existing := []*models.AssetGroup{
+		newAssetGroup("g2", "mod3", 3, "OldTitle", "old.md", "md"),
+	}
+	scanned := []*models.AssetGroup{
+		newAssetGroup("", "mod3", 3, "NewTitle", "new.md", "md"),
+	}
+
+	ops := reconcileAssetGroups(scanned, existing)
+	require.Len(t, ops, 1)
+
+	op, ok := ops[0].(UpdateAssetGroupOp)
+	require.True(t, ok)
+	assert.Equal(t, UpdateOp, op.Type())
+	assert.Equal(t, "g2", op.Existing.ID)
+	assert.Equal(t, "NewTitle", op.New.Title)
+	assert.Equal(t, "new.md", op.New.DescriptionPath)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestReconcileAssetGroups_Delete(t *testing.T) {
+	existing := []*models.AssetGroup{
+		newAssetGroup("g3", "mod4", 4, "Title4", "desc.md", "md"),
+	}
+	scanned := []*models.AssetGroup{}
+
+	ops := reconcileAssetGroups(scanned, existing)
+	require.Len(t, ops, 1)
+
+	op, ok := ops[0].(DeleteAssetGroupOp)
+	require.True(t, ok)
+	assert.Equal(t, DeleteOp, op.Type())
+	assert.Equal(t, "g3", op.Deleted.ID)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestReconcileAssetGroups_Mixed(t *testing.T) {
+	// existing groups g1(mod1,1), g2(mod2,2), g3(mod3,3)
+	existing := []*models.AssetGroup{
+		newAssetGroup("g1", "mod1", 1, "T1", "d1.md", "md"),
+		newAssetGroup("g2", "mod2", 2, "T2", "d2.md", "md"),
+		newAssetGroup("g3", "mod3", 3, "T3", "d3.md", "md"),
+	}
+	// scanned: keep mod1, update mod2, create mod4
+	scanned := []*models.AssetGroup{
+		newAssetGroup("", "mod1", 1, "T1", "d1.md", "md"),
+		newAssetGroup("", "mod2", 2, "T2-new", "d2-new.md", "md"),
+		newAssetGroup("", "mod4", 4, "T4", "d4.md", "md"),
+	}
+
+	op := reconcileAssetGroups(scanned, existing)
+	require.Len(t, op, 4)
+
+	var create, update, del, noop bool
+	for _, e := range op {
+		switch v := e.(type) {
+		case CreateAssetGroupOp:
+			create = true
+			assert.Equal(t, "mod4", v.New.Module)
+		case UpdateAssetGroupOp:
+			update = true
+			assert.Equal(t, "g2", v.Existing.ID)
+			assert.Equal(t, "T2-new", v.New.Title)
+		case DeleteAssetGroupOp:
+			del = true
+			assert.Equal(t, "g3", v.Deleted.ID)
+		case NoAssetGroupOp:
+			noop = true
+			assert.Equal(t, "g1", v.Existing.ID)
+		default:
+			t.Errorf("unexpected op %T", v)
+		}
+	}
+
+	assert.True(t, create, "expected CreateOp")
+	assert.True(t, update, "expected UpdateOp")
+	assert.True(t, del, "expected DeleteOp")
+	assert.True(t, noop, "expected NoAssetGroupOp")
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -81,29 +220,6 @@ func TestReconcileAssets_Update(t *testing.T) {
 
 		assert.Equal(t, "a1", op.Existing.ID)
 		assert.Equal(t, "/new.mp4", op.New.Path)
-	})
-
-	t.Run("description", func(t *testing.T) {
-		existing := []*models.Asset{
-			newAsset("a1", "/lesson.mp4", 1024, "mod1", "hash123"),
-		}
-		scanned := []*models.Asset{
-			newAsset("", "/lesson.mp4", 1024, "mod1", "hash123"),
-		}
-
-		// Set the description
-		scanned[0].DescriptionPath = "/path/to/01 description.md"
-
-		ops := reconcileAssets(scanned, existing)
-		require.Len(t, ops, 1)
-
-		op, ok := ops[0].(UpdateAssetOp)
-		require.True(t, ok, "expected UpdateAssetOp")
-		assert.Equal(t, UpdateOp, op.Type())
-
-		// It should carry the existing ID and pick up the new description path
-		assert.Equal(t, "a1", op.Existing.ID)
-		assert.Equal(t, "/path/to/01 description.md", op.New.DescriptionPath)
 	})
 }
 
@@ -220,7 +336,7 @@ func TestReconcileAssets_Delete(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, DeleteOp, op.Type())
 
-	assert.Equal(t, "a1", op.Asset.ID)
+	assert.Equal(t, "a1", op.Deleted.ID)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -272,7 +388,7 @@ func TestReconcileAttachments_Delete(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, DeleteOp, op.Type())
 
-	assert.Equal(t, "a1", op.Attachment.ID)
+	assert.Equal(t, "a1", op.Deleted.ID)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -298,7 +414,7 @@ func TestReconcileAttachments_MixedOps(t *testing.T) {
 			assert.Equal(t, "/add.pdf", v.New.Path)
 		case DeleteAttachmentOp:
 			deleteFound = true
-			assert.Equal(t, "a2", v.Attachment.ID)
+			assert.Equal(t, "a2", v.Deleted.ID)
 		default:
 			t.Errorf("Unexpected op type: %T", op)
 		}

@@ -217,16 +217,25 @@ func Test_UpdateAsset(t *testing.T) {
 
 		time.Sleep(1 * time.Millisecond)
 
+		assetGroup2 := &models.AssetGroup{
+			CourseID: course.ID,
+			Title:    "Asset Group 2",
+			Prefix:   sql.NullInt16{Int16: 2, Valid: true},
+			Module:   "Module 2",
+		}
+		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup2))
+
 		newAsset := &models.Asset{
-			Base:     originalAsset.Base,
-			Title:    "Asset 2",                            // Mutable
-			Prefix:   sql.NullInt16{Int16: 2, Valid: true}, // Mutable
-			Module:   "Module 2",                           // Mutable
-			Type:     *types.NewAsset("html"),              // Mutable
-			Path:     "/course-1/02 asset.html",            // Mutable
-			FileSize: 2048,                                 // Mutable
-			ModTime:  time.Now().Format(time.RFC3339Nano),  // Mutable
-			Hash:     "5678",                               // Mutable
+			Base:         originalAsset.Base,
+			AssetGroupID: assetGroup2.ID,                       // Mutable
+			Title:        "Asset 2",                            // Mutable
+			Prefix:       sql.NullInt16{Int16: 2, Valid: true}, // Mutable
+			Module:       "Module 2",                           // Mutable
+			Type:         *types.NewAsset("html"),              // Mutable
+			Path:         "/course-1/02 asset.html",            // Mutable
+			FileSize:     2048,                                 // Mutable
+			ModTime:      time.Now().Format(time.RFC3339Nano),  // Mutable
+			Hash:         "5678",                               // Mutable
 		}
 		require.NoError(t, dao.UpdateAsset(ctx, newAsset))
 
@@ -234,6 +243,7 @@ func Test_UpdateAsset(t *testing.T) {
 		require.NoError(t, dao.GetAsset(ctx, assertResult, nil))
 		require.Equal(t, newAsset.ID, assertResult.ID)                          // No change
 		require.True(t, newAsset.CreatedAt.Equal(originalAsset.CreatedAt))      // No change
+		require.Equal(t, newAsset.AssetGroupID, assertResult.AssetGroupID)      // Changed
 		require.Equal(t, newAsset.Title, assertResult.Title)                    // Changed
 		require.Equal(t, newAsset.Prefix, assertResult.Prefix)                  // Changed
 		require.Equal(t, newAsset.Module, assertResult.Module)                  // Changed

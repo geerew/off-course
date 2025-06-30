@@ -1,6 +1,8 @@
 package coursescan
 
 import (
+	"fmt"
+
 	"github.com/geerew/off-course/models"
 )
 
@@ -11,6 +13,7 @@ type OpType string
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 const (
+	NoOp        OpType = "noop"
 	CreateOp    OpType = "create"
 	UpdateOp    OpType = "update"
 	SwapOp      OpType = "swap"
@@ -30,8 +33,10 @@ type Op interface {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// CreateAssetOp represents a new asset that should be created in the database
+// CreateAssetOp represents the case where a new asset is found on disk that does not
+// exist in the database
 type CreateAssetOp struct {
+	// The new asset to create
 	New *models.Asset
 }
 
@@ -42,10 +47,15 @@ func (o CreateAssetOp) Type() OpType { return CreateOp }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// UpdateAssetOp represents an asset that should be updated in the database
+// UpdateAssetOp represents the case when an new asset has the same hash as an existing asset but
+// different metadata and so needs to be updated in the database. This is typically occurs following
+// a rename
 type UpdateAssetOp struct {
+	// The existing asset in the DB to update. We will give its ID to the new asset so it
+	// can update the existing record and preserve state
 	Existing *models.Asset
-	New      *models.Asset
+	// The new asset with changed metadata
+	New *models.Asset
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -55,12 +65,17 @@ func (o UpdateAssetOp) Type() OpType { return UpdateOp }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// OverwriteAssetOp represents a case where an asset has been renamed to take the place of an
-// existing but now deleted asset (same hash, different path and a deleted path)
+// OverwriteAssetOp represents the case where an asset has been renamed, taking the place of an
+// another asset
 type OverwriteAssetOp struct {
-	Deleted  *models.Asset
+	// The asset that no longer exists (but is still in the DB). We will give its asset group ID
+	// to the renamed asset
+	Deleted *models.Asset
+	// The existing asset that is now taking the place of the deleted asset. We will give its ID
+	// to the renamed asset so it can update the existing record and preserve state
 	Existing *models.Asset
-	Renamed  *models.Asset
+	// The renamed asset that now takes the place of the deleted asset
+	Renamed *models.Asset
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -70,11 +85,12 @@ func (o OverwriteAssetOp) Type() OpType { return OverwriteOp }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// ReplaceAssetOp represents a case where an asset at a known path has changed
-// content (different hash), and should be deleted and replaced
+// ReplaceAssetOp represents the case where an asset is replaced with new contents (new hash)
 type ReplaceAssetOp struct {
+	// The existing asset to delete
 	Existing *models.Asset
-	New      *models.Asset
+	// The new asset to create
+	New *models.Asset
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -84,13 +100,16 @@ func (o ReplaceAssetOp) Type() OpType { return ReplaceOp }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// SwapAssetOp represents two assets that have swapped file paths on disk.
-// Because paths are unique, both must be deleted and re-created in reverse
+// SwapAssetOp represents the case when 2 assets are swapped on disk.
 type SwapAssetOp struct {
+	// The existing asset to delete. We will give its asset group ID to the new asset B
 	ExistingA *models.Asset
+	// The new asset to create
+	NewA *models.Asset
+	// The existing asset to delete. We will give its asset group ID to the new asset A
 	ExistingB *models.Asset
-	NewA      *models.Asset
-	NewB      *models.Asset
+	// The new asset to create
+	NewB *models.Asset
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -100,38 +119,16 @@ func (o SwapAssetOp) Type() OpType { return SwapOp }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// DeleteAssetOp represents an asset that exists in the DB but not on disk
-// and should therefore be removed
+// DeleteAssetOp represents the case where an asset has been deleted on disk
 type DeleteAssetOp struct {
-	Asset *models.Asset
+	// The deleted asset that no longer exists on disk but is still in the DB
+	Deleted *models.Asset
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Type implements the Op interface for DeleteAssetOp
 func (o DeleteAssetOp) Type() OpType { return DeleteOp }
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// CreateAttachmentOp represents a new attachment file that should be created
-type CreateAttachmentOp struct {
-	New *models.Attachment
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Type implements the Op interface for CreateAttachmentOp
-func (o CreateAttachmentOp) Type() OpType { return CreateOp }
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// DeleteAttachmentOp represents an attachment file that should be removed
-type DeleteAttachmentOp struct {
-	Attachment *models.Attachment
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Type implements the Op interface for DeleteAttachmentOp
-func (o DeleteAttachmentOp) Type() OpType { return DeleteOp }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -167,20 +164,6 @@ func reconcileAssets(scanned []*models.Asset, existing []*models.Asset) []Op {
 	for _, s := range scanned {
 		existingByPath := pathMap[s.Path]
 		existingByHash := hashMap[s.Hash]
-
-		// Update: same path, same size and mod time, but different description path
-		if existingByPath != nil && existingByPath.FileSize == s.FileSize && existingByPath.ModTime == s.ModTime {
-			if existingByPath.DescriptionPath != s.DescriptionPath {
-				// fmt.Printf("[Update] %s (new description=%s)\n", s.Path, s.DescriptionPath)
-				ops = append(ops, UpdateAssetOp{
-					Existing: existingByPath,
-					New:      s,
-				})
-
-				seen[existingByPath.ID] = true
-				continue
-			}
-		}
 
 		// No-op: same path, same mod time and file size
 		if existingByPath != nil && existingByPath.FileSize == s.FileSize && existingByPath.ModTime == s.ModTime {
@@ -282,7 +265,7 @@ func reconcileAssets(scanned []*models.Asset, existing []*models.Asset) []Op {
 	for _, e := range existing {
 		if !seen[e.ID] {
 			// fmt.Printf("[Delete] Removed asset: %s\n", e.Path)
-			ops = append(ops, DeleteAssetOp{Asset: e})
+			ops = append(ops, DeleteAssetOp{Deleted: e})
 		}
 	}
 
@@ -291,14 +274,40 @@ func reconcileAssets(scanned []*models.Asset, existing []*models.Asset) []Op {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// CreateAttachmentOp represents the case where a new attachment file is found on disk
+// that does not exist in the database
+type CreateAttachmentOp struct {
+	// The new attachment to create
+	New *models.Attachment
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Type implements the Op interface for CreateAttachmentOp
+func (o CreateAttachmentOp) Type() OpType { return CreateOp }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// DeleteAttachmentOp represents the case where an attachment file has been deleted on disk
+// but still exists in the database
+type DeleteAttachmentOp struct {
+	// The attachment that no longer exists on disk but is still in the DB
+	Deleted *models.Attachment
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Type implements the Op interface for DeleteAttachmentOp
+func (o DeleteAttachmentOp) Type() OpType { return DeleteOp }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // reconcileAttachments compares the current scanned attachments on disk with the existing attachments
 // in the database and returns a list of operations (Op) that describe how to transition the database
 // state to match the disk state
 //
 // Cases handled:
-//   - No-op: Same path → do nothing
-//   - Create: New file with unknown path → create new attachment
-//   - Delete: File no longer on disk → remove from DB
+//   - No-op
+//   - Create
+//   - Delete
 func reconcileAttachments(scanned []*models.Attachment, existing []*models.Attachment) []Op {
 	var ops []Op
 
@@ -312,20 +321,140 @@ func reconcileAttachments(scanned []*models.Attachment, existing []*models.Attac
 	for _, s := range scanned {
 		existingByPath := pathMap[s.Path]
 
-		// Case 1: Do nothing
+		// No-op
 		if existingByPath != nil {
 			seen[existingByPath.ID] = true
 			continue
 		}
 
-		// Case 2: Create
+		// Create
 		ops = append(ops, CreateAttachmentOp{New: s})
 	}
 
-	// Case 3: Delete
+	// Delete
 	for _, e := range existing {
 		if !seen[e.ID] {
-			ops = append(ops, DeleteAttachmentOp{Attachment: e})
+			ops = append(ops, DeleteAttachmentOp{Deleted: e})
+		}
+	}
+
+	return ops
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// NoAssetGroupOp represents the case where the asset group exists and has not changed. This
+// op can be used in the event that there are new assets/attachments being added to the asset
+// group and need to be given the asset group ID
+type NoAssetGroupOp struct {
+	// The new asset group is the assets found on disk. This is can be used to ensure all
+	// assets and attachments have the correct asset group ID
+	New *models.AssetGroup
+
+	// The existing asset group that is already in the database
+	Existing *models.AssetGroup
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Type implements the Op interface for NoAssetGroupOp
+func (o NoAssetGroupOp) Type() OpType { return NoOp }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// CreateAssetGroupOp represents the case where a new asset group should be created
+type CreateAssetGroupOp struct {
+	// The new asset group to create
+	New *models.AssetGroup
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Type implements the Op interface for CreateAssetGroupOp
+func (o CreateAssetGroupOp) Type() OpType { return CreateOp }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// UpdateAssetGroupOp represents the case when an existing asset group has changed metadata,
+// such as title or description
+type UpdateAssetGroupOp struct {
+	// The existing asset group in the DB to update. We will give its ID to the new asset group
+	// so it can update the existing record
+	Existing *models.AssetGroup
+	// The new asset group with changed metadata
+	New *models.AssetGroup
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Type implements the Op interface for UpdateAssetGroupOp
+func (o UpdateAssetGroupOp) Type() OpType { return UpdateOp }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// UpdateAssetGroupOp represents the case where an asset group should be deleted
+type DeleteAssetGroupOp struct {
+	// The existing asset group to delete
+	Deleted *models.AssetGroup
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Type implements the Op interface for DeleteAssetGroupOp
+func (o DeleteAssetGroupOp) Type() OpType { return DeleteOp }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// reconcileAssetGroups compares the current scanned asset groups on disk with the existing asset groups
+// in the database and returns a list of operations (Op) that describe how to transition the database
+// state to match the disk state
+//
+// Cases handled:
+//   - No-op
+//   - Create
+//   - Update
+//   - Delete
+func reconcileAssetGroups(scannedGroups []*models.AssetGroup, existingGroups []*models.AssetGroup) []Op {
+	var ops []Op
+	seen := map[string]bool{}
+	idx := map[string]*models.AssetGroup{}
+	assetToGroup := map[string]*models.AssetGroup{}
+
+	for _, existingGroup := range existingGroups {
+		key := existingGroup.Module + ":" + fmt.Sprint(existingGroup.Prefix.Int16)
+		idx[key] = existingGroup
+
+		for _, a := range existingGroup.Assets {
+			assetToGroup[a.Hash] = existingGroup
+		}
+	}
+
+	for _, scannedGroup := range scannedGroups {
+		key := scannedGroup.Module + ":" + fmt.Sprint(scannedGroup.Prefix.Int16)
+
+		if existingGroup, ok := idx[key]; ok {
+			// Preserve ID
+			scannedGroup.ID = existingGroup.ID
+			seen[key] = true
+
+			// Update when title/description has changed
+			if scannedGroup.Title != existingGroup.Title || scannedGroup.DescriptionPath != existingGroup.DescriptionPath {
+				// fmt.Printf("[Update Asset Group] %s:%d -> %s \n", scannedGroup.Module, scannedGroup.Prefix.Int16, scannedGroup.Title)
+				ops = append(ops, UpdateAssetGroupOp{Existing: existingGroup, New: scannedGroup})
+			} else {
+				// No-op
+				// fmt.Printf("[No-Op Asset Group] %s:%d -> %s \n", scannedGroup.Module, scannedGroup.Prefix.Int16, scannedGroup.Title)
+				ops = append(ops, NoAssetGroupOp{New: scannedGroup, Existing: existingGroup})
+			}
+		} else {
+			// Create
+			// fmt.Printf("[Create Asset Group] %s:%d -> %s\n", scannedGroup.Module, scannedGroup.Prefix.Int16, scannedGroup.Title)
+			ops = append(ops, CreateAssetGroupOp{New: scannedGroup})
+		}
+	}
+
+	// Delete any unseen groups
+	for _, existingGroup := range existingGroups {
+		key := existingGroup.Module + ":" + fmt.Sprint(existingGroup.Prefix.Int16)
+		if !seen[key] {
+			// fmt.Printf("[Delete Asset Group] %s:%d -> %s\n", existingGroup.Module, existingGroup.Prefix.Int16, existingGroup.Title)
+			ops = append(ops, DeleteAssetGroupOp{Deleted: existingGroup})
 		}
 	}
 
