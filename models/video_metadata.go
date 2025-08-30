@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/geerew/off-course/utils/schema"
+	"fmt"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -9,12 +9,18 @@ import (
 // VideoMetadata defines video-related metadata for an asset
 type VideoMetadata struct {
 	Base
-	AssetID    string
-	Duration   int
-	Width      int
-	Height     int
-	Resolution string
-	Codec      string
+	AssetID string `db:"asset_id"` // Immutable
+	VideoMetadataInfo
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+type VideoMetadataInfo struct {
+	Duration   int    `db:"duration"`   // Mutable
+	Width      int    `db:"width"`      // Mutable
+	Height     int    `db:"height"`     // Mutable
+	Resolution string `db:"resolution"` // Mutable
+	Codec      string `db:"codec"`      // Mutable
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -41,21 +47,13 @@ const (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Table implements the schema.Modeler interface
-func (m *VideoMetadata) Table() string {
-	return VIDEO_METADATA_TABLE
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// Fields defines the fields for the schema
-func (m *VideoMetadata) Define(s *schema.ModelConfig) {
-	s.Embedded("Base")
-
-	s.Field("AssetID").Column(VIDEO_METADATA_ASSET_ID).NotNull()
-	s.Field("Duration").Column(VIDEO_METADATA_DURATION).NotNull().Mutable()
-	s.Field("Width").Column(VIDEO_METADATA_WIDTH).NotNull().Mutable()
-	s.Field("Height").Column(VIDEO_METADATA_HEIGHT).NotNull().Mutable()
-	s.Field("Resolution").Column(VIDEO_METADATA_RESOLUTION).NotNull().Mutable()
-	s.Field("Codec").Column(VIDEO_METADATA_CODEC).NotNull().Mutable()
+// VideoMetadataJoinColumns returns the columns to join video metadata
+func VideoMetadataJoinColumns() []string {
+	return []string{
+		fmt.Sprintf("%s AS duration", VIDEO_METADATA_TABLE_DURATION),
+		fmt.Sprintf("%s AS width", VIDEO_METADATA_TABLE_WIDTH),
+		fmt.Sprintf("%s AS height", VIDEO_METADATA_TABLE_HEIGHT),
+		fmt.Sprintf("%s AS resolution", VIDEO_METADATA_TABLE_RESOLUTION),
+		fmt.Sprintf("%s AS codec", VIDEO_METADATA_TABLE_CODEC),
+	}
 }

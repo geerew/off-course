@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
@@ -16,7 +17,6 @@ import (
 // interface
 type Storage interface {
 	fiber.Storage
-	SetUser(key, userId string) error
 	DeleteUser(userId string) error
 }
 
@@ -61,21 +61,22 @@ func (s *SessionManager) SetSession(c *fiber.Ctx, userId string, userRole types.
 		return err
 	}
 
-	// Save the session ID as it is cleared when the session is saved
-	sessionId := session.ID()
-
-	session.Set("id", userId)
-	session.Set("role", userRole.String())
-
-	if err := session.Save(); err != nil {
+	// Prevent session fixation on login
+	if err := session.Regenerate(); err != nil {
 		return err
 	}
 
-	// Update the user_id in the session. This is an extra field that makes it easier to look up
-	// sessions by user ID
-	//
-	// It must be done AFTER the session is saved, otherwise the session will not exist
-	return s.storage.SetUser(sessionId, userId)
+	fmt.Println("userid", userId, "role", userRole.String())
+	session.Set("id", userId)
+	session.Set("role", userRole.String())
+
+	return session.Save()
+
+	// // Update the user_id in the session. This is an extra field that makes it easier to look up
+	// // sessions by user ID
+	// //
+	// // It must be done AFTER the session is saved, otherwise the session will not exist
+	// return s.storage.SetUser(sessionId, userId)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -106,7 +107,7 @@ func (s *SessionManager) DeleteUserSessions(id string) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// UpdateSessionsRoleForUser updates the role for all sessions belonging to a user
-func (s *SessionManager) UpdateSessionsRoleForUser(userID string, newRole types.UserRole) error {
-	return s.dao.UpdateSessionsRoleForUser(context.Background(), userID, newRole)
+// UpdateSessionRoleForUser updates the role for all sessions belonging to a user
+func (s *SessionManager) UpdateSessionRoleForUser(userID string, newRole types.UserRole) error {
+	return s.dao.UpdateSessionRoleForUser(context.Background(), userID, newRole)
 }

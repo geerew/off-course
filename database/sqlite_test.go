@@ -117,11 +117,12 @@ func TestSqliteDb_Bootstrap(t *testing.T) {
 
 func TestSqliteDb_Query(t *testing.T) {
 	dbManager := setupSqliteDB(t)
+	ctx := context.Background()
 
-	_, err := dbManager.DataDb.Exec("INSERT INTO test (name) VALUES ('test')")
+	_, err := dbManager.DataDb.ExecContext(ctx, "INSERT INTO test (name) VALUES ('test')")
 	require.NoError(t, err)
 
-	rows, err := dbManager.DataDb.Query("SELECT * FROM test")
+	rows, err := dbManager.DataDb.QueryContext(ctx, "SELECT * FROM test")
 	require.NoError(t, err)
 	defer rows.Close()
 
@@ -141,13 +142,14 @@ func TestSqliteDb_Query(t *testing.T) {
 
 func TestSqliteDb_QueryRow(t *testing.T) {
 	dbManager := setupSqliteDB(t)
+	ctx := context.Background()
 
-	_, err := dbManager.DataDb.Exec("INSERT INTO test (name) VALUES ('test')")
+	_, err := dbManager.DataDb.ExecContext(ctx, "INSERT INTO test (name) VALUES ('test')")
 	require.NoError(t, err)
 
 	var id int
 	var name string
-	err = dbManager.DataDb.QueryRow("SELECT * FROM test").Scan(&id, &name)
+	err = dbManager.DataDb.QueryRowContext(ctx, "SELECT * FROM test").Scan(&id, &name)
 
 	require.NoError(t, err)
 	require.Equal(t, "test", name)
@@ -157,8 +159,9 @@ func TestSqliteDb_QueryRow(t *testing.T) {
 
 func TestSqliteDb_Exec(t *testing.T) {
 	dbManager := setupSqliteDB(t)
+	ctx := context.Background()
 
-	result, err := dbManager.DataDb.Exec("INSERT INTO test (name) VALUES ('test')")
+	result, err := dbManager.DataDb.ExecContext(ctx, "INSERT INTO test (name) VALUES ('test')")
 	require.NoError(t, err)
 
 	rowAffected, err := result.RowsAffected()

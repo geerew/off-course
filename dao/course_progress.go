@@ -2,7 +2,7 @@ package dao
 
 import (
 	"context"
-	"database/sql"
+	"fmt"
 	"math"
 
 	"github.com/Masterminds/squirrel"
@@ -12,88 +12,12 @@ import (
 	"github.com/geerew/off-course/utils/types"
 )
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// CreateCourseProgress creates a course progress
-func (dao *DAO) CreateCourseProgress(ctx context.Context, courseProgress *models.CourseProgress) error {
-	if courseProgress == nil {
-		return utils.ErrNilPtr
-	}
-
-	principal, err := principalFromCtx(ctx)
-	if err != nil {
-		return err
-	}
-
-	// Always ensure the course progress is created with the user ID that made the request
-	courseProgress.UserID = principal.UserID
-
-	return Create(ctx, dao, courseProgress)
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// GetCourseProgress retrieves an course progress
-//
-// When options is nil or options.Where is nil, the models ID will be used
-func (dao *DAO) GetCourseProgress(ctx context.Context, courseProgress *models.CourseProgress, options *database.Options) error {
-	if courseProgress == nil {
-		return utils.ErrNilPtr
-	}
-
-	if options == nil {
-		options = &database.Options{}
-	}
-
-	// When there is no where clause, use the ID
-	if options == nil || options.Where == nil {
-		if courseProgress.Id() == "" {
-			return utils.ErrInvalidId
-		}
-
-		options.Where = squirrel.Eq{models.COURSE_PROGRESS_TABLE_ID: courseProgress.Id()}
-	}
-
-	return Get(ctx, dao, courseProgress, options)
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// ListCourseProgress retrieves a list of courseProgress
-func (dao *DAO) ListCourseProgress(ctx context.Context, courseProgress *[]*models.CourseProgress, options *database.Options) error {
-	if courseProgress == nil {
-		return utils.ErrNilPtr
-	}
-
-	return List(ctx, dao, courseProgress, options)
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// RefreshCourseProgress calculates and updates the progress for a course.
-//
-// This function calculates the overall course progress by:
-// 1. Counting video and non-video assets separately
-// 2. For video assets with metadata, calculating progress based on watched duration
-// 3. For non-video assets and videos without metadata, using completion flags
-// 4. Weighting the progress based on the proportion of each asset type
-// 5. Updating the course progress record with the calculated percentage and status
-//
-// The course is considered:
-// - Started: when any asset has progress or is completed
-// - Completed: when the overall progress reaches 100%
-//
-// Parameters:
-//   - ctx: The context for the database operation
-//   - courseID: The ID of the course to refresh progress for
-//
-// Returns:
-//   - error: Any error encountered during the refresh operation
-//
-// TODO optimize this function to reduce the number of queries
-func (dao *DAO) RefreshCourseProgress(ctx context.Context, courseID string) error {
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// SyncCourseProgress calculates the course progress for a given course ID and upserts a
+// course progress record based upon the course id + user id
+func (dao *DAO) SyncCourseProgress(ctx context.Context, courseID string) error {
 	if courseID == "" {
-		return utils.ErrInvalidId
+		return utils.ErrCourseId
 	}
 
 	principal, err := principalFromCtx(ctx)
@@ -101,184 +25,241 @@ func (dao *DAO) RefreshCourseProgress(ctx context.Context, courseID string) erro
 		return err
 	}
 
-	// Count video and non-video assets separately
-	assetCountQuery, assetCountArgs, _ := squirrel.
-		StatementBuilder.
-		PlaceholderFormat(squirrel.Question).
-		Select(
-			"COUNT(CASE WHEN "+models.ASSET_TYPE+" = 'video' THEN 1 END) AS video_count",
-			"COUNT(CASE WHEN "+models.ASSET_TYPE+" != 'video' THEN 1 END) AS non_video_count").
-		From(models.ASSET_TABLE).
-		Where(squirrel.Eq{models.ASSET_TABLE_COURSE_ID: courseID}).
-		ToSql()
+	metrics, err := dao.fetchCourseMetrics(ctx, courseID, principal.UserID)
+	if err != nil {
+		return err
+	}
 
-	var videoCount sql.NullInt32
-	var nonVideoCount sql.NullInt32
+	courseProgress := &models.CourseProgress{
+		CourseID: courseID,
+		UserID:   principal.UserID,
+	}
+
+	courseProgress.RefreshId()
+	courseProgress.RefreshCreatedAt()
+	courseProgress.RefreshUpdatedAt()
+
+	setProgress(*metrics, courseProgress)
+
+	builderOptions := newBuilderOptions(models.COURSE_PROGRESS_TABLE).
+		WithData(
+			map[string]interface{}{
+				models.BASE_ID:                      courseProgress.ID,
+				models.COURSE_PROGRESS_COURSE_ID:    courseProgress.CourseID,
+				models.COURSE_PROGRESS_USER_ID:      courseProgress.UserID,
+				models.COURSE_PROGRESS_STARTED:      courseProgress.Started,
+				models.COURSE_PROGRESS_STARTED_AT:   courseProgress.StartedAt,
+				models.COURSE_PROGRESS_PERCENT:      courseProgress.Percent,
+				models.COURSE_PROGRESS_COMPLETED_AT: courseProgress.CompletedAt,
+				models.BASE_CREATED_AT:              courseProgress.CreatedAt,
+				models.BASE_UPDATED_AT:              courseProgress.UpdatedAt,
+			},
+		).WithSuffix("" +
+		"ON CONFLICT( " + models.COURSE_PROGRESS_TABLE_COURSE_ID + "," + models.COURSE_PROGRESS_TABLE_USER_ID + ") DO UPDATE " +
+		"SET " +
+		models.COURSE_PROGRESS_PERCENT + " = excluded. " + models.COURSE_PROGRESS_PERCENT + ", " +
+		models.COURSE_PROGRESS_STARTED + " = excluded. " + models.COURSE_PROGRESS_STARTED + ", " +
+		// StartedAt case (only if it is NULL → non-NULL or non-NULL → NULL)
+		models.COURSE_PROGRESS_STARTED_AT + " = CASE " +
+		"WHEN (coalesce(" + models.COURSE_PROGRESS_STARTED_AT + ",'') = '' AND excluded." + models.COURSE_PROGRESS_STARTED_AT + " IS NOT NULL AND excluded." + models.COURSE_PROGRESS_STARTED_AT + " != '') THEN excluded." + models.COURSE_PROGRESS_STARTED_AT + " " +
+		"WHEN (" + models.COURSE_PROGRESS_STARTED_AT + " IS NOT NULL AND " + models.COURSE_PROGRESS_STARTED_AT + " != '' AND (excluded." + models.COURSE_PROGRESS_STARTED_AT + " IS NULL OR excluded." + models.COURSE_PROGRESS_STARTED_AT + " = '')) THEN '' " +
+		"ELSE " + models.COURSE_PROGRESS_STARTED_AT + " END, " +
+		// CompletedAt case (only if it is NULL → non-NULL or non-NULL → NULL)
+		models.COURSE_PROGRESS_COMPLETED_AT + " = CASE " +
+		"WHEN (coalesce(" + models.COURSE_PROGRESS_COMPLETED_AT + ",'') = '' AND excluded." + models.COURSE_PROGRESS_COMPLETED_AT + " IS NOT NULL AND excluded." + models.COURSE_PROGRESS_COMPLETED_AT + " != '') THEN excluded." + models.COURSE_PROGRESS_COMPLETED_AT + " " +
+		"WHEN (" + models.COURSE_PROGRESS_COMPLETED_AT + " IS NOT NULL AND " + models.COURSE_PROGRESS_COMPLETED_AT + " != '' AND (excluded." + models.COURSE_PROGRESS_COMPLETED_AT + " IS NULL OR excluded." + models.COURSE_PROGRESS_COMPLETED_AT + " = '')) THEN '' " +
+		"ELSE " + models.COURSE_PROGRESS_COMPLETED_AT + " END, " +
+		// Update the updated_at field
+		models.BASE_UPDATED_AT + " = excluded." + models.BASE_UPDATED_AT)
+
+	return createGeneric(ctx, dao, *builderOptions)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetCourseProgress gets a record from the course progress table based upon the where clause in the options. If
+// there is no where clause, it will return the first record in the table
+func (dao *DAO) GetCourseProgress(ctx context.Context, dbOpts *database.Options) (*models.CourseProgress, error) {
+	builderOpts := newBuilderOptions(models.COURSE_PROGRESS_TABLE).
+		WithColumns(
+			models.COURSE_PROGRESS_TABLE + ".*",
+		).
+		SetDbOpts(dbOpts).
+		WithLimit(1)
+
+	return getGeneric[models.CourseProgress](ctx, dao, *builderOpts)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ListCourseProgress gets all records from the course progress table based upon the where clause and pagination
+// in the options
+func (dao *DAO) ListCourseProgress(ctx context.Context, dbOpts *database.Options) ([]*models.CourseProgress, error) {
+	builderOpts := newBuilderOptions(models.COURSE_PROGRESS_TABLE).
+		WithColumns(
+			models.COURSE_PROGRESS_TABLE + ".*",
+		).
+		SetDbOpts(dbOpts)
+
+	return listGeneric[models.CourseProgress](ctx, dao, *builderOpts)
+}
+
+// DeleteCourseProgress deletes records from the course progress table
+//
+// Errors when a where clause is not provided
+func (dao *DAO) DeleteCourseProgress(ctx context.Context, dbOpts *database.Options) error {
+	if dbOpts == nil || dbOpts.Where == nil {
+		return utils.ErrWhere
+	}
+
+	builderOpts := newBuilderOptions(models.COURSE_PROGRESS_TABLE).SetDbOpts(dbOpts)
+	sqlStr, args, _ := deleteBuilder(*builderOpts)
 
 	q := database.QuerierFromContext(ctx, dao.db)
-	if err := q.QueryRow(assetCountQuery, assetCountArgs...).Scan(&videoCount, &nonVideoCount); err != nil {
-		return err
-	}
+	_, err := q.ExecContext(ctx, sqlStr, args...)
+	return err
+}
 
-	// Calculate progress metrics - include user_id in the join conditions
-	progressQuery, progressArgs, _ := squirrel.
-		StatementBuilder.
-		PlaceholderFormat(squirrel.Question).
-		Select(
-			// Count videos with metadata
-			"COUNT(CASE WHEN "+models.ASSET_TYPE+" = 'video' AND "+models.VIDEO_METADATA_TABLE_DURATION+" IS NOT NULL AND "+models.VIDEO_METADATA_TABLE_DURATION+" > 0 THEN 1 END) AS videos_with_metadata",
-			// Sum of all video durations
-			"COALESCE(SUM(CASE WHEN "+models.ASSET_TYPE+" = 'video' THEN "+models.VIDEO_METADATA_TABLE_DURATION+" ELSE 0 END), 0) AS total_video_duration",
-			// Calculate watched video duration (for videos with metadata)
-			"COALESCE(SUM(CASE WHEN "+models.ASSET_TYPE+" = 'video' AND "+models.VIDEO_METADATA_TABLE_DURATION+" IS NOT NULL AND "+models.VIDEO_METADATA_TABLE_DURATION+" > 0 THEN "+
-				"CASE WHEN "+models.ASSET_PROGRESS_TABLE_COMPLETED+" THEN "+models.VIDEO_METADATA_TABLE_DURATION+" "+
-				"ELSE MIN("+models.ASSET_PROGRESS_TABLE_VIDEO_POS+", "+models.VIDEO_METADATA_TABLE_DURATION+") END "+
-				"ELSE 0 END), 0) AS watched_video_duration",
-			// Count completed videos without metadata
-			"COUNT(CASE WHEN "+models.ASSET_TYPE+" = 'video' AND ("+models.VIDEO_METADATA_TABLE_DURATION+" IS NULL OR "+models.VIDEO_METADATA_TABLE_DURATION+" = 0) AND "+models.ASSET_PROGRESS_TABLE_COMPLETED+" THEN 1 END) AS completed_videos_no_metadata",
-			// Count total videos without metadata
-			"COUNT(CASE WHEN "+models.ASSET_TYPE+" = 'video' AND ("+models.VIDEO_METADATA_TABLE_DURATION+" IS NULL OR "+models.VIDEO_METADATA_TABLE_DURATION+" = 0) THEN 1 END) AS total_videos_no_metadata",
-			// Count completed non-video assets
-			"COUNT(CASE WHEN "+models.ASSET_TYPE+" != 'video' AND "+models.ASSET_PROGRESS_TABLE_COMPLETED+" THEN 1 END) AS completed_non_video_count",
-			// Count started assets
-			"SUM(CASE WHEN "+models.ASSET_PROGRESS_TABLE_VIDEO_POS+" > 0 OR "+models.ASSET_PROGRESS_TABLE_COMPLETED+" THEN 1 ELSE 0 END) AS started_count").
-		From(models.ASSET_TABLE).
-		// Include user_id in the join condition
-		LeftJoin(models.ASSET_PROGRESS_TABLE + " ON " + models.ASSET_TABLE_ID + " = " + models.ASSET_PROGRESS_TABLE_ASSET_ID +
-			" AND " + models.ASSET_PROGRESS_TABLE_USER_ID + " = ?").
-		LeftJoin(models.VIDEO_METADATA_TABLE + " ON " + models.ASSET_TABLE_ID + " = " + models.VIDEO_METADATA_TABLE_ASSET_ID).
-		Where(squirrel.Eq{models.ASSET_TABLE_COURSE_ID: courseID}).
-		ToSql()
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Private
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	// Add userID as the first parameter
-	progressArgs = append([]interface{}{principal.UserID}, progressArgs...)
+type courseMetrics struct {
+	VideoCount             int   `db:"video_count"`
+	NonVideoCount          int   `db:"non_video_count"`
+	VideosWithMeta         int   `db:"videos_with_metadata"`
+	TotalVideoDuration     int64 `db:"total_video_duration"`
+	WatchedVideoDuration   int64 `db:"watched_video_duration"`
+	CompletedNoMetaCount   int   `db:"completed_videos_no_metadata"`
+	TotalNoMetaCount       int   `db:"total_videos_no_metadata"`
+	CompletedNonVideoCount int   `db:"completed_non_video_count"`
+	StartedAssetCount      int   `db:"started_count"`
+}
 
-	var videosWithMetadata sql.NullInt32
-	var totalVideoDuration sql.NullInt64
-	var watchedVideoDuration sql.NullInt64
-	var completedVideosNoMetadata sql.NullInt32
-	var totalVideosNoMetadata sql.NullInt32
-	var completedNonVideoCount sql.NullInt32
-	var startedAssetCount sql.NullInt32
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	err = q.QueryRow(progressQuery, progressArgs...).Scan(
-		&videosWithMetadata,
-		&totalVideoDuration,
-		&watchedVideoDuration,
-		&completedVideosNoMetadata,
-		&totalVideosNoMetadata,
-		&completedNonVideoCount,
-		&startedAssetCount,
-	)
+// fetchCourseMetrics retrieves various metrics for a course based on the course ID and user ID
+//
+// TODO Change this to work around the asset groups
+// TODO Change the userID to use ? instead of string interpolation
+func (dao *DAO) fetchCourseMetrics(ctx context.Context, courseID, userID string) (*courseMetrics, error) {
+	dbOpts := database.NewOptions().
+		WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: courseID})
+
+	builderOpts := newBuilderOptions(models.COURSE_TABLE).
+		WithColumns(
+			// Count of video
+			"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' THEN 1 END) AS video_count",
+			// Count of non-video assets
+			"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"!='video' THEN 1 END) AS non_video_count",
+			// Count of videos with metadata whose duration > 0
+			"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' AND "+models.VIDEO_METADATA_TABLE_DURATION+">0 THEN 1 END) AS videos_with_metadata",
+			// Total duration of all video assets
+			"COALESCE(SUM(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' THEN "+models.VIDEO_METADATA_TABLE_DURATION+" END),0) AS total_video_duration",
+			// Total watched duration of videos with metadata
+			"COALESCE(SUM(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' AND "+models.VIDEO_METADATA_TABLE_DURATION+">0 THEN CASE WHEN "+models.ASSET_PROGRESS_TABLE_COMPLETED+" THEN "+models.VIDEO_METADATA_TABLE_DURATION+" ELSE MIN("+models.ASSET_PROGRESS_TABLE_VIDEO_POS+", "+models.VIDEO_METADATA_TABLE_DURATION+") END END),0) AS watched_video_duration",
+			// Count of completed video assets without metadata
+			"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' AND ("+models.VIDEO_METADATA_TABLE_DURATION+" IS NULL OR "+models.VIDEO_METADATA_TABLE_DURATION+"=0) AND "+models.ASSET_PROGRESS_TABLE_COMPLETED+" THEN 1 END) AS completed_videos_no_metadata",
+			// Count of total video assets without metadata
+			"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' AND ("+models.VIDEO_METADATA_TABLE_DURATION+" IS NULL OR "+models.VIDEO_METADATA_TABLE_DURATION+"=0) THEN 1 END) AS total_videos_no_metadata",
+			// Count of completed non-video assets
+			"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"!='video' AND "+models.ASSET_PROGRESS_TABLE_COMPLETED+" THEN 1 END) AS completed_non_video_count",
+			// Count of started assets (video or non-video)
+			"COALESCE(SUM(CASE WHEN "+models.ASSET_PROGRESS_TABLE_VIDEO_POS+">0 OR "+models.ASSET_PROGRESS_TABLE_COMPLETED+" THEN 1 ELSE 0 END), 0) AS started_count",
+		).
+		WithLeftJoin(models.ASSET_TABLE, fmt.Sprintf("%s = %s", models.ASSET_TABLE_COURSE_ID, models.COURSE_TABLE_ID)).
+		WithLeftJoin(models.ASSET_PROGRESS_TABLE, fmt.Sprintf("%s = %s AND %s = '%s'", models.ASSET_PROGRESS_TABLE_ASSET_ID, models.ASSET_TABLE_ID, models.ASSET_PROGRESS_TABLE_USER_ID, userID)).
+		WithLeftJoin(models.VIDEO_METADATA_TABLE, fmt.Sprintf("%s = %s", models.VIDEO_METADATA_TABLE_ASSET_ID, models.ASSET_TABLE_ID)).
+		WithGroupBy(models.COURSE_TABLE_ID).
+		SetDbOpts(dbOpts)
+
+	metrics, err := getGeneric[courseMetrics](ctx, dao, *builderOpts)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// Get the course progress for this specific user
-	courseProgress := &models.CourseProgress{}
-	err = dao.GetCourseProgress(ctx, courseProgress, &database.Options{
-		Where: squirrel.And{
-			squirrel.Eq{models.COURSE_PROGRESS_TABLE_COURSE_ID: courseID},
-			squirrel.Eq{models.COURSE_PROGRESS_TABLE_USER_ID: principal.UserID},
-		},
-	})
-
-	// If no progress record exists for this user, create one
-	if err == sql.ErrNoRows {
-		courseProgress = &models.CourseProgress{
-			CourseID: courseID,
-			UserID:   principal.UserID,
-		}
-
-		if err = Create(ctx, dao, courseProgress); err != nil {
-			return err
-		}
-	} else if err != nil {
-		return err
+	if metrics == nil {
+		return nil, utils.ErrCourseId
 	}
 
-	now := types.NowDateTime()
+	return metrics, nil
+}
 
-	// Calculate percentage based on both video and non-video assets
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// setProgress calculates the progress of a course based on the provided metrics and updates the
+// course progress object accordingly
+func setProgress(metrics courseMetrics, courseProgress *models.CourseProgress) {
 	var percent int
-	totalAssets := videoCount.Int32 + nonVideoCount.Int32
+	var started bool
+	var startedAt types.DateTime
+	var completedAt types.DateTime
 
+	// Set the percent
+	totalAssets := metrics.VideoCount + metrics.NonVideoCount
 	if totalAssets > 0 {
-		// For videos with metadata, calculate based on duration
-		var videosWithMetadataPercent float64 = 0
-		if videosWithMetadata.Int32 > 0 && totalVideoDuration.Int64 > 0 {
-			videosWithMetadataPercent = float64(watchedVideoDuration.Int64) / float64(totalVideoDuration.Int64)
+		// Video with metadata
+		vw := 0.0
+		if metrics.VideosWithMeta > 0 && metrics.TotalVideoDuration > 0 {
+			vw = float64(metrics.WatchedVideoDuration) / float64(metrics.TotalVideoDuration)
 		}
 
-		// For videos without metadata, calculate based on completion flag
-		var videosWithoutMetadataPercent float64 = 0
-		if totalVideosNoMetadata.Int32 > 0 {
-			videosWithoutMetadataPercent = float64(completedVideosNoMetadata.Int32) / float64(totalVideosNoMetadata.Int32)
+		// Video without metadata
+		vnm := 0.0
+		if metrics.TotalNoMetaCount > 0 {
+			vnm = float64(metrics.CompletedNoMetaCount) / float64(metrics.TotalNoMetaCount)
 		}
 
-		// For non-videos, calculate based on completion flag
-		var nonVideoProgressPercent float64 = 0
-		if nonVideoCount.Int32 > 0 {
-			nonVideoProgressPercent = float64(completedNonVideoCount.Int32) / float64(nonVideoCount.Int32)
+		// Non-video assets
+		nv := 0.0
+		if metrics.NonVideoCount > 0 {
+			nv = float64(metrics.CompletedNonVideoCount) / float64(metrics.NonVideoCount)
 		}
 
-		// Calculate the weighted percentage
-		var totalWeight float64 = 0
-		var weightedSum float64 = 0
-
-		if videosWithMetadata.Int32 > 0 {
-			weight := float64(videosWithMetadata.Int32) / float64(totalAssets)
-			weightedSum += videosWithMetadataPercent * weight
-			totalWeight += weight
+		weightedSum := 0.0
+		totalWeight := 0.0
+		if metrics.VideosWithMeta > 0 {
+			w := float64(metrics.VideosWithMeta) / float64(totalAssets)
+			weightedSum += vw * w
+			totalWeight += w
 		}
 
-		if totalVideosNoMetadata.Int32 > 0 {
-			weight := float64(totalVideosNoMetadata.Int32) / float64(totalAssets)
-			weightedSum += videosWithoutMetadataPercent * weight
-			totalWeight += weight
+		if metrics.TotalNoMetaCount > 0 {
+			w := float64(metrics.TotalNoMetaCount) / float64(totalAssets)
+			weightedSum += vnm * w
+			totalWeight += w
 		}
 
-		if nonVideoCount.Int32 > 0 {
-			weight := float64(nonVideoCount.Int32) / float64(totalAssets)
-			weightedSum += nonVideoProgressPercent * weight
-			totalWeight += weight
+		if metrics.NonVideoCount > 0 {
+			w := float64(metrics.NonVideoCount) / float64(totalAssets)
+			weightedSum += nv * w
+			totalWeight += w
 		}
 
-		// Calculate final percentage, handling possible division by zero
 		if totalWeight > 0 {
 			percent = int(math.Floor((weightedSum / totalWeight) * 100))
 		}
 	}
 
-	// Cap at 100%
 	if percent > 100 {
 		percent = 100
 	}
+
+	now := types.NowDateTime()
+
+	// started and startedAt
+	if metrics.StartedAssetCount > 0 || percent > 0 {
+		started = true
+		startedAt = now
+	}
+
+	// completed
+	if percent == 100 {
+		completedAt = now
+	}
+
 	courseProgress.Percent = percent
-
-	// Update started status
-	if startedAssetCount.Int32 > 0 || courseProgress.Percent > 0 {
-		courseProgress.Started = true
-		// Only set started_at if it's not already set
-		if courseProgress.StartedAt.IsZero() {
-			courseProgress.StartedAt = now
-		}
-	} else {
-		courseProgress.Started = false
-		courseProgress.StartedAt = types.DateTime{}
-	}
-
-	// Update completed status - must be 100% to be considered completed
-	if courseProgress.Percent == 100 {
-		// Only set completed_at if it's not already set
-		if courseProgress.CompletedAt.IsZero() {
-			courseProgress.CompletedAt = now
-		}
-	} else {
-		courseProgress.CompletedAt = types.DateTime{}
-	}
-
-	// Update the course progress
-	_, err = Update(ctx, dao, courseProgress)
-	return err
+	courseProgress.Started = started
+	courseProgress.StartedAt = startedAt
+	courseProgress.CompletedAt = completedAt
 }

@@ -561,7 +561,7 @@ func (s *Schema) InsertBuilder(model any, options *database.Options) squirrel.In
 // UpdateBuilder creates a squirrel UpdateBuilder for the model
 func (s *Schema) UpdateBuilder(model any, options *database.Options) (squirrel.UpdateBuilder, error) {
 	if options == nil || options.Where == nil {
-		return squirrel.UpdateBuilder{}, utils.ErrInvalidWhere
+		return squirrel.UpdateBuilder{}, utils.ErrWhere
 	}
 
 	builder := squirrel.

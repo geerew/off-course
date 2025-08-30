@@ -175,7 +175,7 @@ func loggerWriteFn(db database.Database) logger.WriteFn {
 				model.UpdatedAt = model.CreatedAt
 
 				// Write the log
-				err := logDao.WriteLog(txCtx, model)
+				err := logDao.CreateLog(txCtx, model)
 				if err != nil {
 					log.Println("Failed to write log", model, err)
 				}

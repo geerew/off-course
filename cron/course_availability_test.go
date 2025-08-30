@@ -48,7 +48,8 @@ func TestCourseAvailability_Run(t *testing.T) {
 		require.NoError(t, err)
 
 		for _, course := range courses {
-			err := dao.GetCourse(ctx, course, &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: course.ID}})
+			dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
+			course, err := dao.GetCourse(ctx, dbOpts)
 			require.NoError(t, err)
 			require.True(t, course.Available)
 		}

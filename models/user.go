@@ -1,7 +1,6 @@
 package models
 
 import (
-	"github.com/geerew/off-course/utils/schema"
 	"github.com/geerew/off-course/utils/types"
 )
 
@@ -11,10 +10,10 @@ import (
 type User struct {
 	Base
 
-	Username     string
-	DisplayName  string
-	PasswordHash string
-	Role         types.UserRole
+	Username     string         `db:"username"`      // Immutable
+	DisplayName  string         `db:"display_name"`  // Mutable
+	PasswordHash string         `db:"password_hash"` // Mutable
+	Role         types.UserRole `db:"role"`          // Mutable
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -34,23 +33,3 @@ const (
 	USER_TABLE_PASSWORD_HASH = USER_TABLE + "." + USER_PASSWORD_HASH
 	USER_TABLE_ROLE          = USER_TABLE + "." + USER_ROLE
 )
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// Table implements the `schema.Modeler` interface by returning the table name
-func (u *User) Table() string {
-	return USER_TABLE
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// Fields implements the `schema.Modeler` interface by defining the model fields
-func (u *User) Define(s *schema.ModelConfig) {
-	s.Embedded("Base")
-
-	// Common fields
-	s.Field("Username").Column(USER_USERNAME).NotNull()
-	s.Field("DisplayName").Column(USER_DISPLAY_NAME).NotNull().Mutable()
-	s.Field("PasswordHash").Column(USER_PASSWORD_HASH).NotNull().Mutable()
-	s.Field("Role").Column(USER_ROLE).NotNull().Mutable()
-}

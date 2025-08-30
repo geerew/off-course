@@ -3,7 +3,6 @@ package models
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 import (
-	"github.com/geerew/off-course/utils/schema"
 	"github.com/geerew/off-course/utils/types"
 )
 
@@ -12,11 +11,11 @@ import (
 // Scan defines the model for a scan
 type Scan struct {
 	Base
-	CourseID string
-	Status   types.ScanStatus
+	CourseID string           `db:"course_id"` // Immutable
+	Status   types.ScanStatus `db:"status"`    // Mutable, defaults to "waiting" if not set
 
 	// Joins
-	CoursePath string
+	CoursePath string `db:"course_path"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -33,27 +32,3 @@ const (
 	SCAN_TABLE_COURSE_ID  = SCAN_TABLE + "." + SCAN_COURSE_ID
 	SCAN_TABLE_STATUS     = SCAN_TABLE + "." + SCAN_STATUS
 )
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// Table implements the `schema.Modeler` interface by returning the table name
-func (s *Scan) Table() string {
-	return SCAN_TABLE
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// Define implements the `schema.Modeler` interface by defining the model
-func (s *Scan) Define(c *schema.ModelConfig) {
-	c.Embedded("Base")
-
-	// Common fields
-	c.Field("CourseID").Column(SCAN_COURSE_ID)
-	c.Field("Status").Column(SCAN_STATUS).Mutable().IgnoreIfNull()
-
-	// Join fields
-	c.Field("CoursePath").JoinTable(COURSE_TABLE).Column(SCAN_COURSE_PATH).Alias("course_path")
-
-	// Joins
-	c.LeftJoin(COURSE_TABLE).On(SCAN_TABLE_COURSE_ID + " = " + COURSE_TABLE_ID)
-}

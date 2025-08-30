@@ -9,62 +9,119 @@ import (
 	"github.com/geerew/off-course/utils"
 )
 
+// Key   string `db:"key"`   // Immutable
+// Value string `db:"value"` // Mutable
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// CreateParam creates a parameter
+// CreateParam inserts a new param record
 func (dao *DAO) CreateParam(ctx context.Context, param *models.Param) error {
 	if param == nil {
 		return utils.ErrNilPtr
 	}
 
-	return Create(ctx, dao, param)
+	if param.Key == "" {
+		return utils.ErrKey
+	}
+
+	if param.ID == "" {
+		param.RefreshId()
+	}
+
+	param.RefreshCreatedAt()
+	param.RefreshUpdatedAt()
+
+	builderOptions := newBuilderOptions(models.PARAM_TABLE).
+		WithData(
+			map[string]interface{}{
+				models.BASE_ID:         param.ID,
+				models.PARAM_KEY:       param.Key,
+				models.PARAM_VALUE:     param.Value,
+				models.BASE_CREATED_AT: param.CreatedAt,
+				models.BASE_UPDATED_AT: param.UpdatedAt,
+			},
+		)
+
+	return createGeneric(ctx, dao, *builderOptions)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetParam retrieves a parameter
-//
-// When options is nil or options.Where is nil, the models Key will be used
-func (dao *DAO) GetParam(ctx context.Context, param *models.Param, options *database.Options) error {
-	if param == nil {
-		return utils.ErrNilPtr
-	}
+// GetParam gets a record from the params table based upon the where clause in the options. If
+// there is no where clause, it will return the first record in the table
+func (dao *DAO) GetParam(ctx context.Context, dbOpts *database.Options) (*models.Param, error) {
+	builderOpts := newBuilderOptions(models.PARAM_TABLE).
+		WithColumns(
+			models.PARAM_TABLE + ".*",
+		).
+		SetDbOpts(dbOpts).
+		WithLimit(1)
 
-	if options == nil {
-		options = &database.Options{}
-	}
-
-	// When there is no where clause, use the key
-	if options.Where == nil {
-		if param.Key == "" {
-			return utils.ErrInvalidKey
-		}
-
-		options.Where = squirrel.Eq{models.PARAM_TABLE_KEY: param.Key}
-	}
-
-	return Get(ctx, dao, param, options)
+	return getGeneric[models.Param](ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// ListParams retrieves a list of params
-func (dao *DAO) ListParams(ctx context.Context, params *[]*models.Param, options *database.Options) error {
-	if params == nil {
-		return utils.ErrNilPtr
-	}
+// ListParams gets all records from the params table based upon the where clause and pagination
+// in the options
+func (dao *DAO) ListParams(ctx context.Context, dbOpts *database.Options) ([]*models.Param, error) {
+	builderOpts := newBuilderOptions(models.PARAM_TABLE).
+		WithColumns(
+			models.PARAM_TABLE + ".*",
+		).
+		SetDbOpts(dbOpts)
 
-	return List(ctx, dao, params, options)
+	return listGeneric[models.Param](ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// UpdateParam updates a parameter
+// UpdateParam updates a param record
 func (dao *DAO) UpdateParam(ctx context.Context, param *models.Param) error {
 	if param == nil {
 		return utils.ErrNilPtr
 	}
 
-	_, err := Update(ctx, dao, param)
+	if param.ID == "" {
+		return utils.ErrId
+	}
+
+	if param.Key == "" {
+		return utils.ErrKey
+	}
+
+	param.RefreshUpdatedAt()
+
+	dbOpts := &database.Options{
+		Where: squirrel.Eq{models.BASE_ID: param.ID},
+	}
+
+	builderOptions := newBuilderOptions(models.PARAM_TABLE).
+		WithData(
+			map[string]interface{}{
+				models.PARAM_VALUE:     param.Value,
+				models.BASE_UPDATED_AT: param.UpdatedAt,
+			},
+		).
+		SetDbOpts(dbOpts)
+
+	_, err := updateGeneric(ctx, dao, *builderOptions)
+	return err
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// DeleteParams deletes records from the params table
+//
+// Errors when a where clause is not provided
+func (dao *DAO) DeleteParams(ctx context.Context, dbOpts *database.Options) error {
+	if dbOpts == nil || dbOpts.Where == nil {
+		return utils.ErrWhere
+	}
+
+	builderOpts := newBuilderOptions(models.PARAM_TABLE).SetDbOpts(dbOpts)
+	sqlStr, args, _ := deleteBuilder(*builderOpts)
+
+	q := database.QuerierFromContext(ctx, dao.db)
+	_, err := q.ExecContext(ctx, sqlStr, args...)
 	return err
 }
