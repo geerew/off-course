@@ -54,6 +54,14 @@ func (dao *DAO) CreateAsset(ctx context.Context, asset *models.Asset) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// CountAssets counts the number of asset records
+func (dao *DAO) CountAssets(ctx context.Context, dbOpts *database.Options) (int, error) {
+	builderOpts := newBuilderOptions(models.ASSET_TABLE).SetDbOpts(dbOpts)
+	return countGeneric(ctx, dao, *builderOpts)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // GetAsset gets a record from the assets table based upon the where clause in the options. If
 // there is no where clause, it will return the first record in the table
 //

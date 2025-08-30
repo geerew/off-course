@@ -46,6 +46,14 @@ func (dao *DAO) CreateScan(ctx context.Context, scan *models.Scan) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// CountScans counts the number of scan records
+func (dao *DAO) CountScans(ctx context.Context, dbOpts *database.Options) (int, error) {
+	builderOpts := newBuilderOptions(models.SCAN_TABLE).SetDbOpts(dbOpts)
+	return countGeneric(ctx, dao, *builderOpts)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // GetScan gets a record from the scans table based upon the where clause in the options. If
 // there is no where clause, it will return the first record in the table
 func (dao *DAO) GetScan(ctx context.Context, dbOpts *database.Options) (*models.Scan, error) {

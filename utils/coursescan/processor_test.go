@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/types"
@@ -35,11 +34,11 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		_, err := scanner.db.Exec("DROP TABLE IF EXISTS " + course.Table())
+		_, err := scanner.db.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)
 
 		err = Processor(ctx, scanner, scan)
-		require.ErrorContains(t, err, fmt.Sprintf("no such table: %s", course.Table()))
+		require.ErrorContains(t, err, fmt.Sprintf("no such table: %s", models.COURSE_TABLE))
 	})
 
 	t.Run("course unavailable", func(t *testing.T) {
@@ -74,14 +73,10 @@ func TestScanner_Processor(t *testing.T) {
 		err := Processor(ctx, scanner, scan)
 		require.NoError(t, err)
 
-		courseResult := &models.Course{}
-		options := &database.Options{
-			Where:            squirrel.Eq{models.COURSE_TABLE_ID: course.ID},
-			ExcludeRelations: []string{models.COURSE_RELATION_PROGRESS},
-		}
-		err = scanner.dao.GetCourse(ctx, courseResult, options)
+		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
+		record, err := scanner.dao.GetCourse(ctx, dbOpts)
 		require.NoError(t, err)
-		require.True(t, courseResult.Available)
+		require.True(t, record.Available)
 	})
 
 	t.Run("card", func(t *testing.T) {
@@ -93,10 +88,7 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		options := &database.Options{
-			Where:            squirrel.Eq{models.COURSE_TABLE_ID: course.ID},
-			ExcludeRelations: []string{models.COURSE_RELATION_PROGRESS},
-		}
+		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
 
 		// Add card at the root
 		{
@@ -106,10 +98,9 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			courseResult := &models.Course{}
-			err = scanner.dao.GetCourse(ctx, courseResult, options)
+			record, err := scanner.dao.GetCourse(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Equal(t, filepath.Join(course.Path, "card.jpg"), courseResult.CardPath)
+			require.Equal(t, filepath.Join(course.Path, "card.jpg"), record.CardPath)
 		}
 
 		// Ignore card in chapter
@@ -120,10 +111,9 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			courseResult := &models.Course{}
-			err = scanner.dao.GetCourse(ctx, courseResult, options)
+			record, err := scanner.dao.GetCourse(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Empty(t, courseResult.CardPath)
+			require.Empty(t, record.CardPath)
 		}
 
 		// Ignore additional cards at the root
@@ -134,10 +124,9 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			courseResult := &models.Course{}
-			err = scanner.dao.GetCourse(ctx, courseResult, options)
+			record, err := scanner.dao.GetCourse(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Equal(t, filepath.Join(course.Path, "card.jpg"), courseResult.CardPath)
+			require.Equal(t, filepath.Join(course.Path, "card.jpg"), record.CardPath)
 		}
 	})
 
@@ -166,7 +155,7 @@ func TestScanner_Processor(t *testing.T) {
 		err := Processor(ctx, scanner, scan)
 		require.NoError(t, err)
 
-		count, err := dao.Count(ctx, scanner.dao, &models.Asset{}, nil)
+		count, err := scanner.dao.CountAssets(ctx, nil)
 		require.NoError(t, err)
 		require.Zero(t, count)
 	})
@@ -180,11 +169,10 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		assetGroups := []*models.AssetGroup{}
-		assetGroupOptions := &database.Options{
-			OrderBy: []string{models.ASSET_GROUP_TABLE_MODULE + " asc", models.ASSET_GROUP_TABLE_PREFIX + " asc"},
-			Where:   squirrel.Eq{models.ASSET_GROUP_TABLE_COURSE_ID: course.ID},
-		}
+		assetGroups := make([]*models.AssetGroup, 0)
+		dbOpts := database.NewOptions().
+			WithWhere(squirrel.Eq{models.ASSET_GROUP_TABLE_COURSE_ID: course.ID}).
+			WithOrderBy(models.ASSET_GROUP_TABLE_MODULE+" asc", models.ASSET_GROUP_TABLE_PREFIX+" asc")
 
 		// Add file 1, file 2 and file 3 (create op)
 		{
@@ -196,7 +184,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err = scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 3)
 
@@ -232,7 +220,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err = scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 4)
 
@@ -251,7 +239,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err = scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 3)
 
@@ -271,7 +259,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err = scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 3)
 
@@ -293,7 +281,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err = scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 3)
 
@@ -322,7 +310,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err = scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 3)
 
@@ -349,7 +337,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err = scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 2)
 
@@ -370,7 +358,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err = scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 0)
 		}
@@ -382,7 +370,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err = scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 1)
 			require.Len(t, assetGroups[0].Assets, 1)
@@ -401,7 +389,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err = scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 1)
 			require.Len(t, assetGroups[0].Assets, 2)
@@ -429,11 +417,9 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		assetGroups := []*models.AssetGroup{}
-		assetGroupOptions := &database.Options{
-			OrderBy: []string{models.ASSET_GROUP_TABLE_MODULE + " asc", models.ASSET_GROUP_TABLE_PREFIX + " asc"},
-			Where:   squirrel.Eq{models.ASSET_GROUP_TABLE_COURSE_ID: course.ID},
-		}
+		dbOpts := database.NewOptions().
+			WithOrderBy(models.ASSET_GROUP_TABLE_MODULE+" asc", models.ASSET_GROUP_TABLE_PREFIX+" asc").
+			WithWhere(squirrel.Eq{models.ASSET_GROUP_TABLE_COURSE_ID: course.ID})
 
 		// Add asset (so the asset group is created)
 		{
@@ -443,7 +429,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 1)
 
@@ -463,7 +449,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 1)
 
@@ -479,7 +465,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 1)
 
@@ -498,7 +484,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 1)
 
@@ -519,12 +505,9 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		assetGroups := []*models.AssetGroup{}
-
-		assetGroupOptions := &database.Options{
-			OrderBy: []string{models.ASSET_GROUP_TABLE_MODULE + " asc", models.ASSET_GROUP_TABLE_PREFIX + " asc"},
-			Where:   squirrel.Eq{models.ASSET_GROUP_TABLE_COURSE_ID: course.ID},
-		}
+		dbOpts := database.NewOptions().
+			WithOrderBy(models.ASSET_GROUP_TABLE_MODULE+" asc", models.ASSET_GROUP_TABLE_PREFIX+" asc").
+			WithWhere(squirrel.Eq{models.ASSET_GROUP_TABLE_COURSE_ID: course.ID})
 
 		scanner.appFs.Fs.Mkdir(course.Path, os.ModePerm)
 
@@ -535,7 +518,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 1)
 			require.Len(t, assetGroups[0].Assets, 1)
@@ -556,7 +539,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 1)
 
@@ -579,7 +562,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 1)
 
@@ -592,8 +575,8 @@ func TestScanner_Processor(t *testing.T) {
 			require.Equal(t, "9c9bfc90d1a2738f701a22c1ef10d42d5f2c285998a221eba9b7953e202bcf1a", assetGroups[0].Assets[0].Hash)
 
 			require.Len(t, assetGroups[0].Attachments, 2)
-			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), assetGroups[0].Attachments[0].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 markdown 1.md"), assetGroups[0].Attachments[1].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 markdown 1.md"), assetGroups[0].Attachments[0].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), assetGroups[0].Attachments[1].Path)
 		}
 
 		// Add HTML asset
@@ -603,7 +586,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 1)
 
@@ -616,9 +599,9 @@ func TestScanner_Processor(t *testing.T) {
 			require.Equal(t, "1bc04b5291c26a46d918139138b992d2de976d6851d0893b0476b85bfbdfc6e6", assetGroups[0].Assets[0].Hash)
 
 			require.Len(t, assetGroups[0].Attachments, 3)
-			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), assetGroups[0].Attachments[0].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 markdown 1.md"), assetGroups[0].Attachments[1].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 pdf 1.pdf"), assetGroups[0].Attachments[2].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 markdown 1.md"), assetGroups[0].Attachments[0].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 pdf 1.pdf"), assetGroups[0].Attachments[1].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), assetGroups[0].Attachments[2].Path)
 		}
 
 		// Add VIDEO asset
@@ -628,7 +611,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 1)
 
@@ -641,10 +624,10 @@ func TestScanner_Processor(t *testing.T) {
 			require.Equal(t, "0cab1c9617404faf2b24e221e189ca5945813e14d3f766345b09ca13bbe28ffc", assetGroups[0].Assets[0].Hash)
 
 			require.Len(t, assetGroups[0].Attachments, 4)
-			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), assetGroups[0].Attachments[0].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 index.html"), assetGroups[0].Attachments[0].Path)
 			require.Equal(t, filepath.Join(course.Path, "01 markdown 1.md"), assetGroups[0].Attachments[1].Path)
 			require.Equal(t, filepath.Join(course.Path, "01 pdf 1.pdf"), assetGroups[0].Attachments[2].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 index.html"), assetGroups[0].Attachments[3].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), assetGroups[0].Attachments[3].Path)
 		}
 
 		// Add another PDF asset
@@ -654,7 +637,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 1)
 
@@ -667,11 +650,11 @@ func TestScanner_Processor(t *testing.T) {
 			require.Equal(t, "0cab1c9617404faf2b24e221e189ca5945813e14d3f766345b09ca13bbe28ffc", assetGroups[0].Assets[0].Hash)
 
 			require.Len(t, assetGroups[0].Attachments, 5)
-			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), assetGroups[0].Attachments[0].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 index.html"), assetGroups[0].Attachments[0].Path)
 			require.Equal(t, filepath.Join(course.Path, "01 markdown 1.md"), assetGroups[0].Attachments[1].Path)
 			require.Equal(t, filepath.Join(course.Path, "01 pdf 1.pdf"), assetGroups[0].Attachments[2].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 index.html"), assetGroups[0].Attachments[3].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 pdf 2.pdf"), assetGroups[0].Attachments[4].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 pdf 2.pdf"), assetGroups[0].Attachments[3].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), assetGroups[0].Attachments[4].Path)
 		}
 	})
 
@@ -684,12 +667,9 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		assetGroups := []*models.AssetGroup{}
-
-		assetGroupOptions := &database.Options{
-			OrderBy: []string{models.ASSET_GROUP_TABLE_MODULE + " asc", models.ASSET_GROUP_TABLE_PREFIX + " asc"},
-			Where:   squirrel.Eq{models.ASSET_GROUP_TABLE_COURSE_ID: course.ID},
-		}
+		dbOpts := database.NewOptions().
+			WithOrderBy(models.ASSET_GROUP_TABLE_MODULE+" asc", models.ASSET_GROUP_TABLE_PREFIX+" asc").
+			WithWhere(squirrel.Eq{models.ASSET_GROUP_TABLE_COURSE_ID: course.ID})
 
 		// Add video 1 asset with sub-prefix of 1 and sub-title "Part 1"
 		{
@@ -699,7 +679,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 1)
 
@@ -723,7 +703,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 1)
 
@@ -749,7 +729,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 1)
 
@@ -777,7 +757,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 1)
 
@@ -798,7 +778,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 1)
 
@@ -822,12 +802,9 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		assetGroups := []*models.AssetGroup{}
-
-		assetGroupOptions := &database.Options{
-			OrderBy: []string{models.ASSET_GROUP_TABLE_MODULE + " asc", models.ASSET_GROUP_TABLE_PREFIX + " asc"},
-			Where:   squirrel.Eq{models.ASSET_GROUP_TABLE_COURSE_ID: course.ID},
-		}
+		dbOpts := database.NewOptions().
+			WithOrderBy(models.ASSET_GROUP_TABLE_MODULE+" asc", models.ASSET_GROUP_TABLE_PREFIX+" asc").
+			WithWhere(squirrel.Eq{models.ASSET_GROUP_TABLE_COURSE_ID: course.ID})
 
 		// Add video 1 asset
 		{
@@ -837,7 +814,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 1)
 
@@ -858,7 +835,7 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			err = scanner.dao.ListAssetGroups(ctx, &assetGroups, assetGroupOptions)
+			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
 			require.NoError(t, err)
 			require.Len(t, assetGroups, 1)
 
