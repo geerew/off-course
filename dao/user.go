@@ -50,6 +50,14 @@ func (dao *DAO) CreateUser(ctx context.Context, user *models.User) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// CountUsers counts the number of user records
+func (dao *DAO) CountUsers(ctx context.Context, dbOpts *database.Options) (int, error) {
+	builderOpts := newBuilderOptions(models.USER_TABLE).SetDbOpts(dbOpts)
+	return countGeneric(ctx, dao, *builderOpts)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // GetUser gets a record from the user table based upon the where clause in the options. If
 // there is no where clause, it will return the first record in the table
 func (dao *DAO) GetUser(ctx context.Context, dbOpts *database.Options) (*models.User, error) {
