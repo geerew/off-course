@@ -3,9 +3,13 @@ package dao
 import (
 	"fmt"
 	"testing"
+	"time"
 
+	"github.com/Masterminds/squirrel"
+	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
+	"github.com/geerew/off-course/utils/pagination"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,32 +24,32 @@ func Test_CreateCourseTag(t *testing.T) {
 			courses = append(courses, course)
 		}
 
-		tag := &models.Tag{Tag: "Go"}
-		require.NoError(t, dao.CreateTag(ctx, tag))
+		tag1 := &models.Tag{Tag: "Tag1"}
+		require.NoError(t, dao.CreateTag(ctx, tag1))
 
 		// Using ID (tag exists)
-		courseTagByID := &models.CourseTag{TagID: tag.ID, CourseID: courses[0].ID}
-		require.Nil(t, dao.CreateCourseTag(ctx, courseTagByID))
+		courseTag := &models.CourseTag{TagID: tag1.ID, CourseID: courses[0].ID}
+		require.Nil(t, dao.CreateCourseTag(ctx, courseTag))
 
 		// Using Tag (tag exists)
-		courseTagByTag := &models.CourseTag{CourseID: courses[1].ID, Tag: "Go"}
-		require.Nil(t, dao.CreateCourseTag(ctx, courseTagByTag))
+		courseTagExisting := &models.CourseTag{CourseID: courses[1].ID, Tag: "Tag1"}
+		require.Nil(t, dao.CreateCourseTag(ctx, courseTagExisting))
 
 		// Create (tag does not exist)
-		courseTagCreated := &models.CourseTag{CourseID: courses[0].ID, Tag: "TypeScript"}
-		require.Nil(t, dao.CreateCourseTag(ctx, courseTagCreated))
+		courseTagCreate := &models.CourseTag{CourseID: courses[0].ID, Tag: "Tag2"}
+		require.Nil(t, dao.CreateCourseTag(ctx, courseTagCreate))
 
 		// Case insensitive
-		courseTagCaseInsensitive := &models.CourseTag{CourseID: courses[1].ID, Tag: "typescript"}
+		courseTagCaseInsensitive := &models.CourseTag{CourseID: courses[1].ID, Tag: "tag2"}
 		require.Nil(t, dao.CreateCourseTag(ctx, courseTagCaseInsensitive))
 
 		// Asset 4 course tags and 2 tags
-		courseTags := []*models.CourseTag{}
-		require.NoError(t, dao.ListCourseTags(ctx, &courseTags, nil))
+		courseTags, err := dao.ListCourseTags(ctx, nil)
+		require.NoError(t, err)
 		require.Len(t, courseTags, 4)
 
-		tags := []*models.Tag{}
-		require.NoError(t, dao.ListTags(ctx, &tags, nil))
+		tags, err := dao.ListTags(ctx, nil)
+		require.NoError(t, err)
 		require.Len(t, tags, 2)
 	})
 
@@ -58,8 +62,7 @@ func Test_CreateCourseTag(t *testing.T) {
 	t.Run("invalid tag ID", func(t *testing.T) {
 		dao, ctx := setup(t)
 
-		courseTag := &models.CourseTag{TagID: "invalid", CourseID: "invalid"}
-		require.ErrorContains(t, dao.CreateCourseTag(ctx, courseTag), "FOREIGN KEY constraint failed")
+		require.ErrorIs(t, dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: "1234"}), utils.ErrTag)
 	})
 
 	t.Run("invalid course ID", func(t *testing.T) {
@@ -75,18 +78,239 @@ func Test_CreateCourseTag(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func Test_CourseTagDeleteCascade(t *testing.T) {
-	dao, ctx := setup(t)
+func Test_GetCourseTag(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		dao, ctx := setup(t)
 
-	course := &models.Course{Title: "Course", Path: "/course"}
-	require.NoError(t, dao.CreateCourse(ctx, course))
+		course := &models.Course{Title: "Course 1", Path: "/course-1"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
 
-	courseTag := &models.CourseTag{CourseID: course.ID, Tag: "Tag 1"}
-	require.NoError(t, dao.CreateCourseTag(ctx, courseTag))
+		courseTag := &models.CourseTag{CourseID: course.ID, Tag: "Tag 1"}
+		require.NoError(t, dao.CreateCourseTag(ctx, courseTag))
 
-	require.Nil(t, Delete(ctx, dao, course, nil))
+		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: courseTag.ID})
+		record, err := dao.GetCourseTag(ctx, dbOpts)
+		require.Nil(t, err)
+		require.Equal(t, courseTag.ID, record.ID)
+		require.Equal(t, courseTag.Tag, record.Tag)
+	})
 
-	count, err := Count(ctx, dao, &models.CourseTag{}, nil)
-	require.NoError(t, err)
-	require.Zero(t, count)
+	t.Run("not found", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		record, err := dao.GetCourseTag(ctx, nil)
+		require.Nil(t, err)
+		require.Nil(t, record)
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func Test_ListCourseTags(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		courseTags := []*models.CourseTag{}
+
+		for i := range 3 {
+			courseTag := &models.CourseTag{CourseID: course.ID, Tag: fmt.Sprintf("Tag %d", i)}
+			courseTags = append(courseTags, courseTag)
+			require.NoError(t, dao.CreateCourseTag(ctx, courseTag))
+			time.Sleep(1 * time.Millisecond)
+		}
+
+		records, err := dao.ListCourseTags(ctx, nil)
+		require.Nil(t, err)
+		require.Len(t, records, 3)
+
+		for i, record := range records {
+			require.Equal(t, courseTags[i].ID, record.ID)
+			require.Equal(t, courseTags[i].Tag, record.Tag)
+		}
+	})
+
+	t.Run("empty", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		records, err := dao.ListCourseTags(ctx, nil)
+		require.Nil(t, err)
+		require.Empty(t, records)
+	})
+
+	t.Run("order by", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		courseTags := []*models.CourseTag{}
+		for i := range 3 {
+			courseTag := &models.CourseTag{CourseID: course.ID, Tag: fmt.Sprintf("Tag %d", i)}
+			courseTags = append(courseTags, courseTag)
+			require.NoError(t, dao.CreateCourseTag(ctx, courseTag))
+			time.Sleep(1 * time.Millisecond)
+		}
+
+		// Descending order by created_at
+		opts := database.NewOptions().WithOrderBy(models.COURSE_TAG_TABLE_CREATED_AT + " DESC")
+
+		records, err := dao.ListCourseTags(ctx, opts)
+		require.Nil(t, err)
+		require.Len(t, records, 3)
+
+		for i, record := range records {
+			require.Equal(t, courseTags[2-i].ID, record.ID)
+			require.Equal(t, courseTags[2-i].Tag, record.Tag)
+		}
+
+		// Ascending order by created_at
+		opts = database.NewOptions().WithOrderBy(models.COURSE_TAG_TABLE_CREATED_AT + " ASC")
+
+		records, err = dao.ListCourseTags(ctx, opts)
+		require.Nil(t, err)
+		require.Len(t, records, 3)
+
+		for i, record := range records {
+			require.Equal(t, courseTags[i].ID, record.ID)
+			require.Equal(t, courseTags[i].Tag, record.Tag)
+		}
+	})
+
+	t.Run("where", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		courseTag := &models.CourseTag{CourseID: course.ID, Tag: "Tag 1"}
+		require.NoError(t, dao.CreateCourseTag(ctx, courseTag))
+
+		opts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: courseTag.ID})
+		records, err := dao.ListCourseTags(ctx, opts)
+		require.Nil(t, err)
+		require.Len(t, records, 1)
+		require.Equal(t, courseTag.ID, records[0].ID)
+	})
+
+	t.Run("pagination", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		courseTags := []*models.CourseTag{}
+		for i := range 17 {
+			courseTag := &models.CourseTag{CourseID: course.ID, Tag: fmt.Sprintf("Tag %d", i)}
+			courseTags = append(courseTags, courseTag)
+			require.NoError(t, dao.CreateCourseTag(ctx, courseTag))
+			time.Sleep(1 * time.Millisecond)
+		}
+
+		// First page with 10 records
+		p := database.NewOptions().WithPagination(pagination.New(1, 10))
+		records, err := dao.ListCourseTags(ctx, p)
+		require.Nil(t, err)
+		require.Len(t, records, 10)
+		require.Equal(t, courseTags[0].ID, records[0].ID)
+		require.Equal(t, courseTags[9].ID, records[9].ID)
+
+		// Second page with remaining 7 records
+		p = database.NewOptions().WithPagination(pagination.New(2, 10))
+		records, err = dao.ListCourseTags(ctx, p)
+		require.Nil(t, err)
+		require.Len(t, records, 7)
+		require.Equal(t, courseTags[10].ID, records[0].ID)
+		require.Equal(t, courseTags[16].ID, records[6].ID)
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func Test_DeleteCourseTags(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course", Path: "/course"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		courseTag := &models.CourseTag{CourseID: course.ID, Tag: "Tag 1"}
+		require.NoError(t, dao.CreateCourseTag(ctx, courseTag))
+
+		opts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: courseTag.ID})
+		require.Nil(t, dao.DeleteCourseTags(ctx, opts))
+
+		records, err := dao.ListCourseTags(ctx, opts)
+		require.NoError(t, err)
+		require.Empty(t, records)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course", Path: "/course"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		courseTag := &models.CourseTag{CourseID: course.ID, Tag: "Tag 1"}
+		require.NoError(t, dao.CreateCourseTag(ctx, courseTag))
+
+		opts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: "non-existent"})
+		require.Nil(t, dao.DeleteCourseTags(ctx, opts))
+
+		records, err := dao.ListCourseTags(ctx, nil)
+		require.NoError(t, err)
+		require.Len(t, records, 1)
+		require.Equal(t, courseTag.ID, records[0].ID)
+	})
+
+	t.Run("missing where", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course", Path: "/course"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		courseTag := &models.CourseTag{CourseID: course.ID, Tag: "Tag 1"}
+		require.NoError(t, dao.CreateCourseTag(ctx, courseTag))
+
+		require.ErrorIs(t, dao.DeleteCourseTags(ctx, nil), utils.ErrWhere)
+
+		records, err := dao.ListCourseTags(ctx, nil)
+		require.NoError(t, err)
+		require.Len(t, records, 1)
+		require.Equal(t, courseTag.ID, records[0].ID)
+	})
+
+	t.Run("cascade", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		// Delete course
+		course1 := &models.Course{Title: "Course", Path: "/course"}
+		require.NoError(t, dao.CreateCourse(ctx, course1))
+
+		course1Tag := &models.CourseTag{CourseID: course1.ID, Tag: "Tag 1"}
+		require.NoError(t, dao.CreateCourseTag(ctx, course1Tag))
+
+		opts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course1.ID})
+		require.Nil(t, dao.DeleteCourses(ctx, opts))
+
+		records, err := dao.ListCourseTags(ctx, nil)
+		require.NoError(t, err)
+		require.Empty(t, records)
+
+		// Delete tag
+		course2 := &models.Course{Title: "Course 2", Path: "/course-2"}
+		require.NoError(t, dao.CreateCourse(ctx, course2))
+
+		course2Tag := &models.CourseTag{CourseID: course2.ID, Tag: "Tag 2"}
+		require.NoError(t, dao.CreateCourseTag(ctx, course2Tag))
+
+		opts = database.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: course2Tag.TagID})
+		require.Nil(t, dao.DeleteTags(ctx, opts))
+
+		records, err = dao.ListCourseTags(ctx, nil)
+		require.NoError(t, err)
+		require.Empty(t, records)
+	})
 }

@@ -5,7 +5,6 @@ package models
 import (
 	"database/sql"
 
-	"github.com/geerew/off-course/utils/schema"
 	"github.com/geerew/off-course/utils/types"
 )
 
@@ -14,22 +13,22 @@ import (
 // Asset defines the model for an asset
 type Asset struct {
 	Base
-	CourseID     string
-	AssetGroupID string
-	Title        string
-	Prefix       sql.NullInt16
-	SubPrefix    sql.NullInt16
-	SubTitle     string
-	Module       string
-	Type         types.Asset
-	Path         string
-	FileSize     int64
-	ModTime      string
-	Hash         string
+	CourseID     string        `db:"course_id"`      // Immutable
+	AssetGroupID string        `db:"asset_group_id"` // Mutable
+	Title        string        `db:"title"`          // Mutable
+	Prefix       sql.NullInt16 `db:"prefix"`         // Mutable
+	SubPrefix    sql.NullInt16 `db:"sub_prefix"`     // Mutable
+	SubTitle     string        `db:"sub_title"`      // Mutable
+	Module       string        `db:"module"`         // Mutable
+	Type         types.Asset   `db:"type"`           // Mutable
+	Path         string        `db:"path"`           // Mutable
+	FileSize     int64         `db:"file_size"`      // Mutable
+	ModTime      string        `db:"mod_time"`       // Mutable
+	Hash         string        `db:"hash"`           // Mutable
 
 	// Relations
-	VideoMetadata *VideoMetadata
-	Progress      *AssetProgress
+	VideoMetadata *VideoMetadataInfo
+	Progress      *AssetProgressInfo
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -74,37 +73,3 @@ const (
 
 	ASSET_RELATION_PROGRESS = "Progress"
 )
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// Table implements the `schema.Modeler` interface by returning the table name
-func (a *Asset) Table() string {
-	return ASSET_TABLE
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// Fields implements the `schema.Modeler` interface by defining the model fields
-func (a *Asset) Define(s *schema.ModelConfig) {
-	s.Embedded("Base")
-
-	// Common fields
-	s.Field("CourseID").Column(ASSET_COURSE_ID).NotNull()
-	s.Field("AssetGroupID").Column(ASSET_ASSET_GROUP_ID).NotNull().Mutable()
-	s.Field("Title").Column(ASSET_TITLE).NotNull().Mutable()
-	s.Field("Prefix").Column(ASSET_PREFIX).Mutable()
-	s.Field("SubPrefix").Column(ASSET_SUB_PREFIX).Mutable()
-	s.Field("SubTitle").Column(ASSET_SUB_TITLE).Mutable()
-	s.Field("Module").Column(ASSET_MODULE).Mutable()
-	s.Field("Type").Column(ASSET_TYPE).NotNull().Mutable()
-	s.Field("Path").Column(ASSET_PATH).NotNull().Mutable()
-	s.Field("FileSize").Column(ASSET_FILE_SIZE).NotNull().Mutable()
-	s.Field("ModTime").Column(ASSET_MOD_TIME).NotNull().Mutable()
-	s.Field("Hash").Column(ASSET_HASH).NotNull().Mutable()
-	s.Field("DescriptionPath").Column(ASSET_DESCRIPTION_PATH).Mutable()
-	s.Field("DescriptionType").Column(ASSET_DESCRIPTION_TYPE).Mutable()
-
-	// Relation fields
-	s.Relation("VideoMetadata").MatchOn(VIDEO_METADATA_ASSET_ID)
-	s.Relation("Progress").MatchOn(ASSET_PROGRESS_ASSET_ID)
-}

@@ -14,82 +14,113 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// CreateOrReplaceSession creates or replaces a session
+// CreateOrReplaceSession inserts or replace a session record
 func (dao *DAO) CreateOrReplaceSession(ctx context.Context, session *models.Session) error {
 	if session == nil {
 		return utils.ErrNilPtr
 	}
 
-	return CreateOrReplace(ctx, dao, session)
+	if session.ID == "" {
+		return utils.ErrId
+	}
+
+	if session.UserId == "" {
+		return utils.ErrUserId
+	}
+
+	builderOptions := newBuilderOptions(models.SESSION_TABLE).
+		WithData(
+			map[string]interface{}{
+				models.BASE_ID:         session.ID,
+				models.SESSION_USER_ID: session.UserId,
+				models.SESSION_DATA:    session.Data,
+				models.SESSION_EXPIRES: session.Expires,
+			},
+		).
+		WithReplace()
+
+	return createGeneric(ctx, dao, *builderOptions)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetSession retrieves a session
-//
-// When options is nil or options.Where is nil, the models ID will be used
-func (dao *DAO) GetSession(ctx context.Context, session *models.Session, options *database.Options) error {
-	if session == nil {
-		return utils.ErrNilPtr
-	}
+// GetSession gets a record from the sessions table based upon the where clause in the options. If
+// there is no where clause, it will return the first record in the table
+func (dao *DAO) GetSession(ctx context.Context, dbOpts *database.Options) (*models.Session, error) {
+	builderOpts := newBuilderOptions(models.SESSION_TABLE).
+		WithColumns(
+			models.SESSION_TABLE + ".*",
+		).
+		SetDbOpts(dbOpts).
+		WithLimit(1)
 
-	if options == nil {
-		options = &database.Options{}
-	}
-
-	// When there is no where clause, use the ID
-	if options == nil || options.Where == nil {
-		if session.Id() == "" {
-			return utils.ErrInvalidId
-		}
-
-		options = &database.Options{
-			Where: squirrel.Eq{models.SESSION_TABLE_ID: session.Id()},
-		}
-	}
-
-	return Get(ctx, dao, session, options)
+	return getGeneric[models.Session](ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// ListSessions retrieves a list of sessions
-func (dao *DAO) ListSessions(ctx context.Context, session *[]*models.Session, options *database.Options) error {
-	if session == nil {
-		return utils.ErrNilPtr
-	}
+// ListSessions gets all records from the sessions table based upon the where clause and pagination
+// in the options
+func (dao *DAO) ListSessions(ctx context.Context, dbOpts *database.Options) ([]*models.Session, error) {
+	builderOpts := newBuilderOptions(models.SESSION_TABLE).
+		WithColumns(
+			models.SESSION_TABLE + ".*",
+		).
+		SetDbOpts(dbOpts)
 
-	return List(ctx, dao, session, options)
+	return listGeneric[models.Session](ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// UpdateSession updates a session
+// UpdateSession updates a session record
 func (dao *DAO) UpdateSession(ctx context.Context, session *models.Session) error {
 	if session == nil {
 		return utils.ErrNilPtr
 	}
 
-	_, err := Update(ctx, dao, session)
+	if session.ID == "" {
+		return utils.ErrId
+	}
+
+	dbOpts := &database.Options{
+		Where: squirrel.Eq{models.BASE_ID: session.ID},
+	}
+
+	builderOptions := newBuilderOptions(models.SESSION_TABLE).
+		WithData(
+			map[string]interface{}{
+				models.SESSION_DATA:    session.Data,
+				models.SESSION_EXPIRES: session.Expires,
+			},
+		).
+		SetDbOpts(dbOpts)
+
+	_, err := updateGeneric(ctx, dao, *builderOptions)
 	return err
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// UpdateSessionsRoleForUser updates the role for all sessions belonging to a user
-func (dao *DAO) UpdateSessionsRoleForUser(ctx context.Context, userID string, newRole types.UserRole) error {
-	sessions := []*models.Session{}
+// UpdateSessionRoleForUser updates the role for all sessions belonging to a user
+func (dao *DAO) UpdateSessionRoleForUser(ctx context.Context, userID string, newRole types.UserRole) error {
+	if userID == "" {
+		return utils.ErrUserId
+	}
+
 	opts := &database.Options{
 		Where: squirrel.Eq{models.SESSION_TABLE_USER_ID: userID},
 	}
-	if err := dao.ListSessions(ctx, &sessions, opts); err != nil {
+
+	sessions, err := dao.ListSessions(ctx, opts)
+	if err != nil {
 		return err
 	}
 
 	var updatedSessions []*models.Session
-	for _, sess := range sessions {
+	for _, session := range sessions {
 		var values map[string]interface{}
-		buf := bytes.NewBuffer(sess.Data)
+		buf := bytes.NewBuffer(session.Data)
 		if err := gob.NewDecoder(buf).Decode(&values); err != nil {
 			continue
 		}
@@ -101,16 +132,35 @@ func (dao *DAO) UpdateSessionsRoleForUser(ctx context.Context, userID string, ne
 			continue
 		}
 
-		sess.Data = out.Bytes()
-		updatedSessions = append(updatedSessions, sess)
+		session.Data = out.Bytes()
+		updatedSessions = append(updatedSessions, session)
 	}
 
+	// TODO make bulk update
 	return dao.db.RunInTransaction(ctx, func(txCtx context.Context) error {
-		for _, sess := range updatedSessions {
-			if err := dao.UpdateSession(txCtx, sess); err != nil {
+		for _, session := range updatedSessions {
+			if err := dao.UpdateSession(txCtx, session); err != nil {
 				return err
 			}
 		}
 		return nil
 	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// DeleteSessions deletes records from the sessions table
+//
+// Errors when a where clause is not provided
+func (dao *DAO) DeleteSessions(ctx context.Context, dbOpts *database.Options) error {
+	if dbOpts == nil || dbOpts.Where == nil {
+		return utils.ErrWhere
+	}
+
+	builderOpts := newBuilderOptions(models.SESSION_TABLE).SetDbOpts(dbOpts)
+	sqlStr, args, _ := deleteBuilder(*builderOpts)
+
+	q := database.QuerierFromContext(ctx, dao.db)
+	_, err := q.ExecContext(ctx, sqlStr, args...)
+	return err
 }

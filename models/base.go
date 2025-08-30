@@ -1,7 +1,6 @@
 package models
 
 import (
-	"github.com/geerew/off-course/utils/schema"
 	"github.com/geerew/off-course/utils/security"
 	"github.com/geerew/off-course/utils/types"
 )
@@ -20,9 +19,9 @@ type Modeler interface {
 
 // Base defines the base model for all models
 type Base struct {
-	ID        string
-	CreatedAt types.DateTime
-	UpdatedAt types.DateTime
+	ID        string         `db:"id"`         // Immutable
+	CreatedAt types.DateTime `db:"created_at"` // Immutable
+	UpdatedAt types.DateTime `db:"updated_at"` // Mutable
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -32,16 +31,6 @@ const (
 	BASE_CREATED_AT = "created_at"
 	BASE_UPDATED_AT = "updated_at"
 )
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// Define implements the `schema.Modeler` interface by defining the model
-func (b *Base) Define(s *schema.ModelConfig) {
-	// Common fields
-	s.Field("ID").Column(BASE_ID).NotNull()
-	s.Field("CreatedAt").Column(BASE_CREATED_AT).NotNull()
-	s.Field("UpdatedAt").Column(BASE_UPDATED_AT).NotNull().Mutable()
-}
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

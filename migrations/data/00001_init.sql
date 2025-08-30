@@ -34,15 +34,15 @@ CREATE TABLE courses_progress (
 
 --- Asset groups
 CREATE TABLE asset_groups (
-	id          TEXT PRIMARY KEY NOT NULL,
-	course_id   TEXT NOT NULL,
-	title       TEXT NOT NULL,
-	prefix      INTEGER NOT NULL,
-	module      TEXT,
+	id          	 TEXT PRIMARY KEY NOT NULL,
+	course_id   	 TEXT NOT NULL,
+	title       	 TEXT NOT NULL,
+	prefix      	 INTEGER NOT NULL,
+	module      	 TEXT,
 	description_path TEXT,
 	description_type TEXT,
-	created_at  TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
-	updated_at  TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+	created_at       TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+	updated_at       TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	---
 	FOREIGN KEY (course_id) REFERENCES courses (id) ON DELETE CASCADE,
 	UNIQUE(course_id, prefix, module)
@@ -50,21 +50,21 @@ CREATE TABLE asset_groups (
 
 --- Assets
 CREATE TABLE assets (
-	id               TEXT PRIMARY KEY NOT NULL,
-	course_id        TEXT NOT NULL,
-	asset_group_id   TEXT NOT NULL,
-	title            TEXT NOT NULL,
-	prefix           INTEGER NOT NULL,
-	sub_prefix       INTEGER,
-	sub_title	     TEXT,
-	module          TEXT,
-	type             TEXT NOT NULL,
-	path             TEXT UNIQUE NOT NULL,
-	file_size        INTEGER NOT NULL DEFAULT 0,
-	mod_time         TEST NOT NULL DEFAULT '',
-	hash	         TEXT NOT NULL,
-	created_at       TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
-	updated_at       TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+	id             TEXT PRIMARY KEY NOT NULL,
+	course_id      TEXT NOT NULL,
+	asset_group_id TEXT NOT NULL,
+	title          TEXT NOT NULL,
+	prefix         INTEGER NOT NULL,
+	sub_prefix     INTEGER,
+	sub_title	   TEXT,
+	module         TEXT,
+	type           TEXT NOT NULL,
+	path           TEXT UNIQUE NOT NULL,
+	file_size      INTEGER NOT NULL DEFAULT 0,
+	mod_time       TEXT NOT NULL DEFAULT '',
+	hash	       TEXT NOT NULL,
+	created_at     TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+	updated_at     TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	---
 	FOREIGN KEY (course_id) REFERENCES courses (id) ON DELETE CASCADE,
 	FOREIGN KEY (asset_group_id) REFERENCES asset_groups (id) ON DELETE CASCADE
@@ -72,15 +72,15 @@ CREATE TABLE assets (
 
 --- Asset metadata
 CREATE TABLE asset_video_metadata (
-	id            TEXT PRIMARY KEY NOT NULL,
-	asset_id      TEXT NOT NULL UNIQUE,
-	duration      INTEGER NOT NULL DEFAULT 0,
-	width         INTEGER NOT NULL DEFAULT 0,
-	height        INTEGER NOT NULL DEFAULT 0,
-	resolution    TEXT NOT NULL DEFAULT '',
-	codec         TEXT NOT NULL DEFAULT '',
-	created_at    TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
-	updated_at    TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+	id         TEXT PRIMARY KEY NOT NULL,
+	asset_id   TEXT NOT NULL UNIQUE,
+	duration   INTEGER NOT NULL DEFAULT 0,
+	width      INTEGER NOT NULL DEFAULT 0,
+	height     INTEGER NOT NULL DEFAULT 0,
+	resolution TEXT NOT NULL DEFAULT '',
+	codec      TEXT NOT NULL DEFAULT '',
+	created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+	updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	--
 	FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE
 );
@@ -104,42 +104,42 @@ CREATE TABLE assets_progress (
 
 --- Attachments (related to asset groups)
 CREATE TABLE attachments (
-	id          TEXT PRIMARY KEY NOT NULL,
-	asset_group_id    TEXT NOT NULL,
-	title       TEXT NOT NULL,
-	path        TEXT UNIQUE NOT NULL,
-	created_at  TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
-	updated_at  TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+	id             TEXT PRIMARY KEY NOT NULL,
+	asset_group_id TEXT NOT NULL,
+	title          TEXT NOT NULL,
+	path           TEXT UNIQUE NOT NULL,
+	created_at     TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+	updated_at     TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	---
 	FOREIGN KEY (asset_group_id) REFERENCES asset_groups (id) ON DELETE CASCADE
 );
 
 --- Scan jobs
 CREATE TABLE scans (
-	id          TEXT PRIMARY KEY NOT NULL,
-	course_id   TEXT UNIQUE NOT NULL,
-    status      TEXT NOT NULL DEFAULT 'waiting',
-	created_at  TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
-	updated_at  TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+	id         TEXT PRIMARY KEY NOT NULL,
+	course_id  TEXT UNIQUE NOT NULL,
+    status     TEXT NOT NULL DEFAULT 'waiting',
+	created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+	updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	---
 	FOREIGN KEY (course_id) REFERENCES courses (id) ON DELETE CASCADE
 );
 
 --- Tags
 CREATE TABLE tags (
-	id          TEXT PRIMARY KEY NOT NULL,
-	tag         TEXT NOT NULL UNIQUE COLLATE NOCASE,
-	created_at  TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
-	updated_at  TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW'))
+	id         TEXT PRIMARY KEY NOT NULL,
+    tag        TEXT NOT NULL COLLATE NOCASE UNIQUE,
+	created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+	updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW'))
 );
 
 --- Course tags (join table)
 CREATE TABLE courses_tags (
-	id          TEXT PRIMARY KEY NOT NULL,
-	tag_id      TEXT NOT NULL,
-	course_id   TEXT NOT NULL,
-	created_at  TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
-	updated_at  TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+	id         TEXT PRIMARY KEY NOT NULL,
+	tag_id     TEXT NOT NULL,
+	course_id  TEXT NOT NULL,
+	created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+	updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	---
 	FOREIGN KEY (tag_id) REFERENCES tags (id) ON DELETE CASCADE,
 	FOREIGN KEY (course_id) REFERENCES courses (id) ON DELETE CASCADE,
@@ -149,11 +149,11 @@ CREATE TABLE courses_tags (
 
 --- Parameters (for application settings)
 CREATE TABLE params (
-    id           TEXT PRIMARY KEY NOT NULL,
-    key          TEXT UNIQUE NOT NULL,
-    value        TEXT NOT NULL,
-    created_at   TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
-    updated_at   TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW'))
+    id         TEXT PRIMARY KEY NOT NULL,
+    key        TEXT UNIQUE NOT NULL,
+    value      TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+    updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW'))
 );
 
 --- Users
@@ -174,3 +174,23 @@ CREATE TABLE sessions (
 	expires BIGINT NOT NULL,
 	user_id TEXT NOT NULL DEFAULT ''
 );
+
+
+-- Groups by course, then ordered by prefix+module
+CREATE INDEX IF NOT EXISTS idx_asset_groups_course_prefix_module
+  ON asset_groups(course_id, prefix, module);
+
+-- Assets: WHERE asset_group_id = ? ORDER BY prefix, sub_prefix
+CREATE INDEX IF NOT EXISTS idx_assets_group_prefix_sub
+  ON assets(asset_group_id, prefix, sub_prefix);
+
+-- Attachments: WHERE asset_group_id = ? ORDER BY title
+CREATE INDEX IF NOT EXISTS idx_attachments_group_title
+  ON attachments(asset_group_id, title);
+
+-- Joins (to keep progress / metadata LEFT JOINs cheap)
+CREATE INDEX IF NOT EXISTS idx_asset_progress_asset_user
+  ON assets_progress(asset_id, user_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_video_metadata_asset
+  ON asset_video_metadata(asset_id);

@@ -22,6 +22,13 @@ require (
 )
 
 require (
+	github.com/golang/protobuf v1.5.4 // indirect
+	github.com/jackskj/carta v0.2.0 // indirect
+	github.com/jmoiron/sqlx v1.4.0 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
+)
+
+require (
 	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect

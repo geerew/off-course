@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/logger"
+	"github.com/geerew/off-course/utils/pagination"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 )
@@ -49,115 +52,156 @@ func setupLog(tb testing.TB) (*DAO, context.Context) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func Test_WriteLog(t *testing.T) {
+func Test_CreateLog(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		dao, ctx := setupLog(t)
+
 		log := &models.Log{Data: map[string]any{}, Level: 0, Message: fmt.Sprintf("log %d", 1)}
-		require.NoError(t, dao.WriteLog(ctx, log))
+		require.NoError(t, dao.CreateLog(ctx, log))
 	})
 
-	t.Run("nil", func(t *testing.T) {
+	t.Run("nil pointer", func(t *testing.T) {
 		dao, ctx := setupLog(t)
-		require.ErrorIs(t, dao.WriteLog(ctx, nil), utils.ErrNilPtr)
+
+		require.ErrorIs(t, dao.CreateLog(ctx, nil), utils.ErrNilPtr)
 	})
 
+	t.Run("invalid message", func(t *testing.T) {
+		dao, ctx := setupLog(t)
+
+		log := &models.Log{Data: map[string]any{}, Level: 0, Message: ""}
+		require.ErrorIs(t, dao.CreateLog(ctx, log), utils.ErrLogMessage)
+	})
 }
 
-// // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// func TestLog_List(t *testing.T) {
-// 	t.Run("no entries", func(t *testing.T) {
-// 		dao, _ := logSetup(t)
+func Test_GetLog(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		dao, ctx := setupLog(t)
 
-// 		courses, err := dao.List(nil, nil)
-// 		require.Nil(t, err)
-// 		require.Zero(t, courses)
-// 	})
+		log := &models.Log{Data: map[string]any{}, Level: 0, Message: fmt.Sprintf("log %d", 1)}
+		require.NoError(t, dao.CreateLog(ctx, log))
 
-// 	t.Run("found", func(t *testing.T) {
-// 		dao, _ := logSetup(t)
+		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.LOG_TABLE_ID: log.ID})
+		record, err := dao.GetLog(ctx, dbOpts)
+		require.Nil(t, err)
+		require.Equal(t, log.ID, record.ID)
+	})
 
-// 		for i := range 5 {
-// 			require.Nil(t, dao.Write(&models.Log{Data: map[string]any{}, Level: 0, Message: fmt.Sprintf("log %d", i+1)}, nil))
-// 			time.Sleep(1 * time.Millisecond)
-// 		}
+	t.Run("not found", func(t *testing.T) {
+		dao, ctx := setupLog(t)
 
-// 		result, err := dao.List(nil, nil)
-// 		require.Nil(t, err)
-// 		require.Len(t, result, 5)
-// 		require.Equal(t, "log 5", result[0].Message)
-// 		require.Equal(t, "log 1", result[4].Message)
-// 	})
+		record, err := dao.GetLog(ctx, nil)
+		require.Nil(t, err)
+		require.Nil(t, record)
+	})
+}
 
-// 	t.Run("where", func(t *testing.T) {
-// 		dao, _ := logSetup(t)
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// 		for i := range 5 {
-// 			require.Nil(t, dao.Write(&models.Log{Data: map[string]any{}, Level: 0, Message: fmt.Sprintf("log %d", i+1)}, nil))
-// 			time.Sleep(1 * time.Millisecond)
-// 		}
+func Test_ListLogs(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		dao, ctx := setupLog(t)
 
-// 		// ----------------------------
-// 		// EQUALS log 2 or log 3
-// 		// ----------------------------
-// 		result, err := dao.List(
-// 			&database.DatabaseParams{Where: squirrel.Or{
-// 				squirrel.Eq{dao.Table() + ".message": "log 2"},
-// 				squirrel.Eq{dao.Table() + ".message": "log 3"}}},
-// 			nil)
-// 		require.Nil(t, err)
-// 		require.Len(t, result, 2)
-// 		require.Equal(t, "log 3", result[0].Message)
-// 		require.Equal(t, "log 2", result[1].Message)
+		logs := []*models.Log{}
 
-// 		// ----------------------------
-// 		// ERROR
-// 		// ----------------------------
-// 		result, err = dao.List(&database.DatabaseParams{Where: squirrel.Eq{"": ""}}, nil)
-// 		require.ErrorContains(t, err, "syntax error")
-// 		require.Nil(t, result)
-// 	})
+		for i := range 3 {
+			log := &models.Log{Data: map[string]any{}, Level: 0, Message: fmt.Sprintf("log %d", i+1)}
+			logs = append(logs, log)
+			require.NoError(t, dao.CreateLog(ctx, log))
+			time.Sleep(1 * time.Millisecond)
+		}
 
-// 	t.Run("pagination", func(t *testing.T) {
-// 		dao, _ := logSetup(t)
+		records, err := dao.ListLogs(ctx, nil)
+		require.Nil(t, err)
+		require.Len(t, records, 3)
 
-// 		for i := range 17 {
-// 			require.Nil(t, dao.Write(&models.Log{Data: map[string]any{}, Level: 0, Message: fmt.Sprintf("log %d", i+1)}, nil))
-// 			time.Sleep(1 * time.Millisecond)
-// 		}
+		for i, record := range records {
+			require.Equal(t, logs[i].ID, record.ID)
+		}
+	})
 
-// 		// ----------------------------
-// 		// Page 1 with 10 items
-// 		// ----------------------------
-// 		p := pagination.New(1, 10)
+	t.Run("empty", func(t *testing.T) {
+		dao, ctx := setupLog(t)
 
-// 		result, err := dao.List(&database.DatabaseParams{Pagination: p}, nil)
-// 		require.Nil(t, err)
-// 		require.Len(t, result, 10)
-// 		require.Equal(t, 17, p.TotalItems())
-// 		require.Equal(t, "log 17", result[0].Message)
-// 		require.Equal(t, "log 8", result[9].Message)
+		records, err := dao.ListLogs(ctx, nil)
+		require.Nil(t, err)
+		require.Empty(t, records)
+	})
 
-// 		// ----------------------------
-// 		// Page 2 with 7 items
-// 		// ----------------------------
-// 		p = pagination.New(2, 10)
+	t.Run("order by", func(t *testing.T) {
+		dao, ctx := setupLog(t)
 
-// 		result, err = dao.List(&database.DatabaseParams{Pagination: p}, nil)
-// 		require.Nil(t, err)
-// 		require.Len(t, result, 7)
-// 		require.Equal(t, 17, p.TotalItems())
-// 		require.Equal(t, "log 7", result[0].Message)
-// 		require.Equal(t, "log 1", result[6].Message)
-// 	})
+		logs := []*models.Log{}
+		for i := range 3 {
+			log := &models.Log{Data: map[string]any{}, Level: 0, Message: fmt.Sprintf("log %d", i+1)}
+			logs = append(logs, log)
+			require.NoError(t, dao.CreateLog(ctx, log))
+			time.Sleep(1 * time.Millisecond)
+		}
 
-// 	t.Run("db error", func(t *testing.T) {
-// 		dao, db := logSetup(t)
+		// Descending order by created_at
+		opts := database.NewOptions().WithOrderBy(models.LOG_TABLE_CREATED_AT + " DESC")
 
-// 		_, err := db.Exec("DROP TABLE IF EXISTS " + dao.Table())
-// 		require.Nil(t, err)
+		records, err := dao.ListLogs(ctx, opts)
+		require.Nil(t, err)
+		require.Len(t, records, 3)
 
-// 		_, err = dao.List(nil, nil)
-// 		require.ErrorContains(t, err, "no such table: "+dao.Table())
-// 	})
-// }
+		for i, record := range records {
+			require.Equal(t, logs[2-i].ID, record.ID)
+		}
+
+		// Ascending order by created_at
+		opts = database.NewOptions().WithOrderBy(models.LOG_TABLE_CREATED_AT + " ASC")
+
+		records, err = dao.ListLogs(ctx, opts)
+		require.Nil(t, err)
+		require.Len(t, records, 3)
+
+		for i, record := range records {
+			require.Equal(t, logs[i].ID, record.ID)
+		}
+	})
+
+	t.Run("where", func(t *testing.T) {
+		dao, ctx := setupLog(t)
+
+		log := &models.Log{Data: map[string]any{}, Level: 0, Message: fmt.Sprintf("log %d", 1)}
+		require.NoError(t, dao.CreateLog(ctx, log))
+
+		opts := database.NewOptions().WithWhere(squirrel.Eq{models.LOG_TABLE_ID: log.ID})
+		records, err := dao.ListLogs(ctx, opts)
+		require.Nil(t, err)
+		require.Len(t, records, 1)
+		require.Equal(t, log.ID, records[0].ID)
+	})
+
+	t.Run("pagination", func(t *testing.T) {
+		dao, ctx := setupLog(t)
+
+		logs := []*models.Log{}
+		for i := range 17 {
+			log := &models.Log{Data: map[string]any{}, Level: 0, Message: fmt.Sprintf("log %d", i+1)}
+			logs = append(logs, log)
+			require.NoError(t, dao.CreateLog(ctx, log))
+			time.Sleep(1 * time.Millisecond)
+		}
+
+		// First page with 10 records
+		p := database.NewOptions().WithPagination(pagination.New(1, 10))
+		records, err := dao.ListLogs(ctx, p)
+		require.Nil(t, err)
+		require.Len(t, records, 10)
+		require.Equal(t, logs[0].ID, records[0].ID)
+		require.Equal(t, logs[9].ID, records[9].ID)
+
+		// Second page with remaining 7 records
+		p = database.NewOptions().WithPagination(pagination.New(2, 10))
+		records, err = dao.ListLogs(ctx, p)
+		require.Nil(t, err)
+		require.Len(t, records, 7)
+		require.Equal(t, logs[10].ID, records[0].ID)
+		require.Equal(t, logs[16].ID, records[6].ID)
+	})
+}

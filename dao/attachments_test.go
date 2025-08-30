@@ -2,21 +2,25 @@ package dao
 
 import (
 	"database/sql"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/Masterminds/squirrel"
+	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
+	"github.com/geerew/off-course/utils/pagination"
 	"github.com/stretchr/testify/require"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func Test_CreateAttachment(t *testing.T) {
+func Test_CreateAttachments(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		dao, ctx := setup(t)
 
-		course := &models.Course{Title: "Course 1", Path: "/course-1"}
+		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
 		assetGroup := &models.AssetGroup{
@@ -30,14 +34,258 @@ func Test_CreateAttachment(t *testing.T) {
 		attachment := &models.Attachment{
 			AssetGroupID: assetGroup.ID,
 			Title:        "Attachment 1",
-			Path:         "/course-1/01 attachment.txt",
+			Path:         "/course-1/attachment-1",
 		}
 		require.NoError(t, dao.CreateAttachment(ctx, attachment))
 	})
 
-	t.Run("nil", func(t *testing.T) {
+	t.Run("nil pointer", func(t *testing.T) {
 		dao, ctx := setup(t)
+
 		require.ErrorIs(t, dao.CreateAttachment(ctx, nil), utils.ErrNilPtr)
+	})
+
+	t.Run("invalid", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		assetGroup := &models.AssetGroup{
+			CourseID: course.ID,
+			Title:    "Asset Group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+
+		// Empty title
+		attachment := &models.Attachment{
+			AssetGroupID: assetGroup.ID,
+			Path:         "/course-1/attachment-1",
+		}
+		require.ErrorIs(t, dao.CreateAttachment(ctx, attachment), utils.ErrTitle)
+
+		// Empty path
+		attachment = &models.Attachment{
+			AssetGroupID: assetGroup.ID,
+			Title:        "Attachment 1",
+		}
+		require.ErrorIs(t, dao.CreateAttachment(ctx, attachment), utils.ErrPath)
+
+		// Invalid asset group ID
+		attachment = &models.Attachment{
+			AssetGroupID: "invalid",
+			Title:        "Attachment 1",
+			Path:         "/course-1/attachment-1",
+		}
+		require.ErrorContains(t, dao.CreateAttachment(ctx, attachment), "FOREIGN KEY constraint failed")
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func Test_GetAttachment(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		assetGroup := &models.AssetGroup{
+			CourseID: course.ID,
+			Title:    "Asset Group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+
+		attachment := &models.Attachment{
+			AssetGroupID: assetGroup.ID,
+			Title:        "Attachment 1",
+			Path:         "/course-1/attachment-1",
+		}
+		require.NoError(t, dao.CreateAttachment(ctx, attachment))
+
+		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachment.ID})
+		record, err := dao.GetAttachment(ctx, dbOpts)
+		require.Nil(t, err)
+		require.Equal(t, attachment.ID, record.ID)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		record, err := dao.GetAttachment(ctx, nil)
+		require.Nil(t, err)
+		require.Nil(t, record)
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func Test_ListAttachments(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		assetGroup := &models.AssetGroup{
+			CourseID: course.ID,
+			Title:    "Asset Group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+
+		attachments := []*models.Attachment{}
+		for i := range 3 {
+			attachment := &models.Attachment{
+				AssetGroupID: assetGroup.ID,
+				Title:        fmt.Sprintf("Attachment %d", i),
+				Path:         fmt.Sprintf("/course-1/attachment-%d", i),
+			}
+			attachments = append(attachments, attachment)
+			require.NoError(t, dao.CreateAttachment(ctx, attachment))
+			time.Sleep(1 * time.Millisecond)
+		}
+
+		records, err := dao.ListAttachments(ctx, nil)
+		require.Nil(t, err)
+		require.Len(t, records, 3)
+
+		for i, record := range records {
+			require.Equal(t, attachments[i].ID, record.ID)
+		}
+	})
+
+	t.Run("empty", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		records, err := dao.ListAttachments(ctx, nil)
+		require.Nil(t, err)
+		require.Empty(t, records)
+	})
+
+	t.Run("order by", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		assetGroup := &models.AssetGroup{
+			CourseID: course.ID,
+			Title:    "Asset Group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+
+		attachments := []*models.Attachment{}
+		for i := range 3 {
+			attachment := &models.Attachment{
+				AssetGroupID: assetGroup.ID,
+				Title:        fmt.Sprintf("Attachment %d", i),
+				Path:         fmt.Sprintf("/course-1/attachment-%d", i),
+			}
+			attachments = append(attachments, attachment)
+			require.NoError(t, dao.CreateAttachment(ctx, attachment))
+			time.Sleep(1 * time.Millisecond)
+		}
+
+		// Descending order by created_at
+		opts := database.NewOptions().WithOrderBy(models.ATTACHMENT_TABLE_CREATED_AT + " DESC")
+
+		records, err := dao.ListAttachments(ctx, opts)
+		require.Nil(t, err)
+		require.Len(t, records, 3)
+
+		for i, record := range records {
+			require.Equal(t, attachments[2-i].ID, record.ID)
+		}
+
+		// Ascending order by created_at
+		opts = database.NewOptions().WithOrderBy(models.ATTACHMENT_TABLE_CREATED_AT + " ASC")
+
+		records, err = dao.ListAttachments(ctx, opts)
+		require.Nil(t, err)
+		require.Len(t, records, 3)
+
+		for i, record := range records {
+			require.Equal(t, attachments[i].ID, record.ID)
+		}
+	})
+
+	t.Run("where", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		assetGroup := &models.AssetGroup{
+			CourseID: course.ID,
+			Title:    "Asset Group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+
+		attachment := &models.Attachment{
+			AssetGroupID: assetGroup.ID,
+			Title:        "Attachment 1",
+			Path:         "/course-1/attachment-1",
+		}
+		require.NoError(t, dao.CreateAttachment(ctx, attachment))
+
+		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachment.ID})
+		records, err := dao.ListAttachments(ctx, opts)
+		require.Nil(t, err)
+		require.Len(t, records, 1)
+		require.Equal(t, attachment.ID, records[0].ID)
+	})
+
+	t.Run("pagination", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		assetGroup := &models.AssetGroup{
+			CourseID: course.ID,
+			Title:    "Asset Group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+
+		attachments := []*models.Attachment{}
+		for i := range 17 {
+			attachment := &models.Attachment{
+				AssetGroupID: assetGroup.ID,
+				Title:        fmt.Sprintf("Attachment %d", i),
+				Path:         fmt.Sprintf("/course-1/attachment-%d", i),
+			}
+			attachments = append(attachments, attachment)
+			require.NoError(t, dao.CreateAttachment(ctx, attachment))
+			time.Sleep(1 * time.Millisecond)
+		}
+
+		// First page with 10 records
+		p := database.NewOptions().WithPagination(pagination.New(1, 10))
+		records, err := dao.ListAttachments(ctx, p)
+		require.Nil(t, err)
+		require.Len(t, records, 10)
+		require.Equal(t, attachments[0].ID, records[0].ID)
+		require.Equal(t, attachments[9].ID, records[9].ID)
+
+		// Second page with remaining 7 records
+		p = database.NewOptions().WithPagination(pagination.New(2, 10))
+		records, err = dao.ListAttachments(ctx, p)
+		require.Nil(t, err)
+		require.Len(t, records, 7)
+		require.Equal(t, attachments[10].ID, records[0].ID)
+		require.Equal(t, attachments[16].ID, records[6].ID)
 	})
 }
 
@@ -47,7 +295,7 @@ func Test_UpdateAttachment(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		dao, ctx := setup(t)
 
-		course := &models.Course{Title: "Course 1", Path: "/course-1"}
+		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
 		assetGroup := &models.AssetGroup{
@@ -56,40 +304,40 @@ func Test_UpdateAttachment(t *testing.T) {
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-
 		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
 
 		originalAttachment := &models.Attachment{
 			AssetGroupID: assetGroup.ID,
 			Title:        "Attachment 1",
-			Path:         "/course-1/01 Attachment 1.txt",
+			Path:         "/course-1/attachment-1",
 		}
 		require.NoError(t, dao.CreateAttachment(ctx, originalAttachment))
 
 		time.Sleep(1 * time.Millisecond)
 
-		newAttachment := &models.Attachment{
+		updatedAttachment := &models.Attachment{
 			Base:         originalAttachment.Base,
-			AssetGroupID: assetGroup.ID,                   // Immutable
-			Title:        "Attachment 2",                  // Mutable
-			Path:         "/course-1/01 Attachment 2.txt", // Mutable
+			AssetGroupID: "1234",                         // Immutable
+			Title:        "Updated Attachment",           // Mutable
+			Path:         "/course-1/updated-attachment", // Mutable
 		}
-		require.NoError(t, dao.UpdateAttachment(ctx, newAttachment))
+		require.NoError(t, dao.UpdateAttachment(ctx, updatedAttachment))
 
-		attachmentResult := &models.Attachment{Base: models.Base{ID: originalAttachment.ID}}
-		require.NoError(t, dao.GetAttachment(ctx, attachmentResult, nil))
-		require.Equal(t, newAttachment.ID, attachmentResult.ID)                          // No change
-		require.Equal(t, newAttachment.AssetGroupID, attachmentResult.AssetGroupID)      // No change
-		require.True(t, newAttachment.CreatedAt.Equal(originalAttachment.CreatedAt))     // No change
-		require.Equal(t, newAttachment.Title, attachmentResult.Title)                    // Changed
-		require.Equal(t, newAttachment.Path, attachmentResult.Path)                      // Changed
-		require.False(t, attachmentResult.UpdatedAt.Equal(originalAttachment.UpdatedAt)) // Changed
+		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ATTACHMENT_TABLE_ID: originalAttachment.ID})
+		record, err := dao.GetAttachment(ctx, dbOpts)
+		require.Nil(t, err)
+		require.Equal(t, originalAttachment.ID, record.ID)                     // No change
+		require.Equal(t, originalAttachment.AssetGroupID, record.AssetGroupID) // No change
+		require.True(t, record.CreatedAt.Equal(originalAttachment.CreatedAt))  // No change
+		require.Equal(t, updatedAttachment.Title, record.Title)                // Changed
+		require.Equal(t, updatedAttachment.Path, record.Path)                  // Changed
+		require.False(t, record.UpdatedAt.Equal(originalAttachment.UpdatedAt)) // Changed
 	})
 
 	t.Run("invalid", func(t *testing.T) {
 		dao, ctx := setup(t)
 
-		course := &models.Course{Title: "Course 1", Path: "/course-1"}
+		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
 		assetGroup := &models.AssetGroup{
@@ -103,13 +351,21 @@ func Test_UpdateAttachment(t *testing.T) {
 		attachment := &models.Attachment{
 			AssetGroupID: assetGroup.ID,
 			Title:        "Attachment 1",
-			Path:         "/course-1/01 attachment.txt",
+			Path:         "/course-1/attachment-1",
 		}
 		require.NoError(t, dao.CreateAttachment(ctx, attachment))
 
+		// Empty path
+		attachment.Path = ""
+		require.ErrorIs(t, dao.UpdateAttachment(ctx, attachment), utils.ErrPath)
+
+		// Empty title
+		attachment.Title = ""
+		require.ErrorIs(t, dao.UpdateAttachment(ctx, attachment), utils.ErrTitle)
+
 		// Empty ID
 		attachment.ID = ""
-		require.ErrorIs(t, dao.UpdateAttachment(ctx, attachment), utils.ErrInvalidId)
+		require.ErrorIs(t, dao.UpdateAttachment(ctx, attachment), utils.ErrId)
 
 		// Nil Model
 		require.ErrorIs(t, dao.UpdateAttachment(ctx, nil), utils.ErrNilPtr)
@@ -118,30 +374,151 @@ func Test_UpdateAttachment(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func Test_AttachmentDeleteCascade(t *testing.T) {
-	dao, ctx := setup(t)
+func Test_DeleteAttachments(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		dao, ctx := setup(t)
 
-	course := &models.Course{Title: "Course", Path: "/course"}
-	require.NoError(t, dao.CreateCourse(ctx, course))
+		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
 
-	assetGroup := &models.AssetGroup{
-		CourseID: course.ID,
-		Title:    "Asset Group 1",
-		Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-		Module:   "Module 1",
-	}
-	require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+		assetGroup := &models.AssetGroup{
+			CourseID: course.ID,
+			Title:    "Asset Group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
 
-	attachment := &models.Attachment{
-		AssetGroupID: assetGroup.ID,
-		Title:        "Attachment 1",
-		Path:         "/course-1/01 attachment.txt",
-	}
-	require.NoError(t, dao.CreateAttachment(ctx, attachment))
+		attachment := &models.Attachment{
+			AssetGroupID: assetGroup.ID,
+			Title:        "Attachment 1",
+			Path:         "/course-1/attachment-1",
+		}
+		require.NoError(t, dao.CreateAttachment(ctx, attachment))
 
-	require.Nil(t, Delete(ctx, dao, assetGroup, nil))
+		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachment.ID})
+		require.Nil(t, dao.DeleteAttachments(ctx, opts))
 
-	count, err := Count(ctx, dao, &models.Attachment{}, nil)
-	require.NoError(t, err)
-	require.Zero(t, count)
+		records, err := dao.ListAttachments(ctx, opts)
+		require.NoError(t, err)
+		require.Empty(t, records)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		assetGroup := &models.AssetGroup{
+			CourseID: course.ID,
+			Title:    "Asset Group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+
+		attachment := &models.Attachment{
+			AssetGroupID: assetGroup.ID,
+			Title:        "Attachment 1",
+			Path:         "/course-1/attachment-1",
+		}
+		require.NoError(t, dao.CreateAttachment(ctx, attachment))
+
+		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ATTACHMENT_TABLE_ID: "non-existent"})
+		require.Nil(t, dao.DeleteAttachments(ctx, opts))
+
+		records, err := dao.ListAttachments(ctx, nil)
+		require.NoError(t, err)
+		require.Len(t, records, 1)
+		require.Equal(t, attachment.ID, records[0].ID)
+	})
+
+	t.Run("missing where", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		assetGroup := &models.AssetGroup{
+			CourseID: course.ID,
+			Title:    "Asset Group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+
+		attachment := &models.Attachment{
+			AssetGroupID: assetGroup.ID,
+			Title:        "Attachment 1",
+			Path:         "/course-1/attachment-1",
+		}
+		require.NoError(t, dao.CreateAttachment(ctx, attachment))
+
+		require.ErrorIs(t, dao.DeleteAttachments(ctx, nil), utils.ErrWhere)
+
+		records, err := dao.ListAttachments(ctx, nil)
+		require.NoError(t, err)
+		require.Len(t, records, 1)
+		require.Equal(t, attachment.ID, records[0].ID)
+	})
+
+	t.Run("cascade course", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		assetGroup := &models.AssetGroup{
+			CourseID: course.ID,
+			Title:    "Asset Group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+
+		attachment := &models.Attachment{
+			AssetGroupID: assetGroup.ID,
+			Title:        "Attachment 1",
+			Path:         "/course-1/attachment-1",
+		}
+		require.NoError(t, dao.CreateAttachment(ctx, attachment))
+
+		opts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
+		require.Nil(t, dao.DeleteCourses(ctx, opts))
+
+		records, err := dao.ListAttachments(ctx, nil)
+		require.NoError(t, err)
+		require.Empty(t, records)
+
+	})
+
+	t.Run("cascade asset group", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		assetGroup := &models.AssetGroup{
+			CourseID: course.ID,
+			Title:    "Asset Group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+
+		attachment := &models.Attachment{
+			AssetGroupID: assetGroup.ID,
+			Title:        "Attachment 1",
+			Path:         "/course-1/attachment-1",
+		}
+		require.NoError(t, dao.CreateAttachment(ctx, attachment))
+
+		// TODO change to deleteAssetGroup when donee
+		// require.Nil(t, Delete(ctx, dao, assetGroup, nil))
+
+		// records, err := dao.ListAttachments(ctx, nil)
+		// require.NoError(t, err)
+		// require.Empty(t, records)
+	})
 }

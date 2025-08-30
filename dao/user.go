@@ -11,60 +11,123 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// CreateUser creates a user
+// CreateUser inserts a new user record
 func (dao *DAO) CreateUser(ctx context.Context, user *models.User) error {
 	if user == nil {
 		return utils.ErrNilPtr
 	}
 
-	return Create(ctx, dao, user)
+	if user.Username == "" {
+		return utils.ErrUsername
+	}
+
+	if user.PasswordHash == "" {
+		return utils.ErrUserPassword
+	}
+
+	if user.ID == "" {
+		user.RefreshId()
+	}
+
+	user.RefreshCreatedAt()
+	user.RefreshUpdatedAt()
+
+	builderOptions := newBuilderOptions(models.USER_TABLE).
+		WithData(
+			map[string]interface{}{
+				models.BASE_ID:            user.ID,
+				models.USER_USERNAME:      user.Username,
+				models.USER_DISPLAY_NAME:  user.DisplayName,
+				models.USER_PASSWORD_HASH: user.PasswordHash,
+				models.USER_ROLE:          user.Role,
+				models.BASE_CREATED_AT:    user.CreatedAt,
+				models.BASE_UPDATED_AT:    user.UpdatedAt,
+			},
+		)
+
+	return createGeneric(ctx, dao, *builderOptions)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetUser retrieves a tag
-//
-// When options is nil or options.Where is nil, the models ID will be used
-func (dao *DAO) GetUser(ctx context.Context, user *models.User, options *database.Options) error {
-	if user == nil {
-		return utils.ErrNilPtr
-	}
+// GetUser gets a record from the user table based upon the where clause in the options. If
+// there is no where clause, it will return the first record in the table
+func (dao *DAO) GetUser(ctx context.Context, dbOpts *database.Options) (*models.User, error) {
+	builderOpts := newBuilderOptions(models.USER_TABLE).
+		WithColumns(
+			models.USER_TABLE + ".*",
+		).
+		SetDbOpts(dbOpts).
+		WithLimit(1)
 
-	if options == nil {
-		options = &database.Options{}
-	}
-
-	// When there is no where clause, use the ID
-	if options.Where == nil {
-		if user.Id() == "" {
-			return utils.ErrInvalidId
-		}
-
-		options.Where = squirrel.Eq{models.USER_TABLE_ID: user.Id()}
-	}
-
-	return Get(ctx, dao, user, options)
+	return getGeneric[models.User](ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// ListUsers retrieves a list of users
-func (dao *DAO) ListUsers(ctx context.Context, users *[]*models.User, options *database.Options) error {
-	if users == nil {
-		return utils.ErrNilPtr
-	}
+// ListUsers gets all records from the user table based upon the where clause and pagination
+// in the options
+func (dao *DAO) ListUsers(ctx context.Context, dbOpts *database.Options) ([]*models.User, error) {
+	builderOpts := newBuilderOptions(models.USER_TABLE).
+		WithColumns(
+			models.USER_TABLE + ".*",
+		).
+		SetDbOpts(dbOpts)
 
-	return List(ctx, dao, users, options)
+	return listGeneric[models.User](ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// UpdateUser updates a user
+// UpdateUser updates a user record
 func (dao *DAO) UpdateUser(ctx context.Context, user *models.User) error {
 	if user == nil {
 		return utils.ErrNilPtr
 	}
 
-	_, err := Update(ctx, dao, user)
+	if user.ID == "" {
+		return utils.ErrId
+	}
+
+	if user.PasswordHash == "" {
+		return utils.ErrUserPassword
+	}
+
+	user.RefreshUpdatedAt()
+
+	dbOpts := &database.Options{
+		Where: squirrel.Eq{models.BASE_ID: user.ID},
+	}
+
+	builderOptions := newBuilderOptions(models.USER_TABLE).
+		WithData(
+			map[string]interface{}{
+				models.USER_DISPLAY_NAME:  user.DisplayName,
+				models.USER_PASSWORD_HASH: user.PasswordHash,
+				models.USER_ROLE:          user.Role,
+				models.BASE_UPDATED_AT:    user.UpdatedAt,
+			},
+		).
+		SetDbOpts(dbOpts)
+
+	_, err := updateGeneric(ctx, dao, *builderOptions)
+	return err
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// DeleteUsers deletes records from the user table
+//
+// Errors when a where clause is not provided
+func (dao *DAO) DeleteUsers(ctx context.Context, dbOpts *database.Options) error {
+	if dbOpts == nil || dbOpts.Where == nil {
+		return utils.ErrWhere
+	}
+
+	builderOpts := newBuilderOptions(models.USER_TABLE).SetDbOpts(dbOpts)
+	sqlStr, args, _ := deleteBuilder(*builderOpts)
+
+	q := database.QuerierFromContext(ctx, dao.db)
+	_, err := q.ExecContext(ctx, sqlStr, args...)
 	return err
 }

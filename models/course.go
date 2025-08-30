@@ -1,24 +1,20 @@
 package models
 
-import (
-	"github.com/geerew/off-course/utils/schema"
-)
-
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Course defines the model for a course
 type Course struct {
 	Base
-	Title       string
-	Path        string
-	CardPath    string
-	Available   bool
-	Duration    int
-	InitialScan bool
-	Maintenance bool
+	Title       string `db:"title"`        // Mutable
+	Path        string `db:"path"`         // Mutable
+	CardPath    string `db:"card_path"`    // Mutable
+	Available   bool   `db:"available"`    // Mutable
+	Duration    int    `db:"duration"`     // Mutable
+	InitialScan bool   `db:"initial_scan"` // Mutable
+	Maintenance bool   `db:"maintenance"`  // Mutable
 
-	// Relations
-	Progress *CourseProgress
+	// Relation
+	Progress *CourseProgressInfo
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -44,32 +40,3 @@ const (
 	COURSE_TABLE_INITIAL_SCAN = COURSE_TABLE + "." + COURSE_INITIAL_SCAN
 	COURSE_TABLE_MAINTENANCE  = COURSE_TABLE + "." + COURSE_MAINTENANCE
 )
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// Table implements the `schema.Modeler` interface by returning the table name
-func (c *Course) Table() string {
-	return COURSE_TABLE
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// Fields implements the `schema.Modeler` interface by defining the model fields
-func (c *Course) Define(s *schema.ModelConfig) {
-	s.Embedded("Base")
-
-	// Common fields
-	s.Field("Title").Column(COURSE_TITLE).NotNull()
-	s.Field("Path").Column(COURSE_PATH).NotNull()
-	s.Field("CardPath").Column(COURSE_CARD_PATH).Mutable()
-	s.Field("Available").Column(COURSE_AVAILABLE).Mutable()
-	s.Field("Duration").Column(COURSE_DURATION).Mutable()
-	s.Field("InitialScan").Column(COURSE_INITIAL_SCAN).Mutable()
-	s.Field("Maintenance").Column(COURSE_MAINTENANCE).Mutable()
-
-	// Relation fields
-	s.Relation("Progress").MatchOn(COURSE_PROGRESS_COURSE_ID)
-
-	// Joins
-	s.LeftJoin(SCAN_TABLE).On(COURSE_TABLE_ID + " = " + SCAN_TABLE_COURSE_ID)
-}
