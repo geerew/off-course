@@ -404,3 +404,25 @@ func Test_DeleteSessions(t *testing.T) {
 		require.Equal(t, session.ID, records[0].ID)
 	})
 }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func Test_DeleteAllSessions(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		session := &models.Session{
+			ID:      "session-1",
+			UserId:  "user-123",
+			Data:    []byte("session data"),
+			Expires: time.Now().Add(24 * time.Hour).Unix(),
+		}
+		require.NoError(t, dao.CreateOrReplaceSession(ctx, session))
+
+		require.Nil(t, dao.DeleteAllSessions(ctx))
+
+		records, err := dao.ListSessions(ctx, nil)
+		require.NoError(t, err)
+		require.Empty(t, records)
+	})
+}

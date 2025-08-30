@@ -164,3 +164,13 @@ func (dao *DAO) DeleteSessions(ctx context.Context, dbOpts *database.Options) er
 	_, err := q.ExecContext(ctx, sqlStr, args...)
 	return err
 }
+
+// DeleteAllSessions deletes all records from the sessions table
+func (dao *DAO) DeleteAllSessions(ctx context.Context) error {
+	builderOpts := newBuilderOptions(models.SESSION_TABLE)
+	sqlStr, args, _ := deleteBuilder(*builderOpts)
+
+	q := database.QuerierFromContext(ctx, dao.db)
+	_, err := q.ExecContext(ctx, sqlStr, args...)
+	return err
+}

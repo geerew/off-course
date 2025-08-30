@@ -1,8 +1,10 @@
 package session
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"encoding/gob"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -42,8 +44,8 @@ func (s *SqliteStorage) Get(key string) ([]byte, error) {
 		return nil, nil
 	}
 
-	session := &models.Session{ID: key}
-	err := s.dao.GetSession(context.Background(), session, nil)
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_ID: key})
+	session, err := s.dao.GetSession(context.Background(), dbOpts)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -53,7 +55,7 @@ func (s *SqliteStorage) Get(key string) ([]byte, error) {
 	}
 
 	// If the expiration time has already passed, then return nil
-	if session.Expires != 0 && session.Expires <= time.Now().Unix() {
+	if session == nil || (session.Expires != 0 && session.Expires <= time.Now().Unix()) {
 		return nil, nil
 	}
 
@@ -73,37 +75,21 @@ func (s *SqliteStorage) Set(key string, data []byte, exp time.Duration) error {
 		expSeconds = time.Now().Add(exp).Unix()
 	}
 
+	// Try to extract "id" (userId) from the serialized session payload.
+	// Fiber session uses encoding/gob by default for the map[string]any.
+	userID := ""
+	if uid, ok := extractUserIDFromSessionBytes(data); ok {
+		userID = uid
+	}
+
 	session := &models.Session{
 		ID:      key,
 		Data:    data,
 		Expires: expSeconds,
+		UserId:  userID,
 	}
 
 	return s.dao.CreateOrReplaceSession(context.Background(), session)
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// SetUser sets the user ID for a session
-func (s *SqliteStorage) SetUser(key, userId string) error {
-	if key == "" || userId == "" {
-		return nil
-	}
-
-	session := &models.Session{ID: key}
-	err := s.dao.GetSession(context.Background(), session, nil)
-	if err != nil {
-		return err
-	}
-
-	session.UserId = userId
-
-	err = s.dao.UpdateSession(context.Background(), session)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -114,8 +100,8 @@ func (s *SqliteStorage) Delete(key string) error {
 		return nil
 	}
 
-	options := &database.Options{Where: squirrel.Eq{models.SESSION_TABLE_ID: key}}
-	return dao.Delete(context.Background(), s.dao, &models.Session{}, options)
+	dbOpts := &database.Options{Where: squirrel.Eq{models.SESSION_TABLE_ID: key}}
+	return s.dao.DeleteSessions(context.Background(), dbOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -126,15 +112,15 @@ func (s *SqliteStorage) DeleteUser(id string) error {
 		return nil
 	}
 
-	options := &database.Options{Where: squirrel.Eq{models.SESSION_TABLE_USER_ID: id}}
-	return dao.Delete(context.Background(), s.dao, &models.Session{}, options)
+	dbOpts := &database.Options{Where: squirrel.Eq{models.SESSION_TABLE_USER_ID: id}}
+	return s.dao.DeleteSessions(context.Background(), dbOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Reset resets all entries, including unexpired
 func (s *SqliteStorage) Reset() error {
-	return dao.DeleteAll(context.Background(), s.dao, &models.Session{})
+	return s.dao.DeleteAllSessions(context.Background())
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -153,11 +139,30 @@ func (s *SqliteStorage) gcTicker() {
 	defer ticker.Stop()
 
 	for t := range ticker.C {
-		o := &database.Options{
-			Where: squirrel.And{
+		dbOpts := database.NewOptions().
+			WithWhere(squirrel.And{
 				squirrel.LtOrEq{models.SESSION_TABLE_EXPIRES: t.Unix()},
-				squirrel.NotEq{models.SESSION_TABLE_EXPIRES: 0}},
-		}
-		dao.Delete(ctx, s.dao, &models.Session{}, o)
+				squirrel.NotEq{models.SESSION_TABLE_EXPIRES: 0},
+			})
+		s.dao.DeleteSessions(ctx, dbOpts)
 	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// helper: decode gob into map and read "id"
+func extractUserIDFromSessionBytes(b []byte) (string, bool) {
+	var m map[string]any
+	buf := bytes.NewBuffer(b)
+	dec := gob.NewDecoder(buf)
+	if err := dec.Decode(&m); err != nil {
+		return "", false
+	}
+	// SessionManager sets: session.Set("id", userId)
+	if v, ok := m["id"]; ok {
+		if s, ok := v.(string); ok && s != "" {
+			return s, true
+		}
+	}
+	return "", false
 }

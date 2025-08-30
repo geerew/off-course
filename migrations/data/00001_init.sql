@@ -177,20 +177,25 @@ CREATE TABLE sessions (
 
 
 -- Groups by course, then ordered by prefix+module
-CREATE INDEX IF NOT EXISTS idx_asset_groups_course_prefix_module
+CREATE INDEX idx_asset_groups_course_prefix_module
   ON asset_groups(course_id, prefix, module);
 
 -- Assets: WHERE asset_group_id = ? ORDER BY prefix, sub_prefix
-CREATE INDEX IF NOT EXISTS idx_assets_group_prefix_sub
+CREATE INDEX idx_assets_group_prefix_sub
   ON assets(asset_group_id, prefix, sub_prefix);
 
 -- Attachments: WHERE asset_group_id = ? ORDER BY title
-CREATE INDEX IF NOT EXISTS idx_attachments_group_title
+CREATE INDEX idx_attachments_group_title
   ON attachments(asset_group_id, title);
 
--- Joins (to keep progress / metadata LEFT JOINs cheap)
-CREATE INDEX IF NOT EXISTS idx_asset_progress_asset_user
+-- Asset progress with user
+CREATE INDEX idx_asset_progress_asset_user
   ON assets_progress(asset_id, user_id);
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_video_metadata_asset
+-- Video metadata
+CREATE UNIQUE INDEX idx_video_metadata_asset
   ON asset_video_metadata(asset_id);
+
+-- Sessions
+CREATE INDEX idx_sessions_expires ON sessions(expires);
+CREATE INDEX idx_sessions_user    ON sessions(user_id);
