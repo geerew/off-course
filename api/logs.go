@@ -48,18 +48,17 @@ func (api *logsAPI) getLogs(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	options, err := optionsBuilder(c, builderOptions, principal.UserID)
+	dbOpts, err := optionsBuilder(c, builderOptions, principal.UserID)
 	if err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
-	logs := []*models.Log{}
-	err = api.dao.ListLogs(ctx, &logs, options)
+	logs, err := api.dao.ListLogs(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up logs", err)
 	}
 
-	pResult, err := options.Pagination.BuildResult(logsResponseHelper(logs))
+	pResult, err := dbOpts.Pagination.BuildResult(logsResponseHelper(logs))
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error building pagination result", err)
 	}
