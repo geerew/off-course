@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/pagination"
 	"github.com/geerew/off-course/utils/types"
@@ -659,7 +658,7 @@ func TestTags_DeleteTag(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, status)
 
-		count, err := dao.Count(ctx, router.dao, &models.Tag{}, nil)
+		count, err := router.dao.CountTags(ctx, nil)
 		require.NoError(t, err)
 		require.Equal(t, 1, count)
 	})
