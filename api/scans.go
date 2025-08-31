@@ -1,7 +1,6 @@
 package api
 
 import (
-	"database/sql"
 	"log/slog"
 
 	"github.com/Masterminds/squirrel"
@@ -54,17 +53,17 @@ func (api *scansAPI) getScans(c *fiber.Ctx) error {
 		Paginate:       true,
 	}
 
-	options, err := optionsBuilder(c, builderOptions, principal.UserID)
+	dbOpts, err := optionsBuilder(c, builderOptions, principal.UserID)
 	if err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
-	scans := []*models.Scan{}
-	if err := api.dao.ListScans(ctx, &scans, options); err != nil {
+	scans, err := api.dao.ListScans(ctx, dbOpts)
+	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up scan", err)
 	}
 
-	pResult, err := options.Pagination.BuildResult(scanResponseHelper(scans))
+	pResult, err := dbOpts.Pagination.BuildResult(scanResponseHelper(scans))
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error building pagination result", err)
 	}
@@ -82,17 +81,14 @@ func (api *scansAPI) getScan(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	scan := &models.Scan{}
-	options := &database.Options{
-		Where: squirrel.Eq{models.SCAN_TABLE_COURSE_ID: courseId},
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_COURSE_ID: courseId})
+	scan, err := api.dao.GetScan(ctx, dbOpts)
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up scan", err)
 	}
 
-	if err := api.dao.GetScan(ctx, scan, options); err != nil {
-		if err == sql.ErrNoRows {
-			return errorResponse(c, fiber.StatusNotFound, "Scan not found", nil)
-		}
-
-		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up scan", err)
+	if scan == nil {
+		return errorResponse(c, fiber.StatusNotFound, "Scan not found", nil)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(scanResponseHelper([]*models.Scan{scan})[0])
@@ -117,7 +113,7 @@ func (api *scansAPI) createScan(c *fiber.Ctx) error {
 
 	scan, err := api.courseScan.Add(ctx, req.CourseID)
 	if err != nil {
-		if err == utils.ErrInvalidId {
+		if err == utils.ErrCourseNotFound {
 			return errorResponse(c, fiber.StatusBadRequest, "Invalid course ID", nil)
 		}
 
@@ -137,8 +133,8 @@ func (api scansAPI) deleteScan(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	scan := &models.Scan{Base: models.Base{ID: id}}
-	if err := dao.Delete(ctx, api.dao, scan, nil); err != nil {
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_ID: id})
+	if err := api.dao.DeleteScans(ctx, dbOpts); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting scan", err)
 	}
 
