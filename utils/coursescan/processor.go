@@ -87,7 +87,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		return err
 	}
 
-	scannedAttachments, scannedAssets := flatAttachmentsAndAssets(scanned.groups)
+	scannedAttachments, scannedAssets := flatAttachmentsAndAssets(scanned.lessons)
 	existingAttachments, existingAssets := flatAttachmentsAndAssets(existingGroups)
 
 	// Populate hashes of assets that have changed
@@ -96,7 +96,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	}
 
 	// Reconcile what to do
-	groupOps := reconcileLessons(scanned.groups, existingGroups)
+	groupOps := reconcileLessons(scanned.lessons, existingGroups)
 	assetOps := reconcileAssets(scannedAssets, existingAssets)
 	attachmentOps := reconcileAttachments(scannedAttachments, existingAttachments)
 
@@ -239,7 +239,7 @@ type lessonBucket struct {
 
 // scannedResults holds all lessons and the card image path
 type scannedResults struct {
-	groups   []*models.Lesson
+	lessons  []*models.Lesson
 	cardPath string
 }
 
@@ -393,7 +393,7 @@ func scanFiles(s *CourseScan, coursePath, courseID string) (*scannedResults, err
 	}
 
 	return &scannedResults{
-		groups:   lessons,
+		lessons:  lessons,
 		cardPath: cardPath,
 	}, nil
 }
@@ -401,10 +401,10 @@ func scanFiles(s *CourseScan, coursePath, courseID string) (*scannedResults, err
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // flatAttachmentsAndAssets returns a flat list of attachments and assets from a list of lessons
-func flatAttachmentsAndAssets(groups []*models.Lesson) ([]*models.Attachment, []*models.Asset) {
+func flatAttachmentsAndAssets(lessons []*models.Lesson) ([]*models.Attachment, []*models.Asset) {
 	var attachments []*models.Attachment
 	var assets []*models.Asset
-	for _, g := range groups {
+	for _, g := range lessons {
 		assets = append(assets, g.Assets...)
 		attachments = append(attachments, g.Attachments...)
 	}
