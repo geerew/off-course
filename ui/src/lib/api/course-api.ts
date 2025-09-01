@@ -17,6 +17,7 @@ import {
 	type CreateCourseModel,
 	type CreateCourseTagModel
 } from '$lib/models/course-model';
+import { ModulesSchema, type ModulesModel, type ModulesReqParams } from '$lib/models/module-model';
 import { buildQueryString } from '$lib/utils';
 import { array, safeParse } from 'valibot';
 import { apiFetch } from './fetch';
@@ -259,6 +260,30 @@ export async function ServeCourseAssetDescription(
 
 	if (response.ok) {
 		return await response.text();
+	} else {
+		const data = await response.json();
+		throw new APIError(response.status, data.message || 'Unknown error');
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Get the structured modules (chapters/lessons) for a course
+export async function GetCourseModules(
+	courseId: string,
+	params?: ModulesReqParams
+): Promise<ModulesModel> {
+	const qs = params ? buildQueryString(params) : '';
+	const response = await apiFetch(`/api/courses/${courseId}/modules${qs ? `?${qs}` : ''}`);
+
+	if (response.ok) {
+		const data = (await response.json()) as ModulesModel;
+		const result = safeParse(ModulesSchema, data);
+
+		if (!result.success) {
+			throw new APIError(response.status, 'Invalid response from the server');
+		}
+		return result.output;
 	} else {
 		const data = await response.json();
 		throw new APIError(response.status, data.message || 'Unknown error');

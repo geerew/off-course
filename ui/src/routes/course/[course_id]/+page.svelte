@@ -6,7 +6,7 @@
 <!-- TODO Add mark Complete -->
 <script lang="ts">
 	import { page } from '$app/state';
-	import { GetAllCourseAssets, GetCourse, GetCourseTags } from '$lib/api/course-api';
+	import { GetCourse, GetCourseModules, GetCourseTags } from '$lib/api/course-api';
 	import { auth } from '$lib/auth.svelte';
 	import { NiceDate, Spinner } from '$lib/components';
 	import { ClearCourseProgressDialog } from '$lib/components/dialogs';
@@ -29,14 +29,13 @@
 	import { Badge, Dropdown } from '$lib/components/ui';
 	import Attachments from '$lib/components/ui/attachments.svelte';
 	import Button from '$lib/components/ui/button.svelte';
-	import type { Chapters } from '$lib/models/asset-model';
 	import type { CourseModel, CourseTagsModel } from '$lib/models/course-model';
-	import { BuildChapterStructure } from '$lib/utils';
+	import type { ModulesModel } from '$lib/models/module-model';
 	import { useId } from 'bits-ui';
 	import prettyMs from 'pretty-ms';
 
 	let course = $state<CourseModel>();
-	let chapters = $state<Chapters>({});
+	let modules = $state<ModulesModel | null>(null);
 	let tags = $state<CourseTagsModel>([]);
 	let courseImageUrl = $state<string | null>(null);
 	let courseImageLoaded = $state<boolean>(false);
@@ -45,57 +44,60 @@
 
 	const labelId = useId();
 
-	let chapterCount = $derived(Object.keys(chapters).length);
-	let assetCount = $derived.by(() => {
-		let count = 0;
-		for (const chapter of Object.values(chapters)) {
-			for (const assetGroup of chapter) {
-				count += assetGroup.assets.length;
-			}
-		}
-		return count;
-	});
+	// The number of modules in this course
+	let moduleCount = $derived(modules ? modules.modules.length : 0);
+
+	// The number of asset groups in this course
 	let assetGroupCount = $derived.by(() => {
+		if (!modules) return 0;
 		let count = 0;
-		for (const chapter of Object.values(chapters)) {
-			count += chapter.length;
+		for (const m of modules.modules) {
+			count += m.lessons.length;
 		}
 		return count;
 	});
-	let attachmentCount = $derived.by(() => {
+
+	// The number of assets in this course (including groups with multiple assets)
+	let assetCount = $derived.by(() => {
+		if (!modules) return 0;
 		let count = 0;
-		for (const chapter of Object.values(chapters)) {
-			for (const assetGroup of chapter) {
-				count += assetGroup.attachments.length;
+		for (const m of modules.modules) {
+			for (const lesson of m.lessons) {
+				count += lesson.assets.length;
 			}
 		}
 		return count;
 	});
 
-	let assetToResume = $derived.by(() => {
-		const allChapters = Object.values(chapters);
+	// The number of attachments in this course
+	let attachmentCount = $derived.by(() => {
+		if (!modules) return 0;
+		let count = 0;
+		for (const m of modules.modules) {
+			for (const lesson of m.lessons) {
+				count += lesson.attachments.length;
+			}
+		}
+		return count;
+	});
 
-		// Find the first asset that is not completed
-		for (const chapter of allChapters) {
-			for (const assetGroup of chapter) {
-				for (const asset of assetGroup.assets) {
-					if (!asset.progress || !asset.progress.completed) {
+	// The first asset to resume. It will find the first non-completed asset then fallback
+	// to the first asset
+	let assetToResume = $derived.by(() => {
+		if (!modules) return null;
+
+		for (const m of modules.modules) {
+			for (const lesson of m.lessons) {
+				for (const asset of lesson.assets) {
+					if (asset.progress && asset.progress.videoPos > 0 && !asset.progress.completed) {
 						return asset;
 					}
 				}
 			}
 		}
 
-		// If all assets are completed, return the first asset
-		if (
-			allChapters.length > 0 &&
-			allChapters[0].length > 0 &&
-			allChapters[0][0].assets.length > 0
-		) {
-			return allChapters[0][0].assets[0];
-		}
-
-		return null;
+		// Fallback to first asset in first module/lesson
+		return modules.modules[0]?.lessons[0]?.assets[0] ?? null;
 	});
 
 	let loadPromise = $state(fetchCourse());
@@ -107,15 +109,8 @@
 	async function fetchCourse(): Promise<void> {
 		try {
 			course = await GetCourse(page.params.course_id);
-
 			tags = await GetCourseTags(course.id);
-
-			const assets = await GetAllCourseAssets(course.id, {
-				q: `sort:"assets.chapter asc" sort:"assets.prefix asc"`
-			});
-
-			chapters = BuildChapterStructure(assets);
-
+			modules = await GetCourseModules(course.id, { withProgress: true });
 			await loadCourseImage(course.id);
 		} catch (error) {
 			throw error;
@@ -178,7 +173,7 @@
 										<div class="flex flex-row items-center gap-2 font-semibold">
 											<ModulesIcon class="text-foreground-alt-3 size-4.5" />
 											<span>
-												{chapterCount} module{chapterCount != 1 ? 's' : ''}
+												{moduleCount} module{moduleCount != 1 ? 's' : ''}
 											</span>
 										</div>
 
@@ -311,18 +306,22 @@
 										{course}
 										successFn={() => {
 											if (!course) return;
+
+											// Clear course-level progress
 											course.progress = undefined;
 
-											// Clear progress for all assets in all chapters
-											const allChapters = Object.values(chapters);
-											for (const chapter of allChapters) {
-												for (const assetGroup of chapter) {
-													assetGroup.completed = false;
-													assetGroup.startedAssetCount = 0;
-													assetGroup.completedAssetCount = 0;
-													assetGroup.assets.forEach((asset) => {
+											// Clear all lesson + asset progress in the new modules structure
+											if (!modules) return;
+
+											for (const mod of modules.modules) {
+												for (const lesson of mod.lessons) {
+													lesson.completed = false;
+													lesson.startedAssetCount = 0;
+													lesson.completedAssetCount = 0;
+
+													for (const asset of lesson.assets) {
 														asset.progress = undefined;
-													});
+													}
 												}
 											}
 										}}
@@ -385,117 +384,118 @@
 			</div>
 
 			<!-- Course Content -->
+
 			<div class="bg-background flex w-full place-content-center">
 				<div class="container-px flex w-full max-w-7xl flex-col pt-0 sm:py-7">
 					<div class="text-foreground-alt-1 flex flex-col gap-12 sm:gap-16">
-						{#each Object.keys(chapters) as chapter, index}
-							<section class="border-background-alt-2 grid grid-cols-4 border-t">
-								<div class="col-span-full sm:col-span-1">
-									<div class="border-foreground-alt-2 -mt-px inline-flex border-t pt-px">
-										<div class="text-background-primary-alt-1 pt-6 font-semibold sm:pt-10">
-											Module {pad2(index + 1)}
+						{#if modules && modules.modules.length > 0}
+							{#each modules.modules as m}
+								<section class="border-background-alt-2 grid grid-cols-4 border-t">
+									<div class="col-span-full sm:col-span-1">
+										<div class="border-foreground-alt-2 -mt-px inline-flex border-t pt-px">
+											<div class="text-background-primary-alt-1 pt-6 font-semibold sm:pt-10">
+												Module {pad2(m.index)}
+											</div>
 										</div>
 									</div>
-								</div>
 
-								<div class="col-span-full pt-6 sm:col-span-3 sm:pt-10">
-									<div class="max-w-2xl">
-										<!-- Module title -->
-										{#if chapter !== '(no chapter)'}
-											<div class="text-2xl font-medium text-pretty">
-												{chapter}
-											</div>
-										{/if}
+									<div class="col-span-full pt-6 sm:col-span-3 sm:pt-10">
+										<div class="max-w-2xl">
+											<!-- Module title -->
+											{#if m.module !== '(no chapter)'}
+												<div class="text-2xl font-medium text-pretty">
+													{m.module}
+												</div>
+											{/if}
 
-										<!-- Module details -->
-										<ol class="mt-8 space-y-6 sm:mt-10">
-											{#each chapters[chapter] as assetGroup}
-												{@const isCollection = assetGroup.assets.length > 1}
-												{@const totalVideoDuration = assetGroup.assets.reduce(
-													(acc, asset) => acc + (asset.videoMetadata?.duration || 0),
-													0
-												)}
+											<!-- Module details -->
+											<ol class="mt-8 space-y-6 sm:mt-10">
+												{#each m.lessons as lesson}
+													{@const isCollection = lesson.assets.length > 1}
+													{@const totalVideoDuration = lesson.totalVideoDuration}
 
-												<li>
-													<div class="flow-root">
-														<Button
-															href={`/course/${course.id}/${assetGroup.assets[0].id}`}
-															variant="ghost"
-															class="hover:bg-background-alt-2 -mx-3 -my-2 flex h-auto justify-start gap-3 py-2 text-sm whitespace-normal"
-															disabled={course.maintenance || !course.available}
-															onclick={(e) => {
-																if (course?.maintenance || !course?.available) {
-																	e.preventDefault();
-																	e.stopPropagation();
-																}
-															}}
-														>
-															<!-- Lesson status -->
-															{#if assetGroup.completed}
-																<TickCircleIcon
-																	class="stroke-background-success fill-background-success [&_path]:stroke-foreground size-5 place-self-start stroke-1 [&_path]:stroke-1"
-																/>
-															{:else if assetGroup.startedAssetCount > 0}
-																<EllipsisCircleIcon
-																	class="[&_path]:fill-foreground-alt-1 [&_path]:stroke-foreground size-5 place-self-start fill-amber-700 stroke-amber-700 stroke-1 [&_path]:stroke-2"
-																/>
-															{:else}
-																<PlayCircleIcon
-																	class="stroke-foreground-alt-3 fill-background [&_polygon]:stroke-foreground-alt-2 [&_polygon]:fill-foreground-alt-2 size-5 place-self-start stroke-1"
-																/>
-															{/if}
+													<li>
+														<div class="flow-root">
+															<Button
+																href={`/course/${course.id}/${lesson.assets[0].id}`}
+																variant="ghost"
+																class="hover:bg-background-alt-2 -mx-3 -my-2 flex h-auto justify-start gap-3 py-2 text-sm whitespace-normal"
+																disabled={course.maintenance || !course.available}
+																onclick={(e) => {
+																	if (course?.maintenance || !course?.available) {
+																		e.preventDefault();
+																		e.stopPropagation();
+																	}
+																}}
+															>
+																<!-- Lesson status -->
+																{#if lesson.completed}
+																	<TickCircleIcon
+																		class="stroke-background-success fill-background-success [&_path]:stroke-foreground size-5 place-self-start stroke-1 [&_path]:stroke-1"
+																	/>
+																{:else if lesson.startedAssetCount > 0}
+																	<EllipsisCircleIcon
+																		class="[&_path]:fill-foreground-alt-1 [&_path]:stroke-foreground size-5 place-self-start fill-amber-700 stroke-amber-700 stroke-1 [&_path]:stroke-2"
+																	/>
+																{:else}
+																	<PlayCircleIcon
+																		class="stroke-foreground-alt-3 fill-background [&_polygon]:stroke-foreground-alt-2 [&_polygon]:fill-foreground-alt-2 size-5 place-self-start stroke-1"
+																	/>
+																{/if}
 
-															<div class="flex w-full flex-col gap-1.5">
-																<!-- Lesson title -->
-																<span class="text-foreground-alt-2 w-full font-semibold"
-																	>{assetGroup.prefix}. {assetGroup.title}</span
-																>
+																<div class="flex w-full flex-col gap-1.5">
+																	<!-- Lesson title -->
+																	<span class="text-foreground-alt-2 w-full font-semibold">
+																		{lesson.prefix}. {lesson.title}
+																	</span>
 
-																<!-- Lesson details -->
-																<div
-																	class="relative flex w-full flex-col gap-0 text-sm select-none"
-																>
-																	<div class="flex w-full flex-row flex-wrap items-center gap-2">
-																		<!-- Type -->
-																		<span class="text-foreground-alt-3 whitespace-nowrap">
-																			{#if isCollection}
-																				collection
-																			{:else}
-																				{assetGroup.assets[0].assetType}
-																			{/if}
-																		</span>
-
-																		<!-- Video duration -->
-																		{#if totalVideoDuration > 0}
-																			<DotIcon class="text-foreground-alt-3 text-xl" />
-
+																	<!-- Lesson details -->
+																	<div
+																		class="relative flex w-full flex-col gap-0 text-sm select-none"
+																	>
+																		<div class="flex w-full flex-row flex-wrap items-center gap-2">
+																			<!-- Type -->
 																			<span class="text-foreground-alt-3 whitespace-nowrap">
-																				{prettyMs(totalVideoDuration * 1000)}
+																				{#if isCollection}
+																					collection
+																				{:else}
+																					{lesson.assets[0].assetType}
+																				{/if}
 																			</span>
-																		{/if}
 
-																		<!-- Attachments -->
-																		{#if assetGroup.attachments.length > 0}
-																			<DotIcon class="text-foreground-alt-3 text-xl" />
+																			<!-- Video duration -->
+																			{#if totalVideoDuration > 0}
+																				<DotIcon class="text-foreground-alt-3 text-xl" />
+																				<span class="text-foreground-alt-3 whitespace-nowrap">
+																					{prettyMs(totalVideoDuration * 1000)}
+																				</span>
+																			{/if}
 
-																			<Attachments
-																				attachments={assetGroup.attachments}
-																				courseId={course?.id ?? ''}
-																				assetId={assetGroup.assets[0].id}
-																			/>
-																		{/if}
+																			<!-- Attachments -->
+																			{#if lesson.attachments.length > 0}
+																				<DotIcon class="text-foreground-alt-3 text-xl" />
+																				<Attachments
+																					attachments={lesson.attachments}
+																					courseId={course?.id ?? ''}
+																					assetId={lesson.assets[0].id}
+																				/>
+																			{/if}
+																		</div>
 																	</div>
 																</div>
-															</div>
-														</Button>
-													</div>
-												</li>
-											{/each}
-										</ol>
+															</Button>
+														</div>
+													</li>
+												{/each}
+											</ol>
+										</div>
 									</div>
-								</div>
-							</section>
-						{/each}
+								</section>
+							{/each}
+						{:else}
+							<!-- Optional: loading/empty state -->
+							<div class="text-foreground-alt-3 py-10 text-center">No modules to display.</div>
+						{/if}
 					</div>
 				</div>
 			</div>
