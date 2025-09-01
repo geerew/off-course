@@ -6,10 +6,10 @@
 	type Props = {
 		attachments: AttachmentsModel;
 		courseId: string;
-		assetId: string;
+		lessonId: string;
 	};
 
-	let { attachments, courseId, assetId }: Props = $props();
+	let { attachments, courseId, lessonId }: Props = $props();
 </script>
 
 <Dropdown.Root>
@@ -35,7 +35,7 @@
 
 			<Dropdown.Item>
 				<Button
-					href={`/api/courses/${courseId}/assets/${assetId}/attachments/${attachment.id}/serve`}
+					href={`/api/courses/${courseId}/groups/${lessonId}/attachments/${attachment.id}/serve`}
 					variant="ghost"
 					class="hover:text-foreground h-auto justify-between gap-5 text-xs hover:bg-transparent"
 					download

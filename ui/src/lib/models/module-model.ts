@@ -1,13 +1,4 @@
-import {
-	array,
-	boolean,
-	number,
-	object,
-	optional,
-	picklist,
-	string,
-	type InferOutput
-} from 'valibot';
+import { array, boolean, number, object, picklist, string, type InferOutput } from 'valibot';
 import { AssetSchema } from './asset-model';
 import { AttachmentSchema } from './attachment-model';
 
@@ -21,10 +12,10 @@ export type DescriptionType = InferOutput<typeof DescriptionTypeSchema>;
 
 // Lesson schema
 export const LessonSchema = object({
+	id: string(),
+	courseId: string(),
 	prefix: number(),
 	title: string(),
-	hasDescription: boolean(),
-	descriptionType: optional(DescriptionTypeSchema),
 	assets: array(AssetSchema),
 	attachments: array(AttachmentSchema),
 	completed: boolean(),

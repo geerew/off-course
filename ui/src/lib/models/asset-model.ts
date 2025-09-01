@@ -44,6 +44,8 @@ export type AssetProgressModel = InferOutput<typeof AssetProgressSchema>;
 // Asset schema
 export const AssetSchema = object({
 	...BaseSchema.entries,
+	courseId: string(),
+	lessonId: string(),
 	title: string(),
 	prefix: number(),
 	subPrefix: optional(number()),

@@ -35,7 +35,7 @@
 	import prettyMs from 'pretty-ms';
 
 	let course = $state<CourseModel>();
-	let modules = $state<ModulesModel | null>(null);
+	let modules = $state<ModulesModel>();
 	let tags = $state<CourseTagsModel>([]);
 	let courseImageUrl = $state<string | null>(null);
 	let courseImageLoaded = $state<boolean>(false);
@@ -81,23 +81,26 @@
 		return count;
 	});
 
-	// The first asset to resume. It will find the first non-completed asset then fallback
-	// to the first asset
-	let assetToResume = $derived.by(() => {
+	// First lesson to resume (prefer started-but-incomplete; else first incomplete; else first lesson)
+	let lessonToResume = $derived.by(() => {
 		if (!modules) return null;
 
-		for (const m of modules.modules) {
-			for (const lesson of m.lessons) {
-				for (const asset of lesson.assets) {
-					if (asset.progress && asset.progress.videoPos > 0 && !asset.progress.completed) {
-						return asset;
-					}
-				}
+		// 1) started but not completed
+		for (const mod of modules.modules) {
+			for (const lesson of mod.lessons) {
+				if (lesson.startedAssetCount > 0 && !lesson.completed) return lesson;
 			}
 		}
 
-		// Fallback to first asset in first module/lesson
-		return modules.modules[0]?.lessons[0]?.assets[0] ?? null;
+		// 2) any incomplete
+		for (const mod of modules.modules) {
+			for (const lesson of mod.lessons) {
+				if (!lesson.completed) return lesson;
+			}
+		}
+
+		// 3) fallback: very first lesson (if any)
+		return modules.modules[0]?.lessons[0] ?? null;
 	});
 
 	let loadPromise = $state(fetchCourse());
@@ -262,7 +265,7 @@
 							{#if assetCount > 0}
 								<div class="flex flex-row place-items-end gap-2.5">
 									<Button
-										href={`/course/${course.id}/${assetToResume?.id}`}
+										href={`/course/${course.id}/${lessonToResume?.id}`}
 										variant="default"
 										class="w-auto px-4"
 										disabled={course.maintenance || !course.available}
@@ -417,7 +420,7 @@
 													<li>
 														<div class="flow-root">
 															<Button
-																href={`/course/${course.id}/${lesson.assets[0].id}`}
+																href={`/course/${course.id}/${lesson.id}`}
 																variant="ghost"
 																class="hover:bg-background-alt-2 -mx-3 -my-2 flex h-auto justify-start gap-3 py-2 text-sm whitespace-normal"
 																disabled={course.maintenance || !course.available}
@@ -477,7 +480,7 @@
 																				<Attachments
 																					attachments={lesson.attachments}
 																					courseId={course?.id ?? ''}
-																					assetId={lesson.assets[0].id}
+																					lessonId={lesson.id}
 																				/>
 																			{/if}
 																		</div>
