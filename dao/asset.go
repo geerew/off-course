@@ -31,21 +31,21 @@ func (dao *DAO) CreateAsset(ctx context.Context, asset *models.Asset) error {
 	builderOpts := newBuilderOptions(models.ASSET_TABLE).
 		WithData(
 			map[string]interface{}{
-				models.BASE_ID:              asset.ID,
-				models.ASSET_COURSE_ID:      asset.CourseID,
-				models.ASSET_ASSET_GROUP_ID: asset.AssetGroupID,
-				models.ASSET_TITLE:          asset.Title,
-				models.ASSET_PREFIX:         asset.Prefix,
-				models.ASSET_SUB_PREFIX:     asset.SubPrefix,
-				models.ASSET_SUB_TITLE:      asset.SubTitle,
-				models.ASSET_MODULE:         asset.Module,
-				models.ASSET_TYPE:           asset.Type,
-				models.ASSET_PATH:           asset.Path,
-				models.ASSET_FILE_SIZE:      asset.FileSize,
-				models.ASSET_MOD_TIME:       asset.ModTime,
-				models.ASSET_HASH:           asset.Hash,
-				models.BASE_CREATED_AT:      asset.CreatedAt,
-				models.BASE_UPDATED_AT:      asset.UpdatedAt,
+				models.BASE_ID:          asset.ID,
+				models.ASSET_COURSE_ID:  asset.CourseID,
+				models.ASSET_LESSON_ID:  asset.LessonID,
+				models.ASSET_TITLE:      asset.Title,
+				models.ASSET_PREFIX:     asset.Prefix,
+				models.ASSET_SUB_PREFIX: asset.SubPrefix,
+				models.ASSET_SUB_TITLE:  asset.SubTitle,
+				models.ASSET_MODULE:     asset.Module,
+				models.ASSET_TYPE:       asset.Type,
+				models.ASSET_PATH:       asset.Path,
+				models.ASSET_FILE_SIZE:  asset.FileSize,
+				models.ASSET_MOD_TIME:   asset.ModTime,
+				models.ASSET_HASH:       asset.Hash,
+				models.BASE_CREATED_AT:  asset.CreatedAt,
+				models.BASE_UPDATED_AT:  asset.UpdatedAt,
 			},
 		)
 
@@ -106,7 +106,7 @@ func (dao *DAO) GetAsset(ctx context.Context, dbOpts *database.Options) (*models
 	scanTargets := []interface{}{
 		&asset.ID,
 		&asset.CourseID,
-		&asset.AssetGroupID,
+		&asset.LessonID,
 		&asset.Title,
 		&asset.Prefix,
 		&asset.SubPrefix,
@@ -227,7 +227,7 @@ func (dao *DAO) ListAssets(ctx context.Context, dbOpts *database.Options) ([]*mo
 		scanTargets := []interface{}{
 			&asset.ID,
 			&asset.CourseID,
-			&asset.AssetGroupID,
+			&asset.LessonID,
 			&asset.Title,
 			&asset.Prefix,
 			&asset.SubPrefix,
@@ -327,18 +327,18 @@ func (dao *DAO) UpdateAsset(ctx context.Context, asset *models.Asset) error {
 	builderOpts := newBuilderOptions(models.ASSET_TABLE).
 		WithData(
 			map[string]interface{}{
-				models.ASSET_ASSET_GROUP_ID: asset.AssetGroupID,
-				models.ASSET_TITLE:          asset.Title,
-				models.ASSET_PREFIX:         asset.Prefix,
-				models.ASSET_SUB_PREFIX:     asset.SubPrefix,
-				models.ASSET_SUB_TITLE:      asset.SubTitle,
-				models.ASSET_MODULE:         asset.Module,
-				models.ASSET_TYPE:           asset.Type,
-				models.ASSET_PATH:           asset.Path,
-				models.ASSET_FILE_SIZE:      asset.FileSize,
-				models.ASSET_MOD_TIME:       asset.ModTime,
-				models.ASSET_HASH:           asset.Hash,
-				models.BASE_UPDATED_AT:      asset.UpdatedAt,
+				models.ASSET_LESSON_ID:  asset.LessonID,
+				models.ASSET_TITLE:      asset.Title,
+				models.ASSET_PREFIX:     asset.Prefix,
+				models.ASSET_SUB_PREFIX: asset.SubPrefix,
+				models.ASSET_SUB_TITLE:  asset.SubTitle,
+				models.ASSET_MODULE:     asset.Module,
+				models.ASSET_TYPE:       asset.Type,
+				models.ASSET_PATH:       asset.Path,
+				models.ASSET_FILE_SIZE:  asset.FileSize,
+				models.ASSET_MOD_TIME:   asset.ModTime,
+				models.ASSET_HASH:       asset.Hash,
+				models.BASE_UPDATED_AT:  asset.UpdatedAt,
 			},
 		).
 		SetDbOpts(dbOpts)
@@ -377,8 +377,8 @@ func assetValidation(asset *models.Asset) error {
 		return utils.ErrCourseId
 	}
 
-	if asset.AssetGroupID == "" {
-		return utils.ErrAssetGroupId
+	if asset.LessonID == "" {
+		return utils.ErrLessonId
 	}
 
 	if asset.Title == "" {

@@ -13,18 +13,18 @@ import (
 // Asset defines the model for an asset
 type Asset struct {
 	Base
-	CourseID     string        `db:"course_id"`      // Immutable
-	AssetGroupID string        `db:"asset_group_id"` // Mutable
-	Title        string        `db:"title"`          // Mutable
-	Prefix       sql.NullInt16 `db:"prefix"`         // Mutable
-	SubPrefix    sql.NullInt16 `db:"sub_prefix"`     // Mutable
-	SubTitle     string        `db:"sub_title"`      // Mutable
-	Module       string        `db:"module"`         // Mutable
-	Type         types.Asset   `db:"type"`           // Mutable
-	Path         string        `db:"path"`           // Mutable
-	FileSize     int64         `db:"file_size"`      // Mutable
-	ModTime      string        `db:"mod_time"`       // Mutable
-	Hash         string        `db:"hash"`           // Mutable
+	CourseID  string        `db:"course_id"`  // Immutable
+	LessonID  string        `db:"lesson_id"`  // Mutable
+	Title     string        `db:"title"`      // Mutable
+	Prefix    sql.NullInt16 `db:"prefix"`     // Mutable
+	SubPrefix sql.NullInt16 `db:"sub_prefix"` // Mutable
+	SubTitle  string        `db:"sub_title"`  // Mutable
+	Module    string        `db:"module"`     // Mutable
+	Type      types.Asset   `db:"type"`       // Mutable
+	Path      string        `db:"path"`       // Mutable
+	FileSize  int64         `db:"file_size"`  // Mutable
+	ModTime   string        `db:"mod_time"`   // Mutable
+	Hash      string        `db:"hash"`       // Mutable
 
 	// Relations
 	VideoMetadata *VideoMetadataInfo
@@ -36,7 +36,7 @@ type Asset struct {
 const (
 	ASSET_TABLE            = "assets"
 	ASSET_COURSE_ID        = "course_id"
-	ASSET_ASSET_GROUP_ID   = "asset_group_id"
+	ASSET_LESSON_ID        = "lesson_id"
 	ASSET_TITLE            = "title"
 	ASSET_PREFIX           = "prefix"
 	ASSET_SUB_PREFIX       = "sub_prefix"
@@ -57,7 +57,7 @@ const (
 	ASSET_TABLE_CREATED_AT       = ASSET_TABLE + "." + BASE_CREATED_AT
 	ASSET_TABLE_UPDATED_AT       = ASSET_TABLE + "." + BASE_UPDATED_AT
 	ASSET_TABLE_COURSE_ID        = ASSET_TABLE + "." + ASSET_COURSE_ID
-	ASSET_TABLE_ASSET_GROUP_ID   = ASSET_TABLE + "." + ASSET_ASSET_GROUP_ID
+	ASSET_TABLE_LESSON_ID        = ASSET_TABLE + "." + ASSET_LESSON_ID
 	ASSET_TABLE_TITLE            = ASSET_TABLE + "." + ASSET_TITLE
 	ASSET_TABLE_PREFIX           = ASSET_TABLE + "." + ASSET_PREFIX
 	ASSET_TABLE_SUB_PREFIX       = ASSET_TABLE + "." + ASSET_SUB_PREFIX

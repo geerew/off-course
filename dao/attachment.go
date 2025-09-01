@@ -9,14 +9,6 @@ import (
 	"github.com/geerew/off-course/utils"
 )
 
-// type Attachment struct {
-// 	Base
-// 	AssetGroupID string `db:"asset_group_id"` // Immutable
-// 	Title        string `db:"title"`          // Mutable
-// 	Path         string `db:"path"`           // Mutable
-// }
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // CreateAttachment inserts a new attachment record
@@ -43,12 +35,12 @@ func (dao *DAO) CreateAttachment(ctx context.Context, attachment *models.Attachm
 	builderOpts := newBuilderOptions(models.ATTACHMENT_TABLE).
 		WithData(
 			map[string]interface{}{
-				models.BASE_ID:                   attachment.ID,
-				models.ATTACHMENT_ASSET_GROUP_ID: attachment.AssetGroupID,
-				models.ATTACHMENT_TITLE:          attachment.Title,
-				models.ATTACHMENT_PATH:           attachment.Path,
-				models.BASE_CREATED_AT:           attachment.CreatedAt,
-				models.BASE_UPDATED_AT:           attachment.UpdatedAt,
+				models.BASE_ID:              attachment.ID,
+				models.ATTACHMENT_LESSON_ID: attachment.LessonID,
+				models.ATTACHMENT_TITLE:     attachment.Title,
+				models.ATTACHMENT_PATH:      attachment.Path,
+				models.BASE_CREATED_AT:      attachment.CreatedAt,
+				models.BASE_UPDATED_AT:      attachment.UpdatedAt,
 			},
 		)
 

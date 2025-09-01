@@ -140,7 +140,7 @@ type courseMetrics struct {
 
 // fetchCourseMetrics retrieves various metrics for a course based on the course ID and user ID
 //
-// TODO Change this to work around the asset groups
+// TODO Change this to work around the lesson
 // TODO Change the userID to use ? instead of string interpolation
 func (dao *DAO) fetchCourseMetrics(ctx context.Context, courseID, userID string) (*courseMetrics, error) {
 	dbOpts := database.NewOptions().

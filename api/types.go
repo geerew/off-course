@@ -134,7 +134,7 @@ func courseTagResponseHelper(courseTags []*models.CourseTag) []*courseTagRespons
 // Asset Group
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-type assetGroupResponse struct {
+type lessonResponse struct {
 	ID        string         `json:"id"`
 	CourseID  string         `json:"courseId"`
 	Title     string         `json:"title"`
@@ -150,20 +150,20 @@ type assetGroupResponse struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func assetGroupResponseHelper(assetGroups []*models.AssetGroup) []*assetGroupResponse {
-	responses := []*assetGroupResponse{}
-	for _, assetGroup := range assetGroups {
-		response := &assetGroupResponse{
-			ID:        assetGroup.ID,
-			CourseID:  assetGroup.CourseID,
-			Title:     assetGroup.Title,
-			Prefix:    int(assetGroup.Prefix.Int16),
-			Module:    assetGroup.Module,
-			CreatedAt: assetGroup.CreatedAt,
-			UpdatedAt: assetGroup.UpdatedAt,
+func lessonResponseHelper(lessons []*models.Lesson) []*lessonResponse {
+	responses := []*lessonResponse{}
+	for _, lesson := range lessons {
+		response := &lessonResponse{
+			ID:        lesson.ID,
+			CourseID:  lesson.CourseID,
+			Title:     lesson.Title,
+			Prefix:    int(lesson.Prefix.Int16),
+			Module:    lesson.Module,
+			CreatedAt: lesson.CreatedAt,
+			UpdatedAt: lesson.UpdatedAt,
 
-			Assets:      assetResponseHelper(assetGroup.Assets),
-			Attachments: attachmentResponseHelper(assetGroup.Attachments),
+			Assets:      assetResponseHelper(lesson.Assets),
+			Attachments: attachmentResponseHelper(lesson.Attachments),
 		}
 
 		responses = append(responses, response)
@@ -250,7 +250,7 @@ func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 		response := &assetResponse{
 			ID:        asset.ID,
 			CourseID:  asset.CourseID,
-			LessonID:  asset.AssetGroupID,
+			LessonID:  asset.LessonID,
 			Title:     asset.Title,
 			Prefix:    int(asset.Prefix.Int16),
 			Module:    asset.Module,
@@ -280,12 +280,12 @@ func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type attachmentResponse struct {
-	ID           string         `json:"id"`
-	AssetGroupID string         `json:"assetGroupId"`
-	Title        string         `json:"title"`
-	Path         string         `json:"path"`
-	CreatedAt    types.DateTime `json:"createdAt"`
-	UpdatedAt    types.DateTime `json:"updatedAt"`
+	ID        string         `json:"id"`
+	LessonID  string         `json:"lessonId"`
+	Title     string         `json:"title"`
+	Path      string         `json:"path"`
+	CreatedAt types.DateTime `json:"createdAt"`
+	UpdatedAt types.DateTime `json:"updatedAt"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -298,12 +298,12 @@ func attachmentResponseHelper(attachments []*models.Attachment) []*attachmentRes
 	responses := []*attachmentResponse{}
 	for _, attachment := range attachments {
 		responses = append(responses, &attachmentResponse{
-			ID:           attachment.ID,
-			AssetGroupID: attachment.AssetGroupID,
-			Title:        attachment.Title,
-			Path:         attachment.Path,
-			CreatedAt:    attachment.CreatedAt,
-			UpdatedAt:    attachment.UpdatedAt,
+			ID:        attachment.ID,
+			LessonID:  attachment.LessonID,
+			Title:     attachment.Title,
+			Path:      attachment.Path,
+			CreatedAt: attachment.CreatedAt,
+			UpdatedAt: attachment.UpdatedAt,
 		})
 	}
 
@@ -314,7 +314,7 @@ func attachmentResponseHelper(attachments []*models.Attachment) []*attachmentRes
 // Module
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-type lessonResponse struct {
+type moduleLessonResponse struct {
 	ID                  string                `json:"id"`
 	CourseID            string                `json:"courseId"`
 	Prefix              int                   `json:"prefix"`
@@ -329,9 +329,9 @@ type lessonResponse struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 type moduleResponse struct {
-	Module  string           `json:"module"`
-	Index   int              `json:"index"`
-	Lessons []lessonResponse `json:"lessons"`
+	Module  string                 `json:"module"`
+	Index   int                    `json:"index"`
+	Lessons []moduleLessonResponse `json:"lessons"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -341,27 +341,27 @@ type modulesResponse struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func modulesResponseHelper(groups []*models.AssetGroup) modulesResponse {
+func modulesResponseHelper(lessons []*models.Lesson) modulesResponse {
 	const noChapter = "(no chapter)"
 
-	deriveGroupTitle := func(g *models.AssetGroup) string {
+	deriveGroupTitle := func(g *models.Lesson) string {
 		if len(g.Assets) > 0 && g.Assets[0].Title != "" {
 			return g.Assets[0].Title
 		}
 		return g.Title
 	}
 
-	modMap := make(map[string][]lessonResponse)
+	modMap := make(map[string][]moduleLessonResponse)
 	order := []string{}
 
-	for _, g := range groups {
+	for _, g := range lessons {
 		moduleName := strings.TrimSpace(g.Module)
 		if moduleName == "" {
 			moduleName = noChapter
 		}
 
 		// Build lesson
-		lesson := lessonResponse{
+		lesson := moduleLessonResponse{
 			ID:          g.ID,
 			CourseID:    g.CourseID,
 			Prefix:      int(g.Prefix.Int16),
@@ -394,7 +394,7 @@ func modulesResponseHelper(groups []*models.AssetGroup) modulesResponse {
 
 		if _, ok := modMap[moduleName]; !ok {
 			order = append(order, moduleName)
-			modMap[moduleName] = []lessonResponse{lesson}
+			modMap[moduleName] = []moduleLessonResponse{lesson}
 		} else {
 			modMap[moduleName] = append(modMap[moduleName], lesson)
 		}

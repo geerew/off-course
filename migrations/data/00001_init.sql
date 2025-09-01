@@ -32,8 +32,8 @@ CREATE TABLE courses_progress (
 	UNIQUE(course_id, user_id)
 );
 
---- Asset groups
-CREATE TABLE asset_groups (
+--- Lessons
+CREATE TABLE lessons (
 	id          	 TEXT PRIMARY KEY NOT NULL,
 	course_id   	 TEXT NOT NULL,
 	title       	 TEXT NOT NULL,
@@ -50,7 +50,7 @@ CREATE TABLE asset_groups (
 CREATE TABLE assets (
 	id             TEXT PRIMARY KEY NOT NULL,
 	course_id      TEXT NOT NULL,
-	asset_group_id TEXT NOT NULL,
+	lesson_id      TEXT NOT NULL,
 	title          TEXT NOT NULL,
 	prefix         INTEGER NOT NULL,
 	sub_prefix     INTEGER,
@@ -65,7 +65,7 @@ CREATE TABLE assets (
 	updated_at     TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	---
 	FOREIGN KEY (course_id) REFERENCES courses (id) ON DELETE CASCADE,
-	FOREIGN KEY (asset_group_id) REFERENCES asset_groups (id) ON DELETE CASCADE
+	FOREIGN KEY (lesson_id) REFERENCES lessons (id) ON DELETE CASCADE
 );
 
 --- Asset metadata
@@ -100,16 +100,16 @@ CREATE TABLE assets_progress (
 	UNIQUE(asset_id, user_id)
 );
 
---- Attachments (related to asset groups)
+--- Attachments
 CREATE TABLE attachments (
-	id             TEXT PRIMARY KEY NOT NULL,
-	asset_group_id TEXT NOT NULL,
-	title          TEXT NOT NULL,
-	path           TEXT UNIQUE NOT NULL,
-	created_at     TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
-	updated_at     TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+	id         TEXT PRIMARY KEY NOT NULL,
+	lesson_id  TEXT NOT NULL,
+	title      TEXT NOT NULL,
+	path       TEXT UNIQUE NOT NULL,
+	created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+	updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	---
-	FOREIGN KEY (asset_group_id) REFERENCES asset_groups (id) ON DELETE CASCADE
+	FOREIGN KEY (lesson_id) REFERENCES lessons (id) ON DELETE CASCADE
 );
 
 --- Scan jobs
@@ -173,17 +173,17 @@ CREATE TABLE sessions (
 	user_id TEXT NOT NULL DEFAULT ''
 );
 
--- Groups by course, then ordered by prefix+module
-CREATE INDEX idx_asset_groups_course_prefix_module
-  ON asset_groups(course_id, prefix, module);
+-- lessons by course, then ordered by prefix+module
+CREATE INDEX idx_lessons_course_prefix_module
+  ON lessons(course_id, prefix, module);
 
--- Assets: WHERE asset_group_id = ? ORDER BY prefix, sub_prefix
-CREATE INDEX idx_assets_group_prefix_sub
-  ON assets(asset_group_id, prefix, sub_prefix);
+-- Assets: WHERE lesson_id = ? ORDER BY prefix, sub_prefix
+CREATE INDEX idx_lesson_prefix_sub
+  ON assets(lesson_id, prefix, sub_prefix);
 
--- Attachments: WHERE asset_group_id = ? ORDER BY title
-CREATE INDEX idx_attachments_group_title
-  ON attachments(asset_group_id, title);
+-- Attachments: WHERE lesson_id = ? ORDER BY title
+CREATE INDEX idx_attachments_lesson_title
+  ON attachments(lesson_id, title);
 
 -- Asset progress with user
 CREATE INDEX idx_asset_progress_asset_user

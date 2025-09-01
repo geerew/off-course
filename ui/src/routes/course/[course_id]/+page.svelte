@@ -47,8 +47,8 @@
 	// The number of modules in this course
 	let moduleCount = $derived(modules ? modules.modules.length : 0);
 
-	// The number of asset groups in this course
-	let assetGroupCount = $derived.by(() => {
+	// The number of lessons in this course
+	let lessonCount = $derived.by(() => {
 		if (!modules) return 0;
 		let count = 0;
 		for (const m of modules.modules) {
@@ -186,7 +186,7 @@
 										<div class="flex flex-row items-center gap-2 font-semibold">
 											<FilesIcon class="text-foreground-alt-3 size-4.5" />
 											<span>
-												{assetGroupCount} lesson{assetGroupCount != 1 ? 's' : ''}
+												{lessonCount} lesson{lessonCount != 1 ? 's' : ''}
 											</span>
 										</div>
 

@@ -18,11 +18,11 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func helper_createAssetGroups(t *testing.T, ctx context.Context, dao *DAO, numCourses int) ([]*models.Course, []*models.AssetGroup, []*models.Asset, []*models.Attachment) {
+func helper_createLessons(t *testing.T, ctx context.Context, dao *DAO, numCourses int) ([]*models.Course, []*models.Lesson, []*models.Asset, []*models.Attachment) {
 	t.Helper()
 
 	allCourses := []*models.Course{}
-	allAssetGroups := []*models.AssetGroup{}
+	allLessons := []*models.Lesson{}
 	allAssets := []*models.Asset{}
 	allAttachments := []*models.Attachment{}
 
@@ -31,31 +31,31 @@ func helper_createAssetGroups(t *testing.T, ctx context.Context, dao *DAO, numCo
 		require.NoError(t, dao.CreateCourse(ctx, course))
 		allCourses = append(allCourses, course)
 
-		// Create 3 asset groups with 3 assets and 2 attachments each, reversed
-		for _, assetGroupIndex := range []int{3, 2, 1} {
-			assetGroupPrefix := fmt.Sprintf("%02d", assetGroupIndex)
+		// Create 3 lessons with 3 assets and 2 attachments each, reversed
+		for _, lessonIndex := range []int{3, 2, 1} {
+			lessonPrefix := fmt.Sprintf("%02d", lessonIndex)
 
-			assetGroup := &models.AssetGroup{
+			lesson := &models.Lesson{
 				CourseID: course.ID,
-				Title:    fmt.Sprintf("Asset Group %d", assetGroupIndex),
-				Prefix:   sql.NullInt16{Int16: int16(assetGroupIndex), Valid: true},
-				Module:   fmt.Sprintf("Module %d", assetGroupIndex),
+				Title:    fmt.Sprintf("Asset Group %d", lessonIndex),
+				Prefix:   sql.NullInt16{Int16: int16(lessonIndex), Valid: true},
+				Module:   fmt.Sprintf("Module %d", lessonIndex),
 			}
-			require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
-			allAssetGroups = append(allAssetGroups, assetGroup)
+			require.NoError(t, dao.CreateLesson(ctx, lesson))
+			allLessons = append(allLessons, lesson)
 			time.Sleep(1 * time.Millisecond)
 
 			// 3 assets, reversed sub-prefix: 3,2,1
 			for _, assetIndex := range []int{3, 2, 1} {
 				asset := &models.Asset{
-					CourseID:     course.ID,
-					AssetGroupID: assetGroup.ID,
-					Title:        fmt.Sprintf("Asset %d", assetIndex),
-					Prefix:       sql.NullInt16{Int16: int16(assetIndex), Valid: true},
-					SubPrefix:    sql.NullInt16{Int16: int16(assetIndex), Valid: true},
-					Module:       fmt.Sprintf("Module %d", assetIndex),
-					Type:         *types.NewAsset("mp4"),
-					Path:         fmt.Sprintf("%s/%s asset {%02d}.mp4", course.Path, assetGroupPrefix, assetIndex),
+					CourseID:  course.ID,
+					LessonID:  lesson.ID,
+					Title:     fmt.Sprintf("Asset %d", assetIndex),
+					Prefix:    sql.NullInt16{Int16: int16(assetIndex), Valid: true},
+					SubPrefix: sql.NullInt16{Int16: int16(assetIndex), Valid: true},
+					Module:    fmt.Sprintf("Module %d", assetIndex),
+					Type:      *types.NewAsset("mp4"),
+					Path:      fmt.Sprintf("%s/%s asset {%02d}.mp4", course.Path, lessonPrefix, assetIndex),
 				}
 				require.NoError(t, dao.CreateAsset(ctx, asset))
 				allAssets = append(allAssets, asset)
@@ -65,9 +65,9 @@ func helper_createAssetGroups(t *testing.T, ctx context.Context, dao *DAO, numCo
 			// Create 2 attachments, reversed: 2,1
 			for _, n := range []int{2, 1} {
 				attachment := &models.Attachment{
-					AssetGroupID: assetGroup.ID,
-					Title:        fmt.Sprintf("%s Attachment %d", assetGroupPrefix, n),
-					Path:         fmt.Sprintf("%s/%s attachment %d.pdf", course.Path, assetGroupPrefix, n),
+					LessonID: lesson.ID,
+					Title:    fmt.Sprintf("%s Attachment %d", lessonPrefix, n),
+					Path:     fmt.Sprintf("%s/%s attachment %d.pdf", course.Path, lessonPrefix, n),
 				}
 				require.NoError(t, dao.CreateAttachment(ctx, attachment))
 				allAttachments = append(allAttachments, attachment)
@@ -79,30 +79,30 @@ func helper_createAssetGroups(t *testing.T, ctx context.Context, dao *DAO, numCo
 
 	}
 
-	return allCourses, allAssetGroups, allAssets, allAttachments
+	return allCourses, allLessons, allAssets, allAttachments
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func Test_CreateAssetGroup(t *testing.T) {
+func Test_CreateLesson(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		dao, ctx := setup(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		assetGroup := &models.AssetGroup{
+		lesson := &models.Lesson{
 			CourseID: course.ID,
 			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
 	})
 
 	t.Run("nil pointer", func(t *testing.T) {
 		dao, ctx := setup(t)
-		require.ErrorIs(t, dao.CreateAssetGroup(ctx, nil), utils.ErrNilPtr)
+		require.ErrorIs(t, dao.CreateLesson(ctx, nil), utils.ErrNilPtr)
 	})
 
 	t.Run("invalid", func(t *testing.T) {
@@ -111,33 +111,33 @@ func Test_CreateAssetGroup(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		assetGroup := &models.AssetGroup{}
-		require.ErrorIs(t, dao.CreateAssetGroup(ctx, assetGroup), utils.ErrCourseId)
+		lesson := &models.Lesson{}
+		require.ErrorIs(t, dao.CreateLesson(ctx, lesson), utils.ErrCourseId)
 
-		assetGroup.CourseID = course.ID
-		require.ErrorIs(t, dao.CreateAssetGroup(ctx, assetGroup), utils.ErrTitle)
+		lesson.CourseID = course.ID
+		require.ErrorIs(t, dao.CreateLesson(ctx, lesson), utils.ErrTitle)
 
-		assetGroup.Title = "Asset Group 1"
-		require.ErrorIs(t, dao.CreateAssetGroup(ctx, assetGroup), utils.ErrPrefix)
+		lesson.Title = "Asset Group 1"
+		require.ErrorIs(t, dao.CreateLesson(ctx, lesson), utils.ErrPrefix)
 
-		assetGroup.Prefix = sql.NullInt16{Int16: 1, Valid: true}
-		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+		lesson.Prefix = sql.NullInt16{Int16: 1, Valid: true}
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
 	})
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func Test_GetAssetGroup(t *testing.T) {
+func Test_GetLesson(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		dao, ctx := setup(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		_, allGroups, allAssets, allAttachments := helper_createAssetGroups(t, ctx, dao, 1)
+		_, allGroups, allAssets, allAttachments := helper_createLessons(t, ctx, dao, 1)
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_GROUP_TABLE_ID: allGroups[0].ID})
-		record, err := dao.GetAssetGroup(ctx, dbOpts)
+		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.LESSON_TABLE_ID: allGroups[0].ID})
+		record, err := dao.GetLesson(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Equal(t, allGroups[0].ID, record.ID)
 
@@ -154,7 +154,7 @@ func Test_GetAssetGroup(t *testing.T) {
 	t.Run("not found", func(t *testing.T) {
 		dao, ctx := setup(t)
 
-		record, err := dao.GetAssetGroup(ctx, nil)
+		record, err := dao.GetLesson(ctx, nil)
 		require.Nil(t, err)
 		require.Nil(t, record)
 	})
@@ -165,16 +165,16 @@ func Test_GetAssetGroup(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		assetGroup := &models.AssetGroup{
+		lesson := &models.Lesson{
 			CourseID: course.ID,
 			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
 		dbOpts := database.NewOptions().WithProgress()
-		record, err := dao.GetAssetGroup(context.Background(), dbOpts)
+		record, err := dao.GetLesson(context.Background(), dbOpts)
 		require.ErrorIs(t, err, utils.ErrPrincipal)
 		require.Nil(t, record)
 	})
@@ -182,13 +182,13 @@ func Test_GetAssetGroup(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func Test_ListAssetGroups(t *testing.T) {
+func Test_ListLessons(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		dao, ctx := setup(t)
 
-		helper_createAssetGroups(t, ctx, dao, 3)
+		helper_createLessons(t, ctx, dao, 3)
 
-		records, err := dao.ListAssetGroups(ctx, nil)
+		records, err := dao.ListLessons(ctx, nil)
 		require.Nil(t, err)
 		require.Len(t, records, 9)
 
@@ -200,7 +200,7 @@ func Test_ListAssetGroups(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		dao, ctx := setup(t)
 
-		records, err := dao.ListAssetGroups(ctx, nil)
+		records, err := dao.ListLessons(ctx, nil)
 		require.Nil(t, err)
 		require.Empty(t, records)
 	})
@@ -208,16 +208,16 @@ func Test_ListAssetGroups(t *testing.T) {
 	t.Run("where", func(t *testing.T) {
 		dao, ctx := setup(t)
 
-		courses, assetGroups, _, _ := helper_createAssetGroups(t, ctx, dao, 3)
+		courses, lessons, _, _ := helper_createLessons(t, ctx, dao, 3)
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_GROUP_TABLE_COURSE_ID: courses[1].ID})
-		records, err := dao.ListAssetGroups(ctx, dbOpts)
+		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: courses[1].ID})
+		records, err := dao.ListLessons(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Len(t, records, 3)
 
-		require.Equal(t, assetGroups[5].ID, records[0].ID)
-		require.Equal(t, assetGroups[4].ID, records[1].ID)
-		require.Equal(t, assetGroups[3].ID, records[2].ID)
+		require.Equal(t, lessons[5].ID, records[0].ID)
+		require.Equal(t, lessons[4].ID, records[1].ID)
+		require.Equal(t, lessons[3].ID, records[2].ID)
 	})
 
 	t.Run("pagination", func(t *testing.T) {
@@ -226,74 +226,74 @@ func Test_ListAssetGroups(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		assetGroups := []*models.AssetGroup{}
+		lessons := []*models.Lesson{}
 		for i := range 17 {
-			assetGroup := &models.AssetGroup{
+			lesson := &models.Lesson{
 				CourseID: course.ID,
 				Title:    fmt.Sprintf("Asset Group %d", i),
 				Prefix:   sql.NullInt16{Int16: int16(i), Valid: true},
 				Module:   fmt.Sprintf("Module %d", i),
 			}
-			require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
-			assetGroups = append(assetGroups, assetGroup)
+			require.NoError(t, dao.CreateLesson(ctx, lesson))
+			lessons = append(lessons, lesson)
 		}
 
 		// First page with 10 records
 		p := database.NewOptions().WithPagination(pagination.New(1, 10))
-		records, err := dao.ListAssetGroups(ctx, p)
+		records, err := dao.ListLessons(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 10)
-		require.Equal(t, assetGroups[0].ID, records[0].ID)
-		require.Equal(t, assetGroups[9].ID, records[9].ID)
+		require.Equal(t, lessons[0].ID, records[0].ID)
+		require.Equal(t, lessons[9].ID, records[9].ID)
 
 		// Second page with remaining 7 records
 		p = database.NewOptions().WithPagination(pagination.New(2, 10))
-		records, err = dao.ListAssetGroups(ctx, p)
+		records, err = dao.ListLessons(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 7)
-		require.Equal(t, assetGroups[10].ID, records[0].ID)
-		require.Equal(t, assetGroups[16].ID, records[6].ID)
+		require.Equal(t, lessons[10].ID, records[0].ID)
+		require.Equal(t, lessons[16].ID, records[6].ID)
 	})
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func Test_UpdateAssetGroup(t *testing.T) {
+func Test_UpdateLesson(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		dao, ctx := setup(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		originalAssetGroup := &models.AssetGroup{
+		originalLesson := &models.Lesson{
 			CourseID: course.ID,
 			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, dao.CreateAssetGroup(ctx, originalAssetGroup))
+		require.NoError(t, dao.CreateLesson(ctx, originalLesson))
 
 		time.Sleep(1 * time.Millisecond)
 
-		updatedAssetGroup := &models.AssetGroup{
-			Base:     originalAssetGroup.Base,
+		updatedLesson := &models.Lesson{
+			Base:     originalLesson.Base,
 			CourseID: course.ID,
 			Title:    "Asset Group 2",
 			Prefix:   sql.NullInt16{Int16: 2, Valid: true},
 			Module:   "Module 2",
 		}
-		require.NoError(t, dao.UpdateAssetGroup(ctx, updatedAssetGroup))
+		require.NoError(t, dao.UpdateLesson(ctx, updatedLesson))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_GROUP_TABLE_ID: originalAssetGroup.ID})
-		record, err := dao.GetAssetGroup(ctx, dbOpts)
+		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.LESSON_TABLE_ID: originalLesson.ID})
+		record, err := dao.GetLesson(ctx, dbOpts)
 		require.Nil(t, err)
-		require.Equal(t, originalAssetGroup.ID, record.ID)                    // No change
-		require.Equal(t, originalAssetGroup.CourseID, record.CourseID)        // No change
-		require.True(t, record.CreatedAt.Equal(originalAssetGroup.CreatedAt)) // No change
-		require.Equal(t, updatedAssetGroup.Title, record.Title)               // Changed
-		require.Equal(t, updatedAssetGroup.Prefix, record.Prefix)             // Changed
-		require.Equal(t, updatedAssetGroup.Module, record.Module)             // Changed
-		require.NotEqual(t, originalAssetGroup.UpdatedAt, record.UpdatedAt)   // Changed
+		require.Equal(t, originalLesson.ID, record.ID)                    // No change
+		require.Equal(t, originalLesson.CourseID, record.CourseID)        // No change
+		require.True(t, record.CreatedAt.Equal(originalLesson.CreatedAt)) // No change
+		require.Equal(t, updatedLesson.Title, record.Title)               // Changed
+		require.Equal(t, updatedLesson.Prefix, record.Prefix)             // Changed
+		require.Equal(t, updatedLesson.Module, record.Module)             // Changed
+		require.NotEqual(t, originalLesson.UpdatedAt, record.UpdatedAt)   // Changed
 	})
 
 	t.Run("invalid", func(t *testing.T) {
@@ -302,50 +302,50 @@ func Test_UpdateAssetGroup(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		assetGroup := &models.AssetGroup{}
+		lesson := &models.Lesson{}
 
 		// Course ID
-		require.ErrorIs(t, dao.UpdateAssetGroup(ctx, assetGroup), utils.ErrCourseId)
-		assetGroup.CourseID = course.ID
+		require.ErrorIs(t, dao.UpdateLesson(ctx, lesson), utils.ErrCourseId)
+		lesson.CourseID = course.ID
 
 		// Title
-		require.ErrorIs(t, dao.UpdateAssetGroup(ctx, assetGroup), utils.ErrTitle)
-		assetGroup.Title = "Asset 1"
+		require.ErrorIs(t, dao.UpdateLesson(ctx, lesson), utils.ErrTitle)
+		lesson.Title = "Asset 1"
 
 		// Prefix
-		require.ErrorIs(t, dao.UpdateAssetGroup(ctx, assetGroup), utils.ErrPrefix)
-		assetGroup.Prefix = sql.NullInt16{Int16: 1, Valid: true}
+		require.ErrorIs(t, dao.UpdateLesson(ctx, lesson), utils.ErrPrefix)
+		lesson.Prefix = sql.NullInt16{Int16: 1, Valid: true}
 
 		// ID
-		require.ErrorIs(t, dao.UpdateAssetGroup(ctx, assetGroup), utils.ErrId)
+		require.ErrorIs(t, dao.UpdateLesson(ctx, lesson), utils.ErrId)
 
 		// Nil Model
-		require.ErrorIs(t, dao.UpdateAssetGroup(ctx, nil), utils.ErrNilPtr)
+		require.ErrorIs(t, dao.UpdateLesson(ctx, nil), utils.ErrNilPtr)
 	})
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func Test_DeleteAssetGroup(t *testing.T) {
+func Test_DeleteLesson(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		dao, ctx := setup(t)
 
 		course := &models.Course{Title: "Course", Path: "/course"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		assetGroup := &models.AssetGroup{
+		lesson := &models.Lesson{
 			CourseID: course.ID,
 			Title:    "Asset Group",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_GROUP_TABLE_ID: assetGroup.ID})
-		require.Nil(t, dao.DeleteAssetGroups(ctx, opts))
+		opts := database.NewOptions().WithWhere(squirrel.Eq{models.LESSON_TABLE_ID: lesson.ID})
+		require.Nil(t, dao.DeleteLessons(ctx, opts))
 
 		// TODO add list when supported
-		// records, err := dao.ListAssetGroups(ctx, opts)
+		// records, err := dao.ListLessons(ctx, opts)
 		// require.NoError(t, err)
 		// require.Empty(t, records)
 	})
@@ -356,21 +356,21 @@ func Test_DeleteAssetGroup(t *testing.T) {
 		course := &models.Course{Title: "Course", Path: "/course"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		assetGroup := &models.AssetGroup{
+		lesson := &models.Lesson{
 			CourseID: course.ID,
 			Title:    "Asset Group",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_GROUP_TABLE_ID: "non-existent"})
-		require.Nil(t, dao.DeleteAssetGroups(ctx, opts))
+		opts := database.NewOptions().WithWhere(squirrel.Eq{models.LESSON_TABLE_ID: "non-existent"})
+		require.Nil(t, dao.DeleteLessons(ctx, opts))
 
-		// records, err := dao.ListAssetGroups(ctx, nil)
+		// records, err := dao.ListLessons(ctx, nil)
 		// require.NoError(t, err)
 		// require.Len(t, records, 1)
-		// require.Equal(t, assetGroup.ID, records[0].ID)
+		// require.Equal(t, lesson.ID, records[0].ID)
 	})
 
 	t.Run("missing where", func(t *testing.T) {
@@ -379,20 +379,20 @@ func Test_DeleteAssetGroup(t *testing.T) {
 		course := &models.Course{Title: "Course", Path: "/course"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		assetGroup := &models.AssetGroup{
+		lesson := &models.Lesson{
 			CourseID: course.ID,
 			Title:    "Asset Group",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
-		require.ErrorIs(t, dao.DeleteAssetGroups(ctx, nil), utils.ErrWhere)
+		require.ErrorIs(t, dao.DeleteLessons(ctx, nil), utils.ErrWhere)
 
-		// records, err := dao.ListAssetGroups(ctx, nil)
+		// records, err := dao.ListLessons(ctx, nil)
 		// require.NoError(t, err)
 		// require.Len(t, records, 1)
-		// require.Equal(t, assetGroup.ID, records[0].ID)
+		// require.Equal(t, lesson.ID, records[0].ID)
 	})
 
 	t.Run("cascade", func(t *testing.T) {
@@ -401,18 +401,18 @@ func Test_DeleteAssetGroup(t *testing.T) {
 		course := &models.Course{Title: "Course", Path: "/course"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		assetGroup := &models.AssetGroup{
+		lesson := &models.Lesson{
 			CourseID: course.ID,
 			Title:    "Asset Group",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
 		require.Nil(t, dao.DeleteCourses(ctx, dbOpts))
 
-		// records, err := dao.ListAssetGroups(ctx, nil)
+		// records, err := dao.ListLessons(ctx, nil)
 		// require.NoError(t, err)
 		// require.Empty(t, records)
 	})

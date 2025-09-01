@@ -23,18 +23,18 @@ func Test_CreateAttachments(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		assetGroup := &models.AssetGroup{
+		lesson := &models.Lesson{
 			CourseID: course.ID,
 			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
 		attachment := &models.Attachment{
-			AssetGroupID: assetGroup.ID,
-			Title:        "Attachment 1",
-			Path:         "/course-1/attachment-1",
+			LessonID: lesson.ID,
+			Title:    "Attachment 1",
+			Path:     "/course-1/attachment-1",
 		}
 		require.NoError(t, dao.CreateAttachment(ctx, attachment))
 	})
@@ -51,33 +51,33 @@ func Test_CreateAttachments(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		assetGroup := &models.AssetGroup{
+		lesson := &models.Lesson{
 			CourseID: course.ID,
 			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
 		// Empty title
 		attachment := &models.Attachment{
-			AssetGroupID: assetGroup.ID,
-			Path:         "/course-1/attachment-1",
+			LessonID: lesson.ID,
+			Path:     "/course-1/attachment-1",
 		}
 		require.ErrorIs(t, dao.CreateAttachment(ctx, attachment), utils.ErrTitle)
 
 		// Empty path
 		attachment = &models.Attachment{
-			AssetGroupID: assetGroup.ID,
-			Title:        "Attachment 1",
+			LessonID: lesson.ID,
+			Title:    "Attachment 1",
 		}
 		require.ErrorIs(t, dao.CreateAttachment(ctx, attachment), utils.ErrPath)
 
-		// Invalid asset group ID
+		// Invalid lesson ID
 		attachment = &models.Attachment{
-			AssetGroupID: "invalid",
-			Title:        "Attachment 1",
-			Path:         "/course-1/attachment-1",
+			LessonID: "invalid",
+			Title:    "Attachment 1",
+			Path:     "/course-1/attachment-1",
 		}
 		require.ErrorContains(t, dao.CreateAttachment(ctx, attachment), "FOREIGN KEY constraint failed")
 	})
@@ -92,18 +92,18 @@ func Test_GetAttachment(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		assetGroup := &models.AssetGroup{
+		lesson := &models.Lesson{
 			CourseID: course.ID,
 			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
 		attachment := &models.Attachment{
-			AssetGroupID: assetGroup.ID,
-			Title:        "Attachment 1",
-			Path:         "/course-1/attachment-1",
+			LessonID: lesson.ID,
+			Title:    "Attachment 1",
+			Path:     "/course-1/attachment-1",
 		}
 		require.NoError(t, dao.CreateAttachment(ctx, attachment))
 
@@ -131,20 +131,20 @@ func Test_ListAttachments(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		assetGroup := &models.AssetGroup{
+		lesson := &models.Lesson{
 			CourseID: course.ID,
 			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
 		attachments := []*models.Attachment{}
 		for i := range 3 {
 			attachment := &models.Attachment{
-				AssetGroupID: assetGroup.ID,
-				Title:        fmt.Sprintf("Attachment %d", i),
-				Path:         fmt.Sprintf("/course-1/attachment-%d", i),
+				LessonID: lesson.ID,
+				Title:    fmt.Sprintf("Attachment %d", i),
+				Path:     fmt.Sprintf("/course-1/attachment-%d", i),
 			}
 			attachments = append(attachments, attachment)
 			require.NoError(t, dao.CreateAttachment(ctx, attachment))
@@ -174,20 +174,20 @@ func Test_ListAttachments(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		assetGroup := &models.AssetGroup{
+		lesson := &models.Lesson{
 			CourseID: course.ID,
 			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
 		attachments := []*models.Attachment{}
 		for i := range 3 {
 			attachment := &models.Attachment{
-				AssetGroupID: assetGroup.ID,
-				Title:        fmt.Sprintf("Attachment %d", i),
-				Path:         fmt.Sprintf("/course-1/attachment-%d", i),
+				LessonID: lesson.ID,
+				Title:    fmt.Sprintf("Attachment %d", i),
+				Path:     fmt.Sprintf("/course-1/attachment-%d", i),
 			}
 			attachments = append(attachments, attachment)
 			require.NoError(t, dao.CreateAttachment(ctx, attachment))
@@ -223,18 +223,18 @@ func Test_ListAttachments(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		assetGroup := &models.AssetGroup{
+		lesson := &models.Lesson{
 			CourseID: course.ID,
 			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
 		attachment := &models.Attachment{
-			AssetGroupID: assetGroup.ID,
-			Title:        "Attachment 1",
-			Path:         "/course-1/attachment-1",
+			LessonID: lesson.ID,
+			Title:    "Attachment 1",
+			Path:     "/course-1/attachment-1",
 		}
 		require.NoError(t, dao.CreateAttachment(ctx, attachment))
 
@@ -251,20 +251,20 @@ func Test_ListAttachments(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		assetGroup := &models.AssetGroup{
+		lesson := &models.Lesson{
 			CourseID: course.ID,
 			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
 		attachments := []*models.Attachment{}
 		for i := range 17 {
 			attachment := &models.Attachment{
-				AssetGroupID: assetGroup.ID,
-				Title:        fmt.Sprintf("Attachment %d", i),
-				Path:         fmt.Sprintf("/course-1/attachment-%d", i),
+				LessonID: lesson.ID,
+				Title:    fmt.Sprintf("Attachment %d", i),
+				Path:     fmt.Sprintf("/course-1/attachment-%d", i),
 			}
 			attachments = append(attachments, attachment)
 			require.NoError(t, dao.CreateAttachment(ctx, attachment))
@@ -298,28 +298,28 @@ func Test_UpdateAttachment(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		assetGroup := &models.AssetGroup{
+		lesson := &models.Lesson{
 			CourseID: course.ID,
 			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
 		originalAttachment := &models.Attachment{
-			AssetGroupID: assetGroup.ID,
-			Title:        "Attachment 1",
-			Path:         "/course-1/attachment-1",
+			LessonID: lesson.ID,
+			Title:    "Attachment 1",
+			Path:     "/course-1/attachment-1",
 		}
 		require.NoError(t, dao.CreateAttachment(ctx, originalAttachment))
 
 		time.Sleep(1 * time.Millisecond)
 
 		updatedAttachment := &models.Attachment{
-			Base:         originalAttachment.Base,
-			AssetGroupID: "1234",                         // Immutable
-			Title:        "Updated Attachment",           // Mutable
-			Path:         "/course-1/updated-attachment", // Mutable
+			Base:     originalAttachment.Base,
+			LessonID: "1234",                         // Immutable
+			Title:    "Updated Attachment",           // Mutable
+			Path:     "/course-1/updated-attachment", // Mutable
 		}
 		require.NoError(t, dao.UpdateAttachment(ctx, updatedAttachment))
 
@@ -327,7 +327,7 @@ func Test_UpdateAttachment(t *testing.T) {
 		record, err := dao.GetAttachment(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Equal(t, originalAttachment.ID, record.ID)                     // No change
-		require.Equal(t, originalAttachment.AssetGroupID, record.AssetGroupID) // No change
+		require.Equal(t, originalAttachment.LessonID, record.LessonID)         // No change
 		require.True(t, record.CreatedAt.Equal(originalAttachment.CreatedAt))  // No change
 		require.Equal(t, updatedAttachment.Title, record.Title)                // Changed
 		require.Equal(t, updatedAttachment.Path, record.Path)                  // Changed
@@ -340,18 +340,18 @@ func Test_UpdateAttachment(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		assetGroup := &models.AssetGroup{
+		lesson := &models.Lesson{
 			CourseID: course.ID,
 			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
 		attachment := &models.Attachment{
-			AssetGroupID: assetGroup.ID,
-			Title:        "Attachment 1",
-			Path:         "/course-1/attachment-1",
+			LessonID: lesson.ID,
+			Title:    "Attachment 1",
+			Path:     "/course-1/attachment-1",
 		}
 		require.NoError(t, dao.CreateAttachment(ctx, attachment))
 
@@ -381,18 +381,18 @@ func Test_DeleteAttachments(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		assetGroup := &models.AssetGroup{
+		lesson := &models.Lesson{
 			CourseID: course.ID,
 			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
 		attachment := &models.Attachment{
-			AssetGroupID: assetGroup.ID,
-			Title:        "Attachment 1",
-			Path:         "/course-1/attachment-1",
+			LessonID: lesson.ID,
+			Title:    "Attachment 1",
+			Path:     "/course-1/attachment-1",
 		}
 		require.NoError(t, dao.CreateAttachment(ctx, attachment))
 
@@ -410,18 +410,18 @@ func Test_DeleteAttachments(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		assetGroup := &models.AssetGroup{
+		lesson := &models.Lesson{
 			CourseID: course.ID,
 			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
 		attachment := &models.Attachment{
-			AssetGroupID: assetGroup.ID,
-			Title:        "Attachment 1",
-			Path:         "/course-1/attachment-1",
+			LessonID: lesson.ID,
+			Title:    "Attachment 1",
+			Path:     "/course-1/attachment-1",
 		}
 		require.NoError(t, dao.CreateAttachment(ctx, attachment))
 
@@ -440,18 +440,18 @@ func Test_DeleteAttachments(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		assetGroup := &models.AssetGroup{
+		lesson := &models.Lesson{
 			CourseID: course.ID,
 			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
 		attachment := &models.Attachment{
-			AssetGroupID: assetGroup.ID,
-			Title:        "Attachment 1",
-			Path:         "/course-1/attachment-1",
+			LessonID: lesson.ID,
+			Title:    "Attachment 1",
+			Path:     "/course-1/attachment-1",
 		}
 		require.NoError(t, dao.CreateAttachment(ctx, attachment))
 
@@ -469,18 +469,18 @@ func Test_DeleteAttachments(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		assetGroup := &models.AssetGroup{
+		lesson := &models.Lesson{
 			CourseID: course.ID,
 			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
 		attachment := &models.Attachment{
-			AssetGroupID: assetGroup.ID,
-			Title:        "Attachment 1",
-			Path:         "/course-1/attachment-1",
+			LessonID: lesson.ID,
+			Title:    "Attachment 1",
+			Path:     "/course-1/attachment-1",
 		}
 		require.NoError(t, dao.CreateAttachment(ctx, attachment))
 
@@ -493,29 +493,29 @@ func Test_DeleteAttachments(t *testing.T) {
 
 	})
 
-	t.Run("cascade asset group", func(t *testing.T) {
+	t.Run("cascade lesson", func(t *testing.T) {
 		dao, ctx := setup(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true, CardPath: "/course-1/card-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		assetGroup := &models.AssetGroup{
+		lesson := &models.Lesson{
 			CourseID: course.ID,
 			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
 		attachment := &models.Attachment{
-			AssetGroupID: assetGroup.ID,
-			Title:        "Attachment 1",
-			Path:         "/course-1/attachment-1",
+			LessonID: lesson.ID,
+			Title:    "Attachment 1",
+			Path:     "/course-1/attachment-1",
 		}
 		require.NoError(t, dao.CreateAttachment(ctx, attachment))
 
-		// TODO change to deleteAssetGroup when donee
-		// require.Nil(t, Delete(ctx, dao, assetGroup, nil))
+		// TODO change to deleteLesson when donee
+		// require.Nil(t, Delete(ctx, dao, lesson, nil))
 
 		// records, err := dao.ListAttachments(ctx, nil)
 		// require.NoError(t, err)

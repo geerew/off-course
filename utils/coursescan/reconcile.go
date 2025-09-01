@@ -68,7 +68,7 @@ func (o UpdateAssetOp) Type() OpType { return UpdateOp }
 // OverwriteAssetOp represents the case where an asset has been renamed, taking the place of an
 // another asset
 type OverwriteAssetOp struct {
-	// The asset that no longer exists (but is still in the DB). We will give its asset group ID
+	// The asset that no longer exists (but is still in the DB). We will give its lesson ID
 	// to the renamed asset
 	Deleted *models.Asset
 	// The existing asset that is now taking the place of the deleted asset. We will give its ID
@@ -102,11 +102,11 @@ func (o ReplaceAssetOp) Type() OpType { return ReplaceOp }
 
 // SwapAssetOp represents the case when 2 assets are swapped on disk.
 type SwapAssetOp struct {
-	// The existing asset to delete. We will give its asset group ID to the new asset B
+	// The existing asset to delete. We will give its lesson ID to the new asset B
 	ExistingA *models.Asset
 	// The new asset to create
 	NewA *models.Asset
-	// The existing asset to delete. We will give its asset group ID to the new asset A
+	// The existing asset to delete. We will give its lesson ID to the new asset A
 	ExistingB *models.Asset
 	// The new asset to create
 	NewB *models.Asset
@@ -343,65 +343,65 @@ func reconcileAttachments(scanned []*models.Attachment, existing []*models.Attac
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// NoAssetGroupOp represents the case where the asset group exists and has not changed. This
-// op can be used in the event that there are new assets/attachments being added to the asset
-// group and need to be given the asset group ID
-type NoAssetGroupOp struct {
-	// The new asset group is the assets found on disk. This is can be used to ensure all
-	// assets and attachments have the correct asset group ID
-	New *models.AssetGroup
+// NoLessonOp represents the case where the lesson exists and has not changed. This
+// op can be used in the event that there are new assets/attachments being added to the lesson
+// and need to be given the lesson ID
+type NoLessonOp struct {
+	// The new lesson is the assets found on disk. This is can be used to ensure all
+	// assets and attachments have the correct lesson ID
+	New *models.Lesson
 
-	// The existing asset group that is already in the database
-	Existing *models.AssetGroup
+	// The existing lesson that is already in the database
+	Existing *models.Lesson
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Type implements the Op interface for NoAssetGroupOp
-func (o NoAssetGroupOp) Type() OpType { return NoOp }
+// Type implements the Op interface for NoLessonOp
+func (o NoLessonOp) Type() OpType { return NoOp }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// CreateAssetGroupOp represents the case where a new asset group should be created
-type CreateAssetGroupOp struct {
-	// The new asset group to create
-	New *models.AssetGroup
+// CreateLessonOp represents the case where a new lesson should be created
+type CreateLessonOp struct {
+	// The new lesson to create
+	New *models.Lesson
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Type implements the Op interface for CreateAssetGroupOp
-func (o CreateAssetGroupOp) Type() OpType { return CreateOp }
+// Type implements the Op interface for CreateLessonOp
+func (o CreateLessonOp) Type() OpType { return CreateOp }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// UpdateAssetGroupOp represents the case when an existing asset group has changed metadata,
+// UpdateLessonOp represents the case when an existing lesson has changed metadata,
 // such as title or description
-type UpdateAssetGroupOp struct {
-	// The existing asset group in the DB to update. We will give its ID to the new asset group
+type UpdateLessonOp struct {
+	// The existing lesson in the DB to update. We will give its ID to the new lesson
 	// so it can update the existing record
-	Existing *models.AssetGroup
-	// The new asset group with changed metadata
-	New *models.AssetGroup
+	Existing *models.Lesson
+	// The new lesson with changed metadata
+	New *models.Lesson
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Type implements the Op interface for UpdateAssetGroupOp
-func (o UpdateAssetGroupOp) Type() OpType { return UpdateOp }
+// Type implements the Op interface for UpdateLessonOp
+func (o UpdateLessonOp) Type() OpType { return UpdateOp }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// UpdateAssetGroupOp represents the case where an asset group should be deleted
-type DeleteAssetGroupOp struct {
-	// The existing asset group to delete
-	Deleted *models.AssetGroup
+// UpdateLessonOp represents the case where an lesson should be deleted
+type DeleteLessonOp struct {
+	// The existing lesson to delete
+	Deleted *models.Lesson
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Type implements the Op interface for DeleteAssetGroupOp
-func (o DeleteAssetGroupOp) Type() OpType { return DeleteOp }
+// Type implements the Op interface for DeleteLessonOp
+func (o DeleteLessonOp) Type() OpType { return DeleteOp }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// reconcileAssetGroups compares the current scanned asset groups on disk with the existing asset groups
+// reconcileLessons compares the current scanned lessons on disk with the existing lessons
 // in the database and returns a list of operations (Op) that describe how to transition the database
 // state to match the disk state
 //
@@ -410,51 +410,51 @@ func (o DeleteAssetGroupOp) Type() OpType { return DeleteOp }
 //   - Create
 //   - Update
 //   - Delete
-func reconcileAssetGroups(scannedGroups []*models.AssetGroup, existingGroups []*models.AssetGroup) []Op {
+func reconcileLessons(scannedLessons []*models.Lesson, existingLessons []*models.Lesson) []Op {
 	var ops []Op
 	seen := map[string]bool{}
-	idx := map[string]*models.AssetGroup{}
-	assetToGroup := map[string]*models.AssetGroup{}
+	idx := map[string]*models.Lesson{}
+	assetToGroup := map[string]*models.Lesson{}
 
-	for _, existingGroup := range existingGroups {
-		key := existingGroup.Module + ":" + fmt.Sprint(existingGroup.Prefix.Int16)
-		idx[key] = existingGroup
+	for _, existingLesson := range existingLessons {
+		key := existingLesson.Module + ":" + fmt.Sprint(existingLesson.Prefix.Int16)
+		idx[key] = existingLesson
 
-		for _, a := range existingGroup.Assets {
-			assetToGroup[a.Hash] = existingGroup
+		for _, a := range existingLesson.Assets {
+			assetToGroup[a.Hash] = existingLesson
 		}
 	}
 
-	for _, scannedGroup := range scannedGroups {
-		key := scannedGroup.Module + ":" + fmt.Sprint(scannedGroup.Prefix.Int16)
+	for _, scannedLesson := range scannedLessons {
+		key := scannedLesson.Module + ":" + fmt.Sprint(scannedLesson.Prefix.Int16)
 
-		if existingGroup, ok := idx[key]; ok {
+		if existingLesson, ok := idx[key]; ok {
 			// Preserve ID
-			scannedGroup.ID = existingGroup.ID
+			scannedLesson.ID = existingLesson.ID
 			seen[key] = true
 
 			// Update when title has changed
-			if scannedGroup.Title != existingGroup.Title {
-				// fmt.Printf("[Update Asset Group] %s:%d -> %s \n", scannedGroup.Module, scannedGroup.Prefix.Int16, scannedGroup.Title)
-				ops = append(ops, UpdateAssetGroupOp{Existing: existingGroup, New: scannedGroup})
+			if scannedLesson.Title != existingLesson.Title {
+				// fmt.Printf("[Update Asset Group] %s:%d -> %s \n", scannedLesson.Module, scannedLesson.Prefix.Int16, scannedLesson.Title)
+				ops = append(ops, UpdateLessonOp{Existing: existingLesson, New: scannedLesson})
 			} else {
 				// No-op
-				// fmt.Printf("[No-Op Asset Group] %s:%d -> %s \n", scannedGroup.Module, scannedGroup.Prefix.Int16, scannedGroup.Title)
-				ops = append(ops, NoAssetGroupOp{New: scannedGroup, Existing: existingGroup})
+				// fmt.Printf("[No-Op Asset Group] %s:%d -> %s \n", scannedLesson.Module, scannedLesson.Prefix.Int16, scannedLesson.Title)
+				ops = append(ops, NoLessonOp{New: scannedLesson, Existing: existingLesson})
 			}
 		} else {
 			// Create
-			// fmt.Printf("[Create Asset Group] %s:%d -> %s\n", scannedGroup.Module, scannedGroup.Prefix.Int16, scannedGroup.Title)
-			ops = append(ops, CreateAssetGroupOp{New: scannedGroup})
+			// fmt.Printf("[Create Asset Group] %s:%d -> %s\n", scannedLesson.Module, scannedLesson.Prefix.Int16, scannedLesson.Title)
+			ops = append(ops, CreateLessonOp{New: scannedLesson})
 		}
 	}
 
-	// Delete any unseen groups
-	for _, existingGroup := range existingGroups {
-		key := existingGroup.Module + ":" + fmt.Sprint(existingGroup.Prefix.Int16)
+	// Delete any unseen lessons
+	for _, existingLesson := range existingLessons {
+		key := existingLesson.Module + ":" + fmt.Sprint(existingLesson.Prefix.Int16)
 		if !seen[key] {
-			// fmt.Printf("[Delete Asset Group] %s:%d -> %s\n", existingGroup.Module, existingGroup.Prefix.Int16, existingGroup.Title)
-			ops = append(ops, DeleteAssetGroupOp{Deleted: existingGroup})
+			// fmt.Printf("[Delete Asset Group] %s:%d -> %s\n", existingLesson.Module, existingLesson.Prefix.Int16, existingLesson.Title)
+			ops = append(ops, DeleteLessonOp{Deleted: existingLesson})
 		}
 	}
 

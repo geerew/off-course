@@ -59,22 +59,22 @@ func (r *Router) initCourseRoutes() {
 	courseGroup.Head("/:id/card", coursesAPI.getCard)
 	courseGroup.Get("/:id/card", coursesAPI.getCard)
 
-	// Asset groups
-	courseGroup.Get("/:id/groups", coursesAPI.getAssetGroups)
-	courseGroup.Get("/:id/groups/:group", coursesAPI.getAssetGroup)
+	// Lessons
+	courseGroup.Get("/:id/lessons", coursesAPI.getLessons)
+	courseGroup.Get("/:id/lessons/:lesson", coursesAPI.getLesson)
 
-	// Modules (chaptered asset groups)
+	// Modules (chaptered lessons)
 	courseGroup.Get("/:id/modules", coursesAPI.getModules)
 
-	// Asset group attachments
-	courseGroup.Get("/:id/groups/:group/attachments", coursesAPI.getAttachments)
-	courseGroup.Get("/:id/groups/:group/attachments/:attachment", coursesAPI.getAttachment)
-	courseGroup.Get("/:id/groups/:group/attachments/:attachment/serve", coursesAPI.serveAttachment)
+	// lesson attachments
+	courseGroup.Get("/:id/lessons/:lesson/attachments", coursesAPI.getAttachments)
+	courseGroup.Get("/:id/lessons/:lesson/attachments/:attachment", coursesAPI.getAttachment)
+	courseGroup.Get("/:id/lessons/:lesson/attachments/:attachment/serve", coursesAPI.serveAttachment)
 
 	// Asset
-	courseGroup.Get("/:id/groups/:group/assets/:asset/serve", coursesAPI.serveAsset)
-	courseGroup.Put("/:id/groups/:group/assets/:asset/progress", coursesAPI.updateAssetProgress)
-	courseGroup.Delete("/:id/groups/:group/assets/:asset/progress", coursesAPI.deleteAssetProgress)
+	courseGroup.Get("/:id/lessons/:lesson/assets/:asset/serve", coursesAPI.serveAsset)
+	courseGroup.Put("/:id/lessons/:lesson/assets/:asset/progress", coursesAPI.updateAssetProgress)
+	courseGroup.Delete("/:id/lessons/:lesson/assets/:asset/progress", coursesAPI.deleteAssetProgress)
 
 	// Tags
 	courseGroup.Get("/:id/tags", coursesAPI.getTags)
@@ -279,11 +279,11 @@ func (api coursesAPI) getCard(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // TODO support chaptered query param
-func (api coursesAPI) getAssetGroups(c *fiber.Ctx) error {
+func (api coursesAPI) getLessons(c *fiber.Ctx) error {
 	id := c.Params("id")
 
 	builderOpts := builderOptions{
-		DefaultOrderBy: defaultCourseAssetGroupsOrderBy,
+		DefaultOrderBy: defaultCourseLessonsOrderBy,
 		Paginate:       true,
 	}
 
@@ -297,7 +297,7 @@ func (api coursesAPI) getAssetGroups(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
-	dbOpts.WithAssetVideoMetadata().WithWhere(squirrel.Eq{models.ASSET_GROUP_TABLE_COURSE_ID: id})
+	dbOpts.WithAssetVideoMetadata().WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: id})
 
 	if raw := c.Query("withProgress"); raw != "" {
 		if v, err := strconv.ParseBool(raw); err == nil && v {
@@ -305,12 +305,12 @@ func (api coursesAPI) getAssetGroups(c *fiber.Ctx) error {
 		}
 	}
 
-	assetGroups, err := api.dao.ListAssetGroups(ctx, dbOpts)
+	lessons, err := api.dao.ListLessons(ctx, dbOpts)
 	if err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up asset groups", err)
+		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up lessons", err)
 	}
 
-	pResult, err := dbOpts.Pagination.BuildResult(assetGroupResponseHelper(assetGroups))
+	pResult, err := dbOpts.Pagination.BuildResult(lessonResponseHelper(lessons))
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error building pagination result", err)
 	}
@@ -320,15 +320,15 @@ func (api coursesAPI) getAssetGroups(c *fiber.Ctx) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func (api coursesAPI) getAssetGroup(c *fiber.Ctx) error {
+func (api coursesAPI) getLesson(c *fiber.Ctx) error {
 	id := c.Params("id")
-	assetGroupId := c.Params("group")
+	lessonId := c.Params("lesson")
 
 	dbOpts := database.NewOptions().
 		WithAssetVideoMetadata().
 		WithWhere(squirrel.And{
-			squirrel.Eq{models.ASSET_GROUP_TABLE_ID: assetGroupId},
-			squirrel.Eq{models.ASSET_GROUP_TABLE_COURSE_ID: id},
+			squirrel.Eq{models.LESSON_TABLE_ID: lessonId},
+			squirrel.Eq{models.LESSON_TABLE_COURSE_ID: id},
 		})
 
 	if raw := c.Query("withProgress"); raw != "" {
@@ -342,16 +342,16 @@ func (api coursesAPI) getAssetGroup(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	assetGroup, err := api.dao.GetAssetGroup(ctx, dbOpts)
+	lesson, err := api.dao.GetLesson(ctx, dbOpts)
 	if err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up asset group", err)
+		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up lesson", err)
 	}
 
-	if assetGroup == nil {
-		return errorResponse(c, fiber.StatusNotFound, "Asset group not found", nil)
+	if lesson == nil {
+		return errorResponse(c, fiber.StatusNotFound, "Lesson not found", nil)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(assetGroupResponseHelper([]*models.AssetGroup{assetGroup})[0])
+	return c.Status(fiber.StatusOK).JSON(lessonResponseHelper([]*models.Lesson{lesson})[0])
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -360,7 +360,7 @@ func (api coursesAPI) getModules(c *fiber.Ctx) error {
 	id := c.Params("id")
 
 	builderOpts := builderOptions{
-		DefaultOrderBy: defaultCourseAssetGroupsOrderBy,
+		DefaultOrderBy: defaultCourseLessonsOrderBy,
 		Paginate:       false,
 	}
 
@@ -374,7 +374,7 @@ func (api coursesAPI) getModules(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
-	dbOpts.WithAssetVideoMetadata().WithWhere(squirrel.Eq{models.ASSET_GROUP_TABLE_COURSE_ID: id})
+	dbOpts.WithAssetVideoMetadata().WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: id})
 
 	if raw := c.Query("withProgress"); raw != "" {
 		if v, err := strconv.ParseBool(raw); err == nil && v {
@@ -382,22 +382,22 @@ func (api coursesAPI) getModules(c *fiber.Ctx) error {
 		}
 	}
 
-	assetGroups, err := api.dao.ListAssetGroups(ctx, dbOpts)
+	lessons, err := api.dao.ListLessons(ctx, dbOpts)
 	if err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up asset groups", err)
+		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up lessons", err)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(modulesResponseHelper(assetGroups))
+	return c.Status(fiber.StatusOK).JSON(modulesResponseHelper(lessons))
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api coursesAPI) getAttachments(c *fiber.Ctx) error {
 	id := c.Params("id")
-	assetGroupId := c.Params("group")
+	lessonId := c.Params("lesson")
 
 	builderOpts := builderOptions{
-		DefaultOrderBy: defaultCourseAssetGroupAttachmentsOrderBy,
+		DefaultOrderBy: defaultCourseLessonAttachmentsOrderBy,
 		Paginate:       true,
 	}
 
@@ -411,10 +411,10 @@ func (api coursesAPI) getAttachments(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
-	dbOpts.WithJoin(models.ASSET_GROUP_TABLE, models.ATTACHMENT_TABLE_ASSET_GROUP_ID+" = "+models.ASSET_GROUP_TABLE_ID).
-		WithJoin(models.COURSE_TABLE, models.ASSET_GROUP_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID).
+	dbOpts.WithJoin(models.LESSON_TABLE, models.ATTACHMENT_TABLE_LESSON_ID+" = "+models.LESSON_TABLE_ID).
+		WithJoin(models.COURSE_TABLE, models.LESSON_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID).
 		WithWhere(squirrel.And{
-			squirrel.Eq{models.ASSET_GROUP_TABLE_ID: assetGroupId},
+			squirrel.Eq{models.LESSON_TABLE_ID: lessonId},
 			squirrel.Eq{models.COURSE_TABLE_ID: id},
 		})
 
@@ -435,7 +435,7 @@ func (api coursesAPI) getAttachments(c *fiber.Ctx) error {
 
 func (api coursesAPI) getAttachment(c *fiber.Ctx) error {
 	id := c.Params("id")
-	assetGroupId := c.Params("group")
+	lessonId := c.Params("lesson")
 	attachmentId := c.Params("attachment")
 
 	_, ctx, err := principalCtx(c)
@@ -444,11 +444,11 @@ func (api coursesAPI) getAttachment(c *fiber.Ctx) error {
 	}
 
 	dbOpts := database.NewOptions().
-		WithJoin(models.ASSET_GROUP_TABLE, models.ATTACHMENT_TABLE_ASSET_GROUP_ID+" = "+models.ASSET_GROUP_TABLE_ID).
-		WithJoin(models.COURSE_TABLE, models.ASSET_GROUP_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID).
+		WithJoin(models.LESSON_TABLE, models.ATTACHMENT_TABLE_LESSON_ID+" = "+models.LESSON_TABLE_ID).
+		WithJoin(models.COURSE_TABLE, models.LESSON_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID).
 		WithWhere(squirrel.And{
 			squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachmentId},
-			squirrel.Eq{models.ASSET_GROUP_TABLE_ID: assetGroupId},
+			squirrel.Eq{models.LESSON_TABLE_ID: lessonId},
 			squirrel.Eq{models.COURSE_TABLE_ID: id},
 		})
 
@@ -468,7 +468,7 @@ func (api coursesAPI) getAttachment(c *fiber.Ctx) error {
 
 func (api coursesAPI) serveAttachment(c *fiber.Ctx) error {
 	id := c.Params("id")
-	assetGroupId := c.Params("group")
+	lessonId := c.Params("lesson")
 	attachmentId := c.Params("attachment")
 
 	_, ctx, err := principalCtx(c)
@@ -477,11 +477,11 @@ func (api coursesAPI) serveAttachment(c *fiber.Ctx) error {
 	}
 
 	dbOpts := database.NewOptions().
-		WithJoin(models.ASSET_GROUP_TABLE, models.ATTACHMENT_TABLE_ASSET_GROUP_ID+" = "+models.ASSET_GROUP_TABLE_ID).
-		WithJoin(models.COURSE_TABLE, models.ASSET_GROUP_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID).
+		WithJoin(models.LESSON_TABLE, models.ATTACHMENT_TABLE_LESSON_ID+" = "+models.LESSON_TABLE_ID).
+		WithJoin(models.COURSE_TABLE, models.LESSON_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID).
 		WithWhere(squirrel.And{
 			squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachmentId},
-			squirrel.Eq{models.ASSET_GROUP_TABLE_ID: assetGroupId},
+			squirrel.Eq{models.LESSON_TABLE_ID: lessonId},
 			squirrel.Eq{models.COURSE_TABLE_ID: id},
 		})
 
@@ -507,15 +507,15 @@ func (api coursesAPI) serveAttachment(c *fiber.Ctx) error {
 // TODO Handle PDF and HTML
 func (api coursesAPI) serveAsset(c *fiber.Ctx) error {
 	id := c.Params("id")
-	assetGroupId := c.Params("group")
+	lessonId := c.Params("lesson")
 	assetId := c.Params("asset")
 
 	dbOpts := database.NewOptions().
-		WithJoin(models.COURSE_TABLE, models.ASSET_GROUP_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID).
-		WithJoin(models.ASSET_GROUP_TABLE, models.ASSET_ASSET_GROUP_ID+" = "+models.ASSET_GROUP_TABLE_ID).
+		WithJoin(models.COURSE_TABLE, models.LESSON_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID).
+		WithJoin(models.LESSON_TABLE, models.ASSET_LESSON_ID+" = "+models.LESSON_TABLE_ID).
 		WithWhere(squirrel.And{
 			squirrel.Eq{models.COURSE_TABLE_ID: id},
-			squirrel.Eq{models.ASSET_GROUP_TABLE_ID: assetGroupId},
+			squirrel.Eq{models.LESSON_TABLE_ID: lessonId},
 			squirrel.Eq{models.ASSET_TABLE_ID: assetId},
 		})
 

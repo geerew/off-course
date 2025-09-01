@@ -25,7 +25,7 @@ var (
 	ErrId                  = errors.New("id cannot be empty")
 	ErrCourseId            = errors.New("course id cannot be empty")
 	ErrCourseNotFound      = errors.New("course not found")
-	ErrAssetGroupId        = errors.New("asset group id cannot be empty")
+	ErrLessonId            = errors.New("lesson id cannot be empty")
 	ErrKey                 = errors.New("key cannot be empty")
 	ErrUsername            = errors.New("username cannot be empty")
 	ErrUserPassword        = errors.New("user password cannot be empty")

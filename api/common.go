@@ -21,13 +21,13 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 var (
-	defaultCoursesOrderBy                     = []string{models.COURSE_TABLE_CREATED_AT + " desc"}
-	defaultScansOrderBy                       = []string{models.SCAN_TABLE_CREATED_AT + " desc"}
-	defaultCourseAssetGroupsOrderBy           = []string{models.ASSET_GROUP_TABLE_MODULE + " asc", models.ASSET_GROUP_TABLE_PREFIX + " asc"}
-	defaultCourseAssetGroupAttachmentsOrderBy = []string{models.ATTACHMENT_TABLE_TITLE + " asc"}
-	defaultTagsOrderBy                        = []string{models.TAG_TABLE_TAG + " asc"}
-	defaultUsersOrderBy                       = []string{models.USER_TABLE_CREATED_AT + " desc"}
-	defaultLogsOrderBy                        = []string{models.LOG_TABLE_CREATED_AT + " desc"}
+	defaultCoursesOrderBy                 = []string{models.COURSE_TABLE_CREATED_AT + " desc"}
+	defaultScansOrderBy                   = []string{models.SCAN_TABLE_CREATED_AT + " desc"}
+	defaultCourseLessonsOrderBy           = []string{models.LESSON_TABLE_MODULE + " asc", models.LESSON_TABLE_PREFIX + " asc"}
+	defaultCourseLessonAttachmentsOrderBy = []string{models.ATTACHMENT_TABLE_TITLE + " asc"}
+	defaultTagsOrderBy                    = []string{models.TAG_TABLE_TAG + " asc"}
+	defaultUsersOrderBy                   = []string{models.USER_TABLE_CREATED_AT + " desc"}
+	defaultLogsOrderBy                    = []string{models.LOG_TABLE_CREATED_AT + " desc"}
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -11,8 +11,8 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func newAssetGroup(id, module string, prefix int16, title, descPath, descType string) *models.AssetGroup {
-	ag := &models.AssetGroup{
+func newLesson(id, module string, prefix int16, title, descPath, descType string) *models.Lesson {
+	ag := &models.Lesson{
 		Base:   models.Base{ID: id},
 		Module: module,
 		Prefix: sql.NullInt16{Int16: prefix, Valid: true},
@@ -44,34 +44,34 @@ func newAttachment(id, path string) *models.Attachment {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func TestReconcileAssetGroups_NoOp(t *testing.T) {
-	existing := []*models.AssetGroup{
-		newAssetGroup("g1", "mod1", 1, "Title", "path.md", "md"),
+func TestReconcileLessons_NoOp(t *testing.T) {
+	existing := []*models.Lesson{
+		newLesson("g1", "mod1", 1, "Title", "path.md", "md"),
 	}
-	scanned := []*models.AssetGroup{
-		newAssetGroup("", "mod1", 1, "Title", "path.md", "md"),
+	scanned := []*models.Lesson{
+		newLesson("", "mod1", 1, "Title", "path.md", "md"),
 	}
 
-	ops := reconcileAssetGroups(scanned, existing)
+	ops := reconcileLessons(scanned, existing)
 	require.Len(t, ops, 1)
 
-	op, ok := ops[0].(NoAssetGroupOp)
+	op, ok := ops[0].(NoLessonOp)
 	require.True(t, ok)
 	assert.Equal(t, NoOp, op.Type())
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func TestReconcileAssetGroups_Create(t *testing.T) {
-	existing := []*models.AssetGroup{}
-	scanned := []*models.AssetGroup{
-		newAssetGroup("", "mod2", 2, "NewTitle", "new.md", "md"),
+func TestReconcileLessons_Create(t *testing.T) {
+	existing := []*models.Lesson{}
+	scanned := []*models.Lesson{
+		newLesson("", "mod2", 2, "NewTitle", "new.md", "md"),
 	}
 
-	ops := reconcileAssetGroups(scanned, existing)
+	ops := reconcileLessons(scanned, existing)
 	require.Len(t, ops, 1)
 
-	op, ok := ops[0].(CreateAssetGroupOp)
+	op, ok := ops[0].(CreateLessonOp)
 	require.True(t, ok)
 	assert.Equal(t, CreateOp, op.Type())
 	assert.Equal(t, "mod2", op.New.Module)
@@ -81,18 +81,18 @@ func TestReconcileAssetGroups_Create(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func TestReconcileAssetGroups_Update(t *testing.T) {
-	existing := []*models.AssetGroup{
-		newAssetGroup("g2", "mod3", 3, "OldTitle", "old.md", "md"),
+func TestReconcileLessons_Update(t *testing.T) {
+	existing := []*models.Lesson{
+		newLesson("g2", "mod3", 3, "OldTitle", "old.md", "md"),
 	}
-	scanned := []*models.AssetGroup{
-		newAssetGroup("", "mod3", 3, "NewTitle", "new.md", "md"),
+	scanned := []*models.Lesson{
+		newLesson("", "mod3", 3, "NewTitle", "new.md", "md"),
 	}
 
-	ops := reconcileAssetGroups(scanned, existing)
+	ops := reconcileLessons(scanned, existing)
 	require.Len(t, ops, 1)
 
-	op, ok := ops[0].(UpdateAssetGroupOp)
+	op, ok := ops[0].(UpdateLessonOp)
 	require.True(t, ok)
 	assert.Equal(t, UpdateOp, op.Type())
 	assert.Equal(t, "g2", op.Existing.ID)
@@ -101,16 +101,16 @@ func TestReconcileAssetGroups_Update(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func TestReconcileAssetGroups_Delete(t *testing.T) {
-	existing := []*models.AssetGroup{
-		newAssetGroup("g3", "mod4", 4, "Title4", "desc.md", "md"),
+func TestReconcileLessons_Delete(t *testing.T) {
+	existing := []*models.Lesson{
+		newLesson("g3", "mod4", 4, "Title4", "desc.md", "md"),
 	}
-	scanned := []*models.AssetGroup{}
+	scanned := []*models.Lesson{}
 
-	ops := reconcileAssetGroups(scanned, existing)
+	ops := reconcileLessons(scanned, existing)
 	require.Len(t, ops, 1)
 
-	op, ok := ops[0].(DeleteAssetGroupOp)
+	op, ok := ops[0].(DeleteLessonOp)
 	require.True(t, ok)
 	assert.Equal(t, DeleteOp, op.Type())
 	assert.Equal(t, "g3", op.Deleted.ID)
@@ -118,37 +118,37 @@ func TestReconcileAssetGroups_Delete(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func TestReconcileAssetGroups_Mixed(t *testing.T) {
-	// existing groups g1(mod1,1), g2(mod2,2), g3(mod3,3)
-	existing := []*models.AssetGroup{
-		newAssetGroup("g1", "mod1", 1, "T1", "d1.md", "md"),
-		newAssetGroup("g2", "mod2", 2, "T2", "d2.md", "md"),
-		newAssetGroup("g3", "mod3", 3, "T3", "d3.md", "md"),
+func TestReconcileLessons_Mixed(t *testing.T) {
+	// existing lessons g1(mod1,1), g2(mod2,2), g3(mod3,3)
+	existing := []*models.Lesson{
+		newLesson("g1", "mod1", 1, "T1", "d1.md", "md"),
+		newLesson("g2", "mod2", 2, "T2", "d2.md", "md"),
+		newLesson("g3", "mod3", 3, "T3", "d3.md", "md"),
 	}
 	// scanned: keep mod1, update mod2, create mod4
-	scanned := []*models.AssetGroup{
-		newAssetGroup("", "mod1", 1, "T1", "d1.md", "md"),
-		newAssetGroup("", "mod2", 2, "T2-new", "d2-new.md", "md"),
-		newAssetGroup("", "mod4", 4, "T4", "d4.md", "md"),
+	scanned := []*models.Lesson{
+		newLesson("", "mod1", 1, "T1", "d1.md", "md"),
+		newLesson("", "mod2", 2, "T2-new", "d2-new.md", "md"),
+		newLesson("", "mod4", 4, "T4", "d4.md", "md"),
 	}
 
-	op := reconcileAssetGroups(scanned, existing)
+	op := reconcileLessons(scanned, existing)
 	require.Len(t, op, 4)
 
 	var create, update, del, noop bool
 	for _, e := range op {
 		switch v := e.(type) {
-		case CreateAssetGroupOp:
+		case CreateLessonOp:
 			create = true
 			assert.Equal(t, "mod4", v.New.Module)
-		case UpdateAssetGroupOp:
+		case UpdateLessonOp:
 			update = true
 			assert.Equal(t, "g2", v.Existing.ID)
 			assert.Equal(t, "T2-new", v.New.Title)
-		case DeleteAssetGroupOp:
+		case DeleteLessonOp:
 			del = true
 			assert.Equal(t, "g3", v.Deleted.ID)
-		case NoAssetGroupOp:
+		case NoLessonOp:
 			noop = true
 			assert.Equal(t, "g1", v.Existing.ID)
 		default:
@@ -159,7 +159,7 @@ func TestReconcileAssetGroups_Mixed(t *testing.T) {
 	assert.True(t, create, "expected CreateOp")
 	assert.True(t, update, "expected UpdateOp")
 	assert.True(t, del, "expected DeleteOp")
-	assert.True(t, noop, "expected NoAssetGroupOp")
+	assert.True(t, noop, "expected NoLessonOp")
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

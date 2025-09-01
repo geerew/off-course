@@ -169,10 +169,10 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		assetGroups := make([]*models.AssetGroup, 0)
+		lessons := make([]*models.Lesson, 0)
 		dbOpts := database.NewOptions().
-			WithWhere(squirrel.Eq{models.ASSET_GROUP_TABLE_COURSE_ID: course.ID}).
-			WithOrderBy(models.ASSET_GROUP_TABLE_MODULE+" asc", models.ASSET_GROUP_TABLE_PREFIX+" asc")
+			WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: course.ID}).
+			WithOrderBy(models.LESSON_TABLE_MODULE+" asc", models.LESSON_TABLE_PREFIX+" asc")
 
 		// Add file 1, file 2 and file 3 (create op)
 		{
@@ -184,33 +184,33 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err = scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 3)
+			require.Len(t, lessons, 3)
 
-			require.Len(t, assetGroups[0].Assets, 1)
-			require.Equal(t, "file 1", assetGroups[0].Assets[0].Title)
-			require.Equal(t, course.ID, assetGroups[0].Assets[0].CourseID)
-			require.Equal(t, 1, int(assetGroups[0].Assets[0].Prefix.Int16))
-			require.Empty(t, assetGroups[0].Assets[0].Module)
-			require.True(t, assetGroups[0].Assets[0].Type.IsVideo())
-			require.Equal(t, "0657190350cbea662b6c15d703d9c7482308e511504d3308306d0f1ede153a34", assetGroups[0].Assets[0].Hash)
+			require.Len(t, lessons[0].Assets, 1)
+			require.Equal(t, "file 1", lessons[0].Assets[0].Title)
+			require.Equal(t, course.ID, lessons[0].Assets[0].CourseID)
+			require.Equal(t, 1, int(lessons[0].Assets[0].Prefix.Int16))
+			require.Empty(t, lessons[0].Assets[0].Module)
+			require.True(t, lessons[0].Assets[0].Type.IsVideo())
+			require.Equal(t, "0657190350cbea662b6c15d703d9c7482308e511504d3308306d0f1ede153a34", lessons[0].Assets[0].Hash)
 
-			require.Len(t, assetGroups[1].Assets, 1)
-			require.Equal(t, "file 2", assetGroups[1].Assets[0].Title)
-			require.Equal(t, course.ID, assetGroups[1].Assets[0].CourseID)
-			require.Equal(t, 2, int(assetGroups[1].Assets[0].Prefix.Int16))
-			require.Empty(t, assetGroups[1].Assets[0].Module)
-			require.True(t, assetGroups[1].Assets[0].Type.IsHTML())
-			require.Equal(t, "ac4f5d7f5ca1f7b2a9e8107ca793b5ead43a1d04afdafabc9488e93b5d738b41", assetGroups[1].Assets[0].Hash)
+			require.Len(t, lessons[1].Assets, 1)
+			require.Equal(t, "file 2", lessons[1].Assets[0].Title)
+			require.Equal(t, course.ID, lessons[1].Assets[0].CourseID)
+			require.Equal(t, 2, int(lessons[1].Assets[0].Prefix.Int16))
+			require.Empty(t, lessons[1].Assets[0].Module)
+			require.True(t, lessons[1].Assets[0].Type.IsHTML())
+			require.Equal(t, "ac4f5d7f5ca1f7b2a9e8107ca793b5ead43a1d04afdafabc9488e93b5d738b41", lessons[1].Assets[0].Hash)
 
-			require.Len(t, assetGroups[2].Assets, 1)
-			require.Equal(t, "file 3", assetGroups[2].Assets[0].Title)
-			require.Equal(t, course.ID, assetGroups[2].Assets[0].CourseID)
-			require.Equal(t, 3, int(assetGroups[2].Assets[0].Prefix.Int16))
-			require.Empty(t, assetGroups[2].Assets[0].Module)
-			require.True(t, assetGroups[2].Assets[0].Type.IsPDF())
-			require.Equal(t, "c4ca2e438d8809f0e4459bde1f948de8fe6289f1c179d506da8720fb79859be6", assetGroups[2].Assets[0].Hash)
+			require.Len(t, lessons[2].Assets, 1)
+			require.Equal(t, "file 3", lessons[2].Assets[0].Title)
+			require.Equal(t, course.ID, lessons[2].Assets[0].CourseID)
+			require.Equal(t, 3, int(lessons[2].Assets[0].Prefix.Int16))
+			require.Empty(t, lessons[2].Assets[0].Module)
+			require.True(t, lessons[2].Assets[0].Type.IsPDF())
+			require.Equal(t, "c4ca2e438d8809f0e4459bde1f948de8fe6289f1c179d506da8720fb79859be6", lessons[2].Assets[0].Hash)
 		}
 
 		// Add file 1 under a chapter (create op)
@@ -220,16 +220,16 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err = scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 4)
+			require.Len(t, lessons, 4)
 
-			require.Len(t, assetGroups[3].Assets, 1)
-			require.Equal(t, "file 1", assetGroups[3].Assets[0].Title)
-			require.Equal(t, course.ID, assetGroups[3].Assets[0].CourseID)
-			require.Equal(t, 1, int(assetGroups[3].Assets[0].Prefix.Int16))
-			require.Equal(t, "01 Chapter 1", assetGroups[3].Assets[0].Module)
-			require.True(t, assetGroups[3].Assets[0].Type.IsPDF())
+			require.Len(t, lessons[3].Assets, 1)
+			require.Equal(t, "file 1", lessons[3].Assets[0].Title)
+			require.Equal(t, course.ID, lessons[3].Assets[0].CourseID)
+			require.Equal(t, 1, int(lessons[3].Assets[0].Prefix.Int16))
+			require.Equal(t, "01 Chapter 1", lessons[3].Assets[0].Module)
+			require.True(t, lessons[3].Assets[0].Type.IsPDF())
 		}
 
 		// Delete file 1 in chapter (delete op)
@@ -239,39 +239,39 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err = scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 3)
+			require.Len(t, lessons, 3)
 
-			require.Len(t, assetGroups[0].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/01 file 1.mkv", course.Path), assetGroups[0].Assets[0].Path)
-			require.Len(t, assetGroups[1].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/02 file 2.html", course.Path), assetGroups[1].Assets[0].Path)
-			require.Len(t, assetGroups[2].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/03 file 3.pdf", course.Path), assetGroups[2].Assets[0].Path)
+			require.Len(t, lessons[0].Assets, 1)
+			require.Equal(t, fmt.Sprintf("%s/01 file 1.mkv", course.Path), lessons[0].Assets[0].Path)
+			require.Len(t, lessons[1].Assets, 1)
+			require.Equal(t, fmt.Sprintf("%s/02 file 2.html", course.Path), lessons[1].Assets[0].Path)
+			require.Len(t, lessons[2].Assets, 1)
+			require.Equal(t, fmt.Sprintf("%s/03 file 3.pdf", course.Path), lessons[2].Assets[0].Path)
 		}
 
 		// Rename file 3 to file 4 (update op)
 		{
-			existingAssetID := assetGroups[2].Assets[0].ID
+			existingAssetID := lessons[2].Assets[0].ID
 			scanner.appFs.Fs.Rename(fmt.Sprintf("%s/03 file 3.pdf", course.Path), fmt.Sprintf("%s/04 file 4.pdf", course.Path))
 
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err = scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 3)
+			require.Len(t, lessons, 3)
 
-			require.Len(t, assetGroups[0].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/01 file 1.mkv", course.Path), assetGroups[0].Assets[0].Path)
+			require.Len(t, lessons[0].Assets, 1)
+			require.Equal(t, fmt.Sprintf("%s/01 file 1.mkv", course.Path), lessons[0].Assets[0].Path)
 
-			require.Len(t, assetGroups[1].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/02 file 2.html", course.Path), assetGroups[1].Assets[0].Path)
+			require.Len(t, lessons[1].Assets, 1)
+			require.Equal(t, fmt.Sprintf("%s/02 file 2.html", course.Path), lessons[1].Assets[0].Path)
 
-			require.Len(t, assetGroups[2].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/04 file 4.pdf", course.Path), assetGroups[2].Assets[0].Path)
-			require.Equal(t, existingAssetID, assetGroups[2].Assets[0].ID)
+			require.Len(t, lessons[2].Assets, 1)
+			require.Equal(t, fmt.Sprintf("%s/04 file 4.pdf", course.Path), lessons[2].Assets[0].Path)
+			require.Equal(t, existingAssetID, lessons[2].Assets[0].ID)
 		}
 
 		// Replace file 4 with new content (replace op)
@@ -281,24 +281,24 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err = scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 3)
+			require.Len(t, lessons, 3)
 
-			require.Len(t, assetGroups[0].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/01 file 1.mkv", course.Path), assetGroups[0].Assets[0].Path)
+			require.Len(t, lessons[0].Assets, 1)
+			require.Equal(t, fmt.Sprintf("%s/01 file 1.mkv", course.Path), lessons[0].Assets[0].Path)
 
-			require.Len(t, assetGroups[1].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/02 file 2.html", course.Path), assetGroups[1].Assets[0].Path)
+			require.Len(t, lessons[1].Assets, 1)
+			require.Equal(t, fmt.Sprintf("%s/02 file 2.html", course.Path), lessons[1].Assets[0].Path)
 
-			require.Len(t, assetGroups[2].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/04 file 4.pdf", course.Path), assetGroups[2].Assets[0].Path)
-			require.Equal(t, "file 4", assetGroups[2].Assets[0].Title)
-			require.Equal(t, course.ID, assetGroups[2].Assets[0].CourseID)
-			require.Equal(t, 4, int(assetGroups[2].Assets[0].Prefix.Int16))
-			require.Empty(t, assetGroups[2].Assets[0].Module)
-			require.True(t, assetGroups[2].Assets[0].Type.IsPDF())
-			require.Equal(t, "e72c82bb74988135e7b6c478fe3659a14b4941f867a93a23687ea172031e4e06", assetGroups[2].Assets[0].Hash)
+			require.Len(t, lessons[2].Assets, 1)
+			require.Equal(t, fmt.Sprintf("%s/04 file 4.pdf", course.Path), lessons[2].Assets[0].Path)
+			require.Equal(t, "file 4", lessons[2].Assets[0].Title)
+			require.Equal(t, course.ID, lessons[2].Assets[0].CourseID)
+			require.Equal(t, 4, int(lessons[2].Assets[0].Prefix.Int16))
+			require.Empty(t, lessons[2].Assets[0].Module)
+			require.True(t, lessons[2].Assets[0].Type.IsPDF())
+			require.Equal(t, "e72c82bb74988135e7b6c478fe3659a14b4941f867a93a23687ea172031e4e06", lessons[2].Assets[0].Hash)
 		}
 
 		// Swap file 1 and file 2 (swap op)
@@ -310,19 +310,19 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err = scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 3)
+			require.Len(t, lessons, 3)
 
-			require.Len(t, assetGroups[0].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/01 file 1.mkv", course.Path), assetGroups[0].Assets[0].Path)
-			require.Len(t, assetGroups[1].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/02 file 2.html", course.Path), assetGroups[1].Assets[0].Path)
-			require.Len(t, assetGroups[2].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/04 file 4.pdf", course.Path), assetGroups[2].Assets[0].Path)
+			require.Len(t, lessons[0].Assets, 1)
+			require.Equal(t, fmt.Sprintf("%s/01 file 1.mkv", course.Path), lessons[0].Assets[0].Path)
+			require.Len(t, lessons[1].Assets, 1)
+			require.Equal(t, fmt.Sprintf("%s/02 file 2.html", course.Path), lessons[1].Assets[0].Path)
+			require.Len(t, lessons[2].Assets, 1)
+			require.Equal(t, fmt.Sprintf("%s/04 file 4.pdf", course.Path), lessons[2].Assets[0].Path)
 
-			require.Equal(t, "ac4f5d7f5ca1f7b2a9e8107ca793b5ead43a1d04afdafabc9488e93b5d738b41", assetGroups[0].Assets[0].Hash)
-			require.Equal(t, "0657190350cbea662b6c15d703d9c7482308e511504d3308306d0f1ede153a34", assetGroups[1].Assets[0].Hash)
+			require.Equal(t, "ac4f5d7f5ca1f7b2a9e8107ca793b5ead43a1d04afdafabc9488e93b5d738b41", lessons[0].Assets[0].Hash)
+			require.Equal(t, "0657190350cbea662b6c15d703d9c7482308e511504d3308306d0f1ede153a34", lessons[1].Assets[0].Hash)
 		}
 
 		// Delete file 1 and move file 2 to file 1 (overwrite op)
@@ -337,16 +337,16 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err = scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 2)
+			require.Len(t, lessons, 2)
 
-			require.Len(t, assetGroups[0].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/01 file 1.mkv", course.Path), assetGroups[0].Assets[0].Path)
-			require.Len(t, assetGroups[1].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/04 file 4.pdf", course.Path), assetGroups[1].Assets[0].Path)
+			require.Len(t, lessons[0].Assets, 1)
+			require.Equal(t, fmt.Sprintf("%s/01 file 1.mkv", course.Path), lessons[0].Assets[0].Path)
+			require.Len(t, lessons[1].Assets, 1)
+			require.Equal(t, fmt.Sprintf("%s/04 file 4.pdf", course.Path), lessons[1].Assets[0].Path)
 
-			require.Equal(t, "0657190350cbea662b6c15d703d9c7482308e511504d3308306d0f1ede153a34", assetGroups[0].Assets[0].Hash)
+			require.Equal(t, "0657190350cbea662b6c15d703d9c7482308e511504d3308306d0f1ede153a34", lessons[0].Assets[0].Hash)
 		}
 
 		// Delete all files but keep the course directory
@@ -358,53 +358,53 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err = scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 0)
+			require.Len(t, lessons, 0)
 		}
 
 		// Add file 1 with a sub-prefix (create op)
 		{
-			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 group 1 {01 video 1}.mkv", course.Path), []byte("hash 1"), os.ModePerm)
+			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 lesson 1 {01 video 1}.mkv", course.Path), []byte("hash 1"), os.ModePerm)
 
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err = scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 1)
-			require.Len(t, assetGroups[0].Assets, 1)
+			require.Len(t, lessons, 1)
+			require.Len(t, lessons[0].Assets, 1)
 
-			require.Equal(t, "group 1", assetGroups[0].Assets[0].Title)
-			require.Equal(t, course.ID, assetGroups[0].Assets[0].CourseID)
-			require.Equal(t, 1, int(assetGroups[0].Assets[0].Prefix.Int16))
-			require.Equal(t, 1, int(assetGroups[0].Assets[0].SubPrefix.Int16))
-			require.Equal(t, "video 1", assetGroups[0].Assets[0].SubTitle)
+			require.Equal(t, "lesson 1", lessons[0].Assets[0].Title)
+			require.Equal(t, course.ID, lessons[0].Assets[0].CourseID)
+			require.Equal(t, 1, int(lessons[0].Assets[0].Prefix.Int16))
+			require.Equal(t, 1, int(lessons[0].Assets[0].SubPrefix.Int16))
+			require.Equal(t, "video 1", lessons[0].Assets[0].SubTitle)
 		}
 
 		// Add file 2 with a sub-prefix (no op)
 		{
-			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 group 1 {02 video 2}.mkv", course.Path), []byte("hash 2"), os.ModePerm)
+			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 lesson 1 {02 video 2}.mkv", course.Path), []byte("hash 2"), os.ModePerm)
 
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err = scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 1)
-			require.Len(t, assetGroups[0].Assets, 2)
+			require.Len(t, lessons, 1)
+			require.Len(t, lessons[0].Assets, 2)
 
-			require.Equal(t, "group 1", assetGroups[0].Assets[0].Title)
-			require.Equal(t, course.ID, assetGroups[0].Assets[0].CourseID)
-			require.Equal(t, 1, int(assetGroups[0].Assets[0].Prefix.Int16))
-			require.Equal(t, 1, int(assetGroups[0].Assets[0].SubPrefix.Int16))
-			require.Equal(t, "video 1", assetGroups[0].Assets[0].SubTitle)
+			require.Equal(t, "lesson 1", lessons[0].Assets[0].Title)
+			require.Equal(t, course.ID, lessons[0].Assets[0].CourseID)
+			require.Equal(t, 1, int(lessons[0].Assets[0].Prefix.Int16))
+			require.Equal(t, 1, int(lessons[0].Assets[0].SubPrefix.Int16))
+			require.Equal(t, "video 1", lessons[0].Assets[0].SubTitle)
 
-			require.Equal(t, "group 1", assetGroups[0].Assets[1].Title)
-			require.Equal(t, course.ID, assetGroups[0].Assets[1].CourseID)
-			require.Equal(t, 1, int(assetGroups[0].Assets[1].Prefix.Int16))
-			require.Equal(t, 2, int(assetGroups[0].Assets[1].SubPrefix.Int16))
-			require.Equal(t, "video 2", assetGroups[0].Assets[1].SubTitle)
+			require.Equal(t, "lesson 1", lessons[0].Assets[1].Title)
+			require.Equal(t, course.ID, lessons[0].Assets[1].CourseID)
+			require.Equal(t, 1, int(lessons[0].Assets[1].Prefix.Int16))
+			require.Equal(t, 2, int(lessons[0].Assets[1].SubPrefix.Int16))
+			require.Equal(t, "video 2", lessons[0].Assets[1].SubTitle)
 		}
 	})
 
@@ -418,10 +418,10 @@ func TestScanner_Processor(t *testing.T) {
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
 		dbOpts := database.NewOptions().
-			WithOrderBy(models.ASSET_GROUP_TABLE_MODULE+" asc", models.ASSET_GROUP_TABLE_PREFIX+" asc").
-			WithWhere(squirrel.Eq{models.ASSET_GROUP_TABLE_COURSE_ID: course.ID})
+			WithOrderBy(models.LESSON_TABLE_MODULE+" asc", models.LESSON_TABLE_PREFIX+" asc").
+			WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: course.ID})
 
-		// Add asset (so the asset group is created)
+		// Add asset (so the lesson is created)
 		{
 			scanner.appFs.Fs.Mkdir(course.Path, os.ModePerm)
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 file 1.mkv", course.Path), []byte("hash 1"), os.ModePerm)
@@ -429,17 +429,17 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 1)
+			require.Len(t, lessons, 1)
 
-			require.Len(t, assetGroups[0].Assets, 1)
-			require.Equal(t, "file 1", assetGroups[0].Assets[0].Title)
-			require.Equal(t, course.ID, assetGroups[0].Assets[0].CourseID)
-			require.Equal(t, 1, int(assetGroups[0].Assets[0].Prefix.Int16))
-			require.Empty(t, assetGroups[0].Assets[0].Module)
-			require.True(t, assetGroups[0].Assets[0].Type.IsVideo())
-			require.Equal(t, "0657190350cbea662b6c15d703d9c7482308e511504d3308306d0f1ede153a34", assetGroups[0].Assets[0].Hash)
+			require.Len(t, lessons[0].Assets, 1)
+			require.Equal(t, "file 1", lessons[0].Assets[0].Title)
+			require.Equal(t, course.ID, lessons[0].Assets[0].CourseID)
+			require.Equal(t, 1, int(lessons[0].Assets[0].Prefix.Int16))
+			require.Empty(t, lessons[0].Assets[0].Module)
+			require.True(t, lessons[0].Assets[0].Type.IsVideo())
+			require.Equal(t, "0657190350cbea662b6c15d703d9c7482308e511504d3308306d0f1ede153a34", lessons[0].Assets[0].Hash)
 		}
 
 		// Add attachment 1
@@ -449,13 +449,13 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 1)
+			require.Len(t, lessons, 1)
 
-			require.Len(t, assetGroups[0].Attachments, 1)
-			require.Equal(t, "attachment 1.url", assetGroups[0].Attachments[0].Title)
-			require.Equal(t, filepath.Join(course.Path, "01 attachment 1.url"), assetGroups[0].Attachments[0].Path)
+			require.Len(t, lessons[0].Attachments, 1)
+			require.Equal(t, "attachment 1.url", lessons[0].Attachments[0].Title)
+			require.Equal(t, filepath.Join(course.Path, "01 attachment 1.url"), lessons[0].Attachments[0].Path)
 		}
 
 		// Add another attachment
@@ -465,16 +465,16 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 1)
+			require.Len(t, lessons, 1)
 
-			require.Len(t, assetGroups[0].Attachments, 2)
-			require.Equal(t, "attachment 1.url", assetGroups[0].Attachments[0].Title)
-			require.Equal(t, filepath.Join(course.Path, "01 attachment 1.url"), assetGroups[0].Attachments[0].Path)
+			require.Len(t, lessons[0].Attachments, 2)
+			require.Equal(t, "attachment 1.url", lessons[0].Attachments[0].Title)
+			require.Equal(t, filepath.Join(course.Path, "01 attachment 1.url"), lessons[0].Attachments[0].Path)
 
-			require.Equal(t, "attachment 2.url", assetGroups[0].Attachments[1].Title)
-			require.Equal(t, filepath.Join(course.Path, "01 attachment 2.url"), assetGroups[0].Attachments[1].Path)
+			require.Equal(t, "attachment 2.url", lessons[0].Attachments[1].Title)
+			require.Equal(t, filepath.Join(course.Path, "01 attachment 2.url"), lessons[0].Attachments[1].Path)
 		}
 
 		// Delete attachment
@@ -484,13 +484,13 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 1)
+			require.Len(t, lessons, 1)
 
-			require.Len(t, assetGroups[0].Attachments, 1)
-			require.Equal(t, "attachment 2.url", assetGroups[0].Attachments[0].Title)
-			require.Equal(t, filepath.Join(course.Path, "01 attachment 2.url"), assetGroups[0].Attachments[0].Path)
+			require.Len(t, lessons[0].Attachments, 1)
+			require.Equal(t, "attachment 2.url", lessons[0].Attachments[0].Title)
+			require.Equal(t, filepath.Join(course.Path, "01 attachment 2.url"), lessons[0].Attachments[0].Path)
 		}
 	})
 
@@ -506,8 +506,8 @@ func TestScanner_Processor(t *testing.T) {
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
 		dbOpts := database.NewOptions().
-			WithOrderBy(models.ASSET_GROUP_TABLE_MODULE+" asc", models.ASSET_GROUP_TABLE_PREFIX+" asc").
-			WithWhere(squirrel.Eq{models.ASSET_GROUP_TABLE_COURSE_ID: course.ID})
+			WithOrderBy(models.LESSON_TABLE_MODULE+" asc", models.LESSON_TABLE_PREFIX+" asc").
+			WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: course.ID})
 
 		scanner.appFs.Fs.Mkdir(course.Path, os.ModePerm)
 
@@ -518,18 +518,18 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 1)
-			require.Len(t, assetGroups[0].Assets, 1)
-			require.Len(t, assetGroups[0].Attachments, 0)
+			require.Len(t, lessons, 1)
+			require.Len(t, lessons[0].Assets, 1)
+			require.Len(t, lessons[0].Attachments, 0)
 
-			require.Equal(t, "text 1", assetGroups[0].Assets[0].Title)
-			require.Equal(t, course.ID, assetGroups[0].Assets[0].CourseID)
-			require.Equal(t, 1, int(assetGroups[0].Assets[0].Prefix.Int16))
-			require.Empty(t, assetGroups[0].Assets[0].Module)
-			require.True(t, assetGroups[0].Assets[0].Type.IsText())
-			require.Equal(t, "900a4469df00ccbfd0c145c6d1e4b7953dd0afafadd7534e3a4019e8d38fc663", assetGroups[0].Assets[0].Hash)
+			require.Equal(t, "text 1", lessons[0].Assets[0].Title)
+			require.Equal(t, course.ID, lessons[0].Assets[0].CourseID)
+			require.Equal(t, 1, int(lessons[0].Assets[0].Prefix.Int16))
+			require.Empty(t, lessons[0].Assets[0].Module)
+			require.True(t, lessons[0].Assets[0].Type.IsText())
+			require.Equal(t, "900a4469df00ccbfd0c145c6d1e4b7953dd0afafadd7534e3a4019e8d38fc663", lessons[0].Assets[0].Hash)
 		}
 
 		// Add MARKDOWN asset
@@ -539,20 +539,20 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 1)
+			require.Len(t, lessons, 1)
 
-			require.Len(t, assetGroups[0].Assets, 1)
-			require.Equal(t, "markdown 1", assetGroups[0].Assets[0].Title)
-			require.Equal(t, course.ID, assetGroups[0].Assets[0].CourseID)
-			require.Equal(t, 1, int(assetGroups[0].Assets[0].Prefix.Int16))
-			require.Empty(t, assetGroups[0].Assets[0].Module)
-			require.True(t, assetGroups[0].Assets[0].Type.IsMarkdown())
-			require.Equal(t, "728cfbd456c4734229b7b545d69d182608eecc860c46081f51e3f1f108096eca", assetGroups[0].Assets[0].Hash)
+			require.Len(t, lessons[0].Assets, 1)
+			require.Equal(t, "markdown 1", lessons[0].Assets[0].Title)
+			require.Equal(t, course.ID, lessons[0].Assets[0].CourseID)
+			require.Equal(t, 1, int(lessons[0].Assets[0].Prefix.Int16))
+			require.Empty(t, lessons[0].Assets[0].Module)
+			require.True(t, lessons[0].Assets[0].Type.IsMarkdown())
+			require.Equal(t, "728cfbd456c4734229b7b545d69d182608eecc860c46081f51e3f1f108096eca", lessons[0].Assets[0].Hash)
 
-			require.Len(t, assetGroups[0].Attachments, 1)
-			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), assetGroups[0].Attachments[0].Path)
+			require.Len(t, lessons[0].Attachments, 1)
+			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), lessons[0].Attachments[0].Path)
 		}
 
 		// Add PDF asset
@@ -562,21 +562,21 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 1)
+			require.Len(t, lessons, 1)
 
-			require.Len(t, assetGroups[0].Assets, 1)
-			require.Equal(t, "pdf 1", assetGroups[0].Assets[0].Title)
-			require.Equal(t, course.ID, assetGroups[0].Assets[0].CourseID)
-			require.Equal(t, 1, int(assetGroups[0].Assets[0].Prefix.Int16))
-			require.Empty(t, assetGroups[0].Assets[0].Module)
-			require.True(t, assetGroups[0].Assets[0].Type.IsPDF())
-			require.Equal(t, "9c9bfc90d1a2738f701a22c1ef10d42d5f2c285998a221eba9b7953e202bcf1a", assetGroups[0].Assets[0].Hash)
+			require.Len(t, lessons[0].Assets, 1)
+			require.Equal(t, "pdf 1", lessons[0].Assets[0].Title)
+			require.Equal(t, course.ID, lessons[0].Assets[0].CourseID)
+			require.Equal(t, 1, int(lessons[0].Assets[0].Prefix.Int16))
+			require.Empty(t, lessons[0].Assets[0].Module)
+			require.True(t, lessons[0].Assets[0].Type.IsPDF())
+			require.Equal(t, "9c9bfc90d1a2738f701a22c1ef10d42d5f2c285998a221eba9b7953e202bcf1a", lessons[0].Assets[0].Hash)
 
-			require.Len(t, assetGroups[0].Attachments, 2)
-			require.Equal(t, filepath.Join(course.Path, "01 markdown 1.md"), assetGroups[0].Attachments[0].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), assetGroups[0].Attachments[1].Path)
+			require.Len(t, lessons[0].Attachments, 2)
+			require.Equal(t, filepath.Join(course.Path, "01 markdown 1.md"), lessons[0].Attachments[0].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), lessons[0].Attachments[1].Path)
 		}
 
 		// Add HTML asset
@@ -586,22 +586,22 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 1)
+			require.Len(t, lessons, 1)
 
-			require.Len(t, assetGroups[0].Assets, 1)
-			require.Equal(t, "index", assetGroups[0].Assets[0].Title)
-			require.Equal(t, course.ID, assetGroups[0].Assets[0].CourseID)
-			require.Equal(t, 1, int(assetGroups[0].Assets[0].Prefix.Int16))
-			require.Empty(t, assetGroups[0].Assets[0].Module)
-			require.True(t, assetGroups[0].Assets[0].Type.IsHTML())
-			require.Equal(t, "1bc04b5291c26a46d918139138b992d2de976d6851d0893b0476b85bfbdfc6e6", assetGroups[0].Assets[0].Hash)
+			require.Len(t, lessons[0].Assets, 1)
+			require.Equal(t, "index", lessons[0].Assets[0].Title)
+			require.Equal(t, course.ID, lessons[0].Assets[0].CourseID)
+			require.Equal(t, 1, int(lessons[0].Assets[0].Prefix.Int16))
+			require.Empty(t, lessons[0].Assets[0].Module)
+			require.True(t, lessons[0].Assets[0].Type.IsHTML())
+			require.Equal(t, "1bc04b5291c26a46d918139138b992d2de976d6851d0893b0476b85bfbdfc6e6", lessons[0].Assets[0].Hash)
 
-			require.Len(t, assetGroups[0].Attachments, 3)
-			require.Equal(t, filepath.Join(course.Path, "01 markdown 1.md"), assetGroups[0].Attachments[0].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 pdf 1.pdf"), assetGroups[0].Attachments[1].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), assetGroups[0].Attachments[2].Path)
+			require.Len(t, lessons[0].Attachments, 3)
+			require.Equal(t, filepath.Join(course.Path, "01 markdown 1.md"), lessons[0].Attachments[0].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 pdf 1.pdf"), lessons[0].Attachments[1].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), lessons[0].Attachments[2].Path)
 		}
 
 		// Add VIDEO asset
@@ -611,23 +611,23 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 1)
+			require.Len(t, lessons, 1)
 
-			require.Len(t, assetGroups[0].Assets, 1)
-			require.Equal(t, "video", assetGroups[0].Assets[0].Title)
-			require.Equal(t, course.ID, assetGroups[0].Assets[0].CourseID)
-			require.Equal(t, 1, int(assetGroups[0].Assets[0].Prefix.Int16))
-			require.Empty(t, assetGroups[0].Assets[0].Module)
-			require.True(t, assetGroups[0].Assets[0].Type.IsVideo())
-			require.Equal(t, "0cab1c9617404faf2b24e221e189ca5945813e14d3f766345b09ca13bbe28ffc", assetGroups[0].Assets[0].Hash)
+			require.Len(t, lessons[0].Assets, 1)
+			require.Equal(t, "video", lessons[0].Assets[0].Title)
+			require.Equal(t, course.ID, lessons[0].Assets[0].CourseID)
+			require.Equal(t, 1, int(lessons[0].Assets[0].Prefix.Int16))
+			require.Empty(t, lessons[0].Assets[0].Module)
+			require.True(t, lessons[0].Assets[0].Type.IsVideo())
+			require.Equal(t, "0cab1c9617404faf2b24e221e189ca5945813e14d3f766345b09ca13bbe28ffc", lessons[0].Assets[0].Hash)
 
-			require.Len(t, assetGroups[0].Attachments, 4)
-			require.Equal(t, filepath.Join(course.Path, "01 index.html"), assetGroups[0].Attachments[0].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 markdown 1.md"), assetGroups[0].Attachments[1].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 pdf 1.pdf"), assetGroups[0].Attachments[2].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), assetGroups[0].Attachments[3].Path)
+			require.Len(t, lessons[0].Attachments, 4)
+			require.Equal(t, filepath.Join(course.Path, "01 index.html"), lessons[0].Attachments[0].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 markdown 1.md"), lessons[0].Attachments[1].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 pdf 1.pdf"), lessons[0].Attachments[2].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), lessons[0].Attachments[3].Path)
 		}
 
 		// Add another PDF asset
@@ -637,24 +637,24 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 1)
+			require.Len(t, lessons, 1)
 
-			require.Len(t, assetGroups[0].Assets, 1)
-			require.Equal(t, "video", assetGroups[0].Assets[0].Title)
-			require.Equal(t, course.ID, assetGroups[0].Assets[0].CourseID)
-			require.Equal(t, 1, int(assetGroups[0].Assets[0].Prefix.Int16))
-			require.Empty(t, assetGroups[0].Assets[0].Module)
-			require.True(t, assetGroups[0].Assets[0].Type.IsVideo())
-			require.Equal(t, "0cab1c9617404faf2b24e221e189ca5945813e14d3f766345b09ca13bbe28ffc", assetGroups[0].Assets[0].Hash)
+			require.Len(t, lessons[0].Assets, 1)
+			require.Equal(t, "video", lessons[0].Assets[0].Title)
+			require.Equal(t, course.ID, lessons[0].Assets[0].CourseID)
+			require.Equal(t, 1, int(lessons[0].Assets[0].Prefix.Int16))
+			require.Empty(t, lessons[0].Assets[0].Module)
+			require.True(t, lessons[0].Assets[0].Type.IsVideo())
+			require.Equal(t, "0cab1c9617404faf2b24e221e189ca5945813e14d3f766345b09ca13bbe28ffc", lessons[0].Assets[0].Hash)
 
-			require.Len(t, assetGroups[0].Attachments, 5)
-			require.Equal(t, filepath.Join(course.Path, "01 index.html"), assetGroups[0].Attachments[0].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 markdown 1.md"), assetGroups[0].Attachments[1].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 pdf 1.pdf"), assetGroups[0].Attachments[2].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 pdf 2.pdf"), assetGroups[0].Attachments[3].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), assetGroups[0].Attachments[4].Path)
+			require.Len(t, lessons[0].Attachments, 5)
+			require.Equal(t, filepath.Join(course.Path, "01 index.html"), lessons[0].Attachments[0].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 markdown 1.md"), lessons[0].Attachments[1].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 pdf 1.pdf"), lessons[0].Attachments[2].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 pdf 2.pdf"), lessons[0].Attachments[3].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), lessons[0].Attachments[4].Path)
 		}
 	})
 
@@ -668,8 +668,8 @@ func TestScanner_Processor(t *testing.T) {
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
 		dbOpts := database.NewOptions().
-			WithOrderBy(models.ASSET_GROUP_TABLE_MODULE+" asc", models.ASSET_GROUP_TABLE_PREFIX+" asc").
-			WithWhere(squirrel.Eq{models.ASSET_GROUP_TABLE_COURSE_ID: course.ID})
+			WithOrderBy(models.LESSON_TABLE_MODULE+" asc", models.LESSON_TABLE_PREFIX+" asc").
+			WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: course.ID})
 
 		// Add video 1 asset with sub-prefix of 1 and sub-title "Part 1"
 		{
@@ -679,21 +679,21 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 1)
+			require.Len(t, lessons, 1)
 
-			require.Len(t, assetGroups[0].Assets, 1)
-			require.Equal(t, "Group 1", assetGroups[0].Assets[0].Title)
-			require.Equal(t, course.ID, assetGroups[0].Assets[0].CourseID)
-			require.Equal(t, 1, int(assetGroups[0].Assets[0].Prefix.Int16))
-			require.Equal(t, 1, int(assetGroups[0].Assets[0].SubPrefix.Int16))
-			require.Equal(t, "Video 1", assetGroups[0].Assets[0].SubTitle)
-			require.Empty(t, assetGroups[0].Assets[0].Module)
-			require.True(t, assetGroups[0].Assets[0].Type.IsVideo())
-			require.Equal(t, "3b857b8441d7c9e734535d6b82f69a34c6fcd63ed0ef989ff03808ecb29a2f1f", assetGroups[0].Assets[0].Hash)
+			require.Len(t, lessons[0].Assets, 1)
+			require.Equal(t, "Group 1", lessons[0].Assets[0].Title)
+			require.Equal(t, course.ID, lessons[0].Assets[0].CourseID)
+			require.Equal(t, 1, int(lessons[0].Assets[0].Prefix.Int16))
+			require.Equal(t, 1, int(lessons[0].Assets[0].SubPrefix.Int16))
+			require.Equal(t, "Video 1", lessons[0].Assets[0].SubTitle)
+			require.Empty(t, lessons[0].Assets[0].Module)
+			require.True(t, lessons[0].Assets[0].Type.IsVideo())
+			require.Equal(t, "3b857b8441d7c9e734535d6b82f69a34c6fcd63ed0ef989ff03808ecb29a2f1f", lessons[0].Assets[0].Hash)
 
-			require.Len(t, assetGroups[0].Attachments, 0)
+			require.Len(t, lessons[0].Attachments, 0)
 		}
 
 		// Add video 2 asset with sub-prefix of 2 and sub-title "Part 2"
@@ -703,23 +703,23 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 1)
+			require.Len(t, lessons, 1)
 
-			require.Len(t, assetGroups[0].Assets, 2)
-			require.Equal(t, "3b857b8441d7c9e734535d6b82f69a34c6fcd63ed0ef989ff03808ecb29a2f1f", assetGroups[0].Assets[0].Hash)
+			require.Len(t, lessons[0].Assets, 2)
+			require.Equal(t, "3b857b8441d7c9e734535d6b82f69a34c6fcd63ed0ef989ff03808ecb29a2f1f", lessons[0].Assets[0].Hash)
 
-			require.Equal(t, "Group 1", assetGroups[0].Assets[1].Title)
-			require.Equal(t, course.ID, assetGroups[0].Assets[1].CourseID)
-			require.Equal(t, 1, int(assetGroups[0].Assets[1].Prefix.Int16))
-			require.Equal(t, 2, int(assetGroups[0].Assets[1].SubPrefix.Int16))
-			require.Equal(t, "Video 2", assetGroups[0].Assets[1].SubTitle)
-			require.Empty(t, assetGroups[0].Assets[1].Module)
-			require.True(t, assetGroups[0].Assets[1].Type.IsVideo())
-			require.Equal(t, "614ef49d4a1ef39bc763b7c9665f6f30a0eea3ec5ec10e04b897bdad9b973f9c", assetGroups[0].Assets[1].Hash)
+			require.Equal(t, "Group 1", lessons[0].Assets[1].Title)
+			require.Equal(t, course.ID, lessons[0].Assets[1].CourseID)
+			require.Equal(t, 1, int(lessons[0].Assets[1].Prefix.Int16))
+			require.Equal(t, 2, int(lessons[0].Assets[1].SubPrefix.Int16))
+			require.Equal(t, "Video 2", lessons[0].Assets[1].SubTitle)
+			require.Empty(t, lessons[0].Assets[1].Module)
+			require.True(t, lessons[0].Assets[1].Type.IsVideo())
+			require.Equal(t, "614ef49d4a1ef39bc763b7c9665f6f30a0eea3ec5ec10e04b897bdad9b973f9c", lessons[0].Assets[1].Hash)
 
-			require.Len(t, assetGroups[0].Attachments, 0)
+			require.Len(t, lessons[0].Attachments, 0)
 		}
 
 		// Add video 3 asset with sub-prefix of 3 and no sub-title
@@ -729,25 +729,25 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 1)
+			require.Len(t, lessons, 1)
 
-			require.Len(t, assetGroups[0].Assets, 3)
+			require.Len(t, lessons[0].Assets, 3)
 
-			require.Equal(t, "3b857b8441d7c9e734535d6b82f69a34c6fcd63ed0ef989ff03808ecb29a2f1f", assetGroups[0].Assets[0].Hash)
-			require.Equal(t, "614ef49d4a1ef39bc763b7c9665f6f30a0eea3ec5ec10e04b897bdad9b973f9c", assetGroups[0].Assets[1].Hash)
+			require.Equal(t, "3b857b8441d7c9e734535d6b82f69a34c6fcd63ed0ef989ff03808ecb29a2f1f", lessons[0].Assets[0].Hash)
+			require.Equal(t, "614ef49d4a1ef39bc763b7c9665f6f30a0eea3ec5ec10e04b897bdad9b973f9c", lessons[0].Assets[1].Hash)
 
-			require.Equal(t, "Group 1", assetGroups[0].Assets[2].Title)
-			require.Equal(t, course.ID, assetGroups[0].Assets[2].CourseID)
-			require.Equal(t, 1, int(assetGroups[0].Assets[2].Prefix.Int16))
-			require.Equal(t, 3, int(assetGroups[0].Assets[2].SubPrefix.Int16))
-			require.Empty(t, assetGroups[0].Assets[2].SubTitle)
-			require.Empty(t, assetGroups[0].Assets[2].Module)
-			require.True(t, assetGroups[0].Assets[2].Type.IsVideo())
-			require.Equal(t, "36d9fa5c21ca58822f678a5e1cebbaefcbcff37894771089cc608e8fbe32121e", assetGroups[0].Assets[2].Hash)
+			require.Equal(t, "Group 1", lessons[0].Assets[2].Title)
+			require.Equal(t, course.ID, lessons[0].Assets[2].CourseID)
+			require.Equal(t, 1, int(lessons[0].Assets[2].Prefix.Int16))
+			require.Equal(t, 3, int(lessons[0].Assets[2].SubPrefix.Int16))
+			require.Empty(t, lessons[0].Assets[2].SubTitle)
+			require.Empty(t, lessons[0].Assets[2].Module)
+			require.True(t, lessons[0].Assets[2].Type.IsVideo())
+			require.Equal(t, "36d9fa5c21ca58822f678a5e1cebbaefcbcff37894771089cc608e8fbe32121e", lessons[0].Assets[2].Hash)
 
-			require.Len(t, assetGroups[0].Attachments, 0)
+			require.Len(t, lessons[0].Attachments, 0)
 		}
 
 		// Add video 4 with no sub-prefix and no sub-title
@@ -757,18 +757,18 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 1)
+			require.Len(t, lessons, 1)
 
-			require.Len(t, assetGroups[0].Assets, 3)
+			require.Len(t, lessons[0].Assets, 3)
 
-			require.Equal(t, "3b857b8441d7c9e734535d6b82f69a34c6fcd63ed0ef989ff03808ecb29a2f1f", assetGroups[0].Assets[0].Hash)
-			require.Equal(t, "614ef49d4a1ef39bc763b7c9665f6f30a0eea3ec5ec10e04b897bdad9b973f9c", assetGroups[0].Assets[1].Hash)
-			require.Equal(t, "36d9fa5c21ca58822f678a5e1cebbaefcbcff37894771089cc608e8fbe32121e", assetGroups[0].Assets[2].Hash)
+			require.Equal(t, "3b857b8441d7c9e734535d6b82f69a34c6fcd63ed0ef989ff03808ecb29a2f1f", lessons[0].Assets[0].Hash)
+			require.Equal(t, "614ef49d4a1ef39bc763b7c9665f6f30a0eea3ec5ec10e04b897bdad9b973f9c", lessons[0].Assets[1].Hash)
+			require.Equal(t, "36d9fa5c21ca58822f678a5e1cebbaefcbcff37894771089cc608e8fbe32121e", lessons[0].Assets[2].Hash)
 
-			require.Len(t, assetGroups[0].Attachments, 1)
-			require.Equal(t, filepath.Join(course.Path, "01 Group 1.mp4"), assetGroups[0].Attachments[0].Path)
+			require.Len(t, lessons[0].Attachments, 1)
+			require.Equal(t, filepath.Join(course.Path, "01 Group 1.mp4"), lessons[0].Attachments[0].Path)
 		}
 
 		// Add attachment
@@ -778,18 +778,18 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 1)
+			require.Len(t, lessons, 1)
 
-			require.Len(t, assetGroups[0].Assets, 3)
-			require.Equal(t, "3b857b8441d7c9e734535d6b82f69a34c6fcd63ed0ef989ff03808ecb29a2f1f", assetGroups[0].Assets[0].Hash)
-			require.Equal(t, "614ef49d4a1ef39bc763b7c9665f6f30a0eea3ec5ec10e04b897bdad9b973f9c", assetGroups[0].Assets[1].Hash)
-			require.Equal(t, "36d9fa5c21ca58822f678a5e1cebbaefcbcff37894771089cc608e8fbe32121e", assetGroups[0].Assets[2].Hash)
+			require.Len(t, lessons[0].Assets, 3)
+			require.Equal(t, "3b857b8441d7c9e734535d6b82f69a34c6fcd63ed0ef989ff03808ecb29a2f1f", lessons[0].Assets[0].Hash)
+			require.Equal(t, "614ef49d4a1ef39bc763b7c9665f6f30a0eea3ec5ec10e04b897bdad9b973f9c", lessons[0].Assets[1].Hash)
+			require.Equal(t, "36d9fa5c21ca58822f678a5e1cebbaefcbcff37894771089cc608e8fbe32121e", lessons[0].Assets[2].Hash)
 
-			require.Len(t, assetGroups[0].Attachments, 2)
-			require.Equal(t, filepath.Join(course.Path, "01 Group 1.mp4"), assetGroups[0].Attachments[0].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 attachment 1.txt"), assetGroups[0].Attachments[1].Path)
+			require.Len(t, lessons[0].Attachments, 2)
+			require.Equal(t, filepath.Join(course.Path, "01 Group 1.mp4"), lessons[0].Attachments[0].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 attachment 1.txt"), lessons[0].Attachments[1].Path)
 		}
 	})
 
@@ -803,8 +803,8 @@ func TestScanner_Processor(t *testing.T) {
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
 		dbOpts := database.NewOptions().
-			WithOrderBy(models.ASSET_GROUP_TABLE_MODULE+" asc", models.ASSET_GROUP_TABLE_PREFIX+" asc").
-			WithWhere(squirrel.Eq{models.ASSET_GROUP_TABLE_COURSE_ID: course.ID})
+			WithOrderBy(models.LESSON_TABLE_MODULE+" asc", models.LESSON_TABLE_PREFIX+" asc").
+			WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: course.ID})
 
 		// Add video 1 asset
 		{
@@ -814,17 +814,17 @@ func TestScanner_Processor(t *testing.T) {
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
-			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
+			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, assetGroups, 1)
+			require.Len(t, lessons, 1)
 
-			require.Len(t, assetGroups[0].Assets, 1)
-			require.Equal(t, "video 1", assetGroups[0].Assets[0].Title)
-			require.Equal(t, course.ID, assetGroups[0].Assets[0].CourseID)
-			require.Equal(t, 1, int(assetGroups[0].Assets[0].Prefix.Int16))
-			require.Empty(t, assetGroups[0].Assets[0].Module)
-			require.True(t, assetGroups[0].Assets[0].Type.IsVideo())
-			require.Equal(t, "3b857b8441d7c9e734535d6b82f69a34c6fcd63ed0ef989ff03808ecb29a2f1f", assetGroups[0].Assets[0].Hash)
+			require.Len(t, lessons[0].Assets, 1)
+			require.Equal(t, "video 1", lessons[0].Assets[0].Title)
+			require.Equal(t, course.ID, lessons[0].Assets[0].CourseID)
+			require.Equal(t, 1, int(lessons[0].Assets[0].Prefix.Int16))
+			require.Empty(t, lessons[0].Assets[0].Module)
+			require.True(t, lessons[0].Assets[0].Type.IsVideo())
+			require.Equal(t, "3b857b8441d7c9e734535d6b82f69a34c6fcd63ed0ef989ff03808ecb29a2f1f", lessons[0].Assets[0].Hash)
 		}
 	})
 }

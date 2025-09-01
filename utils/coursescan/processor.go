@@ -82,7 +82,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	// List the assets that already exist in the database for this course
 
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_COURSE_ID: course.ID})
-	existingGroups, err := s.dao.ListAssetGroups(ctx, dbOpts)
+	existingGroups, err := s.dao.ListLessons(ctx, dbOpts)
 	if err != nil {
 		return err
 	}
@@ -96,7 +96,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	}
 
 	// Reconcile what to do
-	groupOps := reconcileAssetGroups(scanned.groups, existingGroups)
+	groupOps := reconcileLessons(scanned.groups, existingGroups)
 	assetOps := reconcileAssets(scannedAssets, existingAssets)
 	attachmentOps := reconcileAttachments(scannedAttachments, existingAttachments)
 
@@ -109,7 +109,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	}
 
 	return s.db.RunInTransaction(ctx, func(txCtx context.Context) error {
-		if updated, err := applyAssetGroupCreateUpdateOps(txCtx, s, groupOps); err != nil {
+		if updated, err := applyLessonCreateUpdateOps(txCtx, s, groupOps); err != nil {
 			return err
 		} else if updated {
 			updatedCourse = true
@@ -127,7 +127,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 			updatedCourse = true
 		}
 
-		if updated, err := applyAssetGroupDeleteOps(txCtx, s, groupOps); err != nil {
+		if updated, err := applyLessonDeleteOps(txCtx, s, groupOps); err != nil {
 			return err
 		} else if updated {
 			updatedCourse = true
@@ -228,8 +228,8 @@ func clearCourseMaintenance(ctx context.Context, s *CourseScan, course *models.C
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// assetGroupBucket accumulates files for a given module & prefix
-type assetGroupBucket struct {
+// lessonBucket accumulates files for a given module & prefix
+type lessonBucket struct {
 	groupedFiles []*parsedFile
 	soloFiles    []*parsedFile
 	attachFiles  []*parsedFile
@@ -237,9 +237,9 @@ type assetGroupBucket struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// scannedResults holds all asset groups and the card image path
+// scannedResults holds all lessons and the card image path
 type scannedResults struct {
-	groups   []*models.AssetGroup
+	groups   []*models.Lesson
 	cardPath string
 }
 
@@ -254,7 +254,7 @@ func scanFiles(s *CourseScan, coursePath, courseID string) (*scannedResults, err
 	}
 
 	// A bucket is the module => prefix => fileBucket
-	buckets := map[string]map[int]*assetGroupBucket{}
+	buckets := map[string]map[int]*lessonBucket{}
 	cardPath := ""
 
 	// Scan files on disk and categorize them into buckets
@@ -279,17 +279,17 @@ func scanFiles(s *CourseScan, coursePath, courseID string) (*scannedResults, err
 		}
 
 		if buckets[module] == nil {
-			buckets[module] = map[int]*assetGroupBucket{}
+			buckets[module] = map[int]*lessonBucket{}
 		}
 
 		prefix := parsed.Prefix
 		if buckets[module][prefix] == nil {
-			buckets[module][prefix] = &assetGroupBucket{}
+			buckets[module][prefix] = &lessonBucket{}
 		}
 
 		bucket := buckets[module][prefix]
 
-		// Build the buckets of asset groups of assets, attachments, and descriptions
+		// Build the buckets of lessons of assets, attachments, and descriptions
 		switch category {
 		case Card:
 			// fmt.Println("[Card]", normalizedPath)
@@ -311,22 +311,22 @@ func scanFiles(s *CourseScan, coursePath, courseID string) (*scannedResults, err
 		}
 	}
 
-	var assetGroups []*models.AssetGroup
+	var lessons []*models.Lesson
 	for module, prefixMap := range buckets {
 		for prefix, bucket := range prefixMap {
 			sort.Slice(bucket.groupedFiles, func(i, j int) bool {
 				return *bucket.groupedFiles[i].SubPrefix < *bucket.groupedFiles[j].SubPrefix
 			})
 
-			assetGroup := &models.AssetGroup{
+			lesson := &models.Lesson{
 				CourseID: courseID,
 				Module:   module,
 				Prefix:   sql.NullInt16{Int16: int16(prefix), Valid: true},
 			}
 
-			// Set the asset group title from the first grouped file (if any)
+			// Set the lesson title from the first grouped file (if any)
 			if len(bucket.groupedFiles) > 0 {
-				assetGroup.Title = bucket.groupedFiles[0].Title
+				lesson.Title = bucket.groupedFiles[0].Title
 			}
 
 			if len(bucket.groupedFiles) > 0 {
@@ -336,13 +336,13 @@ func scanFiles(s *CourseScan, coursePath, courseID string) (*scannedResults, err
 						return nil, err
 					}
 
-					asset.AssetGroupID = assetGroup.ID
-					assetGroup.Assets = append(assetGroup.Assets, asset)
+					asset.LessonID = lesson.ID
+					lesson.Assets = append(lesson.Assets, asset)
 				}
 
 				// Demote solo assets to attachments
 				for _, parsedFile := range bucket.soloFiles {
-					assetGroup.Attachments = append(assetGroup.Attachments, parsedFile.toAttachment())
+					lesson.Attachments = append(lesson.Attachments, parsedFile.toAttachment())
 				}
 			} else if len(bucket.soloFiles) > 0 {
 				if len(bucket.soloFiles) > 1 {
@@ -354,54 +354,54 @@ func scanFiles(s *CourseScan, coursePath, courseID string) (*scannedResults, err
 					if err != nil {
 						return nil, err
 					}
-					asset.AssetGroupID = assetGroup.ID
-					assetGroup.Assets = append(assetGroup.Assets, asset)
+					asset.LessonID = lesson.ID
+					lesson.Assets = append(lesson.Assets, asset)
 
-					// Set the asset group title from the selected solo file
-					assetGroup.Title = pf.Title
+					// Set the lesson title from the selected solo file
+					lesson.Title = pf.Title
 
 					// Demote remaining solo files to attachments
 					for i, other := range bucket.soloFiles {
 						if i == idx {
 							continue
 						}
-						assetGroup.Attachments = append(assetGroup.Attachments, other.toAttachment())
+						lesson.Attachments = append(lesson.Attachments, other.toAttachment())
 					}
 				} else {
 					asset, err := bucket.soloFiles[0].toAsset(s.appFs.Fs, module, courseID)
 					if err != nil {
 						return nil, err
 					}
-					asset.AssetGroupID = assetGroup.ID
-					assetGroup.Assets = append(assetGroup.Assets, asset)
+					asset.LessonID = lesson.ID
+					lesson.Assets = append(lesson.Assets, asset)
 
-					assetGroup.Title = bucket.soloFiles[0].Title
+					lesson.Title = bucket.soloFiles[0].Title
 				}
 
 				// Attachments
 				for _, parsedFile := range bucket.attachFiles {
-					assetGroup.Attachments = append(assetGroup.Attachments, parsedFile.toAttachment())
+					lesson.Attachments = append(lesson.Attachments, parsedFile.toAttachment())
 				}
 
 			}
 
-			// Create the asset group if it has at least 1 asset
-			if len(assetGroup.Assets) > 0 {
-				assetGroups = append(assetGroups, assetGroup)
+			// Create the lesson if it has at least 1 asset
+			if len(lesson.Assets) > 0 {
+				lessons = append(lessons, lesson)
 			}
 		}
 	}
 
 	return &scannedResults{
-		groups:   assetGroups,
+		groups:   lessons,
 		cardPath: cardPath,
 	}, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// flatAttachmentsAndAssets returns a flat list of attachments and assets from a list of asset groups
-func flatAttachmentsAndAssets(groups []*models.AssetGroup) ([]*models.Attachment, []*models.Asset) {
+// flatAttachmentsAndAssets returns a flat list of attachments and assets from a list of lessons
+func flatAttachmentsAndAssets(groups []*models.Lesson) ([]*models.Attachment, []*models.Asset) {
 	var attachments []*models.Attachment
 	var assets []*models.Asset
 	for _, g := range groups {
@@ -465,9 +465,9 @@ func probeVideos(ops []Op) map[string]*models.VideoMetadata {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// applyAssetGroupChanges applies asset group create/update operations. Delete is done after all
+// applyLessonChanges applies lesson create/update operations. Delete is done after all
 // asset and attachment operations have been applied
-func applyAssetGroupCreateUpdateOps(
+func applyLessonCreateUpdateOps(
 	ctx context.Context,
 	s *CourseScan,
 	ops []Op,
@@ -478,54 +478,54 @@ func applyAssetGroupCreateUpdateOps(
 
 	for _, op := range ops {
 		switch v := op.(type) {
-		case CreateAssetGroupOp:
-			// Create a new asset group
-			if err := s.dao.CreateAssetGroup(ctx, v.New); err != nil {
+		case CreateLessonOp:
+			// Create a new lesson
+			if err := s.dao.CreateLesson(ctx, v.New); err != nil {
 				return false, err
 			}
 
 			// fmt.Println("[Created Asset Group]", v.New.ID, v.New.Module, v.New.Prefix.Int16)
 
 			for _, asset := range v.New.Assets {
-				asset.AssetGroupID = v.New.ID
+				asset.LessonID = v.New.ID
 			}
 
 			for _, attachments := range v.New.Attachments {
-				attachments.AssetGroupID = v.New.ID
+				attachments.LessonID = v.New.ID
 			}
 
-		case NoAssetGroupOp:
-			// Ensure all new assets and attachments have the asset group ID. When a new
-			// asset/attachment is added to an existing asset group, we need to ensure
-			// that the asset group ID is set
+		case NoLessonOp:
+			// Ensure all new assets and attachments have the lesson ID. When a new
+			// asset/attachment is added to an existing lesson, we need to ensure
+			// that the lesson ID is set
 
 			// fmt.Println("[No-Op Asset Group]", v.Existing.ID, v.Existing.Module, v.Existing.Prefix.Int16)
 
 			for _, asset := range v.New.Assets {
-				asset.AssetGroupID = v.Existing.ID
+				asset.LessonID = v.Existing.ID
 			}
 
 			for _, attachments := range v.New.Attachments {
-				attachments.AssetGroupID = v.Existing.ID
+				attachments.LessonID = v.Existing.ID
 			}
 
-		case UpdateAssetGroupOp:
-			// Update an existing asset group by giving the new asset group the ID of the existing
-			// asset group, then calling update
+		case UpdateLessonOp:
+			// Update an existing lesson by giving the new lesson the ID of the existing
+			// lesson, then calling update
 			v.New.ID = v.Existing.ID
 
-			if err := s.dao.UpdateAssetGroup(ctx, v.New); err != nil {
+			if err := s.dao.UpdateLesson(ctx, v.New); err != nil {
 				return false, err
 			}
 
 			// fmt.Println("[Updated Asset Group]", v.New.ID, v.New.Module, v.New.Prefix.Int16)
 
 			for _, asset := range v.New.Assets {
-				asset.AssetGroupID = v.New.ID
+				asset.LessonID = v.New.ID
 			}
 
 			for _, attachments := range v.New.Attachments {
-				attachments.AssetGroupID = v.New.ID
+				attachments.LessonID = v.New.ID
 			}
 		}
 	}
@@ -535,8 +535,8 @@ func applyAssetGroupCreateUpdateOps(
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// applyAssetGroupDeleteOps applies asset group deletion operations
-func applyAssetGroupDeleteOps(
+// applyLessonDeleteOps applies lesson deletion operations
+func applyLessonDeleteOps(
 	ctx context.Context,
 	s *CourseScan,
 	ops []Op,
@@ -548,10 +548,10 @@ func applyAssetGroupDeleteOps(
 	for _, op := range ops {
 		switch v := op.(type) {
 
-		case DeleteAssetGroupOp:
-			// Delete an existing asset group
-			dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_GROUP_TABLE_ID: v.Deleted.ID})
-			if err := s.dao.DeleteAssetGroups(ctx, dbOpts); err != nil {
+		case DeleteLessonOp:
+			// Delete an existing lesson
+			dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.LESSON_TABLE_ID: v.Deleted.ID})
+			if err := s.dao.DeleteLessons(ctx, dbOpts); err != nil {
 				return false, err
 			}
 
@@ -582,7 +582,7 @@ func applyAssetOps(
 		case CreateAssetOp:
 			// Create an asset that was found on disk and does not exist in the database
 
-			// fmt.Println("[Create Asset]", v.New.Path, "->", v.New.Title, v.New.AssetGroupID)
+			// fmt.Println("[Create Asset]", v.New.Path, "->", v.New.Title, v.New.LessonID)
 
 			if err := s.dao.CreateAsset(ctx, v.New); err != nil {
 				return false, err
@@ -600,7 +600,7 @@ func applyAssetOps(
 			}
 
 		case UpdateAssetOp:
-			// Update an existing asset by giving the new asset the ID of the existing asset and asset group,
+			// Update an existing asset by giving the new asset the ID of the existing asset and lesson,
 			// then calling update
 			//
 			// This happens when the metadata (title, path, prefix, etc) changes but the
@@ -608,7 +608,7 @@ func applyAssetOps(
 			//
 			// Asset progress will be preserved
 
-			// fmt.Println("[Update Asset]", v.Existing.Path, "->", v.New.Title, v.New.AssetGroupID)
+			// fmt.Println("[Update Asset]", v.Existing.Path, "->", v.New.Title, v.New.LessonID)
 
 			v.New.ID = v.Existing.ID
 
@@ -625,14 +625,14 @@ func applyAssetOps(
 
 		case ReplaceAssetOp:
 			// Replace an existing asset with a new asset by first deleting the existing asset, then
-			// creating the new asset. Take the existing asset group ID
+			// creating the new asset. Take the existing lesson ID
 			//
 			// This happens when the contents of an existing asset have changed but the metadata
 			// (title, path, prefix, etc) has not
 			//
 			// Asset progress will be lost
 
-			// fmt.Println("[Replace Asset]", v.Existing.Path, v.Existing.AssetGroupID, "->", v.New.Path, v.New.AssetGroupID)
+			// fmt.Println("[Replace Asset]", v.Existing.Path, v.Existing.LessonID, "->", v.New.Path, v.New.LessonID)
 
 			dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: v.Existing.ID})
 			if err := s.dao.DeleteAssets(ctx, dbOpts); err != nil {
@@ -643,7 +643,7 @@ func applyAssetOps(
 				course.Duration -= v.Existing.VideoMetadata.Duration
 			}
 
-			v.New.AssetGroupID = v.Existing.AssetGroupID
+			v.New.LessonID = v.Existing.LessonID
 			if err := s.dao.CreateAsset(ctx, v.New); err != nil {
 				return false, err
 			}
@@ -661,7 +661,7 @@ func applyAssetOps(
 
 		case OverwriteAssetOp:
 			// Overwrite an existing but now deleted asset with another still existing asset by first
-			// taking the ID of the existing asset, the asset group ID of the nonexisting asset, then
+			// taking the ID of the existing asset, the lesson ID of the nonexisting asset, then
 			// deleting the nonexisting asset, and finally calling update on the renamed asset to update
 			// its metadata (title, path, prefix, etc)
 			//
@@ -669,7 +669,7 @@ func applyAssetOps(
 			//
 			// Asset progress will be preserved
 
-			// fmt.Println("Overwrite Asset", v.Existing.Path, v.Existing.AssetGroupID, "->", v.Renamed.Path, v.Deleted.AssetGroupID)
+			// fmt.Println("Overwrite Asset", v.Existing.Path, v.Existing.LessonID, "->", v.Renamed.Path, v.Deleted.LessonID)
 
 			dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: v.Deleted.ID})
 			if err := s.dao.DeleteAssets(ctx, dbOpts); err != nil {
@@ -677,7 +677,7 @@ func applyAssetOps(
 			}
 
 			v.Renamed.ID = v.Existing.ID
-			v.Renamed.AssetGroupID = v.Deleted.AssetGroupID
+			v.Renamed.LessonID = v.Deleted.LessonID
 
 			if err := s.dao.UpdateAsset(ctx, v.Renamed); err != nil {
 				return false, err
@@ -685,7 +685,7 @@ func applyAssetOps(
 
 		case SwapAssetOp:
 			// Swap two assets by first deleting the existing assets, then recreating the assets.
-			// The asset group IDs of the new assets will be swapped
+			// The lesson IDs of the new assets will be swapped
 			//
 			// This happens when two existing assets swap paths
 			//
@@ -704,9 +704,9 @@ func applyAssetOps(
 				}
 			}
 
-			// Swap the new asset group IDs
-			v.NewA.AssetGroupID = v.ExistingB.AssetGroupID
-			v.NewB.AssetGroupID = v.ExistingA.AssetGroupID
+			// Swap the new lesson IDs
+			v.NewA.LessonID = v.ExistingB.LessonID
+			v.NewB.LessonID = v.ExistingA.LessonID
 
 			for _, newAsset := range []*models.Asset{v.NewA, v.NewB} {
 				if err := s.dao.CreateAsset(ctx, newAsset); err != nil {
