@@ -18,12 +18,24 @@ var (
 	ErrNoTable       = errors.New("table name cannot be empty")
 
 	// DB
-	ErrInvalidWhere     = errors.New("where clause cannot be empty")
-	ErrMissingPrincipal = errors.New("principal not found in context")
+	ErrWhere     = errors.New("where clause cannot be empty")
+	ErrPrincipal = errors.New("principal not found in context")
 
 	// Model
-	ErrInvalidId  = errors.New("id cannot be empty")
-	ErrInvalidKey = errors.New("key cannot be empty")
+	ErrId                  = errors.New("id cannot be empty")
+	ErrCourseId            = errors.New("course id cannot be empty")
+	ErrCourseNotFound      = errors.New("course not found")
+	ErrLessonId            = errors.New("lesson id cannot be empty")
+	ErrKey                 = errors.New("key cannot be empty")
+	ErrUsername            = errors.New("username cannot be empty")
+	ErrUserPassword        = errors.New("user password cannot be empty")
+	ErrLogMessage          = errors.New("log message cannot be empty")
+	ErrUserId              = errors.New("user id cannot be empty")
+	ErrTag                 = errors.New("tag cannot be empty")
+	ErrTitle               = errors.New("title cannot be empty")
+	ErrPrefix              = errors.New("prefix cannot be empty or less than zero")
+	ErrPath                = errors.New("path cannot be empty")
+	ErrAssetCourseRelation = errors.New("asset does not belong to course")
 
 	// Media
 	ErrInvalidFFProbePath = errors.New("ffprobe path is invalid")

@@ -12,6 +12,7 @@ import (
 
 	"github.com/geerew/off-course/migrations"
 	"github.com/geerew/off-course/utils/security"
+	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pressly/goose/v3"
 )
@@ -111,18 +112,40 @@ type compositeDb struct {
 
 // Query executes a query that returns rows, typically a SELECT statement (read pool)
 //
-// It implements the Database interface
+// # It implements the Database interface
+//
+// TODO Remove this method in favor of QueryContext
 func (c *compositeDb) Query(query string, args ...any) (*sql.Rows, error) {
 	return c.read.Query(query, args...)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// QueryRow executes a query that is expected to return at most one row (read pool)
+// QueryContext executes a query that returns rows, typically a SELECT statement (read pool)
 //
 // It implements the Database interface
+func (c *compositeDb) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	return c.read.QueryContext(ctx, query, args...)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// QueryRow executes a query that is expected to return at most one row (read pool)
+//
+// # It implements the Database interface
+//
+// TODO Remove this method in favor of QueryRowContext
 func (c *compositeDb) QueryRow(query string, args ...any) *sql.Row {
 	return c.read.QueryRow(query, args...)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// QueryRowContext executes a query that is expected to return at most one row (read pool)
+//
+// It implements the Database interface
+func (c *compositeDb) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
+	return c.read.QueryRowContext(ctx, query, args...)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -133,7 +156,9 @@ func (c *compositeDb) QueryRow(query string, args ...any) *sql.Row {
 // before retrying. Non-lock errors are returned immediately. If all retries fail, the final error is returned
 // wrapped with the retry count
 //
-// It implements the Database interface
+// # It implements the Database interface
+//
+// TODO Remove this method in favor of ExecContext
 func (c *compositeDb) Exec(query string, args ...any) (sql.Result, error) {
 	var (
 		res sql.Result
@@ -143,10 +168,6 @@ func (c *compositeDb) Exec(query string, args ...any) (sql.Result, error) {
 	for attempt := 0; attempt <= defaultMaxLockRetries; attempt++ {
 		res, err = c.write.Exec(query, args...)
 		if err == nil {
-			// if attempt > 0 {
-			// 	fmt.Printf("[db] Exec succeeded after %d retries\n", attempt)
-			// }
-
 			return res, nil
 		}
 
@@ -156,7 +177,6 @@ func (c *compositeDb) Exec(query string, args ...any) (sql.Result, error) {
 		}
 
 		delay := getRetryInterval(attempt)
-		// fmt.Printf("[db] Lock error on attempt %d: %v; retrying in %v\n", attempt, err, delay)
 
 		// On the last attempt, stop retrying
 		if attempt == defaultMaxLockRetries {
@@ -166,8 +186,64 @@ func (c *compositeDb) Exec(query string, args ...any) (sql.Result, error) {
 		time.Sleep(delay)
 	}
 
-	// fmt.Printf("[db] Exec failed after %d retries: %v\n", defaultMaxLockRetries, err)
 	return res, fmt.Errorf("%w after %d retries", err, defaultMaxLockRetries)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ExecContext executes a non-query SQL statement against the write pool, with automatic retry logic
+// to handle SQLite lock contention. If the operation returns a “database is locked” or “
+// table is locked” error, it will wait for an exponentially increasing backoff interval (up to
+// defaultMaxLockRetries times) before retrying. Non-lock errors are returned immediately. If all
+// retries fail, the final error is returned wrapped with the retry count
+//
+// It implements the Database interface
+func (c *compositeDb) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	var (
+		res sql.Result
+		err error
+	)
+
+	for attempt := 0; attempt <= defaultMaxLockRetries; attempt++ {
+		res, err = c.write.ExecContext(ctx, query, args...)
+		if err == nil {
+			return res, nil
+		}
+
+		// Bail on a non-lock error
+		if !isLockError(err) {
+			return res, err
+		}
+
+		delay := getRetryInterval(attempt)
+
+		// On the last attempt, stop retrying
+		if attempt == defaultMaxLockRetries {
+			break
+		}
+
+		time.Sleep(delay)
+	}
+
+	return res, fmt.Errorf("%w after %d retries", err, defaultMaxLockRetries)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetContext retrieves a single row and scans it into dest (read pool)
+//
+// It implements the Querier interface
+func (c *compositeDb) GetContext(ctx context.Context, dest any, query string, args ...any) error {
+	return c.read.GetContext(ctx, dest, query, args...)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// SelectContext retrieves multiple rows and scans them into dest (read pool)
+//
+// It implements the Querier interface
+func (c *compositeDb) SelectContext(ctx context.Context, dest any, query string, args ...any) error {
+	return c.read.SelectContext(ctx, dest, query, args...)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -184,7 +260,7 @@ func (c *compositeDb) RunInTransaction(ctx context.Context, fn func(context.Cont
 // DB returns the underlying sql.DB for the write pool
 //
 // It implements the Database interface
-func (c *compositeDb) DB() *sql.DB {
+func (c *compositeDb) DB() *sqlx.DB {
 	return c.write.DB()
 }
 
@@ -204,32 +280,88 @@ func (c *compositeDb) SetLogger(l *slog.Logger) {
 
 // sqliteDb is a sqlite-specific transaction wrapper
 type sqliteTx struct {
-	*sql.Tx
+	tx *sqlx.Tx
 	db *sqliteDb
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Exec executes a query within a transaction without returning any rows
+//
+// TODO Remove this method in favor of ExecContext
 func (tx *sqliteTx) Exec(query string, args ...any) (sql.Result, error) {
 	tx.db.log(query, args...)
-	return tx.Tx.Exec(query, args...)
+	return tx.tx.Exec(query, args...)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ExecContext executes a query within a transaction without returning any rows
+//
+// It implements the Querier interface
+func (tx *sqliteTx) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	tx.db.log(query, args...)
+	return tx.tx.ExecContext(ctx, query, args...)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Query executes a query within a transaction that returns rows, typically a SELECT statement
+//
+// TODO Remove this method in favor of QueryContext
 func (tx *sqliteTx) Query(query string, args ...any) (*sql.Rows, error) {
 	tx.db.log(query, args...)
-	return tx.Tx.Query(query, args...)
+	return tx.tx.Query(query, args...)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// QueryContext executes a query within a transaction that returns rows, typically a SELECT statement
+//
+// It implements the Querier interface
+func (tx *sqliteTx) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	tx.db.log(query, args...)
+	return tx.tx.QueryContext(ctx, query, args...)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // QueryRow executes a query within a transaction that is expected to return at most one row
+//
+// TODO Remove this method in favor of QueryRowContext
 func (tx *sqliteTx) QueryRow(query string, args ...any) *sql.Row {
 	tx.db.log(query, args...)
-	return tx.Tx.QueryRow(query, args...)
+	return tx.tx.QueryRow(query, args...)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// QueryRowContext executes a query within a transaction that is expected to return at most one row
+//
+// It implements the Querier interface
+func (tx *sqliteTx) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
+	tx.db.log(query, args...)
+	return tx.tx.QueryRowContext(ctx, query, args...)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetContext retrieves a single row and scans it into dest
+//
+// It implements the Querier interface
+func (tx *sqliteTx) GetContext(ctx context.Context, dest any, query string, args ...any) error {
+	tx.db.log(query, args...)
+	return tx.tx.GetContext(ctx, dest, query, args...)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// SelectContext retrieves multiple rows and scans them into dest
+//
+// It implements the Querier interface
+func (tx *sqliteTx) SelectContext(ctx context.Context, dest any, query string, args ...any) error {
+	tx.db.log(query, args...)
+	return tx.tx.SelectContext(ctx, dest, query, args...)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -238,7 +370,7 @@ func (tx *sqliteTx) QueryRow(query string, args ...any) *sql.Row {
 
 // sqliteDb defines a sqlite database
 type sqliteDb struct {
-	conn   *sql.DB
+	sqlx   *sqlx.DB
 	config *databaseConfig
 }
 
@@ -266,8 +398,20 @@ func newSqliteDb(config *databaseConfig) (*sqliteDb, error) {
 // DB returns the underlying sql.DB
 //
 // It implements the Database interface
-func (db *sqliteDb) DB() *sql.DB {
-	return db.conn
+func (db *sqliteDb) DB() *sqlx.DB {
+	return db.sqlx
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Query executes a query that returns rows, typically a SELECT statement
+//
+// # It implements the Database interface
+//
+// TODO Remove this method in favor of QueryContext
+func (db *sqliteDb) Query(query string, args ...any) (*sql.Rows, error) {
+	db.log(query, args...)
+	return db.sqlx.Query(query, args...)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -275,9 +419,9 @@ func (db *sqliteDb) DB() *sql.DB {
 // Query executes a query that returns rows, typically a SELECT statement
 //
 // It implements the Database interface
-func (db *sqliteDb) Query(query string, args ...any) (*sql.Rows, error) {
+func (db *sqliteDb) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	db.log(query, args...)
-	return db.conn.Query(query, args...)
+	return db.sqlx.QueryContext(ctx, query, args...)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -287,7 +431,19 @@ func (db *sqliteDb) Query(query string, args ...any) (*sql.Rows, error) {
 // It implements the Database interface
 func (db *sqliteDb) QueryRow(query string, args ...any) *sql.Row {
 	db.log(query, args...)
-	return db.conn.QueryRow(query, args...)
+	return db.sqlx.QueryRow(query, args...)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// QueryRowContext executes a query that is expected to return at most one row
+//
+// # It implements the Database interface
+//
+// TODO Remove this method in favor of QueryRowContext
+func (db *sqliteDb) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
+	db.log(query, args...)
+	return db.sqlx.QueryRowContext(ctx, query, args...)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -297,7 +453,39 @@ func (db *sqliteDb) QueryRow(query string, args ...any) *sql.Row {
 // It implements the Database interface
 func (db *sqliteDb) Exec(query string, args ...any) (sql.Result, error) {
 	db.log(query, args...)
-	return db.conn.Exec(query, args...)
+	return db.sqlx.Exec(query, args...)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ExecContext executes a query without returning any rows
+//
+// # It implements the Database interface
+//
+// TODO Remove this method in favor of ExecContext
+func (db *sqliteDb) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	db.log(query, args...)
+	return db.sqlx.ExecContext(ctx, query, args...)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetContext retrieves a single row and scans it into dest
+//
+// It implements the Querier interface
+func (db *sqliteDb) GetContext(ctx context.Context, dest any, query string, args ...any) error {
+	db.log(query, args...)
+	return db.sqlx.GetContext(ctx, dest, query, args...)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// SelectContext retrieves multiple rows and scans them into dest
+//
+// It implements the Querier interface
+func (db *sqliteDb) SelectContext(ctx context.Context, dest any, query string, args ...any) error {
+	db.log(query, args...)
+	return db.sqlx.SelectContext(ctx, dest, query, args...)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -305,38 +493,38 @@ func (db *sqliteDb) Exec(query string, args ...any) (sql.Result, error) {
 // RunInTransaction runs a function in a transaction
 //
 // It implements the Database interface
-func (db *sqliteDb) RunInTransaction(ctx context.Context, txFunc func(context.Context) error) (err error) {
+func (db *sqliteDb) RunInTransaction(ctx context.Context, fn func(context.Context) error) (err error) {
 	// Check if there's an existing querier in the context
 	existingQuerier := QuerierFromContext(ctx, nil)
 	if existingQuerier != nil {
-		return txFunc(ctx)
+		return fn(ctx)
 	}
 
-	slqTx, err := db.conn.BeginTx(ctx, nil)
+	slqxTx, err := db.sqlx.BeginTxx(ctx, nil)
 	if err != nil {
 		return err
 	}
 
-	tx := &sqliteTx{
-		Tx: slqTx,
+	wrapped := &sqliteTx{
+		tx: slqxTx,
 		db: db,
 	}
 
 	// Set the querier in the context to use the transaction
-	txCtx := WithQuerier(ctx, tx)
+	txCtx := WithQuerier(ctx, wrapped)
 
 	defer func() {
 		if p := recover(); p != nil {
-			tx.Rollback()
+			slqxTx.Rollback()
 			panic(p)
 		} else if err != nil {
-			tx.Rollback()
+			slqxTx.Rollback()
 		} else {
-			err = tx.Commit()
+			err = slqxTx.Commit()
 		}
 	}()
 
-	return txFunc(txCtx)
+	return fn(txCtx)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -377,7 +565,7 @@ func (db *sqliteDb) bootstrap() error {
 		dsn += "&mode=memory"
 	}
 
-	conn, err := sql.Open("sqlite3", dsn)
+	conn, err := sqlx.Open("sqlite3", dsn)
 	if err != nil {
 		return err
 	}
@@ -385,7 +573,7 @@ func (db *sqliteDb) bootstrap() error {
 	conn.SetMaxIdleConns(1)
 	conn.SetMaxOpenConns(1)
 
-	db.conn = conn
+	db.sqlx = conn
 
 	return nil
 }
@@ -405,7 +593,7 @@ func (db *sqliteDb) migrate() error {
 		return err
 	}
 
-	if err := goose.Up(db.conn, db.config.MigrateDir); err != nil {
+	if err := goose.Up(db.sqlx.DB, db.config.MigrateDir); err != nil {
 		return err
 	}
 

@@ -1,10 +1,15 @@
 package api
 
 import (
+	"sort"
+	"strings"
+
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/types"
 )
 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// File System
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type fileSystemResponse struct {
@@ -22,6 +27,8 @@ type fileInfoResponse struct {
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Course
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type courseRequest struct {
 	Title string `json:"title"`
@@ -31,11 +38,10 @@ type courseRequest struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type courseProgressResponse struct {
-	Started           bool           `json:"started"`
-	StartedAt         types.DateTime `json:"startedAt"`
-	Percent           int            `json:"percent"`
-	CompletedAt       types.DateTime `json:"completedAt"`
-	ProgressUpdatedAt types.DateTime `json:"progressUpdatedAt"`
+	Started     bool           `json:"started"`
+	StartedAt   types.DateTime `json:"startedAt"`
+	Percent     int            `json:"percent"`
+	CompletedAt types.DateTime `json:"completedAt"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -69,11 +75,10 @@ func courseResponseHelper(courses []*models.Course, isAdmin bool) []*courseRespo
 		var progress *courseProgressResponse
 		if course.Progress != nil {
 			progress = &courseProgressResponse{
-				Started:           course.Progress.Started,
-				StartedAt:         course.Progress.StartedAt,
-				Percent:           course.Progress.Percent,
-				CompletedAt:       course.Progress.CompletedAt,
-				ProgressUpdatedAt: course.Progress.UpdatedAt,
+				Started:     course.Progress.Started,
+				StartedAt:   course.Progress.StartedAt,
+				Percent:     course.Progress.Percent,
+				CompletedAt: course.Progress.CompletedAt,
 			}
 		}
 
@@ -103,6 +108,8 @@ func courseResponseHelper(courses []*models.Course, isAdmin bool) []*courseRespo
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Course Tag
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type courseTagResponse struct {
 	ID  string `json:"id"`
@@ -123,6 +130,50 @@ func courseTagResponseHelper(courseTags []*models.CourseTag) []*courseTagRespons
 	return responses
 }
 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Asset Group
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+type lessonResponse struct {
+	ID        string         `json:"id"`
+	CourseID  string         `json:"courseId"`
+	Title     string         `json:"title"`
+	Prefix    int            `json:"prefix"`
+	Module    string         `json:"module"`
+	CreatedAt types.DateTime `json:"createdAt"`
+	UpdatedAt types.DateTime `json:"updatedAt"`
+
+	// Relations
+	Assets      []*assetResponse      `json:"assets"`
+	Attachments []*attachmentResponse `json:"attachments"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func lessonResponseHelper(lessons []*models.Lesson) []*lessonResponse {
+	responses := []*lessonResponse{}
+	for _, lesson := range lessons {
+		response := &lessonResponse{
+			ID:        lesson.ID,
+			CourseID:  lesson.CourseID,
+			Title:     lesson.Title,
+			Prefix:    int(lesson.Prefix.Int16),
+			Module:    lesson.Module,
+			CreatedAt: lesson.CreatedAt,
+			UpdatedAt: lesson.UpdatedAt,
+
+			Assets:      assetResponseHelper(lesson.Assets),
+			Attachments: attachmentResponseHelper(lesson.Attachments),
+		}
+
+		responses = append(responses, response)
+	}
+
+	return responses
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Asset
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type assetProgressRequest struct {
@@ -151,24 +202,22 @@ type assetVideoMetadataResponse struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type assetResponse struct {
-	ID              string             `json:"id"`
-	CourseID        string             `json:"courseId"`
-	Title           string             `json:"title"`
-	Prefix          int                `json:"prefix"`
-	SubPrefix       int                `json:"subPrefix,omitempty"`
-	SubTitle        string             `json:"subTitle,omitempty"`
-	Chapter         string             `json:"chapter"`
-	Path            string             `json:"path"`
-	Type            types.Asset        `json:"assetType"`
-	HasDescription  bool               `json:"hasDescription"`
-	DescriptionType *types.Description `json:"descriptionType,omitempty"`
-	CreatedAt       types.DateTime     `json:"createdAt"`
-	UpdatedAt       types.DateTime     `json:"updatedAt"`
+	ID        string         `json:"id"`
+	CourseID  string         `json:"courseId"`
+	LessonID  string         `json:"lessonId"`
+	Title     string         `json:"title"`
+	Prefix    int            `json:"prefix"`
+	SubPrefix int            `json:"subPrefix,omitempty"`
+	SubTitle  string         `json:"subTitle,omitempty"`
+	Module    string         `json:"module"`
+	Path      string         `json:"path"`
+	Type      types.Asset    `json:"assetType"`
+	CreatedAt types.DateTime `json:"createdAt"`
+	UpdatedAt types.DateTime `json:"updatedAt"`
 
 	// Relations
 	VideoMetadata *assetVideoMetadataResponse `json:"videoMetadata,omitempty"`
 	Progress      *assetProgressResponse      `json:"progress,omitempty"`
-	Attachments   []*attachmentResponse       `json:"attachments"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -189,36 +238,30 @@ func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 		}
 
 		// Asset progress
-		progress := &assetProgressResponse{}
+		var progress *assetProgressResponse
 		if asset.Progress != nil {
-			progress.VideoPos = asset.Progress.VideoPos
-			progress.Completed = asset.Progress.Completed
-			progress.CompletedAt = asset.Progress.CompletedAt
+			progress = &assetProgressResponse{
+				VideoPos:    asset.Progress.VideoPos,
+				Completed:   asset.Progress.Completed,
+				CompletedAt: asset.Progress.CompletedAt,
+			}
 		}
 
 		response := &assetResponse{
-			ID:             asset.ID,
-			CourseID:       asset.CourseID,
-			Title:          asset.Title,
-			Prefix:         int(asset.Prefix.Int16),
-			Chapter:        asset.Chapter,
-			Path:           asset.Path,
-			Type:           asset.Type,
-			HasDescription: asset.DescriptionPath != "",
-			CreatedAt:      asset.CreatedAt,
-			UpdatedAt:      asset.UpdatedAt,
+			ID:        asset.ID,
+			CourseID:  asset.CourseID,
+			LessonID:  asset.LessonID,
+			Title:     asset.Title,
+			Prefix:    int(asset.Prefix.Int16),
+			Module:    asset.Module,
+			Path:      asset.Path,
+			Type:      asset.Type,
+			CreatedAt: asset.CreatedAt,
+			UpdatedAt: asset.UpdatedAt,
 
 			VideoMetadata: videoMetadata,
 			Progress:      progress,
-			Attachments:   attachmentResponseHelper(asset.Attachments),
 		}
-
-		// Set the description type if supported
-		var descriptionType *types.Description
-		if asset.DescriptionType.IsSupported() {
-			descriptionType = &asset.DescriptionType
-		}
-		response.DescriptionType = descriptionType
 
 		// Set sub-prefix and sub-title if available
 		if asset.SubPrefix.Valid {
@@ -233,10 +276,12 @@ func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// 	Attachment
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type attachmentResponse struct {
 	ID        string         `json:"id"`
-	AssetId   string         `json:"assetId"`
+	LessonID  string         `json:"lessonId"`
 	Title     string         `json:"title"`
 	Path      string         `json:"path"`
 	CreatedAt types.DateTime `json:"createdAt"`
@@ -247,14 +292,14 @@ type attachmentResponse struct {
 
 func attachmentResponseHelper(attachments []*models.Attachment) []*attachmentResponse {
 	if len(attachments) == 0 {
-		return []*attachmentResponse{} // ← empty slice, not nil
+		return []*attachmentResponse{}
 	}
 
 	responses := []*attachmentResponse{}
 	for _, attachment := range attachments {
 		responses = append(responses, &attachmentResponse{
 			ID:        attachment.ID,
-			AssetId:   attachment.AssetID,
+			LessonID:  attachment.LessonID,
 			Title:     attachment.Title,
 			Path:      attachment.Path,
 			CreatedAt: attachment.CreatedAt,
@@ -263,6 +308,113 @@ func attachmentResponseHelper(attachments []*models.Attachment) []*attachmentRes
 	}
 
 	return responses
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Module
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+type moduleLessonResponse struct {
+	ID                  string                `json:"id"`
+	CourseID            string                `json:"courseId"`
+	Prefix              int                   `json:"prefix"`
+	Title               string                `json:"title"`
+	Assets              []*assetResponse      `json:"assets"`
+	Attachments         []*attachmentResponse `json:"attachments"`
+	Completed           bool                  `json:"completed"`
+	StartedAssetCount   int                   `json:"startedAssetCount"`
+	CompletedAssetCount int                   `json:"completedAssetCount"`
+	TotalVideoDuration  int                   `json:"totalVideoDuration"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+type moduleResponse struct {
+	Module  string                 `json:"module"`
+	Index   int                    `json:"index"`
+	Lessons []moduleLessonResponse `json:"lessons"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+type modulesResponse struct {
+	Modules []moduleResponse `json:"modules"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func modulesResponseHelper(lessons []*models.Lesson) modulesResponse {
+	const noChapter = "(no chapter)"
+
+	deriveGroupTitle := func(g *models.Lesson) string {
+		if len(g.Assets) > 0 && g.Assets[0].Title != "" {
+			return g.Assets[0].Title
+		}
+		return g.Title
+	}
+
+	modMap := make(map[string][]moduleLessonResponse)
+	order := []string{}
+
+	for _, g := range lessons {
+		moduleName := strings.TrimSpace(g.Module)
+		if moduleName == "" {
+			moduleName = noChapter
+		}
+
+		// Build lesson
+		lesson := moduleLessonResponse{
+			ID:          g.ID,
+			CourseID:    g.CourseID,
+			Prefix:      int(g.Prefix.Int16),
+			Title:       deriveGroupTitle(g),
+			Assets:      assetResponseHelper(g.Assets),
+			Attachments: attachmentResponseHelper(g.Attachments),
+		}
+
+		// Counts + Duration
+		var started, completed, totalDur int
+		for _, a := range g.Assets {
+			if a.VideoMetadata != nil {
+				totalDur += a.VideoMetadata.Duration
+			}
+
+			if a.Progress != nil {
+				if a.Progress.Completed {
+					completed++
+				}
+
+				if a.Progress.Completed || a.Progress.VideoPos > 0 {
+					started++
+				}
+			}
+		}
+		lesson.TotalVideoDuration = totalDur
+		lesson.StartedAssetCount = started
+		lesson.CompletedAssetCount = completed
+		lesson.Completed = len(g.Assets) > 0 && completed == len(g.Assets)
+
+		if _, ok := modMap[moduleName]; !ok {
+			order = append(order, moduleName)
+			modMap[moduleName] = []moduleLessonResponse{lesson}
+		} else {
+			modMap[moduleName] = append(modMap[moduleName], lesson)
+		}
+	}
+
+	// Build ordered modules with 1-based index
+	modules := make([]moduleResponse, 0, len(order))
+	for i, name := range order {
+		// ensure lessons are ordered by prefix (they should already be; keep as safety)
+		lessons := modMap[name]
+		sort.SliceStable(lessons, func(i, j int) bool { return lessons[i].Prefix < lessons[j].Prefix })
+
+		modules = append(modules, moduleResponse{
+			Module:  name,
+			Index:   i + 1,
+			Lessons: lessons,
+		})
+	}
+
+	return modulesResponse{Modules: modules}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -2,12 +2,11 @@
 	import { cn } from '$lib/utils.js';
 	import { DropdownMenu, type DropdownMenuContentProps, type WithoutChild } from 'bits-ui';
 	import type { Snippet } from 'svelte';
-	import { Drawer as DrawerPrimitive } from 'vaul-svelte';
 
 	type Props = WithoutChild<DropdownMenuContentProps> & {
 		ref?: HTMLDivElement | null;
 		class?: string;
-		portalProps?: DrawerPrimitive.PortalProps;
+		portalProps?: DropdownMenu.PortalProps;
 		children: Snippet;
 	};
 

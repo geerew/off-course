@@ -125,7 +125,7 @@
 
 	.typography {
 		/* TODO set dark:prose-invert when using light/dark */
-		@apply prose prose-invert lg:prose-lg max-w-full;
+		@apply prose prose-invert lg:prose-base max-w-full;
 		/* p */
 		@apply prose-p:first:mt-0 prose-p:mb-2.5 prose-p:mt-2.5;
 		/* h */

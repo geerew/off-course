@@ -3,6 +3,7 @@ package dao
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/database"
@@ -11,10 +12,10 @@ import (
 	"github.com/geerew/off-course/utils/types"
 )
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// CreateOrUpdateAssetProgress creates/updates an asset progress and refreshes course progress
-func (dao *DAO) CreateOrUpdateAssetProgress(ctx context.Context, courseId string, assetProgress *models.AssetProgress) error {
+// UpsertAssetProgress creates or updates an asset progress record for a user
+//
+// TODO rewrite to use a single method to use withSuffix and ON CONFLICT (like course_progress)
+func (dao *DAO) UpsertAssetProgress(ctx context.Context, courseID string, assetProgress *models.AssetProgress) error {
 	if assetProgress == nil {
 		return utils.ErrNilPtr
 	}
@@ -23,113 +24,187 @@ func (dao *DAO) CreateOrUpdateAssetProgress(ctx context.Context, courseId string
 	if err != nil {
 		return err
 	}
-
-	// Set the user ID in the progress object
 	assetProgress.UserID = principal.UserID
 
-	return dao.db.RunInTransaction(ctx, func(txCtx context.Context) error {
-		if assetProgress.VideoPos < 0 {
-			assetProgress.VideoPos = 0
-		}
+	if assetProgress.VideoPos < 0 {
+		assetProgress.VideoPos = 0
+	}
 
-		options := &database.Options{}
-
-		// Join the course table
-		options.AddJoin(
-			models.COURSE_TABLE, models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID,
-		)
-
-		options.Where = squirrel.And{
+	// Get the existing asset, ensuring it belongs to the course
+	dbOpts := database.NewOptions().
+		WithJoin(models.COURSE_TABLE, fmt.Sprintf("%s = %s", models.ASSET_TABLE_COURSE_ID, models.COURSE_TABLE_ID)).
+		WithWhere(squirrel.And{
 			squirrel.Eq{models.ASSET_TABLE_ID: assetProgress.AssetID},
-			squirrel.Eq{models.COURSE_TABLE_ID: courseId},
-		}
-
-		asset := &models.Asset{}
-		err := dao.GetAsset(txCtx, asset, options)
-		if err != nil {
-			return err
-		}
-
-		// Use both asset_id and user_id to look up the existing progress
-		existingProgress := &models.AssetProgress{}
-		err = dao.GetAssetProgress(txCtx, existingProgress, &database.Options{
-			Where: squirrel.And{
-				squirrel.Eq{models.ASSET_PROGRESS_TABLE_ASSET_ID: assetProgress.AssetID},
-				squirrel.Eq{models.ASSET_PROGRESS_TABLE_USER_ID: principal.UserID},
-			},
+			squirrel.Eq{models.COURSE_TABLE_ID: courseID},
 		})
 
-		if err != nil && err != sql.ErrNoRows {
-			return err
-		}
+	asset := &models.Asset{}
+	asset, err = dao.GetAsset(ctx, dbOpts)
+	if err != nil {
+		return err
+	}
 
-		if err == sql.ErrNoRows {
-			// Create new progress record
+	if asset == nil {
+		return sql.ErrNoRows
+	}
+
+	// Get the existing asset progress if it exists
+	dbOpts = database.NewOptions().WithWhere(squirrel.And{
+		squirrel.Eq{models.ASSET_PROGRESS_TABLE_ASSET_ID: assetProgress.AssetID},
+		squirrel.Eq{models.ASSET_PROGRESS_TABLE_USER_ID: assetProgress.UserID},
+	})
+
+	existing, err := dao.GetAssetProgress(ctx, dbOpts)
+	if err != nil {
+		return err
+	}
+
+	now := types.NowDateTime()
+
+	return dao.db.RunInTransaction(ctx, func(txCtx context.Context) error {
+		if existing == nil {
+			assetProgress.RefreshId()
+			assetProgress.RefreshCreatedAt()
+			assetProgress.RefreshUpdatedAt()
+
 			if assetProgress.Completed {
-				assetProgress.CompletedAt = types.NowDateTime()
+				assetProgress.CompletedAt = now
 			}
 
-			err := Create(txCtx, dao, assetProgress)
-			if err != nil {
+			builderOpts := newBuilderOptions(models.ASSET_PROGRESS_TABLE).
+				WithData(map[string]interface{}{
+					models.BASE_ID:                     assetProgress.ID,
+					models.ASSET_PROGRESS_ASSET_ID:     assetProgress.AssetID,
+					models.ASSET_PROGRESS_USER_ID:      assetProgress.UserID,
+					models.ASSET_PROGRESS_VIDEO_POS:    assetProgress.VideoPos,
+					models.ASSET_PROGRESS_COMPLETED:    assetProgress.Completed,
+					models.ASSET_PROGRESS_COMPLETED_AT: assetProgress.CompletedAt,
+					models.BASE_CREATED_AT:             assetProgress.CreatedAt,
+					models.BASE_UPDATED_AT:             assetProgress.UpdatedAt,
+				})
+
+			if err := createGeneric(txCtx, dao, *builderOpts); err != nil {
 				return err
 			}
 		} else {
-			// Update existing progress
-			assetProgress.ID = existingProgress.ID
+			assetProgress.ID = existing.ID
+
+			// Only bump completed_at when first flipping to true
 			if assetProgress.Completed {
-				if existingProgress.Completed {
-					assetProgress.CompletedAt = existingProgress.CompletedAt
+				if existing.Completed {
+					assetProgress.CompletedAt = existing.CompletedAt
 				} else {
-					assetProgress.CompletedAt = types.NowDateTime()
+					assetProgress.CompletedAt = now
 				}
 			} else {
 				assetProgress.CompletedAt = types.DateTime{}
 			}
 
-			_, err = Update(txCtx, dao, assetProgress)
-			if err != nil {
+			assetProgress.RefreshUpdatedAt()
+
+			dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: assetProgress.ID})
+
+			builderOpts := newBuilderOptions(models.ASSET_PROGRESS_TABLE).
+				WithData(map[string]interface{}{
+					models.ASSET_PROGRESS_VIDEO_POS:    assetProgress.VideoPos,
+					models.ASSET_PROGRESS_COMPLETED:    assetProgress.Completed,
+					models.ASSET_PROGRESS_COMPLETED_AT: assetProgress.CompletedAt,
+					models.BASE_UPDATED_AT:             assetProgress.UpdatedAt,
+				}).
+				SetDbOpts(dbOpts)
+
+			if _, err := updateGeneric(txCtx, dao, *builderOpts); err != nil {
 				return err
 			}
 		}
 
-		// Pass user ID to RefreshCourseProgress
-		return dao.RefreshCourseProgress(txCtx, asset.CourseID)
+		return dao.SyncCourseProgress(txCtx, asset.CourseID)
 	})
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetAssetProgress retrieves an asset progress
-//
-// When options is nil or options.Where is nil, the models ID will be used
-func (dao *DAO) GetAssetProgress(ctx context.Context, assetProgress *models.AssetProgress, options *database.Options) error {
-	if assetProgress == nil {
-		return utils.ErrNilPtr
-	}
+// GetAssetProgress gets a record from the asset progress table based upon the where clause in the options. If
+// there is no where clause, it will return the first record in the table
+func (dao *DAO) GetAssetProgress(ctx context.Context, dbOpts *database.Options) (*models.AssetProgress, error) {
+	builderOpts := newBuilderOptions(models.ASSET_PROGRESS_TABLE).
+		WithColumns(
+			models.ASSET_PROGRESS_TABLE + ".*",
+		).
+		SetDbOpts(dbOpts).
+		WithLimit(1)
 
-	if options == nil {
-		options = &database.Options{}
-	}
-
-	// When there is no where clause, use the ID
-	if options.Where == nil {
-		if assetProgress.Id() == "" {
-			return utils.ErrInvalidId
-		}
-
-		options.Where = squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: assetProgress.Id()}
-	}
-
-	return Get(ctx, dao, assetProgress, options)
+	return getGeneric[models.AssetProgress](ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// ListAssetProgress retrieves a list of asset progress
-func (dao *DAO) ListAssetProgress(ctx context.Context, assetProgress *[]*models.AssetProgress, options *database.Options) error {
-	if assetProgress == nil {
-		return utils.ErrNilPtr
+// ListAssetProgress gets all records from the asset progress table based upon the where clause and pagination
+// in the options
+func (dao *DAO) ListAssetProgress(ctx context.Context, dbOpts *database.Options) ([]*models.AssetProgress, error) {
+	builderOpts := newBuilderOptions(models.ASSET_PROGRESS_TABLE).
+		WithColumns(
+			models.ASSET_PROGRESS_TABLE + ".*",
+		).
+		SetDbOpts(dbOpts)
+
+	return listGeneric[models.AssetProgress](ctx, dao, *builderOpts)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ListAssetProgressIDs returns just the asset progress IDs as a []string
+//
+// TODO add tests
+func (dao *DAO) ListAssetProgressIDs(ctx context.Context, dbOpts *database.Options) ([]string, error) {
+	builderOpts := newBuilderOptions(models.ASSET_PROGRESS_TABLE).
+		WithColumns(models.ASSET_PROGRESS_TABLE + "." + models.BASE_ID).
+		SetDbOpts(dbOpts)
+
+	return pluck[string](ctx, dao, *builderOpts)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// DeleteAssetProgress deletes records from the asset progress table
+//
+// Errors when a where clause is not provided
+func (dao *DAO) DeleteAssetProgress(ctx context.Context, dbOpts *database.Options) error {
+	if dbOpts == nil || dbOpts.Where == nil {
+		return utils.ErrWhere
 	}
 
-	return List(ctx, dao, assetProgress, options)
+	builderOpts := newBuilderOptions(models.ASSET_PROGRESS_TABLE).SetDbOpts(dbOpts)
+	sqlStr, args, _ := deleteBuilder(*builderOpts)
+
+	q := database.QuerierFromContext(ctx, dao.db)
+	_, err := q.ExecContext(ctx, sqlStr, args...)
+	return err
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// DeleteAssetProgressForCourse deletes all asset progress records for a given user that
+// belong to a course
+func (dao *DAO) DeleteAssetProgressForCourse(ctx context.Context, courseID, userID string) error {
+	if courseID == "" {
+		return utils.ErrCourseId
+	}
+
+	if userID == "" {
+		return utils.ErrUserId
+	}
+
+	where := squirrel.And{
+		squirrel.Eq{models.ASSET_PROGRESS_TABLE_USER_ID: userID},
+		squirrel.Expr(
+			"EXISTS (SELECT 1 FROM "+models.ASSET_TABLE+
+				" WHERE "+models.ASSET_TABLE_ID+" = "+models.ASSET_PROGRESS_TABLE_ASSET_ID+
+				" AND "+models.ASSET_TABLE_COURSE_ID+" = ?)",
+			courseID,
+		),
+	}
+
+	dbOpts := database.NewOptions().WithWhere(where)
+
+	return dao.DeleteAssetProgress(ctx, dbOpts)
 }

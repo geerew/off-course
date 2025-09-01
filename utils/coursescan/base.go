@@ -2,7 +2,6 @@ package coursescan
 
 import (
 	"context"
-	"database/sql"
 	"log/slog"
 
 	"github.com/Masterminds/squirrel"
@@ -61,30 +60,27 @@ func New(config *CourseScanConfig) *CourseScan {
 // Add inserts a course scan job into the db
 func (s *CourseScan) Add(ctx context.Context, courseId string) (*models.Scan, error) {
 	// Look up the course
-	course := &models.Course{}
-	options := &database.Options{
-		Where:            squirrel.Eq{models.COURSE_TABLE_ID: courseId},
-		ExcludeRelations: []string{models.COURSE_RELATION_PROGRESS},
-	}
-	if err := s.dao.GetCourse(ctx, course, options); err != nil {
-		if err == sql.ErrNoRows {
-			return nil, utils.ErrInvalidId
-		}
-
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: courseId})
+	course, err := s.dao.GetCourse(ctx, dbOpts)
+	if err != nil {
 		return nil, err
 	}
 
+	if course == nil {
+		return nil, utils.ErrCourseNotFound
+	}
+
 	// Get the scan from the db and return that
-	scan := &models.Scan{}
-	if err := s.dao.GetScan(ctx, scan, &database.Options{Where: squirrel.Eq{models.SCAN_TABLE_COURSE_ID: courseId}}); err != nil {
-		if err == sql.ErrNoRows {
-			// No scan job exists, create a new one
-			scan = &models.Scan{CourseID: course.ID}
-			if err := s.dao.CreateScan(ctx, scan); err != nil {
-				return nil, err
-			}
-		} else {
-			// Error
+	dbOpts = database.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_COURSE_ID: courseId})
+	scan, err := s.dao.GetScan(ctx, dbOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	if scan == nil {
+		// No scan job exists, create a new one
+		scan = &models.Scan{CourseID: course.ID}
+		if err := s.dao.CreateScan(ctx, scan); err != nil {
 			return nil, err
 		}
 	} else {
@@ -134,22 +130,20 @@ func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessor
 
 		// Keep process jobs from the scans table until there are no more jobs
 		for {
-			nextScan := &models.Scan{}
-			err := s.dao.NextWaitingScan(ctx, nextScan)
+			nextScan, err := s.dao.NextWaitingScan(ctx)
 			if err != nil {
-				// Nothing more to process
-				if err == sql.ErrNoRows {
-					s.logger.Debug("Finished processing all scan jobs", loggerType)
-					break
-				}
-
-				// Error
 				s.logger.Error(
 					"Failed to look up the next scan job",
 					loggerType,
 					slog.String("error", err.Error()),
 				)
 
+				break
+			}
+
+			// Nothing more to process
+			if nextScan == nil {
+				s.logger.Debug("Finished processing all scan jobs", loggerType)
 				break
 			}
 
@@ -171,7 +165,8 @@ func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessor
 			}
 
 			// Cleanup
-			if err := dao.Delete(ctx, s.dao, nextScan, nil); err != nil {
+			dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_ID: nextScan.ID})
+			if err := s.dao.DeleteScans(ctx, dbOpts); err != nil {
 				s.logger.Error(
 					"Failed to delete scan job",
 					loggerType,

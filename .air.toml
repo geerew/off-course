@@ -9,6 +9,5 @@ exclude_dir = ["assets", "ui", "ui_old", "cmd"]
 include_ext = ["go"]
 exclude_regex = ["_test\\.go"]
 
-
 [env]
 DEV_UI_PORT = "5173"

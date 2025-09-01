@@ -5,11 +5,9 @@ import {
 	object,
 	optional,
 	picklist,
-	record,
 	string,
 	type InferOutput
 } from 'valibot';
-import { AttachmentSchema } from './attachment-model';
 import { BaseSchema } from './base-model';
 import { BasePaginationSchema, type PaginationReqParams } from './pagination-model';
 
@@ -18,12 +16,6 @@ import { BasePaginationSchema, type PaginationReqParams } from './pagination-mod
 // Asset type schema
 const AssetTypeSchema = picklist(['video', 'html', 'pdf', 'markdown', 'text']);
 export type AssetType = InferOutput<typeof AssetTypeSchema>;
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// Description type schema
-const DescriptionTypeSchema = picklist(['markdown', 'text']);
-export type DescriptionType = InferOutput<typeof DescriptionTypeSchema>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -52,17 +44,16 @@ export type AssetProgressModel = InferOutput<typeof AssetProgressSchema>;
 // Asset schema
 export const AssetSchema = object({
 	...BaseSchema.entries,
+	courseId: string(),
+	lessonId: string(),
 	title: string(),
 	prefix: number(),
 	subPrefix: optional(number()),
 	subTitle: optional(string()),
-	chapter: string(),
+	module: string(),
 	path: string(),
 	assetType: AssetTypeSchema,
-	hasDescription: boolean(),
-	descriptionType: optional(DescriptionTypeSchema),
 	videoMetadata: optional(AssetVideoMetadataSchema),
-	attachments: array(AttachmentSchema),
 	progress: optional(AssetProgressSchema)
 });
 
@@ -83,23 +74,3 @@ export type AssetPaginationModel = InferOutput<typeof AssetPaginationSchema>;
 export type AssetReqParams = PaginationReqParams & {
 	q?: string;
 };
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-const AssetGroupSchema = object({
-	prefix: number(),
-	title: string(),
-	assets: array(AssetSchema),
-	attachments: array(AttachmentSchema),
-	completed: boolean(),
-	startedAssetCount: number(),
-	completedAssetCount: number()
-});
-
-export type AssetGroup = InferOutput<typeof AssetGroupSchema>;
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-const ChaptersSchema = record(string(), array(AssetGroupSchema));
-
-export type Chapters = InferOutput<typeof ChaptersSchema>;

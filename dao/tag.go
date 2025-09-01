@@ -2,7 +2,6 @@ package dao
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 
 	"github.com/Masterminds/squirrel"
@@ -13,79 +12,139 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// CreateTag creates a tag
+// CreateTag inserts a new tag record
 func (dao *DAO) CreateTag(ctx context.Context, tag *models.Tag) error {
 	if tag == nil {
 		return utils.ErrNilPtr
 	}
 
-	// Check if the tag already exists
-	options := &database.Options{
-		Where: squirrel.Expr(
-			fmt.Sprintf("LOWER(%s) = LOWER(?)", models.TAG_TABLE_TAG),
-			tag.Tag,
-		),
-	}
-	existingTag := &models.Tag{}
-	err := dao.GetTag(ctx, existingTag, options)
-	if err != nil && err != sql.ErrNoRows {
-		return err
+	if tag.Tag == "" {
+		return utils.ErrTag
 	}
 
-	// The tag already exists, update the tag with the existing tag and attempt to create it. This
-	// will result in an error but it gives a more specific error message
-	if err == nil {
-		tag.Tag = existingTag.Tag
+	if tag.ID == "" {
+		tag.RefreshId()
 	}
 
-	return Create(ctx, dao, tag)
+	tag.RefreshCreatedAt()
+	tag.RefreshUpdatedAt()
+
+	builderOpts := newBuilderOptions(models.TAG_TABLE).
+		WithData(
+			map[string]interface{}{
+				models.BASE_ID:         tag.ID,
+				models.TAG_TAG:         tag.Tag,
+				models.BASE_CREATED_AT: tag.CreatedAt,
+				models.BASE_UPDATED_AT: tag.UpdatedAt,
+			},
+		)
+
+	return createGeneric(ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetTag retrieves a tag
+// CountTags counts the number of tag records
+func (dao *DAO) CountTags(ctx context.Context, dbOpts *database.Options) (int, error) {
+	builderOpts := newBuilderOptions(models.TAG_TABLE).SetDbOpts(dbOpts)
+	return countGeneric(ctx, dao, *builderOpts)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetTag gets a record from the tags table based upon the where clause in the options. If
+// there is no where clause, it will return the first record in the table
+func (dao *DAO) GetTag(ctx context.Context, dbOpts *database.Options) (*models.Tag, error) {
+	builderOpts := newBuilderOptions(models.TAG_TABLE).
+		WithColumns(
+			models.TAG_TABLE+".*",
+			fmt.Sprintf("COUNT(%s) as course_count", models.COURSE_TAG_TABLE_COURSE_ID),
+		).
+		WithLeftJoin(models.COURSE_TAG_TABLE, fmt.Sprintf("%s = %s", models.COURSE_TAG_TABLE_TAG_ID, models.TAG_TABLE_ID)).
+		WithGroupBy(models.TAG_TABLE_ID).
+		SetDbOpts(dbOpts).
+		WithLimit(1)
+
+	return getGeneric[models.Tag](ctx, dao, *builderOpts)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ListTags gets all records from the tags table based upon the where clause and pagination
+// in the options
+func (dao *DAO) ListTags(ctx context.Context, dbOpts *database.Options) ([]*models.Tag, error) {
+	builderOpts := newBuilderOptions(models.TAG_TABLE).
+		WithColumns(
+			models.TAG_TABLE+".*",
+			fmt.Sprintf("COUNT(%s) as course_count", models.COURSE_TAG_TABLE_COURSE_ID),
+		).
+		WithLeftJoin(models.COURSE_TAG_TABLE, fmt.Sprintf("%s = %s", models.COURSE_TAG_TABLE_TAG_ID, models.TAG_TABLE_ID)).
+		WithGroupBy(models.TAG_TABLE_ID).
+		SetDbOpts(dbOpts)
+
+	return listGeneric[models.Tag](ctx, dao, *builderOpts)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ListTagNames returns just the tag names as a []string
 //
-// When options is nil or options.Where is nil, the models ID will be used
-func (dao *DAO) GetTag(ctx context.Context, tag *models.Tag, options *database.Options) error {
-	if tag == nil {
-		return utils.ErrNilPtr
-	}
+// TODO add tests
+func (dao *DAO) ListTagNames(ctx context.Context, dbOpts *database.Options) ([]string, error) {
+	builderOpts := newBuilderOptions(models.TAG_TABLE).
+		WithColumns(models.TAG_TABLE + "." + models.TAG_TAG).
+		SetDbOpts(dbOpts)
 
-	if options == nil {
-		options = &database.Options{}
-	}
-
-	// When there is no where clause, use the ID
-	if options.Where == nil {
-		if tag.Id() == "" {
-			return utils.ErrInvalidId
-		}
-
-		options.Where = squirrel.Eq{models.TAG_TABLE_ID: tag.Id()}
-	}
-
-	return Get(ctx, dao, tag, options)
+	return pluck[string](ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// ListTags retrieves a list of tags
-func (dao *DAO) ListTags(ctx context.Context, tags *[]*models.Tag, options *database.Options) error {
-	if tags == nil {
-		return utils.ErrNilPtr
-	}
-
-	return List(ctx, dao, tags, options)
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// UpdateTag updates a tag
+// UpdateTag updates a tag record
 func (dao *DAO) UpdateTag(ctx context.Context, tag *models.Tag) error {
 	if tag == nil {
 		return utils.ErrNilPtr
 	}
 
-	_, err := Update(ctx, dao, tag)
+	if tag.ID == "" {
+		return utils.ErrId
+	}
+
+	if tag.Tag == "" {
+		return utils.ErrTag
+	}
+
+	tag.RefreshUpdatedAt()
+
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: tag.ID})
+
+	builderOpts := newBuilderOptions(models.TAG_TABLE).
+		WithData(
+			map[string]interface{}{
+				models.TAG_TAG:         tag.Tag,
+				models.BASE_UPDATED_AT: tag.UpdatedAt,
+			},
+		).
+		SetDbOpts(dbOpts)
+
+	_, err := updateGeneric(ctx, dao, *builderOpts)
+	return err
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// DeleteTags deletes records from the tags table
+//
+// Errors when a where clause is not provided
+func (dao *DAO) DeleteTags(ctx context.Context, dbOpts *database.Options) error {
+	if dbOpts == nil || dbOpts.Where == nil {
+		return utils.ErrWhere
+	}
+
+	builderOpts := newBuilderOptions(models.TAG_TABLE).SetDbOpts(dbOpts)
+	sqlStr, args, _ := deleteBuilder(*builderOpts)
+
+	q := database.QuerierFromContext(ctx, dao.db)
+	_, err := q.ExecContext(ctx, sqlStr, args...)
 	return err
 }

@@ -287,7 +287,7 @@ func TestScans_CreateScan(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setup(t, "admin", types.UserRoleAdmin)
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.SCAN_TABLE)
+		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/scans/", strings.NewReader(`{"courseID": "test"}`))

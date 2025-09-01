@@ -2,6 +2,7 @@ package dao
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/database"
@@ -12,81 +13,132 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// CreateScan creates a scan
+// CreateScan inserts a new scan record
 func (dao *DAO) CreateScan(ctx context.Context, scan *models.Scan) error {
 	if scan == nil {
 		return utils.ErrNilPtr
 	}
 
-	// A scan should always be in the waiting state when created
+	if scan.ID == "" {
+		scan.RefreshId()
+	}
+
+	scan.RefreshCreatedAt()
+	scan.RefreshUpdatedAt()
+
 	if !scan.Status.IsWaiting() {
 		scan.Status.SetWaiting()
 	}
 
-	return Create(ctx, dao, scan)
+	builderOpts := newBuilderOptions(models.SCAN_TABLE).
+		WithData(
+			map[string]interface{}{
+				models.BASE_ID:         scan.ID,
+				models.SCAN_COURSE_ID:  scan.CourseID,
+				models.SCAN_STATUS:     scan.Status,
+				models.BASE_CREATED_AT: scan.CreatedAt,
+				models.BASE_UPDATED_AT: scan.UpdatedAt,
+			},
+		)
+
+	return createGeneric(ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetScan retrieves a scan
-//
-// When options is nil or options.Where is nil, the models ID will be used
-func (dao *DAO) GetScan(ctx context.Context, scan *models.Scan, options *database.Options) error {
-	if scan == nil {
-		return utils.ErrNilPtr
-	}
-
-	if options == nil {
-		options = &database.Options{}
-	}
-
-	// When there is no where clause, use the ID
-	if options.Where == nil {
-		if scan.Id() == "" {
-			return utils.ErrInvalidId
-		}
-
-		options.Where = squirrel.Eq{models.SCAN_TABLE_ID: scan.Id()}
-	}
-
-	return Get(ctx, dao, scan, options)
+// CountScans counts the number of scan records
+func (dao *DAO) CountScans(ctx context.Context, dbOpts *database.Options) (int, error) {
+	builderOpts := newBuilderOptions(models.SCAN_TABLE).SetDbOpts(dbOpts)
+	return countGeneric(ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// ListScans retrieves a list of scans
-func (dao *DAO) ListScans(ctx context.Context, scans *[]*models.Scan, options *database.Options) error {
-	if scans == nil {
-		return utils.ErrNilPtr
-	}
+// GetScan gets a record from the scans table based upon the where clause in the options. If
+// there is no where clause, it will return the first record in the table
+func (dao *DAO) GetScan(ctx context.Context, dbOpts *database.Options) (*models.Scan, error) {
+	builderOpts := newBuilderOptions(models.SCAN_TABLE).
+		WithColumns(
+			models.SCAN_TABLE+".*",
+			models.COURSE_TABLE_PATH+" AS course_path",
+		).
+		WithJoin(models.COURSE_TABLE, fmt.Sprintf("%s = %s", models.COURSE_TABLE_ID, models.SCAN_TABLE_COURSE_ID)).
+		SetDbOpts(dbOpts).
+		WithLimit(1)
 
-	return List(ctx, dao, scans, options)
+	return getGeneric[models.Scan](ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// UpdateScan updates a scan
+// ListScans gets all records from the scans table based upon the where clause and pagination
+// in the options
+func (dao *DAO) ListScans(ctx context.Context, dbOpts *database.Options) ([]*models.Scan, error) {
+	builderOpts := newBuilderOptions(models.SCAN_TABLE).
+		WithColumns(
+			models.SCAN_TABLE+".*",
+			models.COURSE_TABLE_PATH+" AS course_path",
+		).
+		WithJoin(models.COURSE_TABLE, fmt.Sprintf("%s = %s", models.COURSE_TABLE_ID, models.SCAN_TABLE_COURSE_ID)).
+		SetDbOpts(dbOpts)
+
+	return listGeneric[models.Scan](ctx, dao, *builderOpts)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// UpdateScan updates a scan record
 func (dao *DAO) UpdateScan(ctx context.Context, scan *models.Scan) error {
 	if scan == nil {
 		return utils.ErrNilPtr
 	}
 
-	_, err := Update(ctx, dao, scan)
+	if scan.ID == "" {
+		return utils.ErrId
+	}
+
+	scan.RefreshUpdatedAt()
+
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: scan.ID})
+
+	builderOpts := newBuilderOptions(models.SCAN_TABLE).
+		WithData(
+			map[string]interface{}{
+				models.SCAN_STATUS:     scan.Status,
+				models.BASE_UPDATED_AT: scan.UpdatedAt,
+			},
+		).
+		SetDbOpts(dbOpts)
+
+	_, err := updateGeneric(ctx, dao, *builderOpts)
+	return err
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// DeleteScans deletes records from the scans table
+//
+// Errors when a where clause is not provided
+func (dao *DAO) DeleteScans(ctx context.Context, dbOpts *database.Options) error {
+	if dbOpts == nil || dbOpts.Where == nil {
+		return utils.ErrWhere
+	}
+
+	builderOpts := newBuilderOptions(models.SCAN_TABLE).SetDbOpts(dbOpts)
+	sqlStr, args, _ := deleteBuilder(*builderOpts)
+
+	q := database.QuerierFromContext(ctx, dao.db)
+	_, err := q.ExecContext(ctx, sqlStr, args...)
 	return err
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // NextWaitingScan gets the next scan whose status is `waiting“ based upon the created_at column
-func (dao *DAO) NextWaitingScan(ctx context.Context, scan *models.Scan) error {
-	if scan == nil {
-		return utils.ErrNilPtr
-	}
+func (dao *DAO) NextWaitingScan(ctx context.Context) (*models.Scan, error) {
+	dbOpts := database.NewOptions().
+		WithWhere(squirrel.Eq{models.SCAN_TABLE_STATUS: types.ScanStatusWaiting}).
+		WithOrderBy(models.SCAN_TABLE_CREATED_AT + " ASC")
 
-	options := &database.Options{
-		Where:   squirrel.Eq{models.SCAN_TABLE_STATUS: types.ScanStatusWaiting},
-		OrderBy: []string{models.SCAN_TABLE_CREATED_AT + " ASC"},
-	}
-
-	return dao.GetScan(ctx, scan, options)
+	return dao.GetScan(ctx, dbOpts)
 }

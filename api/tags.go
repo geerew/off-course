@@ -1,7 +1,6 @@
 package api
 
 import (
-	"database/sql"
 	"log/slog"
 	"net/url"
 	"slices"
@@ -43,7 +42,7 @@ func (r *Router) initTagRoutes() {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api *tagsAPI) getTags(c *fiber.Ctx) error {
-	builderOptions := builderOptions{
+	builderOpts := builderOptions{
 		DefaultOrderBy: defaultTagsOrderBy,
 		Paginate:       true,
 		AfterParseHook: tagsAfterParseHook,
@@ -54,17 +53,17 @@ func (api *tagsAPI) getTags(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	options, err := optionsBuilder(c, builderOptions, principal.UserID)
+	dbOpts, err := optionsBuilder(c, builderOpts, principal.UserID)
 	if err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
-	tags := []*models.Tag{}
-	if err = api.dao.ListTags(ctx, &tags, options); err != nil {
+	tags, err := api.dao.ListTags(ctx, dbOpts)
+	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tags", err)
 	}
 
-	pResult, err := options.Pagination.BuildResult(tagResponseHelper(tags))
+	pResult, err := dbOpts.Pagination.BuildResult(tagResponseHelper(tags))
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error building pagination result", err)
 	}
@@ -75,7 +74,7 @@ func (api *tagsAPI) getTags(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api *tagsAPI) getTagNames(c *fiber.Ctx) error {
-	builderOptions := builderOptions{
+	builderOpts := builderOptions{
 		DefaultOrderBy: defaultTagsOrderBy,
 		Paginate:       false,
 		AfterParseHook: tagsAfterParseHook,
@@ -86,12 +85,12 @@ func (api *tagsAPI) getTagNames(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	options, err := optionsBuilder(c, builderOptions, principal.UserID)
+	dbOpts, err := optionsBuilder(c, builderOpts, principal.UserID)
 	if err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
-	tags, err := dao.ListPluck[[]string](ctx, api.dao, &models.Tag{}, options, models.TAG_TAG)
+	tags, err := api.dao.ListTagNames(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tags", err)
 	}
@@ -116,15 +115,15 @@ func (api *tagsAPI) getTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	options := &database.Options{Where: squirrel.Eq{models.TAG_TABLE_TAG: name}}
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_TAG: name})
 
-	tag := &models.Tag{}
-	if err = api.dao.GetTag(ctx, tag, options); err != nil {
-		if err == sql.ErrNoRows {
-			return errorResponse(c, fiber.StatusNotFound, "Tag not found", nil)
-		}
-
+	tag, err := api.dao.GetTag(ctx, dbOpts)
+	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tag", err)
+	}
+
+	if tag == nil {
+		return errorResponse(c, fiber.StatusNotFound, "Tag not found", nil)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(tagResponseHelper([]*models.Tag{tag})[0])
@@ -174,13 +173,14 @@ func (api *tagsAPI) updateTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	tag := &models.Tag{Base: models.Base{ID: id}}
-	if err := api.dao.GetTag(ctx, tag, nil); err != nil {
-		if err == sql.ErrNoRows {
-			return errorResponse(c, fiber.StatusNotFound, "Tag not found", nil)
-		}
-
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: id})
+	tag, err := api.dao.GetTag(ctx, dbOpts)
+	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tag", err)
+	}
+
+	if tag == nil {
+		return errorResponse(c, fiber.StatusNotFound, "Tag not found", nil)
 	}
 
 	tag.Tag = tagReq.Tag
@@ -206,8 +206,8 @@ func (api *tagsAPI) deleteTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	tag := &models.Tag{Base: models.Base{ID: id}}
-	if err := dao.Delete(ctx, api.dao, tag, nil); err != nil {
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: id})
+	if err = api.dao.DeleteTags(ctx, dbOpts); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting tag", err)
 	}
 

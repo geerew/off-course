@@ -7,6 +7,7 @@ import (
 
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/types"
+	"github.com/jmoiron/sqlx"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -54,7 +55,7 @@ type (
 // Database defines the interface for a database
 type Database interface {
 	Querier
-	DB() *sql.DB
+	DB() *sqlx.DB
 	RunInTransaction(context.Context, func(context.Context) error) error
 	SetLogger(*slog.Logger)
 }
@@ -63,9 +64,17 @@ type Database interface {
 
 // Querier defines the interface for a DB querier
 type Querier interface {
+	// TODO Remove these methods in favor of the context-aware methods
 	Exec(query string, args ...any) (sql.Result, error)
 	Query(query string, args ...any) (*sql.Rows, error)
 	QueryRow(query string, args ...any) *sql.Row
+
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+
+	GetContext(ctx context.Context, dest any, query string, args ...any) error
+	SelectContext(ctx context.Context, dest any, query string, args ...any) error
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

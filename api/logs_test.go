@@ -40,7 +40,7 @@ func TestLogs_GetLogs(t *testing.T) {
 				Message: fmt.Sprintf("log %d", i+1),
 			}
 
-			require.Nil(t, router.logDao.WriteLog(ctx, log))
+			require.Nil(t, router.logDao.CreateLog(ctx, log))
 		}
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/logs/", nil))
@@ -55,16 +55,16 @@ func TestLogs_GetLogs(t *testing.T) {
 	t.Run("200 (filter)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
-		require.NoError(t, router.logDao.WriteLog(ctx, &models.Log{Data: map[string]any{"type": types.LogTypeRequest.String()}, Level: -4, Message: "log 1"}))
+		require.NoError(t, router.logDao.CreateLog(ctx, &models.Log{Data: map[string]any{"type": types.LogTypeRequest.String()}, Level: -4, Message: "log 1"}))
 		time.Sleep(1 * time.Millisecond)
 
-		require.NoError(t, router.logDao.WriteLog(ctx, &models.Log{Data: map[string]any{"type": types.LogTypeRequest.String()}, Level: 0, Message: "log 2"}))
+		require.NoError(t, router.logDao.CreateLog(ctx, &models.Log{Data: map[string]any{"type": types.LogTypeRequest.String()}, Level: 0, Message: "log 2"}))
 		time.Sleep(1 * time.Millisecond)
 
-		require.NoError(t, router.logDao.WriteLog(ctx, &models.Log{Data: map[string]any{"type": types.LogTypeDB.String()}, Level: 4, Message: "log 3"}))
+		require.NoError(t, router.logDao.CreateLog(ctx, &models.Log{Data: map[string]any{"type": types.LogTypeDB.String()}, Level: 4, Message: "log 3"}))
 		time.Sleep(1 * time.Millisecond)
 
-		require.NoError(t, router.logDao.WriteLog(ctx, &models.Log{Data: map[string]any{"type": types.LogTypeCourseScan.String()}, Level: 8, Message: "log 4"}))
+		require.NoError(t, router.logDao.CreateLog(ctx, &models.Log{Data: map[string]any{"type": types.LogTypeCourseScan.String()}, Level: 8, Message: "log 4"}))
 
 		defaultSort := " sort:\"" + models.LOG_TABLE_CREATED_AT + " asc\""
 
@@ -118,7 +118,7 @@ func TestLogs_GetLogs(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		for i := range 17 {
-			require.Nil(t, router.logDao.WriteLog(ctx, &models.Log{Data: map[string]any{}, Level: 0, Message: fmt.Sprintf("log %d", i+1)}))
+			require.Nil(t, router.logDao.CreateLog(ctx, &models.Log{Data: map[string]any{}, Level: 0, Message: fmt.Sprintf("log %d", i+1)}))
 			time.Sleep(1 * time.Millisecond)
 		}
 

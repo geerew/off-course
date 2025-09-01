@@ -164,10 +164,8 @@ func (r *Router) createSessionStore() {
 // initBootstrap determines if the application is bootstrapped by checking if there is
 // an admin user
 func (r *Router) initBootstrap() {
-	options := &database.Options{
-		Where: squirrel.Eq{models.USER_TABLE_ROLE: types.UserRoleAdmin},
-	}
-	count, err := dao.Count(context.Background(), r.dao, &models.User{}, options)
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ROLE: types.UserRoleAdmin})
+	count, err := r.dao.CountUsers(context.Background(), dbOpts)
 	if err != nil {
 		utils.Errf("Failed to count users: %s\n", err.Error())
 	}

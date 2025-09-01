@@ -2,6 +2,8 @@ package dao
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -14,114 +16,282 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// CreateCourse creates a course and course progress
+// CreateCourse inserts a new course record
 func (dao *DAO) CreateCourse(ctx context.Context, course *models.Course) error {
 	if course == nil {
 		return utils.ErrNilPtr
 	}
 
+	if course.Title == "" {
+		return utils.ErrTitle
+	}
+
+	if course.Path == "" {
+		return utils.ErrPath
+	}
+
+	if course.ID == "" {
+		course.RefreshId()
+	}
+
+	course.RefreshCreatedAt()
+	course.RefreshUpdatedAt()
+
 	// Ensure initial scan is false and maintenance is true
 	course.InitialScan = false
 	course.Maintenance = true
 
-	return Create(ctx, dao, course)
+	builderOpts := newBuilderOptions(models.COURSE_TABLE).
+		WithData(
+			map[string]interface{}{
+				models.BASE_ID:             course.ID,
+				models.COURSE_TITLE:        course.Title,
+				models.COURSE_PATH:         course.Path,
+				models.COURSE_CARD_PATH:    course.CardPath,
+				models.COURSE_AVAILABLE:    course.Available,
+				models.COURSE_DURATION:     course.Duration,
+				models.COURSE_INITIAL_SCAN: course.InitialScan,
+				models.COURSE_MAINTENANCE:  course.Maintenance,
+				models.BASE_CREATED_AT:     course.CreatedAt,
+				models.BASE_UPDATED_AT:     course.UpdatedAt,
+			},
+		)
+
+	return createGeneric(ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetCourse retrieves a course
+// GetCourse gets a record from the courses table based upon the where clause in the options. If
+// there is no where clause, it will return the first record in the table
 //
-// When options is nil or options.Where is nil, the models ID will be used
-// When the user role is user, only courses with an initial scan will be returned
-func (dao *DAO) GetCourse(ctx context.Context, course *models.Course, options *database.Options) error {
-	if course == nil {
-		return utils.ErrNilPtr
+// By default, progress is not included. Use `WithProgress()` on the options to include it
+func (dao *DAO) GetCourse(ctx context.Context, dbOpts *database.Options) (*models.Course, error) {
+	// When progress is not included, use a simpler query
+	if dbOpts == nil || !dbOpts.IncludeProgress {
+		builderOpts := newBuilderOptions(models.COURSE_TABLE).
+			WithColumns(models.COURSE_TABLE + ".*").
+			SetDbOpts(dbOpts).
+			WithLimit(1)
+
+		return getGeneric[models.Course](ctx, dao, *builderOpts)
 	}
 
+	// Include progress in the query
 	principal, err := principalFromCtx(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if options == nil {
-		options = &database.Options{}
+	builderOpts := newBuilderOptions(models.COURSE_TABLE).
+		WithColumns(
+			models.COURSE_TABLE+".*",
+			fmt.Sprintf("%s AS course_started", models.COURSE_PROGRESS_TABLE_STARTED),
+			fmt.Sprintf("%s AS course_started_at", models.COURSE_PROGRESS_TABLE_STARTED_AT),
+			fmt.Sprintf("%s AS course_percent", models.COURSE_PROGRESS_TABLE_PERCENT),
+			fmt.Sprintf("%s AS course_completed_at", models.COURSE_PROGRESS_TABLE_COMPLETED_AT),
+		).
+		WithLeftJoin(models.COURSE_PROGRESS_TABLE, fmt.Sprintf("%s = %s AND %s = '%s'", models.COURSE_PROGRESS_TABLE_COURSE_ID, models.COURSE_TABLE_ID, models.COURSE_PROGRESS_TABLE_USER_ID, principal.UserID)).
+		SetDbOpts(dbOpts).
+		WithLimit(1)
+
+	row, err := getRow(ctx, dao, *builderOpts)
+	if err != nil {
+		return nil, err
 	}
 
-	// When there is no where clause, use the ID
-	if options.Where == nil {
-		if course.Id() == "" {
-			return utils.ErrInvalidId
-		}
+	course := &models.Course{}
+	var (
+		started   sql.NullBool
+		startedAt types.DateTime
+		percent   sql.NullInt64
+		completed types.DateTime
+	)
 
-		options.Where = squirrel.Eq{models.COURSE_TABLE_ID: course.Id()}
+	err = row.Scan(
+		&course.ID,
+		&course.Title,
+		&course.Path,
+		&course.CardPath,
+		&course.Available,
+		&course.Duration,
+		&course.InitialScan,
+		&course.Maintenance,
+		&course.CreatedAt,
+		&course.UpdatedAt,
+		// Progress
+		&started,
+		&startedAt,
+		&percent,
+		&completed,
+	)
+
+	if err != nil {
+		return nil, err
 	}
 
-	// When including progress, ensure we set the progress for the user
-	if !slices.Contains(options.ExcludeRelations, models.COURSE_RELATION_PROGRESS) {
-		options.AddRelationFilter(models.COURSE_RELATION_PROGRESS, models.COURSE_PROGRESS_USER_ID, principal.UserID)
+	// Attach progress
+	//
+	// When no progress is found, each field will be set to its zero value
+	course.Progress = &models.CourseProgressInfo{
+		Started:     started.Bool,
+		StartedAt:   startedAt,
+		Percent:     int(percent.Int64),
+		CompletedAt: completed,
 	}
 
-	// If the user role is user, ignore courses without an initial scan
-	if principal.Role == types.UserRoleUser {
-		additionalWhere := squirrel.Eq{models.COURSE_TABLE_INITIAL_SCAN: true}
-
-		if options.Where == nil {
-			options.Where = squirrel.And{additionalWhere}
-		} else {
-			options.Where = squirrel.And{options.Where, additionalWhere}
-		}
-	}
-
-	return Get(ctx, dao, course, options)
+	return course, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// ListCourses retrieves a list of courses
+// ListCourses gets all records from the courses table based upon the where clause and pagination
+// in the options
 //
-// When the user role is user, only courses with an initial scan will be returned
-func (dao *DAO) ListCourses(ctx context.Context, courses *[]*models.Course, options *database.Options) error {
-	if courses == nil {
-		return utils.ErrNilPtr
+// By default, progress is not included. Use `WithProgress()` on the options to include it
+func (dao *DAO) ListCourses(ctx context.Context, dbOpts *database.Options) ([]*models.Course, error) {
+	// When progress is not included, use a simpler query
+	if dbOpts == nil || !dbOpts.IncludeProgress {
+		builderOpts := newBuilderOptions(models.COURSE_TABLE).
+			WithColumns(models.COURSE_TABLE + ".*").
+			SetDbOpts(dbOpts)
+
+		return listGeneric[models.Course](ctx, dao, *builderOpts)
 	}
 
+	// Include progress in the query
 	principal, err := principalFromCtx(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if options == nil {
-		options = &database.Options{}
+	builderOpts := newBuilderOptions(models.COURSE_TABLE).
+		WithColumns(
+			models.COURSE_TABLE+".*",
+			fmt.Sprintf("%s AS course_started", models.COURSE_PROGRESS_TABLE_STARTED),
+			fmt.Sprintf("%s AS course_started_at", models.COURSE_PROGRESS_TABLE_STARTED_AT),
+			fmt.Sprintf("%s AS course_percent", models.COURSE_PROGRESS_TABLE_PERCENT),
+			fmt.Sprintf("%s AS course_completed_at", models.COURSE_PROGRESS_TABLE_COMPLETED_AT),
+		).
+		WithLeftJoin(models.COURSE_PROGRESS_TABLE, fmt.Sprintf("%s = %s AND %s = '%s'", models.COURSE_PROGRESS_TABLE_COURSE_ID, models.COURSE_TABLE_ID, models.COURSE_PROGRESS_TABLE_USER_ID, principal.UserID)).
+		SetDbOpts(dbOpts)
+
+	rows, err := getRows(ctx, dao, *builderOpts)
+	if err != nil {
+		return nil, err
 	}
+	defer rows.Close()
 
-	// When including progress, ensure we set the progress for the user
-	if !slices.Contains(options.ExcludeRelations, models.COURSE_RELATION_PROGRESS) {
-		options.AddRelationFilter(models.COURSE_RELATION_PROGRESS, models.COURSE_PROGRESS_USER_ID, principal.UserID)
-	}
+	var courses []*models.Course
+	for rows.Next() {
+		var (
+			course      models.Course
+			started     sql.NullBool
+			startedAt   types.DateTime
+			percent     sql.NullInt64
+			completedAt types.DateTime
+		)
 
-	// If the user role is user, ignore courses without an initial scan
-	if principal.Role == types.UserRoleUser {
-		additionalWhere := squirrel.Eq{models.COURSE_TABLE_INITIAL_SCAN: true}
+		err := rows.Scan(
+			&course.ID,
+			&course.Title,
+			&course.Path,
+			&course.CardPath,
+			&course.Available,
+			&course.Duration,
+			&course.InitialScan,
+			&course.Maintenance,
+			&course.CreatedAt,
+			&course.UpdatedAt,
+			// Progress
+			&started,
+			&startedAt,
+			&percent,
+			&completedAt,
+		)
 
-		if options.Where == nil {
-			options.Where = squirrel.And{additionalWhere}
-		} else {
-			options.Where = squirrel.And{options.Where, additionalWhere}
+		if err != nil {
+			return nil, err
 		}
+
+		// Attach progress
+		//
+		// When no progress is found, each field will be set to its zero value
+		course.Progress = &models.CourseProgressInfo{
+			Started:     started.Bool,
+			StartedAt:   startedAt,
+			Percent:     int(percent.Int64),
+			CompletedAt: completedAt,
+		}
+
+		courses = append(courses, &course)
 	}
 
-	return List(ctx, dao, courses, options)
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return courses, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// UpdateCourse updates a course
+// UpdateCourse updates a course record
 func (dao *DAO) UpdateCourse(ctx context.Context, course *models.Course) error {
 	if course == nil {
 		return utils.ErrNilPtr
 	}
 
-	_, err := Update(ctx, dao, course)
+	if course.ID == "" {
+		return utils.ErrId
+	}
+
+	if course.Title == "" {
+		return utils.ErrTitle
+	}
+
+	if course.Path == "" {
+		return utils.ErrPath
+	}
+
+	course.RefreshUpdatedAt()
+
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: course.ID})
+
+	builderOpts := newBuilderOptions(models.COURSE_TABLE).
+		WithData(
+			map[string]interface{}{
+				models.COURSE_TITLE:        course.Title,
+				models.COURSE_PATH:         course.Path,
+				models.COURSE_CARD_PATH:    course.CardPath,
+				models.COURSE_AVAILABLE:    course.Available,
+				models.COURSE_DURATION:     course.Duration,
+				models.COURSE_INITIAL_SCAN: course.InitialScan,
+				models.COURSE_MAINTENANCE:  course.Maintenance,
+				models.BASE_UPDATED_AT:     course.UpdatedAt,
+			},
+		).
+		SetDbOpts(dbOpts)
+
+	_, err := updateGeneric(ctx, dao, *builderOpts)
+	return err
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// DeleteCourses deletes records from the courses table
+//
+// Errors when a where clause is not provided
+func (dao *DAO) DeleteCourses(ctx context.Context, dbOpts *database.Options) error {
+	if dbOpts == nil || dbOpts.Where == nil {
+		return utils.ErrWhere
+	}
+
+	builderOpts := newBuilderOptions(models.COURSE_TABLE).SetDbOpts(dbOpts)
+	sqlStr, args, _ := deleteBuilder(*builderOpts)
+
+	q := database.QuerierFromContext(ctx, dao.db)
+	_, err := q.ExecContext(ctx, sqlStr, args...)
 	return err
 }
 
@@ -136,8 +306,6 @@ func (dao *DAO) UpdateCourse(ctx context.Context, course *models.Course) error {
 // The paths are returned as a map with the original path as the key and the classification as the
 // value
 func (dao *DAO) ClassifyCoursePaths(ctx context.Context, paths []string) (map[string]types.PathClassification, error) {
-	course := &models.Course{}
-
 	paths = slices.DeleteFunc(paths, func(s string) bool {
 		return s == ""
 	})
@@ -159,7 +327,7 @@ func (dao *DAO) ClassifyCoursePaths(ctx context.Context, paths []string) (map[st
 	query, args, _ := squirrel.
 		StatementBuilder.
 		Select(models.COURSE_TABLE_PATH).
-		From(course.Table()).
+		From(models.COURSE_TABLE).
 		Where(squirrel.Or(whereClause)).
 		ToSql()
 

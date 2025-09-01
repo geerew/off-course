@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
@@ -119,7 +118,7 @@ func TestScanner_Add(t *testing.T) {
 		scanner, ctx, _ := setup(t)
 
 		scan, err := scanner.Add(ctx, "1234")
-		require.ErrorIs(t, err, utils.ErrInvalidId)
+		require.ErrorIs(t, err, utils.ErrCourseNotFound)
 		require.Nil(t, scan)
 	})
 }
@@ -152,7 +151,7 @@ func TestScanner_Worker(t *testing.T) {
 
 		<-processingDone
 
-		count, err := dao.Count(ctx, scanner.dao, &models.Scan{}, nil)
+		count, err := scanner.dao.CountScans(ctx, nil)
 		require.NoError(t, err)
 		require.Zero(t, count)
 
@@ -169,7 +168,7 @@ func TestScanner_Worker(t *testing.T) {
 
 		<-processingDone
 
-		count, err = dao.Count(ctx, scanner.dao, &models.Scan{}, nil)
+		count, err = scanner.dao.CountScans(ctx, nil)
 		require.NoError(t, err)
 		require.Zero(t, count)
 

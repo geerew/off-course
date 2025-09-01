@@ -3,6 +3,7 @@ package dao
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
+	"github.com/geerew/off-course/utils/pagination"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/stretchr/testify/require"
 )
@@ -23,32 +25,61 @@ func Test_CreateAsset(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
+		lesson := &models.Lesson{
+			CourseID: course.ID,
+			Title:    "Asset Group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
+
 		asset := &models.Asset{
 			CourseID: course.ID,
+			LessonID: lesson.ID,
 			Title:    "Asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
+			Module:   "Module 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     "/course-1/01 asset.mp4",
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     "1234",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
-
-		count, err := Count(ctx, dao, &models.AssetProgress{}, nil)
-		require.NoError(t, err)
-		require.Equal(t, 0, count)
-
-		count, err = Count(ctx, dao, &models.CourseProgress{}, nil)
-		require.NoError(t, err)
-		require.Equal(t, 0, count)
 	})
 
-	t.Run("nil", func(t *testing.T) {
+	t.Run("nil pointer", func(t *testing.T) {
 		dao, ctx := setup(t)
 		require.ErrorIs(t, dao.CreateAsset(ctx, nil), utils.ErrNilPtr)
 	})
+
+	t.Run("invalid", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		lesson := &models.Lesson{
+			CourseID: course.ID,
+			Title:    "Asset Group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
+
+		asset := &models.Asset{}
+		require.ErrorIs(t, dao.CreateAsset(ctx, asset), utils.ErrCourseId)
+
+		asset.CourseID = course.ID
+		require.ErrorIs(t, dao.CreateAsset(ctx, asset), utils.ErrLessonId)
+
+		asset.LessonID = lesson.ID
+		require.ErrorIs(t, dao.CreateAsset(ctx, asset), utils.ErrTitle)
+
+		asset.Title = "Asset 1"
+		require.ErrorIs(t, dao.CreateAsset(ctx, asset), utils.ErrPrefix)
+
+		asset.Prefix = sql.NullInt16{Int16: 1, Valid: true}
+		require.ErrorIs(t, dao.CreateAsset(ctx, asset), utils.ErrPath)
+	})
+
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -60,47 +91,182 @@ func Test_GetAsset(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
+		lesson := &models.Lesson{
+			CourseID: course.ID,
+			Title:    "Asset Group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
+
+		// Create Asset
 		asset := &models.Asset{
 			CourseID: course.ID,
+			LessonID: lesson.ID,
 			Title:    "Asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
+			Module:   "Module 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     "/course-1/01 asset.mp4",
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     "1234",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
 
-		assetResult := &models.Asset{}
-		require.NoError(t, dao.GetAsset(ctx, assetResult, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_ID: asset.ID}}))
-		require.Equal(t, asset.ID, assetResult.ID)
-
-		require.Nil(t, assetResult.VideoMetadata)
-		require.Nil(t, assetResult.Progress)
-		require.Empty(t, assetResult.Attachments)
-
-		// Create Asset Progress
-		assetProgress := &models.AssetProgress{AssetID: asset.ID}
-		require.NoError(t, dao.CreateOrUpdateAssetProgress(ctx, course.ID, assetProgress))
-
-		// Get asset with progress
-		assetResult = &models.Asset{}
-		require.NoError(t, dao.GetAsset(ctx, assetResult, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_ID: asset.ID}}))
-		require.Equal(t, asset.ID, assetResult.ID)
-		require.NotNil(t, assetResult.Progress)
-		require.Equal(t, assetProgress.ID, assetResult.Progress.ID)
+		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: asset.ID})
+		record, err := dao.GetAsset(ctx, dbOpts)
+		require.Nil(t, err)
+		require.Equal(t, asset.ID, record.ID)
+		require.Nil(t, record.Progress)
 	})
 
-	t.Run("nil", func(t *testing.T) {
+	t.Run("success with relations", func(t *testing.T) {
 		dao, ctx := setup(t)
-		require.ErrorIs(t, dao.GetAsset(ctx, nil, nil), utils.ErrNilPtr)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		lesson := &models.Lesson{
+			CourseID: course.ID,
+			Title:    "Asset Group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
+
+		// Create Asset
+		asset := &models.Asset{
+			CourseID: course.ID,
+			LessonID: lesson.ID,
+			Title:    "Asset 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+			Type:     *types.NewAsset("mp4"),
+			Path:     "/course-1/01 asset.mp4",
+		}
+		require.NoError(t, dao.CreateAsset(ctx, asset))
+
+		// With progress
+		dbOpts := database.NewOptions().
+			WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: asset.ID}).
+			WithProgress()
+
+		record, err := dao.GetAsset(ctx, dbOpts)
+		require.Nil(t, err)
+		require.Equal(t, asset.ID, record.ID)
+		require.NotNil(t, record.Progress)
+		require.Zero(t, record.Progress.VideoPos)
+		require.False(t, record.Progress.Completed)
+		require.True(t, record.Progress.CompletedAt.IsZero())
+		require.Nil(t, record.VideoMetadata)
+
+		// Set progress
+		assetProgress := &models.AssetProgress{
+			AssetID: asset.ID,
+			AssetProgressInfo: models.AssetProgressInfo{
+				VideoPos:    100,
+				Completed:   true,
+				CompletedAt: types.NowDateTime(),
+			},
+		}
+		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+
+		// Get the asset again with progress
+		record, err = dao.GetAsset(ctx, dbOpts)
+		require.Nil(t, err)
+		require.Equal(t, asset.ID, record.ID)
+		require.NotNil(t, record.Progress)
+		require.Equal(t, 100, record.Progress.VideoPos)
+		require.True(t, record.Progress.Completed)
+		require.False(t, record.Progress.CompletedAt.IsZero())
+		require.Nil(t, record.VideoMetadata)
+
+		// Set video metadata
+		videoMetadata := &models.VideoMetadata{
+			AssetID: asset.ID,
+			VideoMetadataInfo: models.VideoMetadataInfo{
+				Duration:   3600,
+				Width:      1920,
+				Height:     1080,
+				Resolution: "1920x1080",
+				Codec:      "H.264",
+			},
+		}
+		require.NoError(t, dao.CreateVideoMetadata(ctx, videoMetadata))
+
+		// Get the asset with video metadata
+		dbOpts.WithAssetVideoMetadata()
+
+		record, err = dao.GetAsset(ctx, dbOpts)
+		require.Nil(t, err)
+		require.Equal(t, asset.ID, record.ID)
+		require.NotNil(t, record.Progress)
+		require.NotNil(t, record.VideoMetadata)
+		require.Equal(t, 3600, record.VideoMetadata.Duration)
+		require.Equal(t, 1920, record.VideoMetadata.Width)
+		require.Equal(t, 1080, record.VideoMetadata.Height)
+		require.Equal(t, "1920x1080", record.VideoMetadata.Resolution)
+		require.Equal(t, "H.264", record.VideoMetadata.Codec)
+
+		// Create another user
+		user2 := &models.User{
+			Username:     "user2",
+			DisplayName:  "User 2",
+			PasswordHash: "hash",
+			Role:         types.UserRoleUser,
+		}
+		require.NoError(t, dao.CreateUser(ctx, user2))
+
+		// Set the principal to user2, which is picked up when interacting with progress
+		principal := ctx.Value(types.PrincipalContextKey).(types.Principal)
+		principal.UserID = user2.ID
+		ctx = context.WithValue(ctx, types.PrincipalContextKey, principal)
+
+		// Create an asset progress (and therefore another course progress) for the
+		// new user
+		assetProgress2 := &models.AssetProgress{
+			AssetID: asset.ID,
+			AssetProgressInfo: models.AssetProgressInfo{
+				VideoPos: 200,
+			},
+		}
+		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress2))
+
+		// Confirm there are 2 asset progress records
+		builderOpts := newBuilderOptions(models.ASSET_PROGRESS_TABLE)
+		count, err := countGeneric(ctx, dao, *builderOpts)
+		require.NoError(t, err)
+		require.Equal(t, 2, count)
+
+		// Get the course for user 2
+		record, err = dao.GetAsset(ctx, dbOpts)
+		require.Nil(t, err)
+		require.Equal(t, asset.ID, record.ID)
+		require.NotNil(t, record.Progress)
+		require.Equal(t, 200, record.Progress.VideoPos)
+		require.False(t, record.Progress.Completed)
+		require.True(t, record.Progress.CompletedAt.IsZero())
+		require.NotNil(t, record.VideoMetadata)
+		require.Equal(t, 3600, record.VideoMetadata.Duration)
+		require.Equal(t, 1920, record.VideoMetadata.Width)
+		require.Equal(t, 1080, record.VideoMetadata.Height)
+		require.Equal(t, "1920x1080", record.VideoMetadata.Resolution)
+		require.Equal(t, "H.264", record.VideoMetadata.Codec)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		record, err := dao.GetAsset(ctx, nil)
+		require.Nil(t, err)
+		require.Nil(t, record)
 	})
 
 	t.Run("missing principal", func(t *testing.T) {
 		dao, _ := setup(t)
-		require.ErrorIs(t, dao.GetAsset(context.Background(), &models.Asset{Base: models.Base{ID: "1234"}}, nil), utils.ErrMissingPrincipal)
+
+		dbOpts := database.NewOptions().WithProgress()
+		record, err := dao.GetAsset(context.Background(), dbOpts)
+		require.ErrorIs(t, err, utils.ErrPrincipal)
+		require.Nil(t, record)
 	})
 }
 
@@ -110,50 +276,313 @@ func Test_ListAssets(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		dao, ctx := setup(t)
 
+		assets := []*models.Asset{}
+		for i := range 3 {
+			course := &models.Course{Title: fmt.Sprintf("Course %d", i), Path: fmt.Sprintf("/course-%d", i)}
+			require.NoError(t, dao.CreateCourse(ctx, course))
+
+			lesson := &models.Lesson{
+				CourseID: course.ID,
+				Title:    "Asset Group 1",
+				Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+				Module:   "Module 1",
+			}
+			require.NoError(t, dao.CreateLesson(ctx, lesson))
+
+			// Create Asset
+			asset := &models.Asset{
+				CourseID: course.ID,
+				LessonID: lesson.ID,
+				Title:    "Asset 1",
+				Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+				Module:   "Module 1",
+				Type:     *types.NewAsset("mp4"),
+				Path:     fmt.Sprintf("/course-%d/01 asset.mp4", i),
+			}
+			require.NoError(t, dao.CreateAsset(ctx, asset))
+			assets = append(assets, asset)
+
+			time.Sleep(1 * time.Millisecond)
+		}
+
+		records, err := dao.ListAssets(ctx, nil)
+		require.Nil(t, err)
+		require.Len(t, records, 3)
+
+		for i, record := range records {
+			require.Equal(t, assets[i].ID, record.ID)
+			require.Nil(t, record.Progress)
+		}
+	})
+
+	t.Run("success with relations", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		courses := []*models.Course{}
+		assets := []*models.Asset{}
+		for i := range 3 {
+			course := &models.Course{Title: fmt.Sprintf("Course %d", i), Path: fmt.Sprintf("/course-%d", i)}
+			require.NoError(t, dao.CreateCourse(ctx, course))
+			courses = append(courses, course)
+
+			lesson := &models.Lesson{
+				CourseID: course.ID,
+				Title:    "Asset Group 1",
+				Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+				Module:   "Module 1",
+			}
+			require.NoError(t, dao.CreateLesson(ctx, lesson))
+
+			// Create Asset
+			asset := &models.Asset{
+				CourseID: course.ID,
+				LessonID: lesson.ID,
+				Title:    "Asset 1",
+				Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+				Module:   "Module 1",
+				Type:     *types.NewAsset("mp4"),
+				Path:     fmt.Sprintf("/course-%d/01 asset.mp4", i),
+			}
+			require.NoError(t, dao.CreateAsset(ctx, asset))
+			assets = append(assets, asset)
+
+			time.Sleep(1 * time.Millisecond)
+		}
+
+		// List with progress
+		dbOpts := database.NewOptions().WithProgress()
+
+		records, err := dao.ListAssets(ctx, dbOpts)
+		require.Nil(t, err)
+		require.Len(t, records, 3)
+
+		// Ensure everything defaults to the zero value (for this user)
+		for i, record := range records {
+			require.Equal(t, assets[i].ID, record.ID)
+			require.NotNil(t, record.Progress)
+			require.Zero(t, record.Progress.VideoPos)
+			require.False(t, record.Progress.Completed)
+			require.True(t, record.Progress.CompletedAt.IsZero())
+		}
+
+		// Generate progress for the default user
+		assetProgress := &models.AssetProgress{
+			AssetID: assets[0].ID,
+			AssetProgressInfo: models.AssetProgressInfo{
+				VideoPos:  20,
+				Completed: true,
+			},
+		}
+		require.NoError(t, dao.UpsertAssetProgress(ctx, courses[0].ID, assetProgress))
+
+		// List again)
+		records, err = dao.ListAssets(ctx, dbOpts)
+		require.Nil(t, err)
+		require.Len(t, records, 3)
+
+		// Ensure they all have progress and that the first asset has a video position of 20 and is completed
+		for i, record := range records {
+			require.Equal(t, assets[i].ID, record.ID)
+			require.NotNil(t, record.Progress)
+
+			if i == 0 {
+				require.Equal(t, 20, record.Progress.VideoPos)
+				require.True(t, record.Progress.Completed)
+				require.False(t, record.Progress.CompletedAt.IsZero())
+			} else {
+				require.Zero(t, record.Progress.VideoPos)
+				require.False(t, record.Progress.Completed)
+				require.True(t, record.Progress.CompletedAt.IsZero())
+			}
+		}
+
+		// Create another user
+		user2 := &models.User{
+			Username:     "user2",
+			DisplayName:  "User 2",
+			PasswordHash: "hash",
+			Role:         types.UserRoleUser,
+		}
+		require.NoError(t, dao.CreateUser(ctx, user2))
+
+		// Set the principal to user2, which is picked up when interacting with progress
+		principal := ctx.Value(types.PrincipalContextKey).(types.Principal)
+		principal.UserID = user2.ID
+		ctx = context.WithValue(ctx, types.PrincipalContextKey, principal)
+
+		// For course 2, create an asset progress (and therefore another course progress) for the
+		// new user
+		assetProgress2 := &models.AssetProgress{
+			AssetID: assets[1].ID,
+			AssetProgressInfo: models.AssetProgressInfo{
+				VideoPos:  50,
+				Completed: true,
+			},
+		}
+		require.NoError(t, dao.UpsertAssetProgress(ctx, courses[1].ID, assetProgress2))
+
+		// List again
+		records, err = dao.ListAssets(ctx, dbOpts)
+		require.Nil(t, err)
+		require.Len(t, records, 3)
+
+		// Ensure they all have progress and that the second course is started/completed
+		for i, record := range records {
+			require.Equal(t, assets[i].ID, record.ID)
+			require.NotNil(t, record.Progress)
+
+			if i == 1 {
+				require.Equal(t, 50, record.Progress.VideoPos)
+				require.True(t, record.Progress.Completed)
+				require.False(t, record.Progress.CompletedAt.IsZero())
+			} else {
+				require.Zero(t, record.Progress.VideoPos)
+				require.False(t, record.Progress.Completed)
+				require.True(t, record.Progress.CompletedAt.IsZero())
+			}
+		}
+	})
+
+	t.Run("empty", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		records, err := dao.ListAssets(ctx, nil)
+		require.Nil(t, err)
+		require.Empty(t, records)
+	})
+
+	t.Run("order by", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		assets := []*models.Asset{}
+		for i := range 3 {
+			course := &models.Course{Title: fmt.Sprintf("Course %d", i), Path: fmt.Sprintf("/course-%d", i)}
+			require.NoError(t, dao.CreateCourse(ctx, course))
+
+			lesson := &models.Lesson{
+
+				CourseID: course.ID,
+				Title:    "Asset Group 1",
+				Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+				Module:   "Module 1",
+			}
+			require.NoError(t, dao.CreateLesson(ctx, lesson))
+
+			// Create Asset
+			asset := &models.Asset{
+				CourseID: course.ID,
+				LessonID: lesson.ID,
+				Title:    "Asset 1",
+				Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+				Module:   "Module 1",
+				Type:     *types.NewAsset("mp4"),
+				Path:     fmt.Sprintf("/course-%d/01 asset.mp4", i),
+			}
+			require.NoError(t, dao.CreateAsset(ctx, asset))
+			assets = append(assets, asset)
+			time.Sleep(1 * time.Millisecond)
+		}
+
+		// Descending order by created_at
+		opts := database.NewOptions().WithOrderBy(models.ASSET_TABLE_CREATED_AT + " DESC")
+		records, err := dao.ListAssets(ctx, opts)
+		require.Nil(t, err)
+		require.Len(t, records, 3)
+
+		for i, record := range records {
+			require.Equal(t, assets[2-i].ID, record.ID)
+		}
+
+		// Ascending order by created_at
+		opts = database.NewOptions().WithOrderBy(models.ASSET_TABLE_CREATED_AT + " ASC")
+		records, err = dao.ListAssets(ctx, opts)
+		require.Nil(t, err)
+		require.Len(t, records, 3)
+
+		for i, record := range records {
+			require.Equal(t, assets[i].ID, record.ID)
+		}
+	})
+
+	t.Run("where", func(t *testing.T) {
+		dao, ctx := setup(t)
+
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		asset1 := &models.Asset{
+		lesson := &models.Lesson{
 			CourseID: course.ID,
+			Title:    "Asset Group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
+
+		asset := &models.Asset{
+			CourseID: course.ID,
+			LessonID: lesson.ID,
 			Title:    "Asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
+			Module:   "Module 1",
 			Type:     *types.NewAsset("mp4"),
-			Path:     "/course-1/01 asset.mp4",
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     "1234",
+			Path:     fmt.Sprintf("/course-%d/01 asset.mp4", 1),
 		}
-		require.NoError(t, dao.CreateAsset(ctx, asset1))
+		require.NoError(t, dao.CreateAsset(ctx, asset))
 
-		asset2 := &models.Asset{
-			CourseID: course.ID,
-			Title:    "Asset 2",
-			Prefix:   sql.NullInt16{Int16: 2, Valid: true},
-			Chapter:  "Chapter 2",
-			Type:     *types.NewAsset("mp4"),
-			Path:     "/course-1/02 asset.mp4",
-			FileSize: 2048,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     "5678",
-		}
-		require.NoError(t, dao.CreateAsset(ctx, asset2))
+		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: asset.ID})
+		records, err := dao.ListAssets(ctx, opts)
+		require.Nil(t, err)
+		require.Len(t, records, 1)
+		require.Equal(t, asset.ID, records[0].ID)
+	})
+
+	t.Run("pagination", func(t *testing.T) {
+		dao, ctx := setup(t)
 
 		assets := []*models.Asset{}
-		require.NoError(t, dao.ListAssets(ctx, &assets, &database.Options{Where: squirrel.Eq{models.ASSET_TABLE_COURSE_ID: course.ID}}))
-		require.Len(t, assets, 2)
-		require.Equal(t, asset1.ID, assets[0].ID)
-		require.Equal(t, asset2.ID, assets[1].ID)
-	})
+		for i := range 17 {
+			course := &models.Course{Title: fmt.Sprintf("Course %d", i), Path: fmt.Sprintf("/course-%d", i)}
+			require.NoError(t, dao.CreateCourse(ctx, course))
 
-	t.Run("nil", func(t *testing.T) {
-		dao, ctx := setup(t)
-		require.ErrorIs(t, dao.ListAssets(ctx, nil, nil), utils.ErrNilPtr)
-	})
+			lesson := &models.Lesson{
 
-	t.Run("missing principal", func(t *testing.T) {
-		dao, _ := setup(t)
-		require.ErrorIs(t, dao.ListAssets(context.Background(), &[]*models.Asset{}, nil), utils.ErrMissingPrincipal)
+				CourseID: course.ID,
+				Title:    "Asset Group 1",
+				Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+				Module:   "Module 1",
+			}
+			require.NoError(t, dao.CreateLesson(ctx, lesson))
+
+			// Create Asset
+			asset := &models.Asset{
+				CourseID: course.ID,
+				LessonID: lesson.ID,
+				Title:    "Asset 1",
+				Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+				Module:   "Module 1",
+				Type:     *types.NewAsset("mp4"),
+				Path:     fmt.Sprintf("/course-%d/01 asset.mp4", i),
+			}
+			require.NoError(t, dao.CreateAsset(ctx, asset))
+			assets = append(assets, asset)
+			time.Sleep(1 * time.Millisecond)
+		}
+
+		// First page with 10 records
+		p := database.NewOptions().WithPagination(pagination.New(1, 10))
+		records, err := dao.ListAssets(ctx, p)
+		require.Nil(t, err)
+		require.Len(t, records, 10)
+		require.Equal(t, assets[0].ID, records[0].ID)
+		require.Equal(t, assets[9].ID, records[9].ID)
+
+		// Second page with remaining 7 records
+		p = database.NewOptions().WithPagination(pagination.New(2, 10))
+		records, err = dao.ListAssets(ctx, p)
+		require.Nil(t, err)
+		require.Len(t, records, 7)
+		require.Equal(t, assets[10].ID, records[0].ID)
+		require.Equal(t, assets[16].ID, records[6].ID)
 	})
 }
 
@@ -166,55 +595,70 @@ func Test_UpdateAsset(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
+		lesson := &models.Lesson{
+			CourseID: course.ID,
+			Title:    "Asset Group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
+
 		originalAsset := &models.Asset{
 			CourseID: course.ID,
+			LessonID: lesson.ID,
 			Title:    "Asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
+			Module:   "Module 1",
 			Type:     *types.NewAsset("mp4"),
 			Path:     "/course-1/01 asset.mp4",
 			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     "1234",
+			ModTime:  time.Now().GoString(),
+			Hash:     "abc123",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, originalAsset))
 
 		time.Sleep(1 * time.Millisecond)
 
-		newAsset := &models.Asset{
-			Base:     originalAsset.Base,
-			Title:    "Asset 2",                            // Mutable
-			Prefix:   sql.NullInt16{Int16: 2, Valid: true}, // Mutable
-			Chapter:  "Chapter 2",                          // Mutable
-			Type:     *types.NewAsset("html"),              // Mutable
-			Path:     "/course-1/02 asset.html",            // Mutable
-			FileSize: 2048,                                 // Mutable
-			ModTime:  time.Now().Format(time.RFC3339Nano),  // Mutable
-			Hash:     "5678",                               // Mutable
+		newLesson := &models.Lesson{
+			CourseID: course.ID,
+			Title:    "Asset Group 2",
+			Prefix:   sql.NullInt16{Int16: 2, Valid: true},
+			Module:   "Module 2",
 		}
-		require.NoError(t, dao.UpdateAsset(ctx, newAsset))
+		require.NoError(t, dao.CreateLesson(ctx, newLesson))
 
-		assertResult := &models.Asset{Base: models.Base{ID: originalAsset.ID}}
-		require.NoError(t, dao.GetAsset(ctx, assertResult, nil))
-		require.Equal(t, newAsset.ID, assertResult.ID)                          // No change
-		require.True(t, newAsset.CreatedAt.Equal(originalAsset.CreatedAt))      // No change
-		require.Equal(t, newAsset.Title, assertResult.Title)                    // Changed
-		require.Equal(t, newAsset.Prefix, assertResult.Prefix)                  // Changed
-		require.Equal(t, newAsset.Chapter, assertResult.Chapter)                // Changed
-		require.Equal(t, newAsset.Type, assertResult.Type)                      // Changed
-		require.Equal(t, newAsset.Path, assertResult.Path)                      // Changed
-		require.Equal(t, newAsset.FileSize, assertResult.FileSize)              // Changed
-		require.Equal(t, newAsset.ModTime, assertResult.ModTime)                // Changed
-		require.Equal(t, newAsset.Hash, assertResult.Hash)                      // Changed
-		require.False(t, assertResult.UpdatedAt.Equal(originalAsset.UpdatedAt)) // Changed
+		updatedAsset := &models.Asset{
+			Base:     originalAsset.Base,
+			CourseID: "54321",
+			LessonID: newLesson.ID,
+			Title:    "Updated Asset",
+			Prefix:   sql.NullInt16{Int16: 2, Valid: true},
+			Module:   "Updated Module",
+			Type:     *types.NewAsset("mkv"),
+			Path:     "/course-1/02 asset.mkv",
+			FileSize: 2048,
+			ModTime:  time.Now().Add(1 * time.Hour).GoString(),
+			Hash:     "def456",
+		}
+		require.NoError(t, dao.UpdateAsset(ctx, updatedAsset))
 
-		count, err := Count(ctx, dao, &models.AssetProgress{}, nil)
-		require.NoError(t, err)
-		require.Equal(t, 0, count)
+		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: originalAsset.ID})
+		record, err := dao.GetAsset(ctx, dbOpts)
+		require.Nil(t, err)
+		require.Equal(t, originalAsset.ID, record.ID)                    // No change
+		require.Equal(t, originalAsset.CourseID, record.CourseID)        // No change
+		require.True(t, record.CreatedAt.Equal(originalAsset.CreatedAt)) // No change
+		require.Equal(t, updatedAsset.Title, record.Title)               // Changed
+		require.Equal(t, updatedAsset.Path, record.Path)                 // Changed
+		require.Equal(t, updatedAsset.LessonID, record.LessonID)         // Changed
+		require.Equal(t, updatedAsset.Prefix, record.Prefix)             // Changed
+		require.Equal(t, updatedAsset.Module, record.Module)             // Changed
+		require.Equal(t, updatedAsset.Type, record.Type)                 // Changed
+		require.Equal(t, updatedAsset.FileSize, record.FileSize)         // Changed
+		require.NotEqual(t, originalAsset.ModTime, record.ModTime)       // Changed
+		require.Equal(t, updatedAsset.Hash, record.Hash)                 // Changed
+		require.NotEqual(t, originalAsset.UpdatedAt, record.UpdatedAt)   // Changed
 
-		count, err = Count(ctx, dao, &models.CourseProgress{}, nil)
-		require.NoError(t, err)
-		require.Equal(t, 0, count)
 	})
 
 	t.Run("invalid", func(t *testing.T) {
@@ -223,22 +667,38 @@ func Test_UpdateAsset(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		asset := &models.Asset{
+		lesson := &models.Lesson{
 			CourseID: course.ID,
-			Title:    "Asset 1",
+			Title:    "Asset Group 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Chapter:  "Chapter 1",
-			Type:     *types.NewAsset("mp4"),
-			Path:     "/course-1/01 asset.mp4",
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     "1234",
+			Module:   "Module 1",
 		}
-		require.NoError(t, dao.CreateAsset(ctx, asset))
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
-		// Empty ID
-		asset.ID = ""
-		require.ErrorIs(t, dao.UpdateAsset(ctx, asset), utils.ErrInvalidId)
+		asset := &models.Asset{}
+
+		// Course ID
+		require.ErrorIs(t, dao.UpdateAsset(ctx, asset), utils.ErrCourseId)
+		asset.CourseID = course.ID
+
+		// Lesson ID
+		require.ErrorIs(t, dao.UpdateAsset(ctx, asset), utils.ErrLessonId)
+		asset.LessonID = lesson.ID
+
+		// Title
+		require.ErrorIs(t, dao.UpdateAsset(ctx, asset), utils.ErrTitle)
+		asset.Title = "Asset 1"
+
+		// Prefix
+		require.ErrorIs(t, dao.UpdateAsset(ctx, asset), utils.ErrPrefix)
+		asset.Prefix = sql.NullInt16{Int16: 1, Valid: true}
+
+		// Path
+		require.ErrorIs(t, dao.UpdateAsset(ctx, asset), utils.ErrPath)
+		asset.Path = "/course-1/01 asset.mp4"
+
+		// ID
+		require.ErrorIs(t, dao.UpdateAsset(ctx, asset), utils.ErrId)
 
 		// Nil Model
 		require.ErrorIs(t, dao.UpdateAsset(ctx, nil), utils.ErrNilPtr)
@@ -247,28 +707,137 @@ func Test_UpdateAsset(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func Test_AssetDeleteCascade(t *testing.T) {
-	dao, ctx := setup(t)
+func Test_DeleteAsset(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		dao, ctx := setup(t)
 
-	course := &models.Course{Title: "Course", Path: "/course"}
-	require.NoError(t, dao.CreateCourse(ctx, course))
+		course := &models.Course{Title: "Course", Path: "/course"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
 
-	asset := &models.Asset{
-		CourseID: course.ID,
-		Title:    "Asset 1",
-		Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-		Chapter:  "Chapter 1",
-		Type:     *types.NewAsset("mp4"),
-		Path:     "/course-1/01 asset.mp4",
-		FileSize: 1024,
-		ModTime:  time.Now().Format(time.RFC3339Nano),
-		Hash:     "1234",
-	}
-	require.NoError(t, dao.CreateAsset(ctx, asset))
+		lesson := &models.Lesson{
+			CourseID: course.ID,
+			Title:    "Asset Group",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
-	require.Nil(t, Delete(ctx, dao, course, nil))
+		asset := &models.Asset{
+			CourseID: course.ID,
+			LessonID: lesson.ID,
+			Title:    "Asset 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+			Type:     *types.NewAsset("mp4"),
+			Path:     "/course/01 asset.mp4",
+		}
+		require.NoError(t, dao.CreateAsset(ctx, asset))
 
-	count, err := Count(ctx, dao, &models.Asset{}, nil)
-	require.NoError(t, err)
-	require.Zero(t, count)
+		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: asset.ID})
+		require.Nil(t, dao.DeleteAssets(ctx, opts))
+
+		records, err := dao.ListAssets(ctx, opts)
+		require.NoError(t, err)
+		require.Empty(t, records)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course", Path: "/course"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		lesson := &models.Lesson{
+			CourseID: course.ID,
+			Title:    "Asset Group",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
+
+		asset := &models.Asset{
+			CourseID: course.ID,
+			LessonID: lesson.ID,
+			Title:    "Asset 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+			Type:     *types.NewAsset("mp4"),
+			Path:     "/course/01 asset.mp4",
+		}
+		require.NoError(t, dao.CreateAsset(ctx, asset))
+
+		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: "non-existent"})
+		require.Nil(t, dao.DeleteAssets(ctx, opts))
+
+		records, err := dao.ListAssets(ctx, nil)
+		require.NoError(t, err)
+		require.Len(t, records, 1)
+		require.Equal(t, asset.ID, records[0].ID)
+	})
+
+	t.Run("missing where", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course", Path: "/course"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		lesson := &models.Lesson{
+			CourseID: course.ID,
+			Title:    "Asset Group",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
+
+		asset := &models.Asset{
+			CourseID: course.ID,
+			LessonID: lesson.ID,
+			Title:    "Asset 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+			Type:     *types.NewAsset("mp4"),
+			Path:     "/course/01 asset.mp4",
+		}
+		require.NoError(t, dao.CreateAsset(ctx, asset))
+
+		require.ErrorIs(t, dao.DeleteAssets(ctx, nil), utils.ErrWhere)
+
+		records, err := dao.ListAssets(ctx, nil)
+		require.NoError(t, err)
+		require.Len(t, records, 1)
+		require.Equal(t, asset.ID, records[0].ID)
+	})
+
+	t.Run("cascade", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		course := &models.Course{Title: "Course", Path: "/course"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		lesson := &models.Lesson{
+			CourseID: course.ID,
+			Title:    "Asset Group",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+		}
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
+
+		asset := &models.Asset{
+			CourseID: course.ID,
+			LessonID: lesson.ID,
+			Title:    "Asset 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
+			Type:     *types.NewAsset("mp4"),
+			Path:     "/course/01 asset.mp4",
+		}
+		require.NoError(t, dao.CreateAsset(ctx, asset))
+
+		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
+		require.Nil(t, dao.DeleteCourses(ctx, dbOpts))
+
+		records, err := dao.ListAssets(ctx, nil)
+		require.NoError(t, err)
+		require.Empty(t, records)
+	})
 }

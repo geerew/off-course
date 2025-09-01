@@ -1,7 +1,6 @@
 package api
 
 import (
-	"database/sql"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
@@ -44,7 +43,7 @@ func (r *Router) initUserRoutes() {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api userAPI) getUsers(c *fiber.Ctx) error {
-	builderOptions := builderOptions{
+	builderOpts := builderOptions{
 		DefaultOrderBy: defaultUsersOrderBy,
 		Paginate:       true,
 		AllowedFilters: []string{"role"},
@@ -56,17 +55,17 @@ func (api userAPI) getUsers(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	options, err := optionsBuilder(c, builderOptions, principal.UserID)
+	dbOpts, err := optionsBuilder(c, builderOpts, principal.UserID)
 	if err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
-	users := []*models.User{}
-	if err := api.dao.ListUsers(ctx, &users, options); err != nil {
+	users, err := api.dao.ListUsers(ctx, dbOpts)
+	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up users", err)
 	}
 
-	pResult, err := options.Pagination.BuildResult(userResponseHelper(users))
+	pResult, err := dbOpts.Pagination.BuildResult(userResponseHelper(users))
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error building pagination result", err)
 	}
@@ -139,13 +138,14 @@ func (api userAPI) updateUser(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	user := &models.User{Base: models.Base{ID: id}}
-	if err := api.dao.GetUser(ctx, user, nil); err != nil {
-		if err == sql.ErrNoRows {
-			return errorResponse(c, fiber.StatusNotFound, "User not found", nil)
-		}
-
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: id})
+	user, err := api.dao.GetUser(ctx, dbOpts)
+	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up user", err)
+	}
+
+	if user == nil {
+		return errorResponse(c, fiber.StatusNotFound, "User not found", nil)
 	}
 
 	if userReq.DisplayName != "" {
@@ -172,7 +172,7 @@ func (api userAPI) updateUser(c *fiber.Ctx) error {
 
 	// Update all the sessions for the user with the new role
 	if userReq.Role != "" {
-		if err := api.sessionManager.UpdateSessionsRoleForUser(id, user.Role); err != nil {
+		if err := api.sessionManager.UpdateSessionRoleForUser(id, user.Role); err != nil {
 			return errorResponse(c, fiber.StatusInternalServerError, "Error updating user sessions", err)
 		}
 	}
@@ -195,8 +195,9 @@ func (api userAPI) deleteUser(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	user := &models.User{Base: models.Base{ID: id}}
-	if err := dao.Delete(ctx, api.dao, user, nil); err != nil {
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: id})
+	err = api.dao.DeleteUsers(ctx, dbOpts)
+	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user", err)
 	}
 

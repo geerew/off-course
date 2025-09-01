@@ -21,13 +21,13 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 var (
-	defaultCoursesOrderBy                = []string{models.COURSE_TABLE_CREATED_AT + " desc"}
-	defaultScansOrderBy                  = []string{models.SCAN_TABLE_CREATED_AT + " desc"}
-	defaultCourseAssetsOrderBy           = []string{models.ASSET_TABLE_CHAPTER + " asc", models.ASSET_TABLE_PREFIX + " asc"}
-	defaultCourseAssetAttachmentsOrderBy = []string{models.ATTACHMENT_TABLE_TITLE + " asc"}
-	defaultTagsOrderBy                   = []string{models.TAG_TABLE_TAG + " asc"}
-	defaultUsersOrderBy                  = []string{models.USER_TABLE_CREATED_AT + " desc"}
-	defaultLogsOrderBy                   = []string{models.LOG_TABLE_CREATED_AT + " desc"}
+	defaultCoursesOrderBy                 = []string{models.COURSE_TABLE_CREATED_AT + " desc"}
+	defaultScansOrderBy                   = []string{models.SCAN_TABLE_CREATED_AT + " desc"}
+	defaultCourseLessonsOrderBy           = []string{models.LESSON_TABLE_MODULE + " asc", models.LESSON_TABLE_PREFIX + " asc"}
+	defaultCourseLessonAttachmentsOrderBy = []string{models.ATTACHMENT_TABLE_TITLE + " asc"}
+	defaultTagsOrderBy                    = []string{models.TAG_TABLE_TAG + " asc"}
+	defaultUsersOrderBy                   = []string{models.USER_TABLE_CREATED_AT + " desc"}
+	defaultLogsOrderBy                    = []string{models.LOG_TABLE_CREATED_AT + " desc"}
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -66,21 +66,21 @@ type builderOptions struct {
 
 // optionsBuilder builds a database.Options based on a `q` query parameter
 func optionsBuilder(c *fiber.Ctx, builderOptions builderOptions, userId string) (*database.Options, error) {
-	options := &database.Options{}
+	dbOpts := database.NewOptions()
 
 	orderBy := []string{models.BASE_CREATED_AT + " desc"}
 	if len(builderOptions.DefaultOrderBy) > 0 {
 		orderBy = builderOptions.DefaultOrderBy
 	}
-	options.OrderBy = orderBy
+	dbOpts.WithOrderBy(orderBy...)
 
 	if builderOptions.Paginate {
-		options.Pagination = pagination.NewFromApi(c)
+		dbOpts.WithPagination(pagination.NewFromApi(c))
 	}
 
 	q := c.Query("q", "")
 	if q == "" {
-		return options, nil
+		return dbOpts, nil
 	}
 
 	parsed, err := queryparser.Parse(q, builderOptions.AllowedFilters)
@@ -89,18 +89,18 @@ func optionsBuilder(c *fiber.Ctx, builderOptions builderOptions, userId string) 
 	}
 
 	if parsed == nil {
-		return options, nil
+		return dbOpts, nil
 	}
 
 	if len(parsed.Sort) > 0 {
-		options.OrderBy = parsed.Sort
+		dbOpts.OverrideOrderBy(parsed.Sort...)
 	}
 
 	if builderOptions.AfterParseHook != nil {
-		builderOptions.AfterParseHook(parsed, options, userId)
+		builderOptions.AfterParseHook(parsed, dbOpts, userId)
 	}
 
-	return options, nil
+	return dbOpts, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

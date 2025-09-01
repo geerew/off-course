@@ -5,7 +5,6 @@ package models
 import (
 	"database/sql"
 
-	"github.com/geerew/off-course/utils/schema"
 	"github.com/geerew/off-course/utils/types"
 )
 
@@ -14,24 +13,22 @@ import (
 // Asset defines the model for an asset
 type Asset struct {
 	Base
-	CourseID        string
-	Title           string
-	Prefix          sql.NullInt16
-	SubPrefix       sql.NullInt16
-	SubTitle        string
-	Chapter         string
-	Type            types.Asset
-	Path            string
-	FileSize        int64
-	ModTime         string
-	Hash            string
-	DescriptionPath string
-	DescriptionType types.Description
+	CourseID  string        `db:"course_id"`  // Immutable
+	LessonID  string        `db:"lesson_id"`  // Mutable
+	Title     string        `db:"title"`      // Mutable
+	Prefix    sql.NullInt16 `db:"prefix"`     // Mutable
+	SubPrefix sql.NullInt16 `db:"sub_prefix"` // Mutable
+	SubTitle  string        `db:"sub_title"`  // Mutable
+	Module    string        `db:"module"`     // Mutable
+	Type      types.Asset   `db:"type"`       // Mutable
+	Path      string        `db:"path"`       // Mutable
+	FileSize  int64         `db:"file_size"`  // Mutable
+	ModTime   string        `db:"mod_time"`   // Mutable
+	Hash      string        `db:"hash"`       // Mutable
 
 	// Relations
-	VideoMetadata *VideoMetadata
-	Progress      *AssetProgress
-	Attachments   []*Attachment
+	VideoMetadata *VideoMetadataInfo
+	Progress      *AssetProgressInfo
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -39,11 +36,12 @@ type Asset struct {
 const (
 	ASSET_TABLE            = "assets"
 	ASSET_COURSE_ID        = "course_id"
+	ASSET_LESSON_ID        = "lesson_id"
 	ASSET_TITLE            = "title"
 	ASSET_PREFIX           = "prefix"
 	ASSET_SUB_PREFIX       = "sub_prefix"
 	ASSET_SUB_TITLE        = "sub_title"
-	ASSET_CHAPTER          = "chapter"
+	ASSET_MODULE           = "module"
 	ASSET_TYPE             = "type"
 	ASSET_PATH             = "path"
 	ASSET_FILE_SIZE        = "file_size"
@@ -59,10 +57,11 @@ const (
 	ASSET_TABLE_CREATED_AT       = ASSET_TABLE + "." + BASE_CREATED_AT
 	ASSET_TABLE_UPDATED_AT       = ASSET_TABLE + "." + BASE_UPDATED_AT
 	ASSET_TABLE_COURSE_ID        = ASSET_TABLE + "." + ASSET_COURSE_ID
+	ASSET_TABLE_LESSON_ID        = ASSET_TABLE + "." + ASSET_LESSON_ID
 	ASSET_TABLE_TITLE            = ASSET_TABLE + "." + ASSET_TITLE
 	ASSET_TABLE_PREFIX           = ASSET_TABLE + "." + ASSET_PREFIX
 	ASSET_TABLE_SUB_PREFIX       = ASSET_TABLE + "." + ASSET_SUB_PREFIX
-	ASSET_TABLE_CHAPTER          = ASSET_TABLE + "." + ASSET_CHAPTER
+	ASSET_TABLE_MODULE           = ASSET_TABLE + "." + ASSET_MODULE
 	ASSET_TABLE_TYPE             = ASSET_TABLE + "." + ASSET_TYPE
 	ASSET_TABLE_PATH             = ASSET_TABLE + "." + ASSET_PATH
 	ASSET_TABLE_HASH             = ASSET_TABLE + "." + ASSET_HASH
@@ -74,37 +73,3 @@ const (
 
 	ASSET_RELATION_PROGRESS = "Progress"
 )
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// Table implements the `schema.Modeler` interface by returning the table name
-func (a *Asset) Table() string {
-	return ASSET_TABLE
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// Fields implements the `schema.Modeler` interface by defining the model fields
-func (a *Asset) Define(s *schema.ModelConfig) {
-	s.Embedded("Base")
-
-	// Common fields
-	s.Field("CourseID").Column(ASSET_COURSE_ID).NotNull()
-	s.Field("Title").Column(ASSET_TITLE).NotNull().Mutable()
-	s.Field("Prefix").Column(ASSET_PREFIX).Mutable()
-	s.Field("SubPrefix").Column(ASSET_SUB_PREFIX).Mutable()
-	s.Field("SubTitle").Column(ASSET_SUB_TITLE).Mutable()
-	s.Field("Chapter").Column(ASSET_CHAPTER).Mutable()
-	s.Field("Type").Column(ASSET_TYPE).NotNull().Mutable()
-	s.Field("Path").Column(ASSET_PATH).NotNull().Mutable()
-	s.Field("FileSize").Column(ASSET_FILE_SIZE).NotNull().Mutable()
-	s.Field("ModTime").Column(ASSET_MOD_TIME).NotNull().Mutable()
-	s.Field("Hash").Column(ASSET_HASH).NotNull().Mutable()
-	s.Field("DescriptionPath").Column(ASSET_DESCRIPTION_PATH).Mutable()
-	s.Field("DescriptionType").Column(ASSET_DESCRIPTION_TYPE).Mutable()
-
-	// Relation fields
-	s.Relation("VideoMetadata").MatchOn(VIDEO_METADATA_ASSET_ID)
-	s.Relation("Progress").MatchOn(ASSET_PROGRESS_ASSET_ID)
-	s.Relation("Attachments").MatchOn(ATTACHMENT_ASSET_ID)
-}

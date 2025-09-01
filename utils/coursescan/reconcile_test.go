@@ -1,12 +1,25 @@
 package coursescan
 
 import (
+	"database/sql"
 	"testing"
 
 	"github.com/geerew/off-course/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func newLesson(id, module string, prefix int16, title, descPath, descType string) *models.Lesson {
+	ag := &models.Lesson{
+		Base:   models.Base{ID: id},
+		Module: module,
+		Prefix: sql.NullInt16{Int16: prefix, Valid: true},
+		Title:  title,
+	}
+	return ag
+}
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -27,6 +40,126 @@ func newAttachment(id, path string) *models.Attachment {
 		Base: models.Base{ID: id},
 		Path: path,
 	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestReconcileLessons_NoOp(t *testing.T) {
+	existing := []*models.Lesson{
+		newLesson("g1", "mod1", 1, "Title", "path.md", "md"),
+	}
+	scanned := []*models.Lesson{
+		newLesson("", "mod1", 1, "Title", "path.md", "md"),
+	}
+
+	ops := reconcileLessons(scanned, existing)
+	require.Len(t, ops, 1)
+
+	op, ok := ops[0].(NoLessonOp)
+	require.True(t, ok)
+	assert.Equal(t, NoOp, op.Type())
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestReconcileLessons_Create(t *testing.T) {
+	existing := []*models.Lesson{}
+	scanned := []*models.Lesson{
+		newLesson("", "mod2", 2, "NewTitle", "new.md", "md"),
+	}
+
+	ops := reconcileLessons(scanned, existing)
+	require.Len(t, ops, 1)
+
+	op, ok := ops[0].(CreateLessonOp)
+	require.True(t, ok)
+	assert.Equal(t, CreateOp, op.Type())
+	assert.Equal(t, "mod2", op.New.Module)
+	assert.Equal(t, int16(2), op.New.Prefix.Int16)
+	assert.Equal(t, "NewTitle", op.New.Title)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestReconcileLessons_Update(t *testing.T) {
+	existing := []*models.Lesson{
+		newLesson("g2", "mod3", 3, "OldTitle", "old.md", "md"),
+	}
+	scanned := []*models.Lesson{
+		newLesson("", "mod3", 3, "NewTitle", "new.md", "md"),
+	}
+
+	ops := reconcileLessons(scanned, existing)
+	require.Len(t, ops, 1)
+
+	op, ok := ops[0].(UpdateLessonOp)
+	require.True(t, ok)
+	assert.Equal(t, UpdateOp, op.Type())
+	assert.Equal(t, "g2", op.Existing.ID)
+	assert.Equal(t, "NewTitle", op.New.Title)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestReconcileLessons_Delete(t *testing.T) {
+	existing := []*models.Lesson{
+		newLesson("g3", "mod4", 4, "Title4", "desc.md", "md"),
+	}
+	scanned := []*models.Lesson{}
+
+	ops := reconcileLessons(scanned, existing)
+	require.Len(t, ops, 1)
+
+	op, ok := ops[0].(DeleteLessonOp)
+	require.True(t, ok)
+	assert.Equal(t, DeleteOp, op.Type())
+	assert.Equal(t, "g3", op.Deleted.ID)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestReconcileLessons_Mixed(t *testing.T) {
+	// existing lessons g1(mod1,1), g2(mod2,2), g3(mod3,3)
+	existing := []*models.Lesson{
+		newLesson("g1", "mod1", 1, "T1", "d1.md", "md"),
+		newLesson("g2", "mod2", 2, "T2", "d2.md", "md"),
+		newLesson("g3", "mod3", 3, "T3", "d3.md", "md"),
+	}
+	// scanned: keep mod1, update mod2, create mod4
+	scanned := []*models.Lesson{
+		newLesson("", "mod1", 1, "T1", "d1.md", "md"),
+		newLesson("", "mod2", 2, "T2-new", "d2-new.md", "md"),
+		newLesson("", "mod4", 4, "T4", "d4.md", "md"),
+	}
+
+	op := reconcileLessons(scanned, existing)
+	require.Len(t, op, 4)
+
+	var create, update, del, noop bool
+	for _, e := range op {
+		switch v := e.(type) {
+		case CreateLessonOp:
+			create = true
+			assert.Equal(t, "mod4", v.New.Module)
+		case UpdateLessonOp:
+			update = true
+			assert.Equal(t, "g2", v.Existing.ID)
+			assert.Equal(t, "T2-new", v.New.Title)
+		case DeleteLessonOp:
+			del = true
+			assert.Equal(t, "g3", v.Deleted.ID)
+		case NoLessonOp:
+			noop = true
+			assert.Equal(t, "g1", v.Existing.ID)
+		default:
+			t.Errorf("unexpected op %T", v)
+		}
+	}
+
+	assert.True(t, create, "expected CreateOp")
+	assert.True(t, update, "expected UpdateOp")
+	assert.True(t, del, "expected DeleteOp")
+	assert.True(t, noop, "expected NoLessonOp")
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -81,29 +214,6 @@ func TestReconcileAssets_Update(t *testing.T) {
 
 		assert.Equal(t, "a1", op.Existing.ID)
 		assert.Equal(t, "/new.mp4", op.New.Path)
-	})
-
-	t.Run("description", func(t *testing.T) {
-		existing := []*models.Asset{
-			newAsset("a1", "/lesson.mp4", 1024, "mod1", "hash123"),
-		}
-		scanned := []*models.Asset{
-			newAsset("", "/lesson.mp4", 1024, "mod1", "hash123"),
-		}
-
-		// Set the description
-		scanned[0].DescriptionPath = "/path/to/01 description.md"
-
-		ops := reconcileAssets(scanned, existing)
-		require.Len(t, ops, 1)
-
-		op, ok := ops[0].(UpdateAssetOp)
-		require.True(t, ok, "expected UpdateAssetOp")
-		assert.Equal(t, UpdateOp, op.Type())
-
-		// It should carry the existing ID and pick up the new description path
-		assert.Equal(t, "a1", op.Existing.ID)
-		assert.Equal(t, "/path/to/01 description.md", op.New.DescriptionPath)
 	})
 }
 
@@ -220,7 +330,7 @@ func TestReconcileAssets_Delete(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, DeleteOp, op.Type())
 
-	assert.Equal(t, "a1", op.Asset.ID)
+	assert.Equal(t, "a1", op.Deleted.ID)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -272,7 +382,7 @@ func TestReconcileAttachments_Delete(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, DeleteOp, op.Type())
 
-	assert.Equal(t, "a1", op.Attachment.ID)
+	assert.Equal(t, "a1", op.Deleted.ID)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -298,7 +408,7 @@ func TestReconcileAttachments_MixedOps(t *testing.T) {
 			assert.Equal(t, "/add.pdf", v.New.Path)
 		case DeleteAttachmentOp:
 			deleteFound = true
-			assert.Equal(t, "a2", v.Attachment.ID)
+			assert.Equal(t, "a2", v.Deleted.ID)
 		default:
 			t.Errorf("Unexpected op type: %T", op)
 		}
