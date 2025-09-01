@@ -451,7 +451,7 @@
 
 								{#if asset.assetType === 'video'}
 									<VideoPlayer
-										src={`/api/courses/${course.id}/groups/${selectedLesson.id}/assets/${asset.id}/serve`}
+										src={`/api/courses/${course.id}/lessons/${selectedLesson.id}/assets/${asset.id}/serve`}
 										startTime={asset.progress?.videoPos || 0}
 										onTimeChange={(time: number) => {
 											if (!asset.progress) {

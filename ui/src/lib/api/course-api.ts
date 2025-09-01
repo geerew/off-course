@@ -165,7 +165,7 @@ export async function DeleteCourseTag(id: string, tag: string): Promise<void> {
 // Update a course assets progress
 export async function UpdateCourseAssetProgress(asset: AssetModel): Promise<void> {
 	const response = await apiFetch(
-		`/api/courses/${asset.courseId}/groups/${asset.lessonId}/assets/${asset.id}/progress`,
+		`/api/courses/${asset.courseId}/lessons/${asset.lessonId}/assets/${asset.id}/progress`,
 		{
 			method: 'PUT',
 			headers: {
@@ -186,7 +186,7 @@ export async function UpdateCourseAssetProgress(asset: AssetModel): Promise<void
 // Serve a course asset
 export async function ServeCourseAsset(asset: AssetModel): Promise<string> {
 	const response = await apiFetch(
-		`/api/courses/${asset.courseId}/groups/${asset.lessonId}/assets/${asset.id}/serve`
+		`/api/courses/${asset.courseId}/lessons/${asset.lessonId}/assets/${asset.id}/serve`
 	);
 
 	if (response.ok) {
@@ -226,7 +226,7 @@ export async function GetCourseModules(
 // Serve the description of a course lesson
 export async function ServeCourseLessonDescription(lesson: LessonModel): Promise<string> {
 	const response = await apiFetch(
-		`/api/courses/${lesson.courseId}/groups/${lesson.id}/description`
+		`/api/courses/${lesson.courseId}/lessons/${lesson.id}/description`
 	);
 
 	if (response.ok) {
