@@ -2,7 +2,6 @@ package session
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
@@ -66,7 +65,6 @@ func (s *SessionManager) SetSession(c *fiber.Ctx, userId string, userRole types.
 		return err
 	}
 
-	fmt.Println("userid", userId, "role", userRole.String())
 	session.Set("id", userId)
 	session.Set("role", userRole.String())
 

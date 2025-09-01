@@ -106,10 +106,9 @@ func bootstrapMiddleware(r *Router) fiber.Handler {
 		// If not bootstrapped, for everything through /auth/bootstrap or
 		// /api/auth/bootstrap
 		if !r.isBootstrapped() {
-
 			path := c.Path()
 
-			if r.isDevUIPath(path) || r.isProdUIPath(path) || r.isFavicon(path) {
+			if r.isDevUIPath(path) || r.isProdUIPath(path) || r.isStaticPath(path) {
 				return c.Next()
 			}
 
@@ -149,7 +148,7 @@ func authMiddleware(r *Router) fiber.Handler {
 		isLogout := strings.HasPrefix(path, "/api/auth/logout")
 		isAuthUI := strings.HasPrefix(path, "/auth/")
 
-		if r.isDevUIPath(path) || r.isProdUIPath(path) || r.isFavicon(path) || isLogout {
+		if r.isDevUIPath(path) || r.isProdUIPath(path) || r.isStaticPath(path) || isLogout {
 			return c.Next()
 		}
 
@@ -254,14 +253,21 @@ func (r *Router) isDevUIPath(path string) bool {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// isProtectedUIPage checks if the request is intended for a protected UI page
-func (r *Router) isProtectedUIPage(path string) bool {
-	return strings.HasPrefix(path, "/admin")
+// isStaticPath checks if the request is for a static asset
+func (r *Router) isStaticPath(path string) bool {
+	if strings.HasPrefix(path, "/apple-touch-icon.png") ||
+		strings.HasPrefix(path, "/favicon.") ||
+		strings.HasPrefix(path, "/fonts/") ||
+		strings.HasPrefix(path, "/web-app-manifest-") {
+		return true
+	}
+
+	return false
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// isFavicon checks if the request is for a favicon
-func (r *Router) isFavicon(path string) bool {
-	return strings.HasPrefix(path, "/favicon.")
+// isProtectedUIPage checks if the request is intended for a protected UI page
+func (r *Router) isProtectedUIPage(path string) bool {
+	return strings.HasPrefix(path, "/admin")
 }
