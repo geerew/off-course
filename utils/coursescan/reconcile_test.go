@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/geerew/off-course/models"
-	"github.com/geerew/off-course/utils/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -14,14 +13,10 @@ import (
 
 func newAssetGroup(id, module string, prefix int16, title, descPath, descType string) *models.AssetGroup {
 	ag := &models.AssetGroup{
-		Base:            models.Base{ID: id},
-		Module:          module,
-		Prefix:          sql.NullInt16{Int16: prefix, Valid: true},
-		Title:           title,
-		DescriptionPath: descPath,
-	}
-	if dt := types.NewDescription(descType); dt != nil {
-		ag.DescriptionType = *dt
+		Base:   models.Base{ID: id},
+		Module: module,
+		Prefix: sql.NullInt16{Int16: prefix, Valid: true},
+		Title:  title,
 	}
 	return ag
 }
@@ -102,7 +97,6 @@ func TestReconcileAssetGroups_Update(t *testing.T) {
 	assert.Equal(t, UpdateOp, op.Type())
 	assert.Equal(t, "g2", op.Existing.ID)
 	assert.Equal(t, "NewTitle", op.New.Title)
-	assert.Equal(t, "new.md", op.New.DescriptionPath)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

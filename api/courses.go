@@ -62,7 +62,6 @@ func (r *Router) initCourseRoutes() {
 	// Asset groups
 	courseGroup.Get("/:id/groups", coursesAPI.getAssetGroups)
 	courseGroup.Get("/:id/groups/:group", coursesAPI.getAssetGroup)
-	courseGroup.Get("/:id/groups/:group/description", coursesAPI.serveAssetGroupDescription)
 
 	// Modules (chaptered asset groups)
 	courseGroup.Get("/:id/modules", coursesAPI.getModules)
@@ -353,44 +352,6 @@ func (api coursesAPI) getAssetGroup(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(assetGroupResponseHelper([]*models.AssetGroup{assetGroup})[0])
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-func (api coursesAPI) serveAssetGroupDescription(c *fiber.Ctx) error {
-	id := c.Params("id")
-	assetGroupId := c.Params("group")
-
-	dbOpts := database.NewOptions().
-		WithJoin(models.COURSE_TABLE, models.ASSET_GROUP_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID).
-		WithWhere(squirrel.And{
-			squirrel.Eq{models.ASSET_GROUP_TABLE_ID: assetGroupId},
-			squirrel.Eq{models.COURSE_TABLE_ID: id},
-		})
-
-	_, ctx, err := principalCtx(c)
-	if err != nil {
-		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
-	}
-
-	assetGroup, err := api.dao.GetAssetGroup(ctx, dbOpts)
-	if err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up asset group", err)
-	}
-
-	if assetGroup == nil {
-		return errorResponse(c, fiber.StatusNotFound, "Asset group not found", nil)
-	}
-
-	if assetGroup.DescriptionPath == "" {
-		return errorResponse(c, fiber.StatusNotFound, "Asset group has no description", nil)
-	}
-
-	if exists, err := afero.Exists(api.appFs.Fs, assetGroup.DescriptionPath); err != nil || !exists {
-		return errorResponse(c, fiber.StatusBadRequest, "Asset group description does not exist", err)
-	}
-
-	return filesystem.SendFile(c, afero.NewHttpFs(api.appFs.Fs), assetGroup.DescriptionPath)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

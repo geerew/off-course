@@ -39,8 +39,6 @@ CREATE TABLE asset_groups (
 	title       	 TEXT NOT NULL,
 	prefix      	 INTEGER NOT NULL,
 	module      	 TEXT,
-	description_path TEXT,
-	description_type TEXT,
 	created_at       TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	updated_at       TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	---

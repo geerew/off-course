@@ -266,40 +266,34 @@ func Test_UpdateAssetGroup(t *testing.T) {
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
 		originalAssetGroup := &models.AssetGroup{
-			CourseID:        course.ID,
-			Title:           "Asset Group 1",
-			Prefix:          sql.NullInt16{Int16: 1, Valid: true},
-			Module:          "Module 1",
-			DescriptionPath: "/course-1/01 asset group.md",
-			DescriptionType: *types.NewDescription("md"),
+			CourseID: course.ID,
+			Title:    "Asset Group 1",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Module:   "Module 1",
 		}
 		require.NoError(t, dao.CreateAssetGroup(ctx, originalAssetGroup))
 
 		time.Sleep(1 * time.Millisecond)
 
 		updatedAssetGroup := &models.AssetGroup{
-			Base:            originalAssetGroup.Base,
-			CourseID:        course.ID,
-			Title:           "Asset Group 2",
-			Prefix:          sql.NullInt16{Int16: 2, Valid: true},
-			Module:          "Module 2",
-			DescriptionPath: "/course-1/02 asset group.txt",
-			DescriptionType: *types.NewDescription("txt"),
+			Base:     originalAssetGroup.Base,
+			CourseID: course.ID,
+			Title:    "Asset Group 2",
+			Prefix:   sql.NullInt16{Int16: 2, Valid: true},
+			Module:   "Module 2",
 		}
 		require.NoError(t, dao.UpdateAssetGroup(ctx, updatedAssetGroup))
 
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_GROUP_TABLE_ID: originalAssetGroup.ID})
 		record, err := dao.GetAssetGroup(ctx, dbOpts)
 		require.Nil(t, err)
-		require.Equal(t, originalAssetGroup.ID, record.ID)                          // No change
-		require.Equal(t, originalAssetGroup.CourseID, record.CourseID)              // No change
-		require.True(t, record.CreatedAt.Equal(originalAssetGroup.CreatedAt))       // No change
-		require.Equal(t, updatedAssetGroup.Title, record.Title)                     // Changed
-		require.Equal(t, updatedAssetGroup.Prefix, record.Prefix)                   // Changed
-		require.Equal(t, updatedAssetGroup.Module, record.Module)                   // Changed
-		require.Equal(t, updatedAssetGroup.DescriptionPath, record.DescriptionPath) // Changed
-		require.Equal(t, updatedAssetGroup.DescriptionType, record.DescriptionType) // Changed
-		require.NotEqual(t, originalAssetGroup.UpdatedAt, record.UpdatedAt)         // Changed
+		require.Equal(t, originalAssetGroup.ID, record.ID)                    // No change
+		require.Equal(t, originalAssetGroup.CourseID, record.CourseID)        // No change
+		require.True(t, record.CreatedAt.Equal(originalAssetGroup.CreatedAt)) // No change
+		require.Equal(t, updatedAssetGroup.Title, record.Title)               // Changed
+		require.Equal(t, updatedAssetGroup.Prefix, record.Prefix)             // Changed
+		require.Equal(t, updatedAssetGroup.Module, record.Module)             // Changed
+		require.NotEqual(t, originalAssetGroup.UpdatedAt, record.UpdatedAt)   // Changed
 	})
 
 	t.Run("invalid", func(t *testing.T) {

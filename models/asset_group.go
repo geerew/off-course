@@ -4,8 +4,6 @@ package models
 
 import (
 	"database/sql"
-
-	"github.com/geerew/off-course/utils/types"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -13,12 +11,10 @@ import (
 // AssetGroups defines the model for an asset group
 type AssetGroup struct {
 	Base
-	CourseID        string            `db:"course_id"`        // Immutable
-	Title           string            `db:"title"`            // Mutable
-	Prefix          sql.NullInt16     `db:"prefix"`           // Mutable
-	Module          string            `db:"module"`           // Mutable
-	DescriptionPath string            `db:"description_path"` // Mutable
-	DescriptionType types.Description `db:"description_type"` // Mutable
+	CourseID string        `db:"course_id"` // Immutable
+	Title    string        `db:"title"`     // Mutable
+	Prefix   sql.NullInt16 `db:"prefix"`    // Mutable
+	Module   string        `db:"module"`    // Mutable
 
 	// Relations
 	Assets      []*Asset

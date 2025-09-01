@@ -433,8 +433,8 @@ func reconcileAssetGroups(scannedGroups []*models.AssetGroup, existingGroups []*
 			scannedGroup.ID = existingGroup.ID
 			seen[key] = true
 
-			// Update when title/description has changed
-			if scannedGroup.Title != existingGroup.Title || scannedGroup.DescriptionPath != existingGroup.DescriptionPath {
+			// Update when title has changed
+			if scannedGroup.Title != existingGroup.Title {
 				// fmt.Printf("[Update Asset Group] %s:%d -> %s \n", scannedGroup.Module, scannedGroup.Prefix.Int16, scannedGroup.Title)
 				ops = append(ops, UpdateAssetGroupOp{Existing: existingGroup, New: scannedGroup})
 			} else {

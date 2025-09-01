@@ -26,15 +26,13 @@ func (dao *DAO) CreateAssetGroup(ctx context.Context, assetGroup *models.AssetGr
 
 	builderOpts := newBuilderOptions(models.ASSET_GROUP_TABLE).
 		WithData(map[string]interface{}{
-			models.BASE_ID:                      assetGroup.ID,
-			models.ASSET_GROUP_COURSE_ID:        assetGroup.CourseID,
-			models.ASSET_GROUP_TITLE:            assetGroup.Title,
-			models.ASSET_GROUP_PREFIX:           assetGroup.Prefix,
-			models.ASSET_GROUP_MODULE:           assetGroup.Module,
-			models.ASSET_GROUP_DESCRIPTION_PATH: assetGroup.DescriptionPath,
-			models.ASSET_GROUP_DESCRIPTION_TYPE: assetGroup.DescriptionType,
-			models.BASE_CREATED_AT:              assetGroup.CreatedAt,
-			models.BASE_UPDATED_AT:              assetGroup.UpdatedAt,
+			models.BASE_ID:               assetGroup.ID,
+			models.ASSET_GROUP_COURSE_ID: assetGroup.CourseID,
+			models.ASSET_GROUP_TITLE:     assetGroup.Title,
+			models.ASSET_GROUP_PREFIX:    assetGroup.Prefix,
+			models.ASSET_GROUP_MODULE:    assetGroup.Module,
+			models.BASE_CREATED_AT:       assetGroup.CreatedAt,
+			models.BASE_UPDATED_AT:       assetGroup.UpdatedAt,
 		})
 
 	return createGeneric(ctx, dao, *builderOpts)
@@ -185,12 +183,10 @@ func (dao *DAO) UpdateAssetGroup(ctx context.Context, assetGroup *models.AssetGr
 
 	builderOpts := newBuilderOptions(models.ASSET_GROUP_TABLE).
 		WithData(map[string]interface{}{
-			models.ASSET_GROUP_TITLE:            assetGroup.Title,
-			models.ASSET_GROUP_PREFIX:           assetGroup.Prefix,
-			models.ASSET_GROUP_MODULE:           assetGroup.Module,
-			models.ASSET_GROUP_DESCRIPTION_PATH: assetGroup.DescriptionPath,
-			models.ASSET_GROUP_DESCRIPTION_TYPE: assetGroup.DescriptionType,
-			models.BASE_UPDATED_AT:              assetGroup.UpdatedAt,
+			models.ASSET_GROUP_TITLE:  assetGroup.Title,
+			models.ASSET_GROUP_PREFIX: assetGroup.Prefix,
+			models.ASSET_GROUP_MODULE: assetGroup.Module,
+			models.BASE_UPDATED_AT:    assetGroup.UpdatedAt,
 		}).
 		SetDbOpts(dbOpts)
 

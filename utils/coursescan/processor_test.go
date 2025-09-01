@@ -826,22 +826,6 @@ func TestScanner_Processor(t *testing.T) {
 			require.True(t, assetGroups[0].Assets[0].Type.IsVideo())
 			require.Equal(t, "3b857b8441d7c9e734535d6b82f69a34c6fcd63ed0ef989ff03808ecb29a2f1f", assetGroups[0].Assets[0].Hash)
 		}
-
-		// Add description
-		{
-			scanner.appFs.Fs.Mkdir(course.Path, os.ModePerm)
-			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 description.md", course.Path), []byte("description"), os.ModePerm)
-
-			err := Processor(ctx, scanner, scan)
-			require.NoError(t, err)
-
-			assetGroups, err := scanner.dao.ListAssetGroups(ctx, dbOpts)
-			require.NoError(t, err)
-			require.Len(t, assetGroups, 1)
-
-			require.Equal(t, fmt.Sprintf("%s/01 description.md", course.Path), assetGroups[0].DescriptionPath)
-			require.True(t, assetGroups[0].DescriptionType.IsMarkdown())
-		}
 	})
 }
 
@@ -997,9 +981,6 @@ func TestScanner_CategorizeFile(t *testing.T) {
 		// Card
 		{"card.jpg", Card},
 		{"card.jpeg", Card},
-		// Description
-		{"01 description.md", Description},
-		{"02 Description.TXT", Description},
 		// Attachment
 		{"01", Attachment},
 		{"200.pdf", Attachment},

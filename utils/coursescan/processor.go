@@ -230,10 +230,9 @@ func clearCourseMaintenance(ctx context.Context, s *CourseScan, course *models.C
 
 // assetGroupBucket accumulates files for a given module & prefix
 type assetGroupBucket struct {
-	descriptionPath string
-	groupedFiles    []*parsedFile
-	soloFiles       []*parsedFile
-	attachFiles     []*parsedFile
+	groupedFiles []*parsedFile
+	soloFiles    []*parsedFile
+	attachFiles  []*parsedFile
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -275,7 +274,7 @@ func scanFiles(s *CourseScan, coursePath, courseID string) (*scannedResults, err
 
 		if category == Ignore {
 			// s.logger.Debug("Ignoring incompatible file", loggerType, slog.String("file", normalized))
-			fmt.Println("[Ignoring]", normalizedPath)
+			// fmt.Println("[Ignoring]", normalizedPath)
 			continue
 		}
 
@@ -293,30 +292,21 @@ func scanFiles(s *CourseScan, coursePath, courseID string) (*scannedResults, err
 		// Build the buckets of asset groups of assets, attachments, and descriptions
 		switch category {
 		case Card:
-			fmt.Println("[Card]", normalizedPath)
+			// fmt.Println("[Card]", normalizedPath)
 			if inRoot && cardPath == "" {
 				cardPath = normalizedPath
 			}
 
-		case Description:
-			if bucket.descriptionPath == "" {
-				fmt.Println("[Description]", normalizedPath)
-				bucket.descriptionPath = normalizedPath
-			} else {
-				fmt.Println("[Attachment]", normalizedPath)
-				bucket.attachFiles = append(bucket.attachFiles, parsed)
-			}
-
 		case GroupedAsset:
-			fmt.Println("[Grouped Asset]", normalizedPath)
+			// fmt.Println("[Grouped Asset]", normalizedPath)
 			bucket.groupedFiles = append(bucket.groupedFiles, parsed)
 
 		case Asset:
-			fmt.Println("[Solo Asset]", normalizedPath)
+			// fmt.Println("[Solo Asset]", normalizedPath)
 			bucket.soloFiles = append(bucket.soloFiles, parsed)
 
 		case Attachment:
-			fmt.Println("[Attachment]", normalizedPath)
+			// fmt.Println("[Attachment]", normalizedPath)
 			bucket.attachFiles = append(bucket.attachFiles, parsed)
 		}
 	}
@@ -337,14 +327,6 @@ func scanFiles(s *CourseScan, coursePath, courseID string) (*scannedResults, err
 			// Set the asset group title from the first grouped file (if any)
 			if len(bucket.groupedFiles) > 0 {
 				assetGroup.Title = bucket.groupedFiles[0].Title
-			}
-
-			if bucket.descriptionPath != "" {
-				assetGroup.DescriptionPath = bucket.descriptionPath
-				ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(bucket.descriptionPath), "."))
-				if descriptionType := types.NewDescription(ext); descriptionType != nil && descriptionType.IsSupported() {
-					assetGroup.DescriptionType = *descriptionType
-				}
 			}
 
 			if len(bucket.groupedFiles) > 0 {
@@ -621,7 +603,7 @@ func applyAssetOps(
 			// Update an existing asset by giving the new asset the ID of the existing asset and asset group,
 			// then calling update
 			//
-			// This happens when the metadata (title, path, prefix, description, etc) changes but the
+			// This happens when the metadata (title, path, prefix, etc) changes but the
 			// contents of the asset have not
 			//
 			// Asset progress will be preserved
@@ -834,7 +816,6 @@ type FileCategory int
 const (
 	Ignore FileCategory = iota
 	Card
-	Description
 	Asset
 	GroupedAsset
 	Attachment
@@ -852,13 +833,6 @@ func categorizeFile(p *parsedFile) FileCategory {
 	// Card
 	if p.IsCard {
 		return Card
-	}
-
-	// Description
-	if p.SubPrefix == nil && strings.EqualFold(p.Title, "description") {
-		if descriptionType := types.NewDescription(strings.ToLower(p.Ext)); descriptionType != nil {
-			return Description
-		}
 	}
 
 	// Asset || grouped asset
