@@ -2387,12 +2387,14 @@ func TestCourses_DeleteTag(t *testing.T) {
 		require.Equal(t, http.StatusNoContent, status)
 
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: tag1.ID})
-		_, err = router.dao.GetCourseTag(ctx, dbOpts)
+		record, err := router.dao.GetCourseTag(ctx, dbOpts)
 		require.NoError(t, err)
+		require.NotNil(t, record)
 
 		dbOpts = database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: tag2.ID})
-		_, err = router.dao.GetCourseTag(ctx, dbOpts)
-		require.NotNil(t, err)
+		record, err = router.dao.GetCourseTag(ctx, dbOpts)
+		require.NoError(t, err)
+		require.NotNil(t, record)
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {

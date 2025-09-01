@@ -240,42 +240,30 @@ func TestSqlite_DeleteUser(t *testing.T) {
 
 		storage := NewSqliteStorage(db, time.Millisecond)
 
-		// Set two sessions for the same user
-		payload := map[string]any{
-			"id":   "user-123",
-			"role": "admin",
+		encode := func(m map[string]any) []byte {
+			var b bytes.Buffer
+			require.NoError(t, gob.NewEncoder(&b).Encode(m))
+			return b.Bytes()
 		}
-		var buf bytes.Buffer
-		err := gob.NewEncoder(&buf).Encode(payload)
-		require.NoError(t, err)
 
-		err = storage.Set("key1", buf.Bytes(), time.Second)
-		require.NoError(t, err)
-
-		err = storage.Set("key2", buf.Bytes(), time.Second)
-		require.NoError(t, err)
+		// Set two sessions for the same user
+		p1 := map[string]any{"id": "user-123", "role": "admin"}
+		require.NoError(t, storage.Set("key1", encode(p1), time.Second))
+		require.NoError(t, storage.Set("key2", encode(p1), time.Second))
 
 		// Set a session for a different user
-		payload = map[string]any{
-			"id":   "user-456",
-			"role": "admin",
-		}
-		err = gob.NewEncoder(&buf).Encode(payload)
-		require.NoError(t, err)
+		p2 := map[string]any{"id": "user-456", "role": "admin"}
+		require.NoError(t, storage.Set("key3", encode(p2), time.Second))
 
-		err = storage.Set("key3", buf.Bytes(), time.Second)
-		require.NoError(t, err)
-
-		err = storage.DeleteUser("user-123")
-		require.NoError(t, err)
+		require.NoError(t, storage.DeleteUser("user-123"))
 
 		records, err := storage.dao.ListSessions(ctx, nil)
 		require.NoError(t, err)
 		require.Len(t, records, 1)
 
 		require.Equal(t, "key3", records[0].ID)
-		require.Equal(t, "user-123", records[0].UserId)             // Set() extracted from gob and stored
-		require.Greater(t, records[0].Expires, time.Now().Unix()-1) // expires is set
+		require.Equal(t, "user-456", records[0].UserId)
+		require.Greater(t, records[0].Expires, time.Now().Unix()-1)
 		require.NotEmpty(t, records[0].Data)
 	})
 
