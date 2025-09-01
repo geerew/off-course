@@ -3,7 +3,6 @@ package session
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/gob"
 	"time"
 
@@ -47,11 +46,11 @@ func (s *SqliteStorage) Get(key string) ([]byte, error) {
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_ID: key})
 	session, err := s.dao.GetSession(context.Background(), dbOpts)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
-
 		return nil, err
+	}
+
+	if session == nil {
+		return nil, nil
 	}
 
 	// If the expiration time has already passed, then return nil
