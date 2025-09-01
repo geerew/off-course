@@ -24,7 +24,7 @@ func (dao *DAO) CreateVideoMetadata(ctx context.Context, metadata *models.VideoM
 	metadata.RefreshCreatedAt()
 	metadata.RefreshUpdatedAt()
 
-	builderOptions := newBuilderOptions(models.VIDEO_METADATA_TABLE).
+	builderOpts := newBuilderOptions(models.VIDEO_METADATA_TABLE).
 		WithData(
 			map[string]interface{}{
 				models.BASE_ID:                   metadata.ID,
@@ -39,7 +39,7 @@ func (dao *DAO) CreateVideoMetadata(ctx context.Context, metadata *models.VideoM
 			},
 		)
 
-	return createGeneric(ctx, dao, *builderOptions)
+	return createGeneric(ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -85,11 +85,9 @@ func (dao *DAO) UpdateVideoMetadata(ctx context.Context, metadata *models.VideoM
 
 	metadata.RefreshUpdatedAt()
 
-	dbOpts := &database.Options{
-		Where: squirrel.Eq{models.BASE_ID: metadata.ID},
-	}
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: metadata.ID})
 
-	builderOptions := newBuilderOptions(models.VIDEO_METADATA_TABLE).
+	builderOpts := newBuilderOptions(models.VIDEO_METADATA_TABLE).
 		WithData(
 			map[string]interface{}{
 				models.VIDEO_METADATA_DURATION:   metadata.Duration,
@@ -102,7 +100,7 @@ func (dao *DAO) UpdateVideoMetadata(ctx context.Context, metadata *models.VideoM
 		).
 		SetDbOpts(dbOpts)
 
-	_, err := updateGeneric(ctx, dao, *builderOptions)
+	_, err := updateGeneric(ctx, dao, *builderOpts)
 	return err
 }
 

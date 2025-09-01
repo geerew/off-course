@@ -42,7 +42,7 @@ func (r *Router) initTagRoutes() {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api *tagsAPI) getTags(c *fiber.Ctx) error {
-	builderOptions := builderOptions{
+	builderOpts := builderOptions{
 		DefaultOrderBy: defaultTagsOrderBy,
 		Paginate:       true,
 		AfterParseHook: tagsAfterParseHook,
@@ -53,7 +53,7 @@ func (api *tagsAPI) getTags(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts, err := optionsBuilder(c, builderOptions, principal.UserID)
+	dbOpts, err := optionsBuilder(c, builderOpts, principal.UserID)
 	if err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
@@ -74,7 +74,7 @@ func (api *tagsAPI) getTags(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api *tagsAPI) getTagNames(c *fiber.Ctx) error {
-	builderOptions := builderOptions{
+	builderOpts := builderOptions{
 		DefaultOrderBy: defaultTagsOrderBy,
 		Paginate:       false,
 		AfterParseHook: tagsAfterParseHook,
@@ -85,7 +85,7 @@ func (api *tagsAPI) getTagNames(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts, err := optionsBuilder(c, builderOptions, principal.UserID)
+	dbOpts, err := optionsBuilder(c, builderOpts, principal.UserID)
 	if err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}

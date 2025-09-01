@@ -43,7 +43,7 @@ func (r *Router) initUserRoutes() {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api userAPI) getUsers(c *fiber.Ctx) error {
-	builderOptions := builderOptions{
+	builderOpts := builderOptions{
 		DefaultOrderBy: defaultUsersOrderBy,
 		Paginate:       true,
 		AllowedFilters: []string{"role"},
@@ -55,7 +55,7 @@ func (api userAPI) getUsers(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts, err := optionsBuilder(c, builderOptions, principal.UserID)
+	dbOpts, err := optionsBuilder(c, builderOpts, principal.UserID)
 	if err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}

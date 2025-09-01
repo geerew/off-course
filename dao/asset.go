@@ -28,7 +28,7 @@ func (dao *DAO) CreateAsset(ctx context.Context, asset *models.Asset) error {
 	asset.RefreshCreatedAt()
 	asset.RefreshUpdatedAt()
 
-	builderOptions := newBuilderOptions(models.ASSET_TABLE).
+	builderOpts := newBuilderOptions(models.ASSET_TABLE).
 		WithData(
 			map[string]interface{}{
 				models.BASE_ID:              asset.ID,
@@ -49,7 +49,7 @@ func (dao *DAO) CreateAsset(ctx context.Context, asset *models.Asset) error {
 			},
 		)
 
-	return createGeneric(ctx, dao, *builderOptions)
+	return createGeneric(ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -322,11 +322,9 @@ func (dao *DAO) UpdateAsset(ctx context.Context, asset *models.Asset) error {
 
 	asset.RefreshUpdatedAt()
 
-	dbOpts := &database.Options{
-		Where: squirrel.Eq{models.BASE_ID: asset.ID},
-	}
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: asset.ID})
 
-	builderOptions := newBuilderOptions(models.ASSET_TABLE).
+	builderOpts := newBuilderOptions(models.ASSET_TABLE).
 		WithData(
 			map[string]interface{}{
 				models.ASSET_ASSET_GROUP_ID: asset.AssetGroupID,
@@ -345,7 +343,7 @@ func (dao *DAO) UpdateAsset(ctx context.Context, asset *models.Asset) error {
 		).
 		SetDbOpts(dbOpts)
 
-	_, err := updateGeneric(ctx, dao, *builderOptions)
+	_, err := updateGeneric(ctx, dao, *builderOpts)
 	return err
 }
 

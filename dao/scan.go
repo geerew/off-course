@@ -30,7 +30,7 @@ func (dao *DAO) CreateScan(ctx context.Context, scan *models.Scan) error {
 		scan.Status.SetWaiting()
 	}
 
-	builderOptions := newBuilderOptions(models.SCAN_TABLE).
+	builderOpts := newBuilderOptions(models.SCAN_TABLE).
 		WithData(
 			map[string]interface{}{
 				models.BASE_ID:         scan.ID,
@@ -41,7 +41,7 @@ func (dao *DAO) CreateScan(ctx context.Context, scan *models.Scan) error {
 			},
 		)
 
-	return createGeneric(ctx, dao, *builderOptions)
+	return createGeneric(ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -99,11 +99,9 @@ func (dao *DAO) UpdateScan(ctx context.Context, scan *models.Scan) error {
 
 	scan.RefreshUpdatedAt()
 
-	dbOpts := &database.Options{
-		Where: squirrel.Eq{models.BASE_ID: scan.ID},
-	}
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: scan.ID})
 
-	builderOptions := newBuilderOptions(models.SCAN_TABLE).
+	builderOpts := newBuilderOptions(models.SCAN_TABLE).
 		WithData(
 			map[string]interface{}{
 				models.SCAN_STATUS:     scan.Status,
@@ -112,7 +110,7 @@ func (dao *DAO) UpdateScan(ctx context.Context, scan *models.Scan) error {
 		).
 		SetDbOpts(dbOpts)
 
-	_, err := updateGeneric(ctx, dao, *builderOptions)
+	_, err := updateGeneric(ctx, dao, *builderOpts)
 	return err
 }
 

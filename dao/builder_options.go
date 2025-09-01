@@ -169,7 +169,7 @@ func (o *builderOptions) WithReplace() *builderOptions {
 
 func (o *builderOptions) SetDbOpts(opts *database.Options) *builderOptions {
 	if opts == nil {
-		o.DbOpts = &database.Options{}
+		o.DbOpts = database.NewOptions()
 	} else {
 		o.DbOpts = opts
 	}

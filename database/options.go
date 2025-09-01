@@ -100,6 +100,11 @@ func (o *Options) WithOrderBy(fields ...string) *Options {
 	return o
 }
 
+func (o *Options) OverrideOrderBy(fields ...string) *Options {
+	o.OrderBy = fields
+	return o
+}
+
 // WithOrderByClause sets a custom ORDER BY clause
 //
 // Use only if you need a complex ORDER BY that cannot be expressed with WithOrderBy

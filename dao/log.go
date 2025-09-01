@@ -27,7 +27,7 @@ func (dao *DAO) CreateLog(ctx context.Context, log *models.Log) error {
 	log.RefreshCreatedAt()
 	log.RefreshUpdatedAt()
 
-	builderOptions := newBuilderOptions(models.LOG_TABLE).
+	builderOpts := newBuilderOptions(models.LOG_TABLE).
 		WithData(
 			map[string]interface{}{
 				models.BASE_ID:         log.ID,
@@ -39,7 +39,7 @@ func (dao *DAO) CreateLog(ctx context.Context, log *models.Log) error {
 			},
 		)
 
-	return createGeneric(ctx, dao, *builderOptions)
+	return createGeneric(ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

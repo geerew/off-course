@@ -39,8 +39,8 @@ func (dao *DAO) CreateCourseTag(ctx context.Context, courseTag *models.CourseTag
 	// When the tag ID is set, we can just create the course tag
 	if courseTag.TagID != "" {
 		courseTagData[models.COURSE_TAG_TAG_ID] = courseTag.TagID
-		builderOptions := newBuilderOptions(models.COURSE_TAG_TABLE).WithData(courseTagData)
-		return createGeneric(ctx, dao, *builderOptions)
+		builderOpts := newBuilderOptions(models.COURSE_TAG_TABLE).WithData(courseTagData)
+		return createGeneric(ctx, dao, *builderOpts)
 	}
 
 	// If the tag ID is not set, we need to find the tag by name
@@ -49,9 +49,9 @@ func (dao *DAO) CreateCourseTag(ctx context.Context, courseTag *models.CourseTag
 	}
 
 	return dao.db.RunInTransaction(ctx, func(txCtx context.Context) error {
-		options := database.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_TAG: courseTag.Tag})
+		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_TAG: courseTag.Tag})
 
-		tag, err := dao.GetTag(txCtx, options)
+		tag, err := dao.GetTag(txCtx, dbOpts)
 		if err != nil {
 			return err
 		}
@@ -68,8 +68,8 @@ func (dao *DAO) CreateCourseTag(ctx context.Context, courseTag *models.CourseTag
 		courseTag.TagID = tag.ID
 
 		courseTagData[models.COURSE_TAG_TAG_ID] = courseTag.TagID
-		builderOptions := newBuilderOptions(models.COURSE_TAG_TABLE).WithData(courseTagData)
-		return createGeneric(txCtx, dao, *builderOptions)
+		builderOpts := newBuilderOptions(models.COURSE_TAG_TABLE).WithData(courseTagData)
+		return createGeneric(txCtx, dao, *builderOpts)
 	})
 }
 

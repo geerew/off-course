@@ -89,14 +89,14 @@ func (api coursesAPI) getCourses(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	builderOptions := builderOptions{
+	builderOpts := builderOptions{
 		DefaultOrderBy: defaultCoursesOrderBy,
 		AllowedFilters: []string{"available", "tag", "progress"},
 		Paginate:       true,
 		AfterParseHook: coursesAfterParseHook,
 	}
 
-	dbOpts, err := optionsBuilder(c, builderOptions, principal.UserID)
+	dbOpts, err := optionsBuilder(c, builderOpts, principal.UserID)
 	if err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
@@ -125,7 +125,7 @@ func (api coursesAPI) getCourse(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: id}}
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: id})
 	course, err := api.dao.GetCourse(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up course", err)
@@ -195,7 +195,7 @@ func (api coursesAPI) deleteCourse(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := &database.Options{Where: squirrel.Eq{models.COURSE_TABLE_ID: id}}
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: id})
 	if err := api.dao.DeleteCourses(ctx, dbOpts); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting course", err)
 	}
@@ -280,7 +280,7 @@ func (api coursesAPI) getCard(c *fiber.Ctx) error {
 func (api coursesAPI) getAssetGroups(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	builderOptions := builderOptions{
+	builderOpts := builderOptions{
 		DefaultOrderBy: defaultCourseAssetGroupsOrderBy,
 		Paginate:       true,
 	}
@@ -290,7 +290,7 @@ func (api coursesAPI) getAssetGroups(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts, err := optionsBuilder(c, builderOptions, principal.UserID)
+	dbOpts, err := optionsBuilder(c, builderOpts, principal.UserID)
 	if err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
@@ -396,7 +396,7 @@ func (api coursesAPI) getAttachments(c *fiber.Ctx) error {
 	id := c.Params("id")
 	assetGroupId := c.Params("group")
 
-	builderOptions := builderOptions{
+	builderOpts := builderOptions{
 		DefaultOrderBy: defaultCourseAssetGroupAttachmentsOrderBy,
 		Paginate:       true,
 	}
@@ -406,7 +406,7 @@ func (api coursesAPI) getAttachments(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts, err := optionsBuilder(c, builderOptions, principal.UserID)
+	dbOpts, err := optionsBuilder(c, builderOpts, principal.UserID)
 	if err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}

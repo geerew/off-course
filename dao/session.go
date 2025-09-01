@@ -28,7 +28,7 @@ func (dao *DAO) CreateOrReplaceSession(ctx context.Context, session *models.Sess
 		return utils.ErrUserId
 	}
 
-	builderOptions := newBuilderOptions(models.SESSION_TABLE).
+	builderOpts := newBuilderOptions(models.SESSION_TABLE).
 		WithData(
 			map[string]interface{}{
 				models.BASE_ID:         session.ID,
@@ -39,7 +39,7 @@ func (dao *DAO) CreateOrReplaceSession(ctx context.Context, session *models.Sess
 		).
 		WithReplace()
 
-	return createGeneric(ctx, dao, *builderOptions)
+	return createGeneric(ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -83,11 +83,9 @@ func (dao *DAO) UpdateSession(ctx context.Context, session *models.Session) erro
 		return utils.ErrId
 	}
 
-	dbOpts := &database.Options{
-		Where: squirrel.Eq{models.BASE_ID: session.ID},
-	}
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: session.ID})
 
-	builderOptions := newBuilderOptions(models.SESSION_TABLE).
+	builderOpts := newBuilderOptions(models.SESSION_TABLE).
 		WithData(
 			map[string]interface{}{
 				models.SESSION_DATA:    session.Data,
@@ -96,7 +94,7 @@ func (dao *DAO) UpdateSession(ctx context.Context, session *models.Session) erro
 		).
 		SetDbOpts(dbOpts)
 
-	_, err := updateGeneric(ctx, dao, *builderOptions)
+	_, err := updateGeneric(ctx, dao, *builderOpts)
 	return err
 }
 
@@ -108,9 +106,7 @@ func (dao *DAO) UpdateSessionRoleForUser(ctx context.Context, userID string, new
 		return utils.ErrUserId
 	}
 
-	opts := &database.Options{
-		Where: squirrel.Eq{models.SESSION_TABLE_USER_ID: userID},
-	}
+	opts := database.NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_USER_ID: userID})
 
 	sessions, err := dao.ListSessions(ctx, opts)
 	if err != nil {

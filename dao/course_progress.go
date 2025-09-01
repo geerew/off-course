@@ -41,7 +41,7 @@ func (dao *DAO) SyncCourseProgress(ctx context.Context, courseID string) error {
 
 	setProgress(*metrics, courseProgress)
 
-	builderOptions := newBuilderOptions(models.COURSE_PROGRESS_TABLE).
+	builderOpts := newBuilderOptions(models.COURSE_PROGRESS_TABLE).
 		WithData(
 			map[string]interface{}{
 				models.BASE_ID:                      courseProgress.ID,
@@ -72,7 +72,7 @@ func (dao *DAO) SyncCourseProgress(ctx context.Context, courseID string) error {
 		// Update the updated_at field
 		models.BASE_UPDATED_AT + " = excluded." + models.BASE_UPDATED_AT)
 
-	return createGeneric(ctx, dao, *builderOptions)
+	return createGeneric(ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

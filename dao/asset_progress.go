@@ -49,12 +49,12 @@ func (dao *DAO) UpsertAssetProgress(ctx context.Context, courseID string, assetP
 	}
 
 	// Get the existing asset progress if it exists
-	existing, err := dao.GetAssetProgress(ctx, &database.Options{
-		Where: squirrel.And{
-			squirrel.Eq{models.ASSET_PROGRESS_TABLE_ASSET_ID: assetProgress.AssetID},
-			squirrel.Eq{models.ASSET_PROGRESS_TABLE_USER_ID: assetProgress.UserID},
-		},
+	dbOpts = database.NewOptions().WithWhere(squirrel.And{
+		squirrel.Eq{models.ASSET_PROGRESS_TABLE_ASSET_ID: assetProgress.AssetID},
+		squirrel.Eq{models.ASSET_PROGRESS_TABLE_USER_ID: assetProgress.UserID},
 	})
+
+	existing, err := dao.GetAssetProgress(ctx, dbOpts)
 	if err != nil {
 		return err
 	}
@@ -102,9 +102,7 @@ func (dao *DAO) UpsertAssetProgress(ctx context.Context, courseID string, assetP
 
 			assetProgress.RefreshUpdatedAt()
 
-			dbOpts := &database.Options{
-				Where: squirrel.Eq{models.BASE_ID: assetProgress.ID},
-			}
+			dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: assetProgress.ID})
 
 			builderOpts := newBuilderOptions(models.ASSET_PROGRESS_TABLE).
 				WithData(map[string]interface{}{

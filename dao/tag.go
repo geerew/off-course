@@ -29,7 +29,7 @@ func (dao *DAO) CreateTag(ctx context.Context, tag *models.Tag) error {
 	tag.RefreshCreatedAt()
 	tag.RefreshUpdatedAt()
 
-	builderOptions := newBuilderOptions(models.TAG_TABLE).
+	builderOpts := newBuilderOptions(models.TAG_TABLE).
 		WithData(
 			map[string]interface{}{
 				models.BASE_ID:         tag.ID,
@@ -39,7 +39,7 @@ func (dao *DAO) CreateTag(ctx context.Context, tag *models.Tag) error {
 			},
 		)
 
-	return createGeneric(ctx, dao, *builderOptions)
+	return createGeneric(ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -116,11 +116,9 @@ func (dao *DAO) UpdateTag(ctx context.Context, tag *models.Tag) error {
 
 	tag.RefreshUpdatedAt()
 
-	dbOpts := &database.Options{
-		Where: squirrel.Eq{models.BASE_ID: tag.ID},
-	}
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: tag.ID})
 
-	builderOptions := newBuilderOptions(models.TAG_TABLE).
+	builderOpts := newBuilderOptions(models.TAG_TABLE).
 		WithData(
 			map[string]interface{}{
 				models.TAG_TAG:         tag.Tag,
@@ -129,7 +127,7 @@ func (dao *DAO) UpdateTag(ctx context.Context, tag *models.Tag) error {
 		).
 		SetDbOpts(dbOpts)
 
-	_, err := updateGeneric(ctx, dao, *builderOptions)
+	_, err := updateGeneric(ctx, dao, *builderOpts)
 	return err
 }
 

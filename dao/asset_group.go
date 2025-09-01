@@ -24,7 +24,7 @@ func (dao *DAO) CreateAssetGroup(ctx context.Context, assetGroup *models.AssetGr
 	assetGroup.RefreshCreatedAt()
 	assetGroup.RefreshUpdatedAt()
 
-	builderOptions := newBuilderOptions(models.ASSET_GROUP_TABLE).
+	builderOpts := newBuilderOptions(models.ASSET_GROUP_TABLE).
 		WithData(map[string]interface{}{
 			models.BASE_ID:                      assetGroup.ID,
 			models.ASSET_GROUP_COURSE_ID:        assetGroup.CourseID,
@@ -37,7 +37,7 @@ func (dao *DAO) CreateAssetGroup(ctx context.Context, assetGroup *models.AssetGr
 			models.BASE_UPDATED_AT:              assetGroup.UpdatedAt,
 		})
 
-	return createGeneric(ctx, dao, *builderOptions)
+	return createGeneric(ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -181,11 +181,9 @@ func (dao *DAO) UpdateAssetGroup(ctx context.Context, assetGroup *models.AssetGr
 
 	assetGroup.RefreshUpdatedAt()
 
-	dbOpts := &database.Options{
-		Where: squirrel.Eq{models.BASE_ID: assetGroup.ID},
-	}
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: assetGroup.ID})
 
-	builderOptions := newBuilderOptions(models.ASSET_GROUP_TABLE).
+	builderOpts := newBuilderOptions(models.ASSET_GROUP_TABLE).
 		WithData(map[string]interface{}{
 			models.ASSET_GROUP_TITLE:            assetGroup.Title,
 			models.ASSET_GROUP_PREFIX:           assetGroup.Prefix,
@@ -196,7 +194,7 @@ func (dao *DAO) UpdateAssetGroup(ctx context.Context, assetGroup *models.AssetGr
 		}).
 		SetDbOpts(dbOpts)
 
-	_, err := updateGeneric(ctx, dao, *builderOptions)
+	_, err := updateGeneric(ctx, dao, *builderOpts)
 	return err
 }
 

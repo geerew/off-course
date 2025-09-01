@@ -100,7 +100,7 @@ func (s *SqliteStorage) Delete(key string) error {
 		return nil
 	}
 
-	dbOpts := &database.Options{Where: squirrel.Eq{models.SESSION_TABLE_ID: key}}
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_ID: key})
 	return s.dao.DeleteSessions(context.Background(), dbOpts)
 }
 
@@ -112,7 +112,7 @@ func (s *SqliteStorage) DeleteUser(id string) error {
 		return nil
 	}
 
-	dbOpts := &database.Options{Where: squirrel.Eq{models.SESSION_TABLE_USER_ID: id}}
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_USER_ID: id})
 	return s.dao.DeleteSessions(context.Background(), dbOpts)
 }
 

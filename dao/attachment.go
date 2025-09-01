@@ -40,7 +40,7 @@ func (dao *DAO) CreateAttachment(ctx context.Context, attachment *models.Attachm
 	attachment.RefreshCreatedAt()
 	attachment.RefreshUpdatedAt()
 
-	builderOptions := newBuilderOptions(models.ATTACHMENT_TABLE).
+	builderOpts := newBuilderOptions(models.ATTACHMENT_TABLE).
 		WithData(
 			map[string]interface{}{
 				models.BASE_ID:                   attachment.ID,
@@ -52,7 +52,7 @@ func (dao *DAO) CreateAttachment(ctx context.Context, attachment *models.Attachm
 			},
 		)
 
-	return createGeneric(ctx, dao, *builderOptions)
+	return createGeneric(ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -106,11 +106,9 @@ func (dao *DAO) UpdateAttachment(ctx context.Context, attachment *models.Attachm
 
 	attachment.RefreshUpdatedAt()
 
-	dbOpts := &database.Options{
-		Where: squirrel.Eq{models.BASE_ID: attachment.ID},
-	}
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: attachment.ID})
 
-	builderOptions := newBuilderOptions(models.ATTACHMENT_TABLE).
+	builderOpts := newBuilderOptions(models.ATTACHMENT_TABLE).
 		WithData(
 			map[string]interface{}{
 				models.ATTACHMENT_TITLE: attachment.Title,
@@ -120,7 +118,7 @@ func (dao *DAO) UpdateAttachment(ctx context.Context, attachment *models.Attachm
 		).
 		SetDbOpts(dbOpts)
 
-	_, err := updateGeneric(ctx, dao, *builderOptions)
+	_, err := updateGeneric(ctx, dao, *builderOpts)
 	return err
 }
 

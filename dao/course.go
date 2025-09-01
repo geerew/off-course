@@ -41,7 +41,7 @@ func (dao *DAO) CreateCourse(ctx context.Context, course *models.Course) error {
 	course.InitialScan = false
 	course.Maintenance = true
 
-	builderOptions := newBuilderOptions(models.COURSE_TABLE).
+	builderOpts := newBuilderOptions(models.COURSE_TABLE).
 		WithData(
 			map[string]interface{}{
 				models.BASE_ID:             course.ID,
@@ -57,7 +57,7 @@ func (dao *DAO) CreateCourse(ctx context.Context, course *models.Course) error {
 			},
 		)
 
-	return createGeneric(ctx, dao, *builderOptions)
+	return createGeneric(ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -256,11 +256,9 @@ func (dao *DAO) UpdateCourse(ctx context.Context, course *models.Course) error {
 
 	course.RefreshUpdatedAt()
 
-	dbOpts := &database.Options{
-		Where: squirrel.Eq{models.BASE_ID: course.ID},
-	}
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: course.ID})
 
-	builderOptions := newBuilderOptions(models.COURSE_TABLE).
+	builderOpts := newBuilderOptions(models.COURSE_TABLE).
 		WithData(
 			map[string]interface{}{
 				models.COURSE_TITLE:        course.Title,
@@ -275,7 +273,7 @@ func (dao *DAO) UpdateCourse(ctx context.Context, course *models.Course) error {
 		).
 		SetDbOpts(dbOpts)
 
-	_, err := updateGeneric(ctx, dao, *builderOptions)
+	_, err := updateGeneric(ctx, dao, *builderOpts)
 	return err
 }
 

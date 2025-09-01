@@ -143,8 +143,8 @@ func Test_GetCourse(t *testing.T) {
 		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress2))
 
 		// Confirm there are 2 asset progress records
-		builderOptions := newBuilderOptions(models.ASSET_PROGRESS_TABLE)
-		count, err := countGeneric(ctx, dao, *builderOptions)
+		builderOpts := newBuilderOptions(models.ASSET_PROGRESS_TABLE)
+		count, err := countGeneric(ctx, dao, *builderOpts)
 		require.NoError(t, err)
 		require.Equal(t, 2, count)
 

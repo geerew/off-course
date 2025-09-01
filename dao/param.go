@@ -30,7 +30,7 @@ func (dao *DAO) CreateParam(ctx context.Context, param *models.Param) error {
 	param.RefreshCreatedAt()
 	param.RefreshUpdatedAt()
 
-	builderOptions := newBuilderOptions(models.PARAM_TABLE).
+	builderOpts := newBuilderOptions(models.PARAM_TABLE).
 		WithData(
 			map[string]interface{}{
 				models.BASE_ID:         param.ID,
@@ -41,7 +41,7 @@ func (dao *DAO) CreateParam(ctx context.Context, param *models.Param) error {
 			},
 		)
 
-	return createGeneric(ctx, dao, *builderOptions)
+	return createGeneric(ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -91,11 +91,9 @@ func (dao *DAO) UpdateParam(ctx context.Context, param *models.Param) error {
 
 	param.RefreshUpdatedAt()
 
-	dbOpts := &database.Options{
-		Where: squirrel.Eq{models.BASE_ID: param.ID},
-	}
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: param.ID})
 
-	builderOptions := newBuilderOptions(models.PARAM_TABLE).
+	builderOpts := newBuilderOptions(models.PARAM_TABLE).
 		WithData(
 			map[string]interface{}{
 				models.PARAM_VALUE:     param.Value,
@@ -104,7 +102,7 @@ func (dao *DAO) UpdateParam(ctx context.Context, param *models.Param) error {
 		).
 		SetDbOpts(dbOpts)
 
-	_, err := updateGeneric(ctx, dao, *builderOptions)
+	_, err := updateGeneric(ctx, dao, *builderOpts)
 	return err
 }
 

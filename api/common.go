@@ -66,21 +66,21 @@ type builderOptions struct {
 
 // optionsBuilder builds a database.Options based on a `q` query parameter
 func optionsBuilder(c *fiber.Ctx, builderOptions builderOptions, userId string) (*database.Options, error) {
-	options := &database.Options{}
+	dbOpts := database.NewOptions()
 
 	orderBy := []string{models.BASE_CREATED_AT + " desc"}
 	if len(builderOptions.DefaultOrderBy) > 0 {
 		orderBy = builderOptions.DefaultOrderBy
 	}
-	options.OrderBy = orderBy
+	dbOpts.WithOrderBy(orderBy...)
 
 	if builderOptions.Paginate {
-		options.Pagination = pagination.NewFromApi(c)
+		dbOpts.WithPagination(pagination.NewFromApi(c))
 	}
 
 	q := c.Query("q", "")
 	if q == "" {
-		return options, nil
+		return dbOpts, nil
 	}
 
 	parsed, err := queryparser.Parse(q, builderOptions.AllowedFilters)
@@ -89,18 +89,18 @@ func optionsBuilder(c *fiber.Ctx, builderOptions builderOptions, userId string) 
 	}
 
 	if parsed == nil {
-		return options, nil
+		return dbOpts, nil
 	}
 
 	if len(parsed.Sort) > 0 {
-		options.OrderBy = parsed.Sort
+		dbOpts.OverrideOrderBy(parsed.Sort...)
 	}
 
 	if builderOptions.AfterParseHook != nil {
-		builderOptions.AfterParseHook(parsed, options, userId)
+		builderOptions.AfterParseHook(parsed, dbOpts, userId)
 	}
 
-	return options, nil
+	return dbOpts, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

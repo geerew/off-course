@@ -32,7 +32,7 @@ func (dao *DAO) CreateUser(ctx context.Context, user *models.User) error {
 	user.RefreshCreatedAt()
 	user.RefreshUpdatedAt()
 
-	builderOptions := newBuilderOptions(models.USER_TABLE).
+	builderOpts := newBuilderOptions(models.USER_TABLE).
 		WithData(
 			map[string]interface{}{
 				models.BASE_ID:            user.ID,
@@ -45,7 +45,7 @@ func (dao *DAO) CreateUser(ctx context.Context, user *models.User) error {
 			},
 		)
 
-	return createGeneric(ctx, dao, *builderOptions)
+	return createGeneric(ctx, dao, *builderOpts)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -103,11 +103,9 @@ func (dao *DAO) UpdateUser(ctx context.Context, user *models.User) error {
 
 	user.RefreshUpdatedAt()
 
-	dbOpts := &database.Options{
-		Where: squirrel.Eq{models.BASE_ID: user.ID},
-	}
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: user.ID})
 
-	builderOptions := newBuilderOptions(models.USER_TABLE).
+	builderOpts := newBuilderOptions(models.USER_TABLE).
 		WithData(
 			map[string]interface{}{
 				models.USER_DISPLAY_NAME:  user.DisplayName,
@@ -118,7 +116,7 @@ func (dao *DAO) UpdateUser(ctx context.Context, user *models.User) error {
 		).
 		SetDbOpts(dbOpts)
 
-	_, err := updateGeneric(ctx, dao, *builderOptions)
+	_, err := updateGeneric(ctx, dao, *builderOpts)
 	return err
 }
 
