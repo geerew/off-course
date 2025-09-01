@@ -2,6 +2,7 @@ package dao
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/Masterminds/squirrel"
@@ -41,6 +42,10 @@ func (dao *DAO) UpsertAssetProgress(ctx context.Context, courseID string, assetP
 	asset, err = dao.GetAsset(ctx, dbOpts)
 	if err != nil {
 		return err
+	}
+
+	if asset == nil {
+		return sql.ErrNoRows
 	}
 
 	// Get the existing asset progress if it exists
@@ -149,6 +154,18 @@ func (dao *DAO) ListAssetProgress(ctx context.Context, dbOpts *database.Options)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ListAssetProgressIDs returns just the asset progress IDs as a []string
+//
+// TODO add tests
+func (dao *DAO) ListAssetProgressIDs(ctx context.Context, dbOpts *database.Options) ([]string, error) {
+	builderOpts := newBuilderOptions(models.ASSET_PROGRESS_TABLE).
+		WithColumns(models.ASSET_PROGRESS_TABLE + "." + models.BASE_ID).
+		SetDbOpts(dbOpts)
+
+	return pluck[string](ctx, dao, *builderOpts)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // DeleteAssetProgress deletes records from the asset progress table
 //
@@ -164,4 +181,32 @@ func (dao *DAO) DeleteAssetProgress(ctx context.Context, dbOpts *database.Option
 	q := database.QuerierFromContext(ctx, dao.db)
 	_, err := q.ExecContext(ctx, sqlStr, args...)
 	return err
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// DeleteAssetProgressForCourse deletes all asset progress records for a given user that
+// belong to a course
+func (dao *DAO) DeleteAssetProgressForCourse(ctx context.Context, courseID, userID string) error {
+	if courseID == "" {
+		return utils.ErrCourseId
+	}
+
+	if userID == "" {
+		return utils.ErrUserId
+	}
+
+	where := squirrel.And{
+		squirrel.Eq{models.ASSET_PROGRESS_TABLE_USER_ID: userID},
+		squirrel.Expr(
+			"EXISTS (SELECT 1 FROM "+models.ASSET_TABLE+
+				" WHERE "+models.ASSET_TABLE_ID+" = "+models.ASSET_PROGRESS_TABLE_ASSET_ID+
+				" AND "+models.ASSET_TABLE_COURSE_ID+" = ?)",
+			courseID,
+		),
+	}
+
+	dbOpts := database.NewOptions().WithWhere(where)
+
+	return dao.DeleteAssetProgress(ctx, dbOpts)
 }

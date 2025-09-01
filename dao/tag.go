@@ -87,6 +87,19 @@ func (dao *DAO) ListTags(ctx context.Context, dbOpts *database.Options) ([]*mode
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// ListTagNames returns just the tag names as a []string
+//
+// TODO add tests
+func (dao *DAO) ListTagNames(ctx context.Context, dbOpts *database.Options) ([]string, error) {
+	builderOpts := newBuilderOptions(models.TAG_TABLE).
+		WithColumns(models.TAG_TABLE + "." + models.TAG_TAG).
+		SetDbOpts(dbOpts)
+
+	return pluck[string](ctx, dao, *builderOpts)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // UpdateTag updates a tag record
 func (dao *DAO) UpdateTag(ctx context.Context, tag *models.Tag) error {
 	if tag == nil {

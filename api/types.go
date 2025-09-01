@@ -31,11 +31,10 @@ type courseRequest struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type courseProgressResponse struct {
-	Started           bool           `json:"started"`
-	StartedAt         types.DateTime `json:"startedAt"`
-	Percent           int            `json:"percent"`
-	CompletedAt       types.DateTime `json:"completedAt"`
-	ProgressUpdatedAt types.DateTime `json:"progressUpdatedAt"`
+	Started     bool           `json:"started"`
+	StartedAt   types.DateTime `json:"startedAt"`
+	Percent     int            `json:"percent"`
+	CompletedAt types.DateTime `json:"completedAt"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -69,11 +68,10 @@ func courseResponseHelper(courses []*models.Course, isAdmin bool) []*courseRespo
 		var progress *courseProgressResponse
 		if course.Progress != nil {
 			progress = &courseProgressResponse{
-				Started:           course.Progress.Started,
-				StartedAt:         course.Progress.StartedAt,
-				Percent:           course.Progress.Percent,
-				CompletedAt:       course.Progress.CompletedAt,
-				ProgressUpdatedAt: course.Progress.UpdatedAt,
+				Started:     course.Progress.Started,
+				StartedAt:   course.Progress.StartedAt,
+				Percent:     course.Progress.Percent,
+				CompletedAt: course.Progress.CompletedAt,
 			}
 		}
 
@@ -240,11 +238,13 @@ func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 		}
 
 		// Asset progress
-		progress := &assetProgressResponse{}
+		var progress *assetProgressResponse
 		if asset.Progress != nil {
-			progress.VideoPos = asset.Progress.VideoPos
-			progress.Completed = asset.Progress.Completed
-			progress.CompletedAt = asset.Progress.CompletedAt
+			progress = &assetProgressResponse{
+				VideoPos:    asset.Progress.VideoPos,
+				Completed:   asset.Progress.Completed,
+				CompletedAt: asset.Progress.CompletedAt,
+			}
 		}
 
 		response := &assetResponse{

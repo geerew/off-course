@@ -7,9 +7,6 @@ import (
 	"github.com/geerew/off-course/database"
 )
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// countBuilder builds a query for counting distinct records in a table
 func countBuilder(builderOpts builderOptions) (string, []interface{}, error) {
 	if builderOpts.Table == "" {
 		return "", nil, fmt.Errorf("builderOpts.Table cannot be empty")
@@ -17,37 +14,88 @@ func countBuilder(builderOpts builderOptions) (string, []interface{}, error) {
 
 	builder := squirrel.
 		StatementBuilder.
-		Select("COUNT(DISTINCT " + builderOpts.Table + ".id)").
+		PlaceholderFormat(squirrel.Question)
+
+	commonBuilder := builder.
+		Select().
 		From(builderOpts.Table)
 
-	builder = applyJoins(builder, builderOpts.Joins)
-
-	builder = builder.GroupBy(builderOpts.GroupBy...)
-
-	if builderOpts.Having != nil {
-		builder = builder.Having(builderOpts.Having)
-	}
-
-	// When there is a GroupBy and Having clause, we need to wrap the query in a subquery
-	if len(builderOpts.GroupBy) > 0 && builderOpts.Having != nil {
-		builder = squirrel.StatementBuilder.
-			PlaceholderFormat(squirrel.Question).
-			Select("COUNT(*)").
-			FromSelect(builder, "sub")
-	}
+	// Builder joins
+	commonBuilder = applyJoins(commonBuilder, builderOpts.Joins)
 
 	if builderOpts.DbOpts != nil {
-		builder = builder.Where(builderOpts.DbOpts.Where)
-
-		builder = applyJoins(builder, builderOpts.DbOpts.Joins)
-
-		if builderOpts.DbOpts.OrderByClause != nil {
-			builder = builder.OrderByClause(builderOpts.DbOpts.OrderByClause)
+		if builderOpts.DbOpts.Where != nil {
+			commonBuilder = commonBuilder.Where(builderOpts.DbOpts.Where)
 		}
+
+		// Additional joins
+		commonBuilder = applyJoins(commonBuilder, builderOpts.DbOpts.Joins)
 	}
 
-	return builder.ToSql()
+	// Fast path when no GROUP BY/HAVING
+	if len(builderOpts.GroupBy) == 0 || builderOpts.Having == nil {
+		return commonBuilder.
+			Columns("COUNT(DISTINCT " + builderOpts.Table + ".id)").
+			ToSql()
+	}
+
+	inner := commonBuilder.Columns(builderOpts.Table + ".id")
+
+	if len(builderOpts.GroupBy) > 0 {
+		inner = inner.GroupBy(builderOpts.GroupBy...)
+	}
+
+	if builderOpts.Having != nil {
+		inner = inner.Having(builderOpts.Having)
+	}
+
+	return builder.
+		Select("COUNT(*)").
+		FromSelect(inner, "sub").
+		ToSql()
 }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// // countBuilder builds a query for counting distinct records in a table
+// func countBuilder(builderOpts builderOptions) (string, []interface{}, error) {
+// 	if builderOpts.Table == "" {
+// 		return "", nil, fmt.Errorf("builderOpts.Table cannot be empty")
+// 	}
+
+// 	builder := squirrel.
+// 		StatementBuilder.
+// 		Select("COUNT(DISTINCT " + builderOpts.Table + ".id)").
+// 		From(builderOpts.Table)
+
+// 	builder = applyJoins(builder, builderOpts.Joins)
+
+// 	builder = builder.GroupBy(builderOpts.GroupBy...)
+
+// 	if builderOpts.Having != nil {
+// 		builder = builder.Having(builderOpts.Having)
+// 	}
+
+// 	// When there is a GroupBy and Having clause, we need to wrap the query in a subquery
+// 	if len(builderOpts.GroupBy) > 0 && builderOpts.Having != nil {
+// 		builder = squirrel.StatementBuilder.
+// 			PlaceholderFormat(squirrel.Question).
+// 			Select("COUNT(*)").
+// 			FromSelect(builder, "sub")
+// 	}
+
+// 	if builderOpts.DbOpts != nil {
+// 		builder = builder.Where(builderOpts.DbOpts.Where)
+
+// 		builder = applyJoins(builder, builderOpts.DbOpts.Joins)
+
+// 		if builderOpts.DbOpts.OrderByClause != nil {
+// 			builder = builder.OrderByClause(builderOpts.DbOpts.OrderByClause)
+// 		}
+// 	}
+
+// 	return builder.ToSql()
+// }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -7,7 +7,6 @@ import (
 
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/utils"
-	"github.com/geerew/off-course/utils/schema"
 	"github.com/geerew/off-course/utils/types"
 )
 
@@ -46,34 +45,10 @@ func createGeneric(ctx context.Context, dao *DAO, builderOpts builderOptions) er
 	return err
 }
 
-// // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// // CreateOrReplace is a generic function to create or replace a model in the database
-// func CreateOrReplace(ctx context.Context, dao *DAO, model models.Modeler) error {
-// 	sch, err := schema.Parse(model)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	if model.Id() == "" {
-// 		model.RefreshId()
-// 	}
-
-// 	model.RefreshCreatedAt()
-// 	model.RefreshUpdatedAt()
-
-// 	q := database.QuerierFromContext(ctx, dao.db)
-// 	// o := &database.Options{Replace: true}
-// 	o := &database.Options{}
-// 	_, err = sch.Insert(model, o, q)
-// 	return err
-// }
-
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Count is a generic function to count the number of rows in a table as determined by the model
 func countGeneric(ctx context.Context, dao *DAO, builderOpts builderOptions) (int, error) {
-
 	q := database.QuerierFromContext(ctx, dao.db)
 
 	sqlStr, args, err := countBuilder(builderOpts)
@@ -184,32 +159,6 @@ func listGeneric[T any](ctx context.Context, dao *DAO, builderOpts builderOption
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// ListPluck pulls a column into T.
-func ListPluck[T any](ctx context.Context, dao *DAO, model any, options *database.Options, column string) (T, error) {
-	var zero T
-
-	sch, err := schema.Parse(model)
-	if err != nil {
-		return zero, err
-	}
-
-	var result T
-	q := database.QuerierFromContext(ctx, dao.db)
-
-	err = sch.Pluck(column, &result, options, q)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return result, nil
-		}
-
-		return zero, err
-	}
-
-	return result, nil
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 // updateGeneric is a generic function to update a record in the database
 func updateGeneric(ctx context.Context, dao *DAO, builderOpts builderOptions) (bool, error) {
 	sqlStr, args, err := updateBuilder(builderOpts)
@@ -229,6 +178,28 @@ func updateGeneric(ctx context.Context, dao *DAO, builderOpts builderOptions) (b
 	}
 
 	return rowCount > 0, nil
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// pluck returns a slice of a single column (e.g., []string, []int)
+// from the given table using the same Options/joins/filters you already use.
+// Pass column as a fully-qualified name (e.g., "tags.tag").
+// If distinct is true, it will SELECT DISTINCT <column>.
+func pluck[T any](ctx context.Context, dao *DAO, builderOpts builderOptions) ([]T, error) {
+	sqlStr, args, err := selectBuilder(builderOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	q := database.QuerierFromContext(ctx, dao.db)
+
+	var out []T
+	if err := q.SelectContext(ctx, &out, sqlStr, args...); err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -538,3 +538,70 @@ func Test_DeleteAssetProgress(t *testing.T) {
 		require.Empty(t, records)
 	})
 }
+
+func Test_DeleteAssetProgressForCourse(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		courses := []*models.Course{}
+		assetProgresses := []*models.AssetProgress{}
+		for i := range 3 {
+			course := &models.Course{Title: fmt.Sprintf("Course %d", i), Path: fmt.Sprintf("/course-%d", i)}
+			require.NoError(t, dao.CreateCourse(ctx, course))
+			courses = append(courses, course)
+
+			assetGroup := &models.AssetGroup{
+				CourseID: course.ID,
+				Title:    "Asset Group 1",
+				Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+				Module:   "Module 1",
+			}
+			require.NoError(t, dao.CreateAssetGroup(ctx, assetGroup))
+
+			asset := &models.Asset{
+				CourseID:     course.ID,
+				AssetGroupID: assetGroup.ID,
+				Title:        "Asset 1",
+				Prefix:       sql.NullInt16{Int16: 1, Valid: true},
+				Module:       "Module 1",
+				Type:         *types.NewAsset("mp4"),
+				Path:         fmt.Sprintf("/course-%d/01 asset.mp4", i),
+				FileSize:     1024,
+				ModTime:      time.Now().Format(time.RFC3339Nano),
+				Hash:         "1234",
+			}
+			require.NoError(t, dao.CreateAsset(ctx, asset))
+
+			// Set the asset progress to 5
+			assetProgress := &models.AssetProgress{
+				AssetID:           asset.ID,
+				AssetProgressInfo: models.AssetProgressInfo{VideoPos: 5},
+			}
+			assetProgresses = append(assetProgresses, assetProgress)
+			require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+			time.Sleep(1 * time.Millisecond)
+		}
+
+		principal, err := principalFromCtx(ctx)
+		require.NoError(t, err)
+
+		err = dao.DeleteAssetProgressForCourse(ctx, courses[1].ID, principal.UserID)
+		require.NoError(t, err)
+
+		records, err := dao.ListAssetProgress(ctx, nil)
+		require.NoError(t, err)
+		require.Len(t, records, 2)
+		require.Equal(t, assetProgresses[0].ID, records[0].ID)
+		require.Equal(t, assetProgresses[2].ID, records[1].ID)
+	})
+
+	t.Run("invalid", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		err := dao.DeleteAssetProgressForCourse(ctx, "", "")
+		require.ErrorIs(t, err, utils.ErrCourseId)
+
+		err = dao.DeleteAssetProgressForCourse(ctx, "course_id", "")
+		require.ErrorIs(t, err, utils.ErrUserId)
+	})
+}

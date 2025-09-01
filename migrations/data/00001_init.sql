@@ -196,6 +196,13 @@ CREATE INDEX idx_asset_progress_asset_user
 CREATE UNIQUE INDEX idx_video_metadata_asset
   ON asset_video_metadata(asset_id);
 
+-- Filter assets by course quickly
+CREATE INDEX IF NOT EXISTS idx_assets_course ON assets(course_id);
+
+-- Probe progress rows by (asset_id, user_id)
+CREATE INDEX IF NOT EXISTS idx_asset_progress_asset_user 
+	ON assets_progress(asset_id, user_id);
+
 -- Sessions
 CREATE INDEX idx_sessions_expires ON sessions(expires);
 CREATE INDEX idx_sessions_user    ON sessions(user_id);
