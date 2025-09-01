@@ -325,6 +325,8 @@ func attachmentResponseHelper(attachments []*models.Attachment) []*attachmentRes
 type lessonResponse struct {
 	Prefix              int                   `json:"prefix"`
 	Title               string                `json:"title"`
+	HasDescription      bool                  `json:"hasDescription"`
+	DescriptionType     *string               `json:"descriptionType,omitempty"`
 	Assets              []*assetResponse      `json:"assets"`
 	Attachments         []*attachmentResponse `json:"attachments"`
 	Completed           bool                  `json:"completed"`
@@ -366,12 +368,20 @@ func modulesResponseHelper(groups []*models.AssetGroup) modulesResponse {
 			moduleName = noChapter
 		}
 
+		var descType *string
+		if g.DescriptionPath != "" {
+			s := g.DescriptionType.String()
+			descType = &s
+		}
+
 		// Build lesson
 		lesson := lessonResponse{
-			Prefix:      int(g.Prefix.Int16),
-			Title:       deriveGroupTitle(g),
-			Assets:      assetResponseHelper(g.Assets),
-			Attachments: attachmentResponseHelper(g.Attachments),
+			Prefix:          int(g.Prefix.Int16),
+			Title:           deriveGroupTitle(g),
+			HasDescription:  g.DescriptionPath != "",
+			DescriptionType: descType,
+			Assets:          assetResponseHelper(g.Assets),
+			Attachments:     attachmentResponseHelper(g.Attachments),
 		}
 
 		// Counts + Duration
