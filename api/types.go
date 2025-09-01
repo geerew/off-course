@@ -1,10 +1,15 @@
 package api
 
 import (
+	"sort"
+	"strings"
+
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/types"
 )
 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// File System
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type fileSystemResponse struct {
@@ -21,6 +26,8 @@ type fileInfoResponse struct {
 	Classification types.PathClassification `json:"classification"`
 }
 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Course
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type courseRequest struct {
@@ -100,6 +107,8 @@ func courseResponseHelper(courses []*models.Course, isAdmin bool) []*courseRespo
 	return responses
 }
 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Course Tag
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type courseTagResponse struct {
@@ -275,7 +284,7 @@ func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Attachment
+// 	Attachment
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type attachmentResponse struct {
@@ -307,6 +316,109 @@ func attachmentResponseHelper(attachments []*models.Attachment) []*attachmentRes
 	}
 
 	return responses
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Module
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+type lessonResponse struct {
+	Prefix              int                   `json:"prefix"`
+	Title               string                `json:"title"`
+	Assets              []*assetResponse      `json:"assets"`
+	Attachments         []*attachmentResponse `json:"attachments"`
+	Completed           bool                  `json:"completed"`
+	StartedAssetCount   int                   `json:"startedAssetCount"`
+	CompletedAssetCount int                   `json:"completedAssetCount"`
+	TotalVideoDuration  int                   `json:"totalVideoDuration"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+type moduleResponse struct {
+	Module  string           `json:"module"`
+	Index   int              `json:"index"`
+	Lessons []lessonResponse `json:"lessons"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+type modulesResponse struct {
+	Modules []moduleResponse `json:"modules"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func modulesResponseHelper(groups []*models.AssetGroup) modulesResponse {
+	const noChapter = "(no chapter)"
+
+	deriveGroupTitle := func(g *models.AssetGroup) string {
+		if len(g.Assets) > 0 && g.Assets[0].Title != "" {
+			return g.Assets[0].Title
+		}
+		return g.Title
+	}
+
+	modMap := make(map[string][]lessonResponse)
+	order := []string{}
+
+	for _, g := range groups {
+		moduleName := strings.TrimSpace(g.Module)
+		if moduleName == "" {
+			moduleName = noChapter
+		}
+
+		// Build lesson
+		lesson := lessonResponse{
+			Prefix:      int(g.Prefix.Int16),
+			Title:       deriveGroupTitle(g),
+			Assets:      assetResponseHelper(g.Assets),
+			Attachments: attachmentResponseHelper(g.Attachments),
+		}
+
+		// Counts + Duration
+		var started, completed, totalDur int
+		for _, a := range g.Assets {
+			if a.VideoMetadata != nil {
+				totalDur += a.VideoMetadata.Duration
+			}
+
+			if a.Progress != nil {
+				if a.Progress.Completed {
+					completed++
+				}
+
+				if a.Progress.Completed || a.Progress.VideoPos > 0 {
+					started++
+				}
+			}
+		}
+		lesson.TotalVideoDuration = totalDur
+		lesson.StartedAssetCount = started
+		lesson.CompletedAssetCount = completed
+		lesson.Completed = len(g.Assets) > 0 && completed == len(g.Assets)
+
+		if _, ok := modMap[moduleName]; !ok {
+			order = append(order, moduleName)
+			modMap[moduleName] = []lessonResponse{lesson}
+		} else {
+			modMap[moduleName] = append(modMap[moduleName], lesson)
+		}
+	}
+
+	// Build ordered modules with 1-based index
+	modules := make([]moduleResponse, 0, len(order))
+	for i, name := range order {
+		// ensure lessons are ordered by prefix (they should already be; keep as safety)
+		lessons := modMap[name]
+		sort.SliceStable(lessons, func(i, j int) bool { return lessons[i].Prefix < lessons[j].Prefix })
+
+		modules = append(modules, moduleResponse{
+			Module:  name,
+			Index:   i + 1,
+			Lessons: lessons,
+		})
+	}
+
+	return modulesResponse{Modules: modules}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

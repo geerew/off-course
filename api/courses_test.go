@@ -1223,6 +1223,205 @@ func TestCourses_ServeAssetDescription(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+func TestCourses_GetModules(t *testing.T) {
+	t.Run("200 (empty)", func(t *testing.T) {
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+
+		courses := []*models.Course{}
+		for i := range 2 {
+			course := &models.Course{Title: fmt.Sprintf("course %d", i), Path: fmt.Sprintf("/course %d", i)}
+			require.NoError(t, router.dao.CreateCourse(ctx, course))
+			courses = append(courses, course)
+		}
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+courses[1].ID+"/modules", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		var response modulesResponse
+		err = json.Unmarshal(body, &response)
+		require.NoError(t, err)
+		require.Zero(t, len(response.Modules))
+	})
+
+	t.Run("200 (found)", func(t *testing.T) {
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+
+		courses := []*models.Course{}
+		assetGroups := []*models.AssetGroup{}
+		assets := []*models.Asset{}
+		attachments := []*models.Attachment{}
+
+		for i := range 2 {
+			course := &models.Course{Title: fmt.Sprintf("Course %d", i+1), Path: fmt.Sprintf("/course/%d", i+1)}
+			require.NoError(t, router.dao.CreateCourse(ctx, course))
+			courses = append(courses, course)
+		}
+
+		// Create 2 asset groups, with 1 attachment with 2 assets each for each course
+		for _, c := range courses {
+			for j := range 2 {
+				assetGroup := &models.AssetGroup{
+					CourseID: c.ID,
+					Title:    fmt.Sprintf("asset group %d", j+1),
+					Prefix:   sql.NullInt16{Int16: int16(j + 1), Valid: true},
+					Module:   fmt.Sprintf("Chapter %d", j+1),
+				}
+				require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
+				assetGroups = append(assetGroups, assetGroup)
+
+				attachment := &models.Attachment{
+					AssetGroupID: assetGroup.ID,
+					Title:        fmt.Sprintf("attachment %d", j+1),
+					Path:         fmt.Sprintf("%s/attachment %d", c.Path, j+1),
+				}
+				require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
+				attachments = append(attachments, attachment)
+
+				asset := &models.Asset{
+					CourseID:     c.ID,
+					AssetGroupID: assetGroup.ID,
+					Title:        "asset 1",
+					Prefix:       sql.NullInt16{Int16: int16(1), Valid: true},
+					Module:       fmt.Sprintf("%d Chapter %d", j+1, j+1),
+					Type:         *types.NewAsset("mp4"),
+					Path:         fmt.Sprintf("%s/%d Chapter %d/asset 1", c.Path, j+1, j+1),
+					FileSize:     1024,
+					ModTime:      time.Now().Format(time.RFC3339Nano),
+					Hash:         security.RandomString(64),
+				}
+				require.NoError(t, router.dao.CreateAsset(ctx, asset))
+				assets = append(assets, asset)
+				time.Sleep(1 * time.Millisecond)
+			}
+		}
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+courses[1].ID+"/modules", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		var response modulesResponse
+		err = json.Unmarshal(body, &response)
+		require.NoError(t, err)
+		require.Len(t, response.Modules, 2)
+
+		// Module 1
+		require.Equal(t, assetGroups[2].Module, response.Modules[0].Module)
+		require.Len(t, response.Modules[0].Lessons, 1)
+		require.Len(t, response.Modules[0].Lessons[0].Assets, 1)
+		require.Equal(t, assets[2].Title, response.Modules[0].Lessons[0].Assets[0].Title)
+		require.Nil(t, response.Modules[0].Lessons[0].Assets[0].Progress)
+		require.Len(t, response.Modules[0].Lessons[0].Attachments, 1)
+		require.Equal(t, attachments[2].Title, response.Modules[0].Lessons[0].Attachments[0].Title)
+
+		// Module 2
+		require.Equal(t, assetGroups[3].Module, response.Modules[1].Module)
+		require.Len(t, response.Modules[1].Lessons, 1)
+		require.Len(t, response.Modules[1].Lessons[0].Assets, 1)
+		require.Equal(t, assets[3].Title, response.Modules[1].Lessons[0].Assets[0].Title)
+		require.Nil(t, response.Modules[1].Lessons[0].Assets[0].Progress)
+		require.Len(t, response.Modules[1].Lessons[0].Attachments, 1)
+		require.Equal(t, attachments[3].Title, response.Modules[1].Lessons[0].Attachments[0].Title)
+	})
+
+	t.Run("200 (withProgress)", func(t *testing.T) {
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+
+		courses := []*models.Course{}
+		assetGroups := []*models.AssetGroup{}
+		assets := []*models.Asset{}
+		attachments := []*models.Attachment{}
+
+		for i := range 2 {
+			course := &models.Course{Title: fmt.Sprintf("Course %d", i+1), Path: fmt.Sprintf("/course/%d", i+1)}
+			require.NoError(t, router.dao.CreateCourse(ctx, course))
+			courses = append(courses, course)
+		}
+
+		// Create 2 asset groups, with 1 attachment with 2 assets each for each course
+		for _, c := range courses {
+			for j := range 2 {
+				assetGroup := &models.AssetGroup{
+					CourseID: c.ID,
+					Title:    fmt.Sprintf("asset group %d", j+1),
+					Prefix:   sql.NullInt16{Int16: int16(j + 1), Valid: true},
+					Module:   fmt.Sprintf("Chapter %d", j+1),
+				}
+				require.NoError(t, router.dao.CreateAssetGroup(ctx, assetGroup))
+				assetGroups = append(assetGroups, assetGroup)
+
+				attachment := &models.Attachment{
+					AssetGroupID: assetGroup.ID,
+					Title:        fmt.Sprintf("attachment %d", j+1),
+					Path:         fmt.Sprintf("%s/attachment %d", c.Path, j+1),
+				}
+				require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
+				attachments = append(attachments, attachment)
+
+				asset := &models.Asset{
+					CourseID:     c.ID,
+					AssetGroupID: assetGroup.ID,
+					Title:        "asset 1",
+					Prefix:       sql.NullInt16{Int16: int16(1), Valid: true},
+					Module:       fmt.Sprintf("%d Chapter %d", j+1, j+1),
+					Type:         *types.NewAsset("mp4"),
+					Path:         fmt.Sprintf("%s/%d Chapter %d/asset 1", c.Path, j+1, j+1),
+					FileSize:     1024,
+					ModTime:      time.Now().Format(time.RFC3339Nano),
+					Hash:         security.RandomString(64),
+				}
+				require.NoError(t, router.dao.CreateAsset(ctx, asset))
+				assets = append(assets, asset)
+				time.Sleep(1 * time.Millisecond)
+			}
+		}
+
+		// ?withProgress=true
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+courses[1].ID+"/modules?withProgress=true", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		var response modulesResponse
+		err = json.Unmarshal(body, &response)
+		require.NoError(t, err)
+		require.Len(t, response.Modules, 2)
+
+		// Module 1
+		require.Equal(t, assetGroups[2].Module, response.Modules[0].Module)
+		require.Len(t, response.Modules[0].Lessons, 1)
+		require.Len(t, response.Modules[0].Lessons[0].Assets, 1)
+		require.Equal(t, assets[2].Title, response.Modules[0].Lessons[0].Assets[0].Title)
+		require.NotNil(t, response.Modules[0].Lessons[0].Assets[0].Progress)
+		require.Len(t, response.Modules[0].Lessons[0].Attachments, 1)
+		require.Equal(t, attachments[2].Title, response.Modules[0].Lessons[0].Attachments[0].Title)
+
+		// Module 2
+		require.Equal(t, assetGroups[3].Module, response.Modules[1].Module)
+		require.Len(t, response.Modules[1].Lessons, 1)
+		require.Len(t, response.Modules[1].Lessons[0].Assets, 1)
+		require.Equal(t, assets[3].Title, response.Modules[1].Lessons[0].Assets[0].Title)
+		require.NotNil(t, response.Modules[1].Lessons[0].Assets[0].Progress)
+		require.Len(t, response.Modules[1].Lessons[0].Attachments, 1)
+		require.Equal(t, attachments[3].Title, response.Modules[1].Lessons[0].Attachments[0].Title)
+	})
+
+	t.Run("500 (asset internal error)", func(t *testing.T) {
+		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+
+		course := &models.Course{Title: "course 1", Path: "/course 1"}
+		require.NoError(t, router.dao.CreateCourse(ctx, course))
+
+		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.ASSET_GROUP_TABLE)
+		require.NoError(t, err)
+
+		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/modules/", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusInternalServerError, status)
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 func TestCourses_GetAttachments(t *testing.T) {
 	t.Run("200 (empty)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)

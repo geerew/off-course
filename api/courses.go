@@ -64,6 +64,9 @@ func (r *Router) initCourseRoutes() {
 	courseGroup.Get("/:id/groups/:group", coursesAPI.getAssetGroup)
 	courseGroup.Get("/:id/groups/:group/description", coursesAPI.serveAssetGroupDescription)
 
+	// Modules (chaptered asset groups)
+	courseGroup.Get("/:id/modules", coursesAPI.getModules)
+
 	// Asset group attachments
 	courseGroup.Get("/:id/groups/:group/attachments", coursesAPI.getAttachments)
 	courseGroup.Get("/:id/groups/:group/attachments/:attachment", coursesAPI.getAttachment)
@@ -388,6 +391,42 @@ func (api coursesAPI) serveAssetGroupDescription(c *fiber.Ctx) error {
 	}
 
 	return filesystem.SendFile(c, afero.NewHttpFs(api.appFs.Fs), assetGroup.DescriptionPath)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func (api coursesAPI) getModules(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	builderOpts := builderOptions{
+		DefaultOrderBy: defaultCourseAssetGroupsOrderBy,
+		Paginate:       false,
+	}
+
+	principal, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	dbOpts, err := optionsBuilder(c, builderOpts, principal.UserID)
+	if err != nil {
+		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
+	}
+
+	dbOpts.WithAssetVideoMetadata().WithWhere(squirrel.Eq{models.ASSET_GROUP_TABLE_COURSE_ID: id})
+
+	if raw := c.Query("withProgress"); raw != "" {
+		if v, err := strconv.ParseBool(raw); err == nil && v {
+			dbOpts.WithProgress()
+		}
+	}
+
+	assetGroups, err := api.dao.ListAssetGroups(ctx, dbOpts)
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up asset groups", err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(modulesResponseHelper(assetGroups))
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

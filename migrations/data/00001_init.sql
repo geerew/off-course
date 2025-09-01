@@ -175,7 +175,6 @@ CREATE TABLE sessions (
 	user_id TEXT NOT NULL DEFAULT ''
 );
 
-
 -- Groups by course, then ordered by prefix+module
 CREATE INDEX idx_asset_groups_course_prefix_module
   ON asset_groups(course_id, prefix, module);
