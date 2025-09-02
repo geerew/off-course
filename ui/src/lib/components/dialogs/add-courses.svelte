@@ -488,7 +488,17 @@
 		</Dialog.Content>
 	</Dialog.Root>
 {:else}
-	<Drawer.Root bind:open>
+	<Drawer.Root
+		bind:open
+		onOpenChange={(open) => {
+			if (open) {
+				openModal();
+			} else {
+				cleanup();
+				history.back();
+			}
+		}}
+	>
 		{@render trigger()}
 
 		<Drawer.Content class="bg-background-alt-2" handleClass="bg-background-alt-4">
