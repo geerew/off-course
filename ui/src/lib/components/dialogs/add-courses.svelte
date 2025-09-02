@@ -20,12 +20,22 @@
 	import { toast } from 'svelte-sonner';
 	import { innerWidth } from 'svelte/reactivity/window';
 	import theme from 'tailwindcss/defaultTheme';
+	// exposes `page.state`
 
 	type Props = {
 		successFn?: () => void;
 	};
 
 	let { successFn }: Props = $props();
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	type ModalState = {
+		modal?: 'add-courses';
+		path?: string;
+		depth?: number; // 0 for root, 1..n for folder depth
+		root?: boolean; // marks the sentinel/base entry
+	};
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -37,7 +47,11 @@
 		files: []
 	});
 
-	let paths: string[] = $state([]);
+	// When the filesystem for a path has been loaded, this will be set
+	let currentPath = $state('');
+	let pathHistory = $state<string[]>([]);
+
+	// When a path is selected, this will be set
 	let selectedPath = $state('');
 
 	let selectedCourses: Record<string, string> = $state({});
@@ -45,6 +59,7 @@
 
 	let isPosting = $state(false);
 	let isRefreshing = $state(false);
+	let isMovingBack = $state(false);
 
 	const mdBreakpoint = +theme.screens.md.replace('rem', '');
 	let isDesktop = $derived(remCalc(innerWidth.current ?? 0) > mdBreakpoint);
@@ -66,31 +81,35 @@
 
 	let mainEl: HTMLElement | null = null;
 
-	const backId = 'back-' + Math.random().toString(36);
-
 	let loadPromise = $state<Promise<void>>();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	$inspect(pathHistory);
+	// As state changes, this will trigger and load the new path
 	$effect(() => {
-		if (open) {
-			selectedCourses = {};
-			paths = [];
-			selectedPath = '';
-			loadPromise = load('');
+		if (!open) return;
+
+		const path = pathHistory.length > 0 ? pathHistory[pathHistory.length - 1] : '';
+		if (path == currentPath) return;
+
+		if (currentPath !== '' && currentPath.startsWith(path)) {
+			isMovingBack = true;
+		} else {
+			selectedPath = path;
 		}
+
+		load(path).then(() => {
+			currentPath = path;
+			selectedPath = '';
+			isMovingBack = false;
+		});
 	});
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Load the drives or the directories of the selected path
 	async function load(path: string): Promise<void> {
-		if (path === '' || paths.includes(path)) {
-			selectedPath = backId;
-		} else {
-			selectedPath = path;
-		}
-
 		try {
 			const flickerPromise = new Promise((resolve) => setTimeout(resolve, 200));
 			const [response] = await Promise.all([GetFileSystem(path), flickerPromise]);
@@ -100,24 +119,9 @@
 			fs = response;
 		} catch (error) {
 			throw error;
-		} finally {
-			if (path !== '' && !paths.includes(path)) paths.push(path);
-			selectedPath = '';
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	// Move the user back to the previous path
-	async function moveBack() {
-		if (paths.length === 1) {
-			await load('');
-		} else {
-			await load(paths[paths.length - 2]);
-		}
-
-		paths.pop();
-	}
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Print the number of selected courses
@@ -171,10 +175,10 @@
 	<Button
 		variant="ghost"
 		class="mr-2.5 w-auto"
-		disabled={isRefreshing}
+		disabled={isRefreshing || isPosting || isMovingBack}
 		onclick={async () => {
 			isRefreshing = true;
-			paths.length > 0 ? await load(paths[paths.length - 1]) : await load('');
+			await load(currentPath);
 			isRefreshing = false;
 		}}
 	>
@@ -208,31 +212,34 @@
 				<Spinner class="bg-foreground-alt-3 size-4" />
 			</div>
 		{:then _}
-			<!-- Back button -->
-			{#if paths.length > 0}
-				{#key paths[paths.length - 1]}
-					<div class="border-background-alt-3 flex flex-row items-center border-b">
-						<Button
-							variant="ghost"
-							class=" h-14 grow justify-start rounded-none px-3 py-2 text-start duration-0"
-							disabled={selectedPath !== '' || isPosting || isRefreshing}
-							onclick={async () => {
-								await moveBack();
-							}}
-						>
-							<BackArrowIcon class="size-4 stroke-2" />
-							<span>Back</span>
-						</Button>
+			<!-- 
+				Back button 
+				
+				Only render when the selected path is not empty or the user is moving
+				back to prevent layout shift when navigating directories
+			-->
+			{#if currentPath !== '' || isMovingBack}
+				<div class="border-background-alt-3 flex flex-row items-center border-b">
+					<Button
+						variant="ghost"
+						class=" h-14 grow justify-start rounded-none px-3 py-2 text-start duration-0"
+						disabled={isMovingBack || isPosting || isRefreshing || selectedPath !== ''}
+						onclick={async () => {
+							pathHistory.length > 0 ? pathHistory.pop() : null;
+						}}
+					>
+						<BackArrowIcon class="size-4 stroke-2" />
+						<span>Back</span>
+					</Button>
 
-						{#if backId === selectedPath}
-							<div class="flex h-full w-20 shrink-0 justify-center">
-								<div class="flex w-full place-content-center">
-									<Spinner class="bg-foreground-alt-3 size-2.5" />
-								</div>
+					{#if isMovingBack}
+						<div class="flex h-full w-20 shrink-0 justify-center">
+							<div class="flex w-full place-content-center">
+								<Spinner class="bg-foreground-alt-3 size-2.5" />
 							</div>
-						{/if}
-					</div>
-				{/key}
+						</div>
+					{/if}
+				</div>
 			{/if}
 
 			<!-- Filesystem directories -->
@@ -243,11 +250,12 @@
 						class=" h-auto grow justify-start rounded-none px-3 py-2 text-start wrap-anywhere whitespace-normal duration-0"
 						disabled={isPosting ||
 							isRefreshing ||
+							isMovingBack ||
 							selectedPath !== '' ||
 							selectedCourses[dir.path] !== undefined ||
 							dir.classification === FsPathClassification.Course}
 						onclick={async () => {
-							await load(dir.path);
+							pathHistory.push(dir.path);
 						}}
 					>
 						{dir.title}
@@ -418,7 +426,22 @@
 {/snippet}
 
 {#if isDesktop}
-	<Dialog.Root bind:open {trigger}>
+	<Dialog.Root
+		bind:open
+		{trigger}
+		onOpenChange={(open) => {
+			if (open) {
+				console.log('open');
+				loadPromise = load('');
+			} else {
+				console.log('close');
+				selectedCourses = {};
+				currentPath = '';
+				selectedPath = '';
+				pathHistory = [];
+			}
+		}}
+	>
 		<Dialog.Content class="inline-flex h-[min(calc(100vh-10rem),50rem)] max-w-2xl flex-col">
 			<Dialog.Header>
 				<div class="flex items-center gap-2">
