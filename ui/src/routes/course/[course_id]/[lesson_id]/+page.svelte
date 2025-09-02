@@ -61,13 +61,19 @@
 	// Fetch the course, then the assets for the course
 	async function fetcher(): Promise<void> {
 		try {
-			course = await GetCourse(page.params.course_id);
+			const courseId = page.params.course_id;
+			if (!courseId) throw new Error('No course ID provided');
+
+			const lessonId = page.params.lesson_id;
+			if (!lessonId) throw new Error('No lesson ID provided');
+
+			course = await GetCourse(courseId);
+			if (!course) throw new Error('Course not found');
+
 			modules = await GetCourseModules(course.id, { withProgress: true });
 
-			selectedLesson = findLesson(page.params.lesson_id, modules);
-			if (!selectedLesson) {
-				throw new Error('Lesson not found');
-			}
+			selectedLesson = findLesson(lessonId, modules);
+			if (!selectedLesson) throw new Error('Failed to find lesson');
 
 			for (const a of selectedLesson.assets) {
 				if (a.assetType === 'markdown' || a.assetType === 'text') {
@@ -168,7 +174,10 @@
 		const lessonId = page.params.lesson_id;
 		if (!initDone || !selectedLesson || !modules) return;
 
-		console.log('in here now');
+		if (!lessonId) {
+			throw new Error('No lesson ID provided');
+		}
+
 		selectedLesson = findLesson(lessonId, modules);
 		if (!selectedLesson) {
 			throw new Error('Lesson not found');
@@ -537,7 +546,7 @@
 									>
 										<LeftChevronIcon class="size-5 stroke-[1.5]" />
 										<span class="text-base leading-tight font-medium">
-											{previousLesson.title}
+											{previousLesson.prefix}. {previousLesson.title}
 										</span>
 									</Button>
 								{/if}
@@ -555,6 +564,7 @@
 										}}
 									>
 										<span class="text-base leading-tight font-medium">
+											{nextLesson.prefix}.
 											{nextLesson.title}
 										</span>
 										<RightChevronIcon class="size-5 stroke-[1.5]" />

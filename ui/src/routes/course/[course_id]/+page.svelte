@@ -31,6 +31,7 @@
 	import Button from '$lib/components/ui/button.svelte';
 	import type { CourseModel, CourseTagsModel } from '$lib/models/course-model';
 	import type { ModulesModel } from '$lib/models/module-model';
+	import { cn } from '$lib/utils';
 	import { useId } from 'bits-ui';
 	import prettyMs from 'pretty-ms';
 
@@ -111,6 +112,7 @@
 	// assets
 	async function fetchCourse(): Promise<void> {
 		try {
+			if (!page.params.course_id) throw new Error('No course ID provided');
 			course = await GetCourse(page.params.course_id);
 			tags = await GetCourseTags(course.id);
 			modules = await GetCourseModules(course.id, { withProgress: true });
@@ -164,18 +166,18 @@
 					<div class="grid w-full grid-cols-1 gap-6 lg:grid-cols-[1fr_minmax(0,23rem)] lg:gap-10">
 						<!-- Information -->
 						<div class="order-2 flex h-full w-full flex-col justify-between gap-5 lg:order-1">
-							<div class="flex h-full w-full flex-col gap-5">
+							<div class="flex h-full w-full flex-col gap-4">
 								<div class="text-foreground-alt-1 text-2xl font-semibold">
 									{course.title}
 								</div>
 
 								<!-- Course overview -->
-								<div class="flex flex-col gap-5 text-sm">
-									<div class="flex flex-row items-center gap-3">
+								<div class="flex flex-col gap-4 text-sm">
+									<div class="flex flex-wrap items-center gap-x-3 gap-y-4">
 										<!-- Modules -->
 										<div class="flex flex-row items-center gap-2 font-semibold">
 											<ModulesIcon class="text-foreground-alt-3 size-4.5" />
-											<span>
+											<span class="text-nowrap">
 												{moduleCount} module{moduleCount != 1 ? 's' : ''}
 											</span>
 										</div>
@@ -185,18 +187,24 @@
 										<!-- Assets -->
 										<div class="flex flex-row items-center gap-2 font-semibold">
 											<FilesIcon class="text-foreground-alt-3 size-4.5" />
-											<span>
+											<span class="text-nowrap">
 												{lessonCount} lesson{lessonCount != 1 ? 's' : ''}
 											</span>
 										</div>
 
-										<DotIcon class="text-foreground-alt-3 text-xl" />
+										<!-- separator only on sm+ when all three are in one row -->
+										<DotIcon class="text-foreground-alt-3 hidden text-xl sm:inline" />
 
 										<!-- Duration -->
-										<div class="flex flex-row items-center gap-2 font-semibold">
+										<div
+											class="flex basis-full flex-row items-center gap-2 font-semibold sm:basis-auto"
+										>
 											<DurationIcon class="text-foreground-alt-3 size-4.5" />
 											<span
-												class={course.duration ? 'text-foreground-alt-1' : 'text-foreground-alt-3'}
+												class={cn(
+													'text-nowrap',
+													course.duration ? 'text-foreground-alt-1' : 'text-foreground-alt-3'
+												)}
 											>
 												{course.duration
 													? prettyMs(course.duration * 1000, { hideSeconds: true })
@@ -207,49 +215,49 @@
 								</div>
 
 								<!-- Path, Created At, Updated At, Status -->
-								<div class="flex flex-col gap-2 text-sm">
-									{#if auth.user?.role === 'admin'}
-										<div class="text-foreground-alt-2 flex flex-row items-start gap-2">
+								{#if auth.user?.role === 'admin'}
+									<div class="text-foreground-alt-2 flex flex-row items-start gap-2 text-sm">
+										<div class="mt-px">
 											<PathIcon class="text-foreground-alt-3 size-4.5 shrink-0" />
-											<span class="wrap-anywhere whitespace-normal" title={course.path}
-												>{course.path}</span
-											>
 										</div>
-									{/if}
+										<span class="wrap-anywhere whitespace-normal" title={course.path}
+											>{course.path}</span
+										>
+									</div>
+								{/if}
 
-									<div class="text-foreground-alt-2 flex flex-row items-center gap-3">
-										<!-- Added -->
-										<div class="flex flex-row items-center gap-2">
-											<AddedIcon class="text-foreground-alt-3 size-4.5" />
-											<span>
-												<NiceDate date={course.createdAt} prefix="Added:" />
-											</span>
-										</div>
+								<div class="text-foreground-alt-2 flex flex-row items-center gap-3 text-sm">
+									<!-- Added -->
+									<div class="flex flex-row items-center gap-2">
+										<AddedIcon class="text-foreground-alt-3 size-4.5" />
+										<span>
+											<NiceDate date={course.createdAt} prefix="Added:" />
+										</span>
+									</div>
 
+									<DotIcon class="text-foreground-alt-3  text-xl" />
+
+									<!-- Updated -->
+									<div class="flex flex-row items-center gap-2">
+										<UpdatedIcon class="text-foreground-alt-3 size-4.5" />
+										<span>
+											<NiceDate date={course.updatedAt} prefix="Updated:" />
+										</span>
+									</div>
+
+									{#if !course.available || course.maintenance || (course.initialScan !== undefined && !course.initialScan)}
 										<DotIcon class="text-xl" />
 
-										<!-- Updated -->
 										<div class="flex flex-row items-center gap-2">
-											<UpdatedIcon class="text-foreground-alt-3 size-4.5" />
-											<span>
-												<NiceDate date={course.updatedAt} prefix="Updated:" />
-											</span>
+											{#if !course.initialScan}
+												<span class="text-amber-600">Initial scan</span>
+											{:else if course.maintenance}
+												<span class="text-background-success">Maintenance</span>
+											{:else}
+												<span class="text-foreground-error">Unavailable</span>
+											{/if}
 										</div>
-
-										{#if !course.available || course.maintenance || (course.initialScan !== undefined && !course.initialScan)}
-											<DotIcon class="text-xl" />
-
-											<div class="flex flex-row items-center gap-2">
-												{#if !course.initialScan}
-													<span class="text-amber-600">Initial scan</span>
-												{:else if course.maintenance}
-													<span class="text-background-success">Maintenance</span>
-												{:else}
-													<span class="text-foreground-error">Unavailable</span>
-												{/if}
-											</div>
-										{/if}
-									</div>
+									{/if}
 								</div>
 
 								<!-- Tags -->
