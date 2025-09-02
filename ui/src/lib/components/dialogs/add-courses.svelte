@@ -270,10 +270,10 @@
 
 			<!-- Filesystem directories -->
 			{#each fs.directories as dir (dir.path)}
-				<div class="border-background-alt-3 flex min-h-14 flex-row items-stretch border-b">
+				<div class="border-background-alt-3 flex flex-row items-stretch border-b">
 					<Button
 						variant="ghost"
-						class=" h-auto grow justify-start rounded-none px-3 py-2 text-start wrap-anywhere whitespace-normal duration-0"
+						class="!h-auto min-h-14 min-w-0 shrink grow basis-0 items-center justify-start rounded-none px-3 py-2 text-start break-words whitespace-normal duration-0"
 						disabled={isPosting ||
 							isRefreshing ||
 							isMovingBack ||
@@ -284,11 +284,11 @@
 							pathHistory.push(dir.path);
 						}}
 					>
-						{dir.title}
+						<span class="block min-w-0 break-words">{dir.title}</span>
 					</Button>
 
 					<!-- Selection -->
-					<div class="flex w-20 shrink-0 justify-center self-stretch">
+					<div class="flex w-20 flex-none shrink-0 basis-20 justify-center self-stretch">
 						<Separator.Root
 							orientation="vertical"
 							class="bg-background-alt-3 h-full w-px shrink-0"
