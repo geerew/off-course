@@ -20,9 +20,8 @@
 	import { cn, remCalc } from '$lib/utils';
 	import { Separator } from 'bits-ui';
 	import { toast } from 'svelte-sonner';
-	import { innerWidth } from 'svelte/reactivity/window';
+	import { innerWidth, outerHeight } from 'svelte/reactivity/window';
 	import theme from 'tailwindcss/defaultTheme';
-	// exposes `page.state`
 
 	type Props = {
 		successFn?: () => void;
@@ -54,8 +53,12 @@
 	let isRefreshing = $state(false);
 	let isMovingBack = $state(false);
 
-	const mdBreakpoint = +theme.screens.md.replace('rem', '');
-	let isDesktop = $derived(remCalc(innerWidth.current ?? 0) > mdBreakpoint);
+	const widthBreakpoint = +theme.screens.md.replace('rem', '');
+	const heightBreakpoint = 520;
+	let showDialog = $derived(
+		remCalc(innerWidth.current ?? 0) > widthBreakpoint &&
+			(outerHeight.current ?? 0) > heightBreakpoint
+	);
 
 	let deselectAllDisabled = $derived.by(() => {
 		if (isPosting || isRefreshing || selectedCoursesCount === 0) return true;
@@ -75,8 +78,6 @@
 	let mainEl: HTMLElement | null = null;
 
 	let loadPromise = $state<Promise<void>>();
-
-	$inspect(pathHistory);
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -184,7 +185,7 @@
 </script>
 
 {#snippet trigger()}
-	{#if isDesktop}
+	{#if showDialog}
 		<Dialog.Trigger class="flex h-10 w-auto flex-row items-center gap-2 px-5">
 			<PlusIcon class="size-5 stroke-[1.5]" />
 			Add Courses
@@ -358,7 +359,7 @@
 {/snippet}
 
 {#snippet selectDeselect()}
-	{#if isDesktop}
+	{#if showDialog}
 		<div class="flex justify-start gap-2">
 			<Button
 				variant="outline"
@@ -451,7 +452,7 @@
 	{/if}
 {/snippet}
 
-{#if isDesktop}
+{#if showDialog}
 	<Dialog.Root
 		bind:open
 		{trigger}
