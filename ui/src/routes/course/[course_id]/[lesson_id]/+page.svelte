@@ -140,7 +140,6 @@
 	async function loadAndRenderContent(asset: AssetModel): Promise<string> {
 		if (!asset || (asset.assetType !== 'markdown' && asset.assetType !== 'text')) return '';
 
-		console.log('Loading content for asset:', asset.id);
 		if (contentCache.has(asset.id)) {
 			return contentCache.get(asset.id)!;
 		}
