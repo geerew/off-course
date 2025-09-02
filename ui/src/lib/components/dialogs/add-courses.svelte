@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { pushState } from '$app/navigation';
+	import { page } from '$app/state';
 	import type { APIError } from '$lib/api-error.svelte';
 	import { CreateCourse } from '$lib/api/course-api';
 	import { GetFileSystem } from '$lib/api/fs-api';
@@ -27,15 +29,6 @@
 	};
 
 	let { successFn }: Props = $props();
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	type ModalState = {
-		modal?: 'add-courses';
-		path?: string;
-		depth?: number; // 0 for root, 1..n for folder depth
-		root?: boolean; // marks the sentinel/base entry
-	};
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -83,10 +76,11 @@
 
 	let loadPromise = $state<Promise<void>>();
 
+	$inspect(pathHistory);
+
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	$inspect(pathHistory);
-	// As state changes, this will trigger and load the new path
+	// As pathHistory changes, this will trigger
 	$effect(() => {
 		if (!open) return;
 
@@ -105,6 +99,38 @@
 			isMovingBack = false;
 		});
 	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// This effect triggers when the page state changes, such as the back button being
+	// clicked. It will close the modal if it is open and it shouldn't be
+	$effect(() => {
+		const s = page.state as { modal?: 'add-courses' } | undefined;
+		const shouldBeOpen = s?.modal === 'add-courses';
+		if (open && !shouldBeOpen) {
+			open = false;
+			cleanup();
+		}
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	function openModal() {
+		// Only add an entry if we’re not already on the modal state
+		const s = page.state as { modal?: 'add-courses' } | undefined;
+		if (s?.modal !== 'add-courses') {
+			pushState('', { modal: 'add-courses' as const });
+		}
+
+		loadPromise = load('');
+	}
+
+	function cleanup() {
+		selectedCourses = {};
+		currentPath = '';
+		selectedPath = '';
+		pathHistory = [];
+	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -431,14 +457,10 @@
 		{trigger}
 		onOpenChange={(open) => {
 			if (open) {
-				console.log('open');
-				loadPromise = load('');
+				openModal();
 			} else {
-				console.log('close');
-				selectedCourses = {};
-				currentPath = '';
-				selectedPath = '';
-				pathHistory = [];
+				cleanup();
+				history.back();
 			}
 		}}
 	>
