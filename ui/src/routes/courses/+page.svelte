@@ -30,7 +30,7 @@
 
 	let loadingMore = $state(false);
 
-	let loadPromise = $state(fetchCourses(false));
+	let loadPromise = $state(fetcher(false));
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -61,7 +61,7 @@
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Fetch courses
-	async function fetchCourses(append: boolean): Promise<void> {
+	async function fetcher(append: boolean): Promise<void> {
 		if (!paginationPerPage) {
 			setPaginationPerPage(remCalc(window.innerWidth));
 		}
@@ -72,6 +72,7 @@
 
 			const data = await GetCourses({
 				q,
+				withProgress: true,
 				page: paginationPage,
 				perPage: paginationPerPage
 			});
@@ -109,7 +110,7 @@
 								if (filterValue !== filterAppliedValue) {
 									filterAppliedValue = filterValue;
 									paginationPage = 1;
-									loadPromise = fetchCourses(false);
+									loadPromise = fetcher(false);
 								}
 							}}
 						/>
@@ -238,7 +239,7 @@
 											onclick={async () => {
 												paginationPage += 1;
 												loadingMore = true;
-												await fetchCourses(true);
+												await fetcher(true);
 												loadingMore = false;
 											}}
 										>

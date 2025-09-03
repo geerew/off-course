@@ -104,16 +104,16 @@
 		return modules.modules[0]?.lessons[0] ?? null;
 	});
 
-	let loadPromise = $state(fetchCourse());
+	let loadPromise = $state(fetcher());
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Fetch the course, then the assets for the course, then build a chapter structure from the
 	// assets
-	async function fetchCourse(): Promise<void> {
+	async function fetcher(): Promise<void> {
 		try {
 			if (!page.params.course_id) throw new Error('No course ID provided');
-			course = await GetCourse(page.params.course_id);
+			course = await GetCourse(page.params.course_id, { withProgress: true });
 			tags = await GetCourseTags(course.id);
 			modules = await GetCourseModules(course.id, { withProgress: true });
 			await loadCourseImage(course.id);

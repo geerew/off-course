@@ -29,8 +29,7 @@ export const CourseProgressSchema = object({
 	started: boolean(),
 	startedAt: string(),
 	percent: number(),
-	completedAt: string(),
-	progressUpdatedAt: string()
+	completedAt: string()
 });
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -94,4 +93,5 @@ export type CoursePaginationModel = InferOutput<typeof CoursePaginationSchema>;
 
 export type CourseReqParams = PaginationReqParams & {
 	q?: string;
+	withProgress?: boolean;
 };

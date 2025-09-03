@@ -24,8 +24,10 @@ import { apiFetch } from './fetch';
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Get a course
-export async function GetCourse(id: string): Promise<CourseModel> {
-	const response = await apiFetch(`/api/courses/${id}`);
+export async function GetCourse(id: string, params?: CourseReqParams): Promise<CourseModel> {
+	const qs = params && buildQueryString(params);
+
+	const response = await apiFetch(`/api/courses/${id}${qs ? `?${qs}` : ''}`);
 
 	if (response.ok) {
 		const data = (await response.json()) as CourseModel;
@@ -45,7 +47,7 @@ export async function GetCourse(id: string): Promise<CourseModel> {
 export async function GetCourses(params?: CourseReqParams): Promise<CoursePaginationModel> {
 	const qs = params && buildQueryString(params);
 
-	const response = await apiFetch('/api/courses' + (qs ? `?${qs}` : ''));
+	const response = await apiFetch(`/api/courses${qs ? `?${qs}` : ''}`);
 
 	if (response.ok) {
 		const data = (await response.json()) as CoursePaginationModel;
