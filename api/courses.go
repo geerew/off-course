@@ -103,6 +103,12 @@ func (api coursesAPI) getCourses(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
+	if raw := c.Query("withProgress"); raw != "" {
+		if v, err := strconv.ParseBool(raw); err == nil && v {
+			dbOpts.WithProgress()
+		}
+	}
+
 	courses, err := api.dao.ListCourses(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up courses", err)
@@ -128,6 +134,13 @@ func (api coursesAPI) getCourse(c *fiber.Ctx) error {
 	}
 
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: id})
+
+	if raw := c.Query("withProgress"); raw != "" {
+		if v, err := strconv.ParseBool(raw); err == nil && v {
+			dbOpts.WithProgress()
+		}
+	}
+
 	course, err := api.dao.GetCourse(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up course", err)
