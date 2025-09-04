@@ -8,15 +8,14 @@
 	width="24"
 	height="24"
 	viewBox="0 0 24 24"
+	fill="none"
 	stroke="currentColor"
+	stroke-width="2"
+	stroke-linecap="round"
+	stroke-linejoin="round"
 	{...restProps}
->
-	<path d="m15 15 6 6" />
-	<path d="m15 9 6-6" />
-	<path d="M21 16.2V21h-4.8" />
-	<path d="M21 7.8V3h-4.8" />
-	<path d="M3 16.2V21h4.8" />
-	<path d="m3 21 6-6" />
-	<path d="M3 7.8V3h4.8" />
-	<path d="M9 9 3 3" />
+	><path d="M8 3H5a2 2 0 0 0-2 2v3" />
+	<path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+	<path d="M3 16v3a2 2 0 0 0 2 2h3" />
+	<path d="M16 21h3a2 2 0 0 0 2-2v-3" />
 </svg>
