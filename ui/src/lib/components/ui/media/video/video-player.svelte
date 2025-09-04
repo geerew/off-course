@@ -115,7 +115,7 @@
 		src: videoSrc,
 		type: 'video/mp4'
 	}}
-	class="group/player relative overflow-hidden rounded-md"
+	class="group/player relative aspect-video overflow-hidden rounded-md"
 >
 	<media-provider></media-provider>
 
