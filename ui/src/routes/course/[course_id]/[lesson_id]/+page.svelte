@@ -353,7 +353,7 @@
 				<div class="relative row-span-full">
 					<div class="absolute inset-0">
 						<nav
-							class="border-background-alt-4 sticky top-[calc(var(--header-height)+1px)] left-0 flex h-[calc(100dvh-(var(--header-height)+1px))] w-[--course-menu-width] flex-col gap-2 overflow-x-hidden overflow-y-auto border-r pb-8"
+							class="border-background-alt-4 top-[calc(var(--header-height)+1px)] left-0 flex h-[calc(100dvh-(var(--header-height)+1px))] w-[--course-menu-width] flex-col gap-2 overflow-x-hidden overflow-y-auto border-r pb-8"
 						>
 							{@render menuContents()}
 						</nav>

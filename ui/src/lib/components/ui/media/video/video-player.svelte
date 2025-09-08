@@ -1,10 +1,13 @@
 <!-- TODO Add settings menu -->
 <!-- TODO Persist things from the settings menu, volume, muted in local storage -->
 <script lang="ts">
+	import { mediaPreferences } from '$lib/preferences.svelte';
 	import type {
 		MediaDurationChangeEvent,
+		MediaRateChangeEvent,
 		MediaSourceChangeEvent,
-		MediaTimeUpdateEvent
+		MediaTimeUpdateEvent,
+		MediaVolumeChangeEvent
 	} from 'vidstack';
 	import 'vidstack/bundle';
 	import type { MediaPlayerElement } from 'vidstack/elements';
@@ -79,6 +82,16 @@
 		if (!player) return;
 
 		player.currentTime = Math.floor(startTime) == Math.floor(duration) ? 0 : startTime;
+
+		// This is a workaround for PR https://github.com/vidstack/player/issues/1416
+		setTimeout(() => {
+			if (player) {
+				player.autoPlay = mediaPreferences.current.autoplay;
+				player.playbackRate = mediaPreferences.current.playbackRate;
+				player.volume = mediaPreferences.current.volume;
+				player.muted = mediaPreferences.current.muted;
+			}
+		}, 0);
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -90,6 +103,21 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	// Update the preferences with the playback rate
+	function rateChange(e: MediaRateChangeEvent) {
+		mediaPreferences.current.playbackRate = e.detail;
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Update the preferences with the volume
+	function volumeChange(e: MediaVolumeChangeEvent) {
+		mediaPreferences.current.volume = e.detail.volume;
+		mediaPreferences.current.muted = e.detail.muted;
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	$effect(() => {
 		if (!player) return;
 
@@ -97,12 +125,16 @@
 		player.addEventListener('can-play', canPlay);
 		player.addEventListener('time-update', timeChange);
 		player.addEventListener('duration-change', durationChange);
+		player.addEventListener('rate-change', rateChange);
+		player.addEventListener('volume-change', volumeChange);
 
 		return () => {
 			player.removeEventListener('source-change', sourceChange);
 			player.removeEventListener('can-play', canPlay);
 			player.removeEventListener('time-update', timeChange);
 			player.removeEventListener('duration-change', durationChange);
+			player.removeEventListener('rate-change', rateChange);
+			player.removeEventListener('volume-change', volumeChange);
 		};
 	});
 </script>
@@ -111,6 +143,7 @@
 <media-player
 	bind:this={player}
 	playsInline
+	autoplay={mediaPreferences.current.autoplay}
 	src={{
 		src: videoSrc,
 		type: 'video/mp4'

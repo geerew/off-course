@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Fullscreen from './ui/components/fullscreen.svelte';
 	import Play from './ui/components/play.svelte';
+	import Settings from './ui/components/settings.svelte';
 	import TimeSlider from './ui/components/time-slider.svelte';
 	import Timestamp from './ui/components/timestamp.svelte';
 </script>
@@ -9,9 +10,9 @@
 	class="pointer-events-none absolute inset-0 z-2 box-border flex h-full w-full flex-col opacity-0 transition-opacity duration-200 ease-out group-data-[pointer=fine]/player:hidden data-visible:opacity-100 data-visible:ease-in"
 >
 	<media-controls-group
-		class="pointer-events-auto relative flex w-full basis-3/12 flex-col items-center gap-2 px-4 pt-3"
+		class="pointer-events-auto relative flex w-full basis-3/12 flex-col items-end gap-2 px-4 pt-3"
 	>
-		<!--<Settings isMobile={false} /> -->
+		<Settings />
 	</media-controls-group>
 
 	<media-controls-group

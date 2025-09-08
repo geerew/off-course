@@ -7,7 +7,7 @@
 	import { Oops, Spinner } from '$lib/components';
 	import {
 		ActionIcon,
-		BackArrowIcon,
+		ArrowBackIcon,
 		CourseIcon,
 		DeselectAllIcon,
 		PlusIcon,
@@ -255,7 +255,7 @@
 							pathHistory.length > 0 ? pathHistory.pop() : null;
 						}}
 					>
-						<BackArrowIcon class="size-4 stroke-2" />
+						<ArrowBackIcon class="size-4 stroke-2" />
 						<span>Back</span>
 					</Button>
 
