@@ -321,7 +321,7 @@
 											}
 										}}
 									>
-										{#if course.progress}
+										{#if course.progress?.started}
 											Resume Course
 										{:else}
 											Start Course
@@ -338,7 +338,7 @@
 										<Dropdown.Content class="z-60 w-38">
 											<Dropdown.Item
 												class="data-disabled:pointer-events-none"
-												disabled={!course?.progress}
+												disabled={!course?.progress?.started}
 												onclick={async () => {
 													openCourseProgressDialog = true;
 												}}
