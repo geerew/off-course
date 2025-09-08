@@ -18,6 +18,7 @@
 		DurationIcon,
 		EllipsisCircleIcon,
 		FilesIcon,
+		LoaderCircleIcon,
 		LogoIcon,
 		ModulesIcon,
 		PathIcon,
@@ -260,13 +261,49 @@
 									{/if}
 								</div>
 
+								<!-- Progress Bar -->
+								{#if course?.progress}
+									<div class="flex flex-row items-center gap-2">
+										<LoaderCircleIcon class="text-foreground-alt-3 size-4.5" />
+
+										<div
+											class="bg-background-alt-3 relative h-5 w-full max-w-56 overflow-hidden rounded-md"
+											aria-labelledby={labelId}
+											role="progressbar"
+											aria-valuenow={course.progress.percent}
+											aria-valuemin="0"
+											aria-valuemax="100"
+										>
+											<div
+												class="bg-background-primary-alt-1/70 h-full transition-all duration-1000 ease-in-out"
+												style={`width: ${course.progress.percent}%`}
+											></div>
+
+											<!-- Progress Text Inside Bar -->
+											<div
+												id={labelId}
+												class="text-foreground-alt-1 absolute inset-0 flex items-center justify-center text-xs font-medium drop-shadow-sm"
+											>
+												{course.progress.percent}%
+											</div>
+										</div>
+									</div>
+								{/if}
+
 								<!-- Tags -->
-								<div class="flex flex-wrap gap-2">
-									{#each tags as tag}
-										<Badge class="text-sm  select-none">
-											{tag.tag}
-										</Badge>
-									{/each}
+								<div class="flex flex-col gap-4 py-2 text-sm">
+									<span>Tags</span>
+									{#if tags.length === 0}
+										<span class="text-foreground-alt-2">-</span>
+									{:else}
+										<div class="flex flex-wrap gap-2">
+											{#each tags as tag}
+												<Badge class="text-sm  select-none">
+													{tag.tag}
+												</Badge>
+											{/each}
+										</div>
+									{/if}
 								</div>
 							</div>
 
@@ -359,33 +396,6 @@
 										class="bg-background-alt-2 flex h-50 w-full max-w-90 items-center justify-center rounded-lg"
 									>
 										<LogoIcon class="fill-background-alt-3 w-16 md:w-20" />
-									</div>
-								{/if}
-
-								<!-- Progress Bar Overlay -->
-								{#if course?.progress}
-									<div class="absolute right-0 bottom-0 left-0 w-full">
-										<div
-											class="bg-background-alt-3/80 relative h-5 w-full overflow-hidden backdrop-blur-sm"
-											aria-labelledby={labelId}
-											role="progressbar"
-											aria-valuenow={course.progress.percent}
-											aria-valuemin="0"
-											aria-valuemax="100"
-										>
-											<div
-												class="bg-background-primary-alt-1/70 h-full transition-all duration-1000 ease-in-out"
-												style={`width: ${course.progress.percent}%`}
-											></div>
-
-											<!-- Progress Text Inside Bar -->
-											<div
-												id={labelId}
-												class="text-foreground-alt-1 absolute inset-0 flex items-center justify-center text-xs font-medium drop-shadow-sm"
-											>
-												{course.progress.percent}%
-											</div>
-										</div>
 									</div>
 								{/if}
 							</div>
