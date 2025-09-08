@@ -19,7 +19,7 @@
 	}
 </script>
 
-<header class="border-background-alt-3 bg-background fixed top-0 z-3 w-full border-b">
+<header class="border-background-alt-3 bg-background fixed top-0 z-50 w-full border-b">
 	<div class="container-px flex h-[var(--header-height)] items-center justify-between py-6">
 		<!-- Logo -->
 		<div class="flex flex-1">

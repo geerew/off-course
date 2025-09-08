@@ -328,7 +328,7 @@
 	{#if course && selectedLesson}
 		<div
 			class={cn(
-				'grid grid-rows-1 gap-6 pt-[calc(var(--header-height)+1))]',
+				'grid min-h-0 grid-rows-1 gap-6 pt-[calc(var(--header-height)+1))]',
 				menuPopupMode ? 'grid-cols-1' : 'grid-cols-[var(--course-menu-width)_1fr]'
 			)}
 		>
@@ -350,14 +350,12 @@
 					</Dialog.Portal>
 				</Dialog.Root>
 			{:else}
-				<div class="relative row-span-full">
-					<div class="absolute inset-0">
-						<nav
-							class="border-background-alt-4 top-[calc(var(--header-height)+1px)] left-0 flex h-[calc(100dvh-(var(--header-height)+1px))] w-[--course-menu-width] flex-col gap-2 overflow-x-hidden overflow-y-auto border-r pb-8"
-						>
-							{@render menuContents()}
-						</nav>
-					</div>
+				<div class="relative row-span-full min-h-0">
+					<nav
+						class="border-background-alt-4 bg-background sticky top-[calc(var(--header-height)+1px)] max-h-[calc(100dvh-(var(--header-height)+1px))] w-[--course-menu-width] overflow-x-hidden overflow-y-auto overscroll-contain border-r pb-8"
+					>
+						{@render menuContents()}
+					</nav>
 				</div>
 			{/if}
 

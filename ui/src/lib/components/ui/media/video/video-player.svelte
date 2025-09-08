@@ -140,24 +140,28 @@
 </script>
 
 <!-- TODO Handle src.type instead of hardcoding -->
-<media-player
-	bind:this={player}
-	playsInline
-	autoplay={mediaPreferences.current.autoplay}
-	src={{
-		src: videoSrc,
-		type: 'video/mp4'
-	}}
-	class="group/player relative aspect-video overflow-hidden rounded-md"
->
-	<media-provider></media-provider>
+<div class="flex aspect-video overflow-hidden rounded-xl">
+	<div class="transform-gpu backface-hidden">
+		<media-player
+			bind:this={player}
+			playsInline
+			autoplay={mediaPreferences.current.autoplay}
+			src={{
+				src: videoSrc,
+				type: 'video/mp4'
+			}}
+			class="group/player relative overflow-hidden rounded-xl"
+		>
+			<media-provider></media-provider>
 
-	<Gestures />
-	<Buffering />
+			<Gestures />
+			<Buffering />
 
-	<!-- Shown when pointer=fine -->
-	<NormalControlsLayout />
+			<!-- Shown when pointer=fine -->
+			<NormalControlsLayout />
 
-	<!-- Shown when pointer=coarse -->
-	<MobileControlsLayout />
-</media-player>
+			<!-- Shown when pointer=coarse -->
+			<MobileControlsLayout />
+		</media-player>
+	</div>
+</div>
