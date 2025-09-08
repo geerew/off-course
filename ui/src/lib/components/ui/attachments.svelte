@@ -27,7 +27,7 @@
 	</Dropdown.Trigger>
 
 	<Dropdown.Content
-		class="text-foreground-alt-3 z-10 flex max-h-[10rem] w-auto max-w-xs overflow-y-scroll px-1.5 py-1"
+		class="text-foreground-alt-3 z-10 flex max-h-[10rem] w-auto max-w-[15rem] overflow-y-scroll px-1 py-2"
 		align="start"
 		portalProps={{ disabled: true }}
 	>
@@ -38,15 +38,17 @@
 				<Button
 					href={`/api/courses/${courseId}/groups/${lessonId}/attachments/${attachment.id}/serve`}
 					variant="ghost"
-					class="hover:text-foreground h-auto justify-between gap-5 text-xs hover:bg-transparent"
+					class="hover:text-foreground h-auto w-full justify-between gap-5 px-1.5 text-xs hover:bg-transparent"
 					download
 				>
-					<div class="flex flex-row items-center gap-3">
+					<span class="grid w-full grid-cols-[auto_1fr_auto] items-start gap-1.5">
 						<span class="shrink-0">{index + 1}.</span>
-						<span>{attachment.title}</span>
-					</div>
+						<span class="min-w-0 text-left break-words whitespace-normal">
+							{attachment.title}
+						</span>
 
-					<DownloadIcon class="size-4 shrink-0" />
+						<DownloadIcon class="size-4 shrink-0 self-start justify-self-end" />
+					</span>
 				</Button>
 			</Dropdown.Item>
 
