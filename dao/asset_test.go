@@ -144,10 +144,29 @@ func Test_GetAsset(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
 
+		// Create asset metadata
+		meta := &models.AssetMetadata{
+			AssetID: asset.ID,
+			VideoMetadata: &models.VideoMetadata{
+				DurationSec: 120,
+				Container:   "mov,mp4,m4a,3gp,3g2,mj2",
+				MIMEType:    "video/mp4",
+				SizeBytes:   1024,
+				OverallBPS:  200000,
+				VideoCodec:  "h264",
+				Width:       1280,
+				Height:      720,
+				FPSNum:      30,
+				FPSDen:      1,
+			},
+			AudioMetadata: nil,
+		}
+		require.NoError(t, dao.CreateAssetMetadata(ctx, meta))
+
 		// With progress
 		dbOpts := database.NewOptions().
 			WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: asset.ID}).
-			WithProgress()
+			WithUserProgress()
 
 		record, err := dao.GetAsset(ctx, dbOpts)
 		require.Nil(t, err)
@@ -156,7 +175,7 @@ func Test_GetAsset(t *testing.T) {
 		require.Zero(t, record.Progress.VideoPos)
 		require.False(t, record.Progress.Completed)
 		require.True(t, record.Progress.CompletedAt.IsZero())
-		require.Nil(t, record.VideoMetadata)
+		require.Nil(t, record.AssetMetadata)
 
 		// Set progress
 		assetProgress := &models.AssetProgress{
@@ -177,34 +196,21 @@ func Test_GetAsset(t *testing.T) {
 		require.Equal(t, 100, record.Progress.VideoPos)
 		require.True(t, record.Progress.Completed)
 		require.False(t, record.Progress.CompletedAt.IsZero())
-		require.Nil(t, record.VideoMetadata)
+		require.Nil(t, record.AssetMetadata)
 
-		// Set video metadata
-		videoMetadata := &models.VideoMetadata{
-			AssetID: asset.ID,
-			VideoMetadataInfo: models.VideoMetadataInfo{
-				Duration:   3600,
-				Width:      1920,
-				Height:     1080,
-				Resolution: "1920x1080",
-				Codec:      "H.264",
-			},
-		}
-		require.NoError(t, dao.CreateVideoMetadata(ctx, videoMetadata))
-
-		// Get the asset with video metadata
-		dbOpts.WithAssetVideoMetadata()
+		// Get the asset with metadata
+		dbOpts.WithAssetMetadata()
 
 		record, err = dao.GetAsset(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Equal(t, asset.ID, record.ID)
 		require.NotNil(t, record.Progress)
-		require.NotNil(t, record.VideoMetadata)
-		require.Equal(t, 3600, record.VideoMetadata.Duration)
-		require.Equal(t, 1920, record.VideoMetadata.Width)
-		require.Equal(t, 1080, record.VideoMetadata.Height)
-		require.Equal(t, "1920x1080", record.VideoMetadata.Resolution)
-		require.Equal(t, "H.264", record.VideoMetadata.Codec)
+		require.NotNil(t, record.AssetMetadata)
+		require.NotNil(t, record.AssetMetadata.VideoMetadata)
+		require.NotNil(t, record.AssetMetadata.VideoMetadata)
+		require.Equal(t, 120, record.AssetMetadata.VideoMetadata.DurationSec)
+		require.Equal(t, 1280, record.AssetMetadata.VideoMetadata.Width)
+		require.Nil(t, record.AssetMetadata.AudioMetadata)
 
 		// Create another user
 		user2 := &models.User{
@@ -244,12 +250,12 @@ func Test_GetAsset(t *testing.T) {
 		require.Equal(t, 200, record.Progress.VideoPos)
 		require.False(t, record.Progress.Completed)
 		require.True(t, record.Progress.CompletedAt.IsZero())
-		require.NotNil(t, record.VideoMetadata)
-		require.Equal(t, 3600, record.VideoMetadata.Duration)
-		require.Equal(t, 1920, record.VideoMetadata.Width)
-		require.Equal(t, 1080, record.VideoMetadata.Height)
-		require.Equal(t, "1920x1080", record.VideoMetadata.Resolution)
-		require.Equal(t, "H.264", record.VideoMetadata.Codec)
+		require.NotNil(t, record.AssetMetadata)
+		require.NotNil(t, record.AssetMetadata.VideoMetadata)
+		require.NotNil(t, record.AssetMetadata.VideoMetadata)
+		require.Equal(t, 120, record.AssetMetadata.VideoMetadata.DurationSec)
+		require.Equal(t, 1280, record.AssetMetadata.VideoMetadata.Width)
+		require.Nil(t, record.AssetMetadata.AudioMetadata)
 	})
 
 	t.Run("not found", func(t *testing.T) {
@@ -263,7 +269,7 @@ func Test_GetAsset(t *testing.T) {
 	t.Run("missing principal", func(t *testing.T) {
 		dao, _ := setup(t)
 
-		dbOpts := database.NewOptions().WithProgress()
+		dbOpts := database.NewOptions().WithUserProgress()
 		record, err := dao.GetAsset(context.Background(), dbOpts)
 		require.ErrorIs(t, err, utils.ErrPrincipal)
 		require.Nil(t, record)
@@ -346,11 +352,30 @@ func Test_ListAssets(t *testing.T) {
 			require.NoError(t, dao.CreateAsset(ctx, asset))
 			assets = append(assets, asset)
 
+			// Create asset metadata
+			meta := &models.AssetMetadata{
+				AssetID: asset.ID,
+				VideoMetadata: &models.VideoMetadata{
+					DurationSec: 120,
+					Container:   "mov,mp4,m4a,3gp,3g2,mj2",
+					MIMEType:    "video/mp4",
+					SizeBytes:   1024,
+					OverallBPS:  200000,
+					VideoCodec:  "h264",
+					Width:       1280,
+					Height:      720,
+					FPSNum:      30,
+					FPSDen:      1,
+				},
+				AudioMetadata: nil,
+			}
+			require.NoError(t, dao.CreateAssetMetadata(ctx, meta))
+
 			time.Sleep(1 * time.Millisecond)
 		}
 
 		// List with progress
-		dbOpts := database.NewOptions().WithProgress()
+		dbOpts := database.NewOptions().WithUserProgress()
 
 		records, err := dao.ListAssets(ctx, dbOpts)
 		require.Nil(t, err)
@@ -363,6 +388,7 @@ func Test_ListAssets(t *testing.T) {
 			require.Zero(t, record.Progress.VideoPos)
 			require.False(t, record.Progress.Completed)
 			require.True(t, record.Progress.CompletedAt.IsZero())
+			require.Nil(t, record.AssetMetadata)
 		}
 
 		// Generate progress for the default user
@@ -430,6 +456,35 @@ func Test_ListAssets(t *testing.T) {
 		for i, record := range records {
 			require.Equal(t, assets[i].ID, record.ID)
 			require.NotNil(t, record.Progress)
+
+			if i == 1 {
+				require.Equal(t, 50, record.Progress.VideoPos)
+				require.True(t, record.Progress.Completed)
+				require.False(t, record.Progress.CompletedAt.IsZero())
+			} else {
+				require.Zero(t, record.Progress.VideoPos)
+				require.False(t, record.Progress.Completed)
+				require.True(t, record.Progress.CompletedAt.IsZero())
+			}
+		}
+
+		// List with progress and metadata
+		dbOpts.WithAssetMetadata()
+
+		records, err = dao.ListAssets(ctx, dbOpts)
+		require.Nil(t, err)
+		require.Len(t, records, 3)
+
+		// Ensure they all have progress and metadata, and that the second course is started/completed
+		for i, record := range records {
+			require.Equal(t, assets[i].ID, record.ID)
+			require.NotNil(t, record.Progress)
+			require.NotNil(t, record.AssetMetadata)
+			require.NotNil(t, record.AssetMetadata.VideoMetadata)
+			require.NotNil(t, record.AssetMetadata.VideoMetadata)
+			require.Equal(t, 120, record.AssetMetadata.VideoMetadata.DurationSec)
+			require.Equal(t, 1280, record.AssetMetadata.VideoMetadata.Width)
+			require.Nil(t, record.AssetMetadata.AudioMetadata)
 
 			if i == 1 {
 				require.Equal(t, 50, record.Progress.VideoPos)

@@ -7,16 +7,6 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-type Modeler interface {
-	Table() string
-	Id() string
-	RefreshId()
-	RefreshCreatedAt()
-	RefreshUpdatedAt()
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 // Base defines the base model for all models
 type Base struct {
 	ID        string         `db:"id"`         // Immutable

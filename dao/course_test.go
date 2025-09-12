@@ -81,7 +81,7 @@ func Test_GetCourse(t *testing.T) {
 
 		dbOpts := database.NewOptions().
 			WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID}).
-			WithProgress()
+			WithUserProgress()
 
 		record, err := dao.GetCourse(ctx, dbOpts)
 		require.Nil(t, err)
@@ -171,7 +171,7 @@ func Test_GetCourse(t *testing.T) {
 	t.Run("missing principal", func(t *testing.T) {
 		dao, _ := setup(t)
 
-		dbOpts := database.NewOptions().WithProgress()
+		dbOpts := database.NewOptions().WithUserProgress()
 		record, err := dao.GetCourse(context.Background(), dbOpts)
 		require.ErrorIs(t, err, utils.ErrPrincipal)
 		require.Nil(t, record)
@@ -213,7 +213,7 @@ func Test_ListCourses(t *testing.T) {
 			time.Sleep(1 * time.Millisecond)
 		}
 
-		dbOpts := database.NewOptions().WithProgress()
+		dbOpts := database.NewOptions().WithUserProgress()
 
 		records, err := dao.ListCourses(ctx, dbOpts)
 		require.Nil(t, err)

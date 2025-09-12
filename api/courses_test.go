@@ -696,7 +696,7 @@ func TestCourses_GetLessons(t *testing.T) {
 		require.Nil(t, lessonsResp[1].Assets[1].Progress)
 	})
 
-	t.Run("200 (withProgress)", func(t *testing.T) {
+	t.Run("200 (withUserProgress)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		courses := []*models.Course{}
@@ -750,8 +750,8 @@ func TestCourses_GetLessons(t *testing.T) {
 			}
 		}
 
-		// ?withProgress=true
-		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+courses[1].ID+"/lessons?withProgress=true", nil))
+		// ?withUserProgress=true
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+courses[1].ID+"/lessons?withUserProgress=true", nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
@@ -975,7 +975,7 @@ func TestCourses_GetLesson(t *testing.T) {
 		}
 	})
 
-	t.Run("200 (found withProgress)", func(t *testing.T) {
+	t.Run("200 (found withUserProgress)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
@@ -1021,8 +1021,8 @@ func TestCourses_GetLesson(t *testing.T) {
 
 		target := lessons[1]
 
-		// ?withProgress=true
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/lessons/"+target.ID+"?withProgress=true", nil)
+		// ?withUserProgress=true
+		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/lessons/"+target.ID+"?withUserProgress=true", nil)
 		status, body, err := requestHelper(t, router, req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
@@ -1200,7 +1200,7 @@ func TestCourses_GetModules(t *testing.T) {
 		require.Equal(t, attachments[3].Title, response.Modules[1].Lessons[0].Attachments[0].Title)
 	})
 
-	t.Run("200 (withProgress)", func(t *testing.T) {
+	t.Run("200 (withUserProgress)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 		courses := []*models.Course{}
@@ -1252,8 +1252,8 @@ func TestCourses_GetModules(t *testing.T) {
 			}
 		}
 
-		// ?withProgress=true
-		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+courses[1].ID+"/modules?withProgress=true", nil))
+		// ?withUserProgress=true
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+courses[1].ID+"/modules?withUserProgress=true", nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
@@ -2115,7 +2115,7 @@ func TestCourses_UpdateAssetProgress(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, status)
 
-		dbOpts := database.NewOptions().WithProgress().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: asset.ID})
+		dbOpts := database.NewOptions().WithUserProgress().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: asset.ID})
 		assetResult, err := router.dao.GetAsset(ctx, dbOpts)
 		require.NoError(t, err)
 		require.NotNil(t, assetResult)

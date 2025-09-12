@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/utils"
@@ -95,41 +96,6 @@ func getGeneric[T any](ctx context.Context, dao *DAO, builderOpts builderOptions
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// getRow runs a query and returns a single row
-func getRow(ctx context.Context, dao *DAO, builderOpts builderOptions) (*sql.Row, error) {
-	sqlStr, args, err := selectBuilder(builderOpts)
-	if err != nil {
-		return nil, err
-	}
-
-	q := database.QuerierFromContext(ctx, dao.db)
-
-	return q.QueryRowContext(ctx, sqlStr, args...), nil
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// getRows runs a query and returns multiple rows
-func getRows(ctx context.Context, dao *DAO, builderOpts builderOptions) (*sql.Rows, error) {
-	q := database.QuerierFromContext(ctx, dao.db)
-
-	if builderOpts.DbOpts != nil && builderOpts.DbOpts.Pagination != nil {
-		count, err := countGeneric(ctx, dao, builderOpts)
-		if err != nil {
-			return nil, err
-		}
-
-		builderOpts.DbOpts.Pagination.SetCount(count)
-	}
-
-	sqlStr, args, err := selectBuilder(builderOpts)
-	if err != nil {
-		return nil, err
-	}
-
-	return q.QueryContext(ctx, sqlStr, args...)
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // listGeneric is a generic function to get records from the database
 func listGeneric[T any](ctx context.Context, dao *DAO, builderOpts builderOptions) ([]*T, error) {
 	q := database.QuerierFromContext(ctx, dao.db)
@@ -212,4 +178,23 @@ func principalFromCtx(ctx context.Context) (types.Principal, error) {
 	}
 
 	return principal, nil
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func sanitizeIDs(in []string) []string {
+	out := make([]string, 0, len(in))
+	seen := make(map[string]struct{}, len(in))
+	for _, id := range in {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	return out
 }

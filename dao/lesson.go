@@ -74,8 +74,8 @@ func (dao *DAO) GetLesson(ctx context.Context, dbOpts *database.Options) (*model
 		WithOrderBy(models.ASSET_TABLE_PREFIX + " ASC, " + models.ASSET_TABLE_SUB_PREFIX + " ASC")
 
 	if dbOpts != nil {
-		assetDbOpts.IncludeProgress = dbOpts.IncludeProgress
-		assetDbOpts.IncludeAssetVideoMetadata = dbOpts.IncludeAssetVideoMetadata
+		assetDbOpts.IncludeUserProgress = dbOpts.IncludeUserProgress
+		assetDbOpts.IncludeAssetMetadata = dbOpts.IncludeAssetMetadata
 	}
 
 	assets, err := dao.ListAssets(ctx, assetDbOpts)
@@ -142,8 +142,8 @@ func (dao *DAO) ListLessons(ctx context.Context, dbOpts *database.Options) ([]*m
 		)
 
 	if dbOpts != nil {
-		assetDbOpts.IncludeProgress = dbOpts.IncludeProgress
-		assetDbOpts.IncludeAssetVideoMetadata = dbOpts.IncludeAssetVideoMetadata
+		assetDbOpts.IncludeUserProgress = dbOpts.IncludeUserProgress
+		assetDbOpts.IncludeAssetMetadata = dbOpts.IncludeAssetMetadata
 	}
 
 	assets, err := dao.ListAssets(ctx, assetDbOpts)

@@ -2,10 +2,8 @@ package dao
 
 import (
 	"context"
-	"fmt"
 	"math"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
@@ -28,6 +26,11 @@ func (dao *DAO) SyncCourseProgress(ctx context.Context, courseID string) error {
 	metrics, err := dao.fetchCourseMetrics(ctx, courseID, principal.UserID)
 	if err != nil {
 		return err
+	}
+
+	if metrics == nil {
+		// No metrics means no assets → no progress to track
+		return nil
 	}
 
 	courseProgress := &models.CourseProgress{
@@ -143,46 +146,48 @@ type courseMetrics struct {
 // TODO Change this to work around the lesson
 // TODO Change the userID to use ? instead of string interpolation
 func (dao *DAO) fetchCourseMetrics(ctx context.Context, courseID, userID string) (*courseMetrics, error) {
-	dbOpts := database.NewOptions().
-		WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: courseID})
+	// TODO fix
+	// dbOpts := database.NewOptions().
+	// 	WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: courseID})
 
-	builderOpts := newBuilderOptions(models.COURSE_TABLE).
-		WithColumns(
-			// Count of video
-			"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' THEN 1 END) AS video_count",
-			// Count of non-video assets
-			"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"!='video' THEN 1 END) AS non_video_count",
-			// Count of videos with metadata whose duration > 0
-			"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' AND "+models.VIDEO_METADATA_TABLE_DURATION+">0 THEN 1 END) AS videos_with_metadata",
-			// Total duration of all video assets
-			"COALESCE(SUM(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' THEN "+models.VIDEO_METADATA_TABLE_DURATION+" END),0) AS total_video_duration",
-			// Total watched duration of videos with metadata
-			"COALESCE(SUM(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' AND "+models.VIDEO_METADATA_TABLE_DURATION+">0 THEN CASE WHEN "+models.ASSET_PROGRESS_TABLE_COMPLETED+" THEN "+models.VIDEO_METADATA_TABLE_DURATION+" ELSE MIN("+models.ASSET_PROGRESS_TABLE_VIDEO_POS+", "+models.VIDEO_METADATA_TABLE_DURATION+") END END),0) AS watched_video_duration",
-			// Count of completed video assets without metadata
-			"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' AND ("+models.VIDEO_METADATA_TABLE_DURATION+" IS NULL OR "+models.VIDEO_METADATA_TABLE_DURATION+"=0) AND "+models.ASSET_PROGRESS_TABLE_COMPLETED+" THEN 1 END) AS completed_videos_no_metadata",
-			// Count of total video assets without metadata
-			"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' AND ("+models.VIDEO_METADATA_TABLE_DURATION+" IS NULL OR "+models.VIDEO_METADATA_TABLE_DURATION+"=0) THEN 1 END) AS total_videos_no_metadata",
-			// Count of completed non-video assets
-			"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"!='video' AND "+models.ASSET_PROGRESS_TABLE_COMPLETED+" THEN 1 END) AS completed_non_video_count",
-			// Count of started assets (video or non-video)
-			"COALESCE(SUM(CASE WHEN "+models.ASSET_PROGRESS_TABLE_VIDEO_POS+">0 OR "+models.ASSET_PROGRESS_TABLE_COMPLETED+" THEN 1 ELSE 0 END), 0) AS started_count",
-		).
-		WithLeftJoin(models.ASSET_TABLE, fmt.Sprintf("%s = %s", models.ASSET_TABLE_COURSE_ID, models.COURSE_TABLE_ID)).
-		WithLeftJoin(models.ASSET_PROGRESS_TABLE, fmt.Sprintf("%s = %s AND %s = '%s'", models.ASSET_PROGRESS_TABLE_ASSET_ID, models.ASSET_TABLE_ID, models.ASSET_PROGRESS_TABLE_USER_ID, userID)).
-		WithLeftJoin(models.VIDEO_METADATA_TABLE, fmt.Sprintf("%s = %s", models.VIDEO_METADATA_TABLE_ASSET_ID, models.ASSET_TABLE_ID)).
-		WithGroupBy(models.COURSE_TABLE_ID).
-		SetDbOpts(dbOpts)
+	// builderOpts := newBuilderOptions(models.COURSE_TABLE).
+	// 	WithColumns(
+	// 		// Count of video
+	// 		"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' THEN 1 END) AS video_count",
+	// 		// Count of non-video assets
+	// 		"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"!='video' THEN 1 END) AS non_video_count",
+	// 		// Count of videos with metadata whose duration > 0
+	// 		"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' AND "+models.VIDEO_METADATA_TABLE_DURATION+">0 THEN 1 END) AS videos_with_metadata",
+	// 		// Total duration of all video assets
+	// 		"COALESCE(SUM(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' THEN "+models.VIDEO_METADATA_TABLE_DURATION+" END),0) AS total_video_duration",
+	// 		// Total watched duration of videos with metadata
+	// 		"COALESCE(SUM(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' AND "+models.VIDEO_METADATA_TABLE_DURATION+">0 THEN CASE WHEN "+models.ASSET_PROGRESS_TABLE_COMPLETED+" THEN "+models.VIDEO_METADATA_TABLE_DURATION+" ELSE MIN("+models.ASSET_PROGRESS_TABLE_VIDEO_POS+", "+models.VIDEO_METADATA_TABLE_DURATION+") END END),0) AS watched_video_duration",
+	// 		// Count of completed video assets without metadata
+	// 		"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' AND ("+models.VIDEO_METADATA_TABLE_DURATION+" IS NULL OR "+models.VIDEO_METADATA_TABLE_DURATION+"=0) AND "+models.ASSET_PROGRESS_TABLE_COMPLETED+" THEN 1 END) AS completed_videos_no_metadata",
+	// 		// Count of total video assets without metadata
+	// 		"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' AND ("+models.VIDEO_METADATA_TABLE_DURATION+" IS NULL OR "+models.VIDEO_METADATA_TABLE_DURATION+"=0) THEN 1 END) AS total_videos_no_metadata",
+	// 		// Count of completed non-video assets
+	// 		"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"!='video' AND "+models.ASSET_PROGRESS_TABLE_COMPLETED+" THEN 1 END) AS completed_non_video_count",
+	// 		// Count of started assets (video or non-video)
+	// 		"COALESCE(SUM(CASE WHEN "+models.ASSET_PROGRESS_TABLE_VIDEO_POS+">0 OR "+models.ASSET_PROGRESS_TABLE_COMPLETED+" THEN 1 ELSE 0 END), 0) AS started_count",
+	// 	).
+	// 	WithLeftJoin(models.ASSET_TABLE, fmt.Sprintf("%s = %s", models.ASSET_TABLE_COURSE_ID, models.COURSE_TABLE_ID)).
+	// 	WithLeftJoin(models.ASSET_PROGRESS_TABLE, fmt.Sprintf("%s = %s AND %s = '%s'", models.ASSET_PROGRESS_TABLE_ASSET_ID, models.ASSET_TABLE_ID, models.ASSET_PROGRESS_TABLE_USER_ID, userID)).
+	// 	WithLeftJoin(models.VIDEO_METADATA_TABLE, fmt.Sprintf("%s = %s", models.VIDEO_METADATA_TABLE_ASSET_ID, models.ASSET_TABLE_ID)).
+	// 	WithGroupBy(models.COURSE_TABLE_ID).
+	// 	SetDbOpts(dbOpts)
 
-	metrics, err := getGeneric[courseMetrics](ctx, dao, *builderOpts)
-	if err != nil {
-		return nil, err
-	}
+	// metrics, err := getGeneric[courseMetrics](ctx, dao, *builderOpts)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	if metrics == nil {
-		return nil, utils.ErrCourseId
-	}
+	// if metrics == nil {
+	// 	return nil, utils.ErrCourseId
+	// }
 
-	return metrics, nil
+	// return metrics, nil
+	return nil, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

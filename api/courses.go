@@ -103,9 +103,9 @@ func (api coursesAPI) getCourses(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
-	if raw := c.Query("withProgress"); raw != "" {
+	if raw := c.Query("withUserProgress"); raw != "" {
 		if v, err := strconv.ParseBool(raw); err == nil && v {
-			dbOpts.WithProgress()
+			dbOpts.WithUserProgress()
 		}
 	}
 
@@ -135,9 +135,9 @@ func (api coursesAPI) getCourse(c *fiber.Ctx) error {
 
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: id})
 
-	if raw := c.Query("withProgress"); raw != "" {
+	if raw := c.Query("withUserProgress"); raw != "" {
 		if v, err := strconv.ParseBool(raw); err == nil && v {
-			dbOpts.WithProgress()
+			dbOpts.WithUserProgress()
 		}
 	}
 
@@ -312,9 +312,9 @@ func (api coursesAPI) getLessons(c *fiber.Ctx) error {
 
 	dbOpts.WithAssetVideoMetadata().WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: id})
 
-	if raw := c.Query("withProgress"); raw != "" {
+	if raw := c.Query("withUserProgress"); raw != "" {
 		if v, err := strconv.ParseBool(raw); err == nil && v {
-			dbOpts.WithProgress()
+			dbOpts.WithUserProgress()
 		}
 	}
 
@@ -344,9 +344,9 @@ func (api coursesAPI) getLesson(c *fiber.Ctx) error {
 			squirrel.Eq{models.LESSON_TABLE_COURSE_ID: id},
 		})
 
-	if raw := c.Query("withProgress"); raw != "" {
+	if raw := c.Query("withUserProgress"); raw != "" {
 		if v, err := strconv.ParseBool(raw); err == nil && v {
-			dbOpts.WithProgress()
+			dbOpts.WithUserProgress()
 		}
 	}
 
@@ -389,9 +389,9 @@ func (api coursesAPI) getModules(c *fiber.Ctx) error {
 
 	dbOpts.WithAssetVideoMetadata().WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: id})
 
-	if raw := c.Query("withProgress"); raw != "" {
+	if raw := c.Query("withUserProgress"); raw != "" {
 		if v, err := strconv.ParseBool(raw); err == nil && v {
-			dbOpts.WithProgress()
+			dbOpts.WithUserProgress()
 		}
 	}
 

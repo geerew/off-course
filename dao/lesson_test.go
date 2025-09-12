@@ -173,7 +173,7 @@ func Test_GetLesson(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
-		dbOpts := database.NewOptions().WithProgress()
+		dbOpts := database.NewOptions().WithUserProgress()
 		record, err := dao.GetLesson(context.Background(), dbOpts)
 		require.ErrorIs(t, err, utils.ErrPrincipal)
 		require.Nil(t, record)
