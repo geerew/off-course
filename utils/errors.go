@@ -31,6 +31,7 @@ var (
 	ErrUserPassword        = errors.New("user password cannot be empty")
 	ErrLogMessage          = errors.New("log message cannot be empty")
 	ErrUserId              = errors.New("user id cannot be empty")
+	ErrAssetId             = errors.New("asset id cannot be empty")
 	ErrTag                 = errors.New("tag cannot be empty")
 	ErrTitle               = errors.New("title cannot be empty")
 	ErrPrefix              = errors.New("prefix cannot be empty or less than zero")

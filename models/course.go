@@ -14,8 +14,6 @@ const (
 	COURSE_CARD_PATH    = "card_path"
 	COURSE_AVAILABLE    = "available"
 	COURSE_DURATION     = "duration"
-	COURSE_ASSETS_COUNT = "assets_count"
-	COURSE_TOTAL_WEIGHT = "total_weight"
 	COURSE_INITIAL_SCAN = "initial_scan"
 	COURSE_MAINTENANCE  = "maintenance"
 
@@ -27,8 +25,6 @@ const (
 	COURSE_TABLE_CARD_PATH    = COURSE_TABLE + "." + COURSE_CARD_PATH
 	COURSE_TABLE_AVAILABLE    = COURSE_TABLE + "." + COURSE_AVAILABLE
 	COURSE_TABLE_DURATION     = COURSE_TABLE + "." + COURSE_DURATION
-	COURSE_TABLE_ASSETS_COUNT = COURSE_TABLE + "." + COURSE_ASSETS_COUNT
-	COURSE_TABLE_TOTAL_WEIGHT = COURSE_TABLE + "." + COURSE_TOTAL_WEIGHT
 	COURSE_TABLE_INITIAL_SCAN = COURSE_TABLE + "." + COURSE_INITIAL_SCAN
 	COURSE_TABLE_MAINTENANCE  = COURSE_TABLE + "." + COURSE_MAINTENANCE
 )
@@ -43,8 +39,6 @@ type Course struct {
 	CardPath    string `db:"card_path"`    // Mutable
 	Available   bool   `db:"available"`    // Mutable
 	Duration    int    `db:"duration"`     // Mutable
-	AssetsCount int    `db:"assets_count"` // Mutable
-	TotalWeight int    `db:"total_weight"` // Mutable
 	InitialScan bool   `db:"initial_scan"` // Mutable
 	Maintenance bool   `db:"maintenance"`  // Mutable
 
@@ -65,8 +59,6 @@ func CourseColumns() []string {
 		fmt.Sprintf("%s AS card_path", COURSE_TABLE_CARD_PATH),
 		fmt.Sprintf("%s AS available", COURSE_TABLE_AVAILABLE),
 		fmt.Sprintf("%s AS duration", COURSE_TABLE_DURATION),
-		fmt.Sprintf("%s AS assets_count", COURSE_TABLE_ASSETS_COUNT),
-		fmt.Sprintf("%s AS total_weight", COURSE_TABLE_TOTAL_WEIGHT),
 		fmt.Sprintf("%s AS initial_scan", COURSE_TABLE_INITIAL_SCAN),
 		fmt.Sprintf("%s AS maintenance", COURSE_TABLE_MAINTENANCE),
 	}
@@ -97,8 +89,6 @@ func (r *CourseRow) ToDomain() *Course {
 		CardPath:    r.CardPath,
 		Available:   r.Available,
 		Duration:    r.Duration,
-		AssetsCount: r.AssetsCount,
-		TotalWeight: r.TotalWeight,
 		InitialScan: r.InitialScan,
 		Maintenance: r.Maintenance,
 	}

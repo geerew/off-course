@@ -691,56 +691,6 @@ func Test_UpdateAssetMetadata(t *testing.T) {
 	})
 }
 
-// func Test_UpdateVideoMetadata(t *testing.T) {
-// 	t.Run("success", func(t *testing.T) {
-// 		dao, ctx := setup(t)
-
-// 		_, originalVideoMetadata := helper_createVideoMetadata(t, ctx, dao, 1)
-
-// 		time.Sleep(1 * time.Millisecond)
-
-// 		newVideoMetadata := &models.VideoMetadata{
-// 			Base:    originalVideoMetadata[0].Base,
-// 			AssetID: originalVideoMetadata[0].AssetID,
-// 			VideoMetadataInfo: models.VideoMetadataInfo{
-// 				Duration:   150,     // Mutable
-// 				Width:      1920,    // Mutable
-// 				Height:     1080,    // Mutable
-// 				Codec:      "h265",  // Mutable
-// 				Resolution: "1080p", // Mutable
-// 			},
-// 		}
-
-// 		require.NoError(t, dao.UpdateVideoMetadata(ctx, newVideoMetadata))
-
-// 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.VIDEO_METADATA_TABLE_ID: originalVideoMetadata[0].ID})
-// 		record, err := dao.GetVideoMetadata(ctx, dbOpts)
-// 		require.Nil(t, err)
-// 		require.Equal(t, originalVideoMetadata[0].ID, record.ID)                     // No change
-// 		require.Equal(t, originalVideoMetadata[0].AssetID, record.AssetID)           // No change
-// 		require.True(t, record.CreatedAt.Equal(originalVideoMetadata[0].CreatedAt))  // No change
-// 		require.Equal(t, newVideoMetadata.Duration, record.Duration)                 // Changed
-// 		require.Equal(t, newVideoMetadata.Width, record.Width)                       // Changed
-// 		require.Equal(t, newVideoMetadata.Height, record.Height)                     // Changed
-// 		require.Equal(t, newVideoMetadata.Codec, record.Codec)                       // Changed
-// 		require.Equal(t, newVideoMetadata.Resolution, record.Resolution)             // Changed
-// 		require.False(t, record.UpdatedAt.Equal(originalVideoMetadata[0].UpdatedAt)) // Changed
-// 	})
-
-// 	t.Run("invalid", func(t *testing.T) {
-// 		dao, ctx := setup(t)
-
-// 		_, videoMetadata := helper_createVideoMetadata(t, ctx, dao, 1)
-
-// 		// Empty ID
-// 		videoMetadata[0].ID = ""
-// 		require.ErrorIs(t, dao.UpdateVideoMetadata(ctx, videoMetadata[0]), utils.ErrId)
-
-// 		// Nil Model
-// 		require.ErrorIs(t, dao.UpdateVideoMetadata(ctx, nil), utils.ErrNilPtr)
-// 	})
-// }
-
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func Test_DeleteAssetMetadataByAssetIDs(t *testing.T) {

@@ -172,19 +172,17 @@ func Test_GetAsset(t *testing.T) {
 		require.Nil(t, err)
 		require.Equal(t, asset.ID, record.ID)
 		require.NotNil(t, record.Progress)
-		require.Zero(t, record.Progress.VideoPos)
+		require.Zero(t, record.Progress.Position)
 		require.False(t, record.Progress.Completed)
 		require.True(t, record.Progress.CompletedAt.IsZero())
 		require.Nil(t, record.AssetMetadata)
 
 		// Set progress
 		assetProgress := &models.AssetProgress{
-			AssetID: asset.ID,
-			AssetProgressInfo: models.AssetProgressInfo{
-				VideoPos:    100,
-				Completed:   true,
-				CompletedAt: types.NowDateTime(),
-			},
+			AssetID:     asset.ID,
+			Position:    100,
+			Completed:   true,
+			CompletedAt: types.NowDateTime(),
 		}
 		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
 
@@ -193,7 +191,7 @@ func Test_GetAsset(t *testing.T) {
 		require.Nil(t, err)
 		require.Equal(t, asset.ID, record.ID)
 		require.NotNil(t, record.Progress)
-		require.Equal(t, 100, record.Progress.VideoPos)
+		require.Equal(t, 100, record.Progress.Position)
 		require.True(t, record.Progress.Completed)
 		require.False(t, record.Progress.CompletedAt.IsZero())
 		require.Nil(t, record.AssetMetadata)
@@ -230,9 +228,8 @@ func Test_GetAsset(t *testing.T) {
 		// new user
 		assetProgress2 := &models.AssetProgress{
 			AssetID: asset.ID,
-			AssetProgressInfo: models.AssetProgressInfo{
-				VideoPos: 200,
-			},
+
+			Position: 200,
 		}
 		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress2))
 
@@ -247,7 +244,7 @@ func Test_GetAsset(t *testing.T) {
 		require.Nil(t, err)
 		require.Equal(t, asset.ID, record.ID)
 		require.NotNil(t, record.Progress)
-		require.Equal(t, 200, record.Progress.VideoPos)
+		require.Equal(t, 200, record.Progress.Position)
 		require.False(t, record.Progress.Completed)
 		require.True(t, record.Progress.CompletedAt.IsZero())
 		require.NotNil(t, record.AssetMetadata)
@@ -385,7 +382,7 @@ func Test_ListAssets(t *testing.T) {
 		for i, record := range records {
 			require.Equal(t, assets[i].ID, record.ID)
 			require.NotNil(t, record.Progress)
-			require.Zero(t, record.Progress.VideoPos)
+			require.Zero(t, record.Progress.Position)
 			require.False(t, record.Progress.Completed)
 			require.True(t, record.Progress.CompletedAt.IsZero())
 			require.Nil(t, record.AssetMetadata)
@@ -394,10 +391,9 @@ func Test_ListAssets(t *testing.T) {
 		// Generate progress for the default user
 		assetProgress := &models.AssetProgress{
 			AssetID: assets[0].ID,
-			AssetProgressInfo: models.AssetProgressInfo{
-				VideoPos:  20,
-				Completed: true,
-			},
+
+			Position:  20,
+			Completed: true,
 		}
 		require.NoError(t, dao.UpsertAssetProgress(ctx, courses[0].ID, assetProgress))
 
@@ -412,11 +408,11 @@ func Test_ListAssets(t *testing.T) {
 			require.NotNil(t, record.Progress)
 
 			if i == 0 {
-				require.Equal(t, 20, record.Progress.VideoPos)
+				require.Equal(t, 20, record.Progress.Position)
 				require.True(t, record.Progress.Completed)
 				require.False(t, record.Progress.CompletedAt.IsZero())
 			} else {
-				require.Zero(t, record.Progress.VideoPos)
+				require.Zero(t, record.Progress.Position)
 				require.False(t, record.Progress.Completed)
 				require.True(t, record.Progress.CompletedAt.IsZero())
 			}
@@ -439,11 +435,9 @@ func Test_ListAssets(t *testing.T) {
 		// For course 2, create an asset progress (and therefore another course progress) for the
 		// new user
 		assetProgress2 := &models.AssetProgress{
-			AssetID: assets[1].ID,
-			AssetProgressInfo: models.AssetProgressInfo{
-				VideoPos:  50,
-				Completed: true,
-			},
+			AssetID:   assets[1].ID,
+			Position:  50,
+			Completed: true,
 		}
 		require.NoError(t, dao.UpsertAssetProgress(ctx, courses[1].ID, assetProgress2))
 
@@ -458,11 +452,11 @@ func Test_ListAssets(t *testing.T) {
 			require.NotNil(t, record.Progress)
 
 			if i == 1 {
-				require.Equal(t, 50, record.Progress.VideoPos)
+				require.Equal(t, 50, record.Progress.Position)
 				require.True(t, record.Progress.Completed)
 				require.False(t, record.Progress.CompletedAt.IsZero())
 			} else {
-				require.Zero(t, record.Progress.VideoPos)
+				require.Zero(t, record.Progress.Position)
 				require.False(t, record.Progress.Completed)
 				require.True(t, record.Progress.CompletedAt.IsZero())
 			}
@@ -487,11 +481,11 @@ func Test_ListAssets(t *testing.T) {
 			require.Nil(t, record.AssetMetadata.AudioMetadata)
 
 			if i == 1 {
-				require.Equal(t, 50, record.Progress.VideoPos)
+				require.Equal(t, 50, record.Progress.Position)
 				require.True(t, record.Progress.Completed)
 				require.False(t, record.Progress.CompletedAt.IsZero())
 			} else {
-				require.Zero(t, record.Progress.VideoPos)
+				require.Zero(t, record.Progress.Position)
 				require.False(t, record.Progress.Completed)
 				require.True(t, record.Progress.CompletedAt.IsZero())
 			}

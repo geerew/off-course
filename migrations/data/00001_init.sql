@@ -9,8 +9,6 @@ CREATE TABLE courses (
 	card_path    TEXT,
 	available    BOOLEAN NOT NULL DEFAULT FALSE,
 	duration     INTEGER NOT NULL DEFAULT 0,
-	assets_count INTEGER NOT NULL DEFAULT 0,
-  	total_weight INTEGER NOT NULL DEFAULT 0,
 	initial_scan BOOLEAN NOT NULL DEFAULT FALSE,
 	maintenance  BOOLEAN NOT NULL DEFAULT FALSE,
 	created_at   TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),

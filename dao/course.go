@@ -97,11 +97,6 @@ func (dao *DAO) GetCourse(ctx context.Context, dbOpts *database.Options) (*model
 		return nil, nil
 	}
 
-	// TMP
-	fmt.Print("Course Progress: ")
-	fmt.Printf("Started: %v, StartedAt: %v, Percent: %v, CompletedAt: %v\n",
-		row.Started.Bool, row.StartedAt, int(row.Percent.Int64), row.CompletedAt)
-
 	return row.ToDomain(), nil
 }
 
