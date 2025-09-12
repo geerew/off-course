@@ -177,14 +177,14 @@ func lessonResponseHelper(lessons []*models.Lesson) []*lessonResponse {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type assetProgressRequest struct {
-	VideoPos  int  `json:"videoPos"`
+	Position  int  `json:"position"`
 	Completed bool `json:"completed"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type assetProgressResponse struct {
-	VideoPos    int            `json:"videoPos"`
+	Position    int            `json:"position"`
 	Completed   bool           `json:"completed"`
 	CompletedAt types.DateTime `json:"completedAt"`
 }
@@ -192,11 +192,35 @@ type assetProgressResponse struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type assetVideoMetadataResponse struct {
-	Duration   int    `json:"duration"`
-	Width      int    `json:"width"`
-	Height     int    `json:"height"`
-	Codec      string `json:"codec"`
-	Resolution string `json:"resolution"`
+	DurationSec int    `json:"durationSec"`
+	Container   string `json:"container"`
+	MIMEType    string `json:"mimeType"`
+	SizeBytes   int64  `json:"sizeBytes"`
+	OverallBPS  int    `json:"overallBps"`
+	VideoCodec  string `json:"videoCodec"`
+	Width       int    `json:"width"`
+	Height      int    `json:"height"`
+	FPSNum      int    `json:"fpsNum"`
+	FPSDen      int    `json:"fpsDen"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+type assetAudioMetadataResponse struct {
+	Language      string `json:"language"`
+	Codec         string `json:"codec"`
+	Profile       string `json:"profile"`
+	Channels      int    `json:"channels"`
+	ChannelLayout string `json:"channelLayout"`
+	SampleRate    int    `json:"sampleRate"`
+	BitRate       int    `json:"bitRate"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+type assetMetadataResponse struct {
+	VideoMetadata assetVideoMetadataResponse `json:"videoMetadata,omitempty"`
+	AudioMetadata assetAudioMetadataResponse `json:"audioMetadata,omitempty"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -216,8 +240,8 @@ type assetResponse struct {
 	UpdatedAt types.DateTime `json:"updatedAt"`
 
 	// Relations
-	VideoMetadata *assetVideoMetadataResponse `json:"videoMetadata,omitempty"`
-	Progress      *assetProgressResponse      `json:"progress,omitempty"`
+	AssetMetadata *assetMetadataResponse `json:"assetMetadata,omitempty"`
+	Progress      *assetProgressResponse `json:"progress,omitempty"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -225,15 +249,38 @@ type assetResponse struct {
 func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 	responses := []*assetResponse{}
 	for _, asset := range assets {
-		// Video metadata
-		var videoMetadata *assetVideoMetadataResponse
-		if asset.VideoMetadata != nil {
-			videoMetadata = &assetVideoMetadataResponse{
-				Duration:   asset.VideoMetadata.Duration,
-				Width:      asset.VideoMetadata.Width,
-				Height:     asset.VideoMetadata.Height,
-				Codec:      asset.VideoMetadata.Codec,
-				Resolution: asset.VideoMetadata.Resolution,
+
+		// Asset metadata
+		var assetMetadata *assetMetadataResponse
+		if asset.AssetMetadata != nil {
+			assetMetadata = &assetMetadataResponse{}
+			if asset.AssetMetadata.VideoMetadata != nil {
+				assetMetadata.VideoMetadata = assetVideoMetadataResponse{
+					DurationSec: asset.AssetMetadata.VideoMetadata.DurationSec,
+					Container:   asset.AssetMetadata.VideoMetadata.Container,
+					MIMEType:    asset.AssetMetadata.VideoMetadata.MIMEType,
+					SizeBytes:   asset.AssetMetadata.VideoMetadata.SizeBytes,
+					OverallBPS:  asset.AssetMetadata.VideoMetadata.OverallBPS,
+					VideoCodec:  asset.AssetMetadata.VideoMetadata.VideoCodec,
+					Width:       asset.AssetMetadata.VideoMetadata.Width,
+					Height:      asset.AssetMetadata.VideoMetadata.Height,
+					FPSNum:      asset.AssetMetadata.VideoMetadata.FPSNum,
+					FPSDen:      asset.AssetMetadata.VideoMetadata.FPSDen,
+				}
+			}
+
+			if asset.AssetMetadata.AudioMetadata != nil {
+				assetMetadata = &assetMetadataResponse{
+					AudioMetadata: assetAudioMetadataResponse{
+						Language:      asset.AssetMetadata.AudioMetadata.Language,
+						Codec:         asset.AssetMetadata.AudioMetadata.Codec,
+						Profile:       asset.AssetMetadata.AudioMetadata.Profile,
+						Channels:      asset.AssetMetadata.AudioMetadata.Channels,
+						ChannelLayout: asset.AssetMetadata.AudioMetadata.ChannelLayout,
+						SampleRate:    asset.AssetMetadata.AudioMetadata.SampleRate,
+						BitRate:       asset.AssetMetadata.AudioMetadata.BitRate,
+					},
+				}
 			}
 		}
 
@@ -241,7 +288,7 @@ func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 		var progress *assetProgressResponse
 		if asset.Progress != nil {
 			progress = &assetProgressResponse{
-				VideoPos:    asset.Progress.VideoPos,
+				Position:    asset.Progress.Position,
 				Completed:   asset.Progress.Completed,
 				CompletedAt: asset.Progress.CompletedAt,
 			}
@@ -259,7 +306,7 @@ func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 			CreatedAt: asset.CreatedAt,
 			UpdatedAt: asset.UpdatedAt,
 
-			VideoMetadata: videoMetadata,
+			AssetMetadata: assetMetadata,
 			Progress:      progress,
 		}
 
@@ -373,8 +420,8 @@ func modulesResponseHelper(lessons []*models.Lesson) modulesResponse {
 		// Counts + Duration
 		var started, completed, totalDur int
 		for _, a := range g.Assets {
-			if a.VideoMetadata != nil {
-				totalDur += a.VideoMetadata.Duration
+			if a.AssetMetadata != nil && a.AssetMetadata.VideoMetadata != nil {
+				totalDur += a.AssetMetadata.VideoMetadata.DurationSec
 			}
 
 			if a.Progress != nil {
@@ -382,7 +429,7 @@ func modulesResponseHelper(lessons []*models.Lesson) modulesResponse {
 					completed++
 				}
 
-				if a.Progress.Completed || a.Progress.VideoPos > 0 {
+				if a.Progress.Completed || a.Progress.Position > 0 {
 					started++
 				}
 			}
