@@ -145,7 +145,7 @@ CREATE TABLE asset_media_audio (
   channels        INTEGER NOT NULL DEFAULT 0,  -- 1, 2, 6, 8
   channel_layout  TEXT NOT NULL DEFAULT '',    -- "mono", "stereo", "5.1"
   sample_rate     INTEGER NOT NULL DEFAULT 0,  -- Hz
-  bitrate         INTEGER NOT NULL DEFAULT 0,  -- bps
+  bit_rate        INTEGER NOT NULL DEFAULT 0,  -- bps
   created_at      TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f','NOW')),
   updated_at      TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f','NOW')),
   --

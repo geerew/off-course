@@ -74,7 +74,7 @@ func helper_createAssetMetadata(t *testing.T, ctx context.Context, dao *DAO, cou
 			Channels:      1,
 			ChannelLayout: "mono",
 			SampleRate:    48000,
-			Bitrate:       128_000,
+			BitRate:       128_000,
 		}
 
 		assetMetadata := &models.AssetMetadata{
@@ -205,7 +205,7 @@ func Test_CreateVideoMetadata(t *testing.T) {
 				Channels:      1,
 				ChannelLayout: "mono",
 				SampleRate:    48000,
-				Bitrate:       128000,
+				BitRate:       128000,
 			},
 		}
 		require.NoError(t, dao.CreateAssetMetadata(ctx, meta))
@@ -550,7 +550,7 @@ func Test_UpdateAssetMetadata(t *testing.T) {
 		require.Equal(t, before.AudioMetadata.Channels, after.AudioMetadata.Channels)
 		require.Equal(t, before.AudioMetadata.ChannelLayout, after.AudioMetadata.ChannelLayout)
 		require.Equal(t, before.AudioMetadata.SampleRate, after.AudioMetadata.SampleRate)
-		require.Equal(t, before.AudioMetadata.Bitrate, after.AudioMetadata.Bitrate)
+		require.Equal(t, before.AudioMetadata.BitRate, after.AudioMetadata.BitRate)
 		require.True(t, after.AudioMetadata.UpdatedAt.Equal(before.AudioMetadata.UpdatedAt))
 	})
 
@@ -570,7 +570,7 @@ func Test_UpdateAssetMetadata(t *testing.T) {
 			Channels:      6,
 			ChannelLayout: "5.1",
 			SampleRate:    48000,
-			Bitrate:       768_000,
+			BitRate:       768_000,
 		}
 
 		time.Sleep(2 * time.Millisecond)
@@ -594,7 +594,7 @@ func Test_UpdateAssetMetadata(t *testing.T) {
 		require.Equal(t, 6, after.AudioMetadata.Channels)
 		require.Equal(t, "5.1", after.AudioMetadata.ChannelLayout)
 		require.Equal(t, 48000, after.AudioMetadata.SampleRate)
-		require.Equal(t, 768_000, after.AudioMetadata.Bitrate)
+		require.Equal(t, 768_000, after.AudioMetadata.BitRate)
 		require.False(t, after.AudioMetadata.UpdatedAt.Equal(before.AudioMetadata.UpdatedAt))
 
 		// Video untouched
@@ -640,7 +640,7 @@ func Test_UpdateAssetMetadata(t *testing.T) {
 			Channels:      2,
 			ChannelLayout: "stereo",
 			SampleRate:    44100,
-			Bitrate:       192_000,
+			BitRate:       192_000,
 		}
 
 		time.Sleep(2 * time.Millisecond)
@@ -674,7 +674,7 @@ func Test_UpdateAssetMetadata(t *testing.T) {
 		require.Equal(t, 2, after.AudioMetadata.Channels)
 		require.Equal(t, "stereo", after.AudioMetadata.ChannelLayout)
 		require.Equal(t, 44100, after.AudioMetadata.SampleRate)
-		require.Equal(t, 192_000, after.AudioMetadata.Bitrate)
+		require.Equal(t, 192_000, after.AudioMetadata.BitRate)
 		require.False(t, after.AudioMetadata.UpdatedAt.Equal(before.AudioMetadata.UpdatedAt))
 	})
 

@@ -82,7 +82,7 @@ func (dao *DAO) CreateAssetMetadata(ctx context.Context, metadata *models.AssetM
 						models.MEDIA_AUDIO_CHANNELS:       am.Channels,
 						models.MEDIA_AUDIO_CHANNEL_LAYOUT: am.ChannelLayout,
 						models.MEDIA_AUDIO_SAMPLE_RATE:    am.SampleRate,
-						models.MEDIA_AUDIO_BITRATE:        am.Bitrate,
+						models.MEDIA_AUDIO_BIT_RATE:       am.BitRate,
 						models.BASE_CREATED_AT:            am.CreatedAt,
 						models.BASE_UPDATED_AT:            am.UpdatedAt,
 					})
@@ -231,7 +231,7 @@ func (dao *DAO) UpdateAssetMetadata(ctx context.Context, metadata *models.AssetM
 					models.MEDIA_AUDIO_CHANNELS:       am.Channels,
 					models.MEDIA_AUDIO_CHANNEL_LAYOUT: am.ChannelLayout,
 					models.MEDIA_AUDIO_SAMPLE_RATE:    am.SampleRate,
-					models.MEDIA_AUDIO_BITRATE:        am.Bitrate,
+					models.MEDIA_AUDIO_BIT_RATE:       am.BitRate,
 					models.BASE_UPDATED_AT:            am.UpdatedAt,
 				}).
 				SetDbOpts(dbOpts)

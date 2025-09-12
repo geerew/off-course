@@ -37,7 +37,7 @@ const (
 	MEDIA_AUDIO_CHANNELS       = "channels"
 	MEDIA_AUDIO_CHANNEL_LAYOUT = "channel_layout"
 	MEDIA_AUDIO_SAMPLE_RATE    = "sample_rate"
-	MEDIA_AUDIO_BITRATE        = "bitrate"
+	MEDIA_AUDIO_BIT_RATE       = "bit_rate"
 
 	// Qualified video columns
 	MEDIA_VIDEO_TABLE_ID          = MEDIA_VIDEO_TABLE + "." + BASE_ID
@@ -64,7 +64,7 @@ const (
 	MEDIA_AUDIO_TABLE_CHANNELS       = MEDIA_AUDIO_TABLE + "." + MEDIA_AUDIO_CHANNELS
 	MEDIA_AUDIO_TABLE_CHANNEL_LAYOUT = MEDIA_AUDIO_TABLE + "." + MEDIA_AUDIO_CHANNEL_LAYOUT
 	MEDIA_AUDIO_TABLE_SAMPLE_RATE    = MEDIA_AUDIO_TABLE + "." + MEDIA_AUDIO_SAMPLE_RATE
-	MEDIA_AUDIO_TABLE_BITRATE        = MEDIA_AUDIO_TABLE + "." + MEDIA_AUDIO_BITRATE
+	MEDIA_AUDIO_TABLE_BIT_RATE       = MEDIA_AUDIO_TABLE + "." + MEDIA_AUDIO_BIT_RATE
 	MEDIA_AUDIO_TABLE_CREATED_AT     = MEDIA_AUDIO_TABLE + "." + BASE_CREATED_AT
 	MEDIA_AUDIO_TABLE_UPDATED_AT     = MEDIA_AUDIO_TABLE + "." + BASE_UPDATED_AT
 )
@@ -131,7 +131,7 @@ type AudioMetadata struct {
 	Channels      int
 	ChannelLayout string
 	SampleRate    int
-	Bitrate       int
+	BitRate       int
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -145,7 +145,7 @@ type AudioMetaJoinedRow struct {
 	AudioChannels      sql.NullInt64  `db:"audio_channels"`
 	AudioChannelLayout sql.NullString `db:"audio_channel_layout"`
 	AudioSampleRate    sql.NullInt64  `db:"audio_sample_rate"`
-	AudioBitrate       sql.NullInt64  `db:"audio_bitrate"`
+	AudioBitRate       sql.NullInt64  `db:"audio_bit_rate"`
 	AudioCreated       types.DateTime `db:"audio_created_at"`
 	AudioUpdated       types.DateTime `db:"audio_updated_at"`
 }
@@ -213,7 +213,7 @@ func (r *AssetMetadataRow) ToDomain() *AssetMetadata {
 			Channels:      ch,
 			ChannelLayout: r.AudioChannelLayout.String,
 			SampleRate:    int(r.AudioSampleRate.Int64),
-			Bitrate:       int(r.AudioBitrate.Int64),
+			BitRate:       int(r.AudioBitRate.Int64),
 		}
 	}
 
@@ -250,7 +250,7 @@ func AssetMetadataRowColumns() []string {
 		fmt.Sprintf("%s AS audio_channels", MEDIA_AUDIO_TABLE_CHANNELS),
 		fmt.Sprintf("%s AS audio_channel_layout", MEDIA_AUDIO_TABLE_CHANNEL_LAYOUT),
 		fmt.Sprintf("%s AS audio_sample_rate", MEDIA_AUDIO_TABLE_SAMPLE_RATE),
-		fmt.Sprintf("%s AS audio_bitrate", MEDIA_AUDIO_TABLE_BITRATE),
+		fmt.Sprintf("%s AS audio_bit_rate", MEDIA_AUDIO_BIT_RATE),
 		fmt.Sprintf("%s AS audio_created_at", MEDIA_AUDIO_TABLE_CREATED_AT),
 		fmt.Sprintf("%s AS audio_updated_at", MEDIA_AUDIO_TABLE_UPDATED_AT),
 	}
