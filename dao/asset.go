@@ -67,7 +67,7 @@ func (dao *DAO) CountAssets(ctx context.Context, dbOpts *database.Options) (int,
 // By default, video metadata is not included. Use `WithAssetVideoMetadata()` on the options to include it
 func (dao *DAO) GetAsset(ctx context.Context, dbOpts *database.Options) (*models.Asset, error) {
 	builderOpts := newBuilderOptions(models.ASSET_TABLE).
-		WithColumns(models.ASSET_TABLE + ".*").
+		WithColumns(models.AssetColumns()...).
 		SetDbOpts(dbOpts).
 		WithLimit(1)
 
@@ -87,7 +87,7 @@ func (dao *DAO) GetAsset(ctx context.Context, dbOpts *database.Options) (*models
 		}
 
 		builderOpts = builderOpts.
-			WithColumns(models.AssetProgressJoinColumns()...).
+			WithColumns(models.AssetProgressRowColumns()...).
 			WithLeftJoin(
 				models.ASSET_PROGRESS_TABLE,
 				fmt.Sprintf(
@@ -102,7 +102,7 @@ func (dao *DAO) GetAsset(ctx context.Context, dbOpts *database.Options) (*models
 	// Add the asset metadata columns and join
 	if includeMetadata {
 		builderOpts = builderOpts.
-			WithColumns(models.AssetMetadataJoinColumns()...).
+			WithColumns(models.AssetMetadataRowColumns()...).
 			WithLeftJoin(models.MEDIA_VIDEO_TABLE,
 				fmt.Sprintf("%s = %s", models.MEDIA_VIDEO_TABLE_ASSET_ID, models.ASSET_TABLE_ID)).
 			WithLeftJoin(models.MEDIA_AUDIO_TABLE,
@@ -131,7 +131,7 @@ func (dao *DAO) GetAsset(ctx context.Context, dbOpts *database.Options) (*models
 // By default, video metadata is not included. Use `WithAssetVideoMetadata()` on the options to include it
 func (dao *DAO) ListAssets(ctx context.Context, dbOpts *database.Options) ([]*models.Asset, error) {
 	builderOpts := newBuilderOptions(models.ASSET_TABLE).
-		WithColumns(models.ASSET_TABLE + ".*").
+		WithColumns(models.AssetColumns()...).
 		SetDbOpts(dbOpts)
 
 	includeProgress := dbOpts != nil && dbOpts.IncludeUserProgress
@@ -149,7 +149,7 @@ func (dao *DAO) ListAssets(ctx context.Context, dbOpts *database.Options) ([]*mo
 			return nil, err
 		}
 		builderOpts = builderOpts.
-			WithColumns(models.AssetProgressJoinColumns()...).
+			WithColumns(models.AssetProgressRowColumns()...).
 			WithLeftJoin(
 				models.ASSET_PROGRESS_TABLE,
 				fmt.Sprintf(
@@ -165,7 +165,7 @@ func (dao *DAO) ListAssets(ctx context.Context, dbOpts *database.Options) ([]*mo
 	// Metadata joins
 	if includeMetadata {
 		builderOpts = builderOpts.
-			WithColumns(models.AssetMetadataJoinColumns()...).
+			WithColumns(models.AssetMetadataRowColumns()...).
 			WithLeftJoin(models.MEDIA_VIDEO_TABLE,
 				fmt.Sprintf("%s = %s", models.MEDIA_VIDEO_TABLE_ASSET_ID, models.ASSET_TABLE_ID)).
 			WithLeftJoin(models.MEDIA_AUDIO_TABLE,

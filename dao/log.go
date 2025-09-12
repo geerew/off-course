@@ -48,9 +48,7 @@ func (dao *DAO) CreateLog(ctx context.Context, log *models.Log) error {
 // there is no where clause, it will return the first record in the table
 func (dao *DAO) GetLog(ctx context.Context, dbOpts *database.Options) (*models.Log, error) {
 	builderOpts := newBuilderOptions(models.LOG_TABLE).
-		WithColumns(
-			models.LOG_TABLE + ".*",
-		).
+		WithColumns(models.LogColumns()...).
 		SetDbOpts(dbOpts).
 		WithLimit(1)
 
@@ -63,9 +61,7 @@ func (dao *DAO) GetLog(ctx context.Context, dbOpts *database.Options) (*models.L
 // in the options
 func (dao *DAO) ListLogs(ctx context.Context, dbOpts *database.Options) ([]*models.Log, error) {
 	builderOpts := newBuilderOptions(models.LOG_TABLE).
-		WithColumns(
-			models.LOG_TABLE + ".*",
-		).
+		WithColumns(models.LogColumns()...).
 		SetDbOpts(dbOpts)
 
 	return listGeneric[models.Log](ctx, dao, *builderOpts)

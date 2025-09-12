@@ -67,7 +67,7 @@ func (dao *DAO) CreateCourse(ctx context.Context, course *models.Course) error {
 // By default, progress is not included. Use `WithUserProgress()` on the options to include it
 func (dao *DAO) GetCourse(ctx context.Context, dbOpts *database.Options) (*models.Course, error) {
 	builderOpts := newBuilderOptions(models.COURSE_TABLE).
-		WithColumns(models.COURSE_TABLE + ".*").
+		WithColumns(models.CourseColumns()...).
 		SetDbOpts(dbOpts).
 		WithLimit(1)
 
@@ -85,7 +85,7 @@ func (dao *DAO) GetCourse(ctx context.Context, dbOpts *database.Options) (*model
 	}
 
 	builderOpts = builderOpts.
-		WithColumns(models.CourseProgressJoinColumns()...).
+		WithColumns(models.CourseProgressRowColumns()...).
 		WithLeftJoin(models.COURSE_PROGRESS_TABLE, fmt.Sprintf("%s = %s AND %s = '%s'", models.COURSE_PROGRESS_TABLE_COURSE_ID, models.COURSE_TABLE_ID, models.COURSE_PROGRESS_TABLE_USER_ID, principal.UserID))
 
 	row, err := getGeneric[models.CourseRow](ctx, dao, *builderOpts)
@@ -97,9 +97,10 @@ func (dao *DAO) GetCourse(ctx context.Context, dbOpts *database.Options) (*model
 		return nil, nil
 	}
 
+	// TMP
 	fmt.Print("Course Progress: ")
 	fmt.Printf("Started: %v, StartedAt: %v, Percent: %v, CompletedAt: %v\n",
-		row.ProgStarted.Bool, row.ProgStartedAt, int(row.ProgPercent.Int64), row.ProgCompletedAt)
+		row.Started.Bool, row.StartedAt, int(row.Percent.Int64), row.CompletedAt)
 
 	return row.ToDomain(), nil
 }
@@ -112,7 +113,7 @@ func (dao *DAO) GetCourse(ctx context.Context, dbOpts *database.Options) (*model
 // By default, progress is not included. Use `WithUserProgress()` on the options to include it
 func (dao *DAO) ListCourses(ctx context.Context, dbOpts *database.Options) ([]*models.Course, error) {
 	builderOpts := newBuilderOptions(models.COURSE_TABLE).
-		WithColumns(models.COURSE_TABLE + ".*").
+		WithColumns(models.CourseColumns()...).
 		SetDbOpts(dbOpts)
 
 	includeProgress := dbOpts != nil && dbOpts.IncludeUserProgress
@@ -129,7 +130,7 @@ func (dao *DAO) ListCourses(ctx context.Context, dbOpts *database.Options) ([]*m
 	}
 
 	builderOpts = builderOpts.
-		WithColumns(models.CourseProgressJoinColumns()...).
+		WithColumns(models.CourseProgressRowColumns()...).
 		WithLeftJoin(models.COURSE_PROGRESS_TABLE, fmt.Sprintf("%s = %s AND %s = '%s'", models.COURSE_PROGRESS_TABLE_COURSE_ID, models.COURSE_TABLE_ID, models.COURSE_PROGRESS_TABLE_USER_ID, principal.UserID))
 
 	rows, err := listGeneric[models.CourseRow](ctx, dao, *builderOpts)

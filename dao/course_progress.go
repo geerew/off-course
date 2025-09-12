@@ -84,9 +84,7 @@ func (dao *DAO) SyncCourseProgress(ctx context.Context, courseID string) error {
 // there is no where clause, it will return the first record in the table
 func (dao *DAO) GetCourseProgress(ctx context.Context, dbOpts *database.Options) (*models.CourseProgress, error) {
 	builderOpts := newBuilderOptions(models.COURSE_PROGRESS_TABLE).
-		WithColumns(
-			models.COURSE_PROGRESS_TABLE + ".*",
-		).
+		WithColumns(models.CourseProgressRowColumns()...).
 		SetDbOpts(dbOpts).
 		WithLimit(1)
 
@@ -99,9 +97,7 @@ func (dao *DAO) GetCourseProgress(ctx context.Context, dbOpts *database.Options)
 // in the options
 func (dao *DAO) ListCourseProgress(ctx context.Context, dbOpts *database.Options) ([]*models.CourseProgress, error) {
 	builderOpts := newBuilderOptions(models.COURSE_PROGRESS_TABLE).
-		WithColumns(
-			models.COURSE_PROGRESS_TABLE + ".*",
-		).
+		WithColumns(models.CourseProgressRowColumns()...).
 		SetDbOpts(dbOpts)
 
 	return listGeneric[models.CourseProgress](ctx, dao, *builderOpts)

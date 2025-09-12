@@ -79,11 +79,7 @@ func (dao *DAO) CreateCourseTag(ctx context.Context, courseTag *models.CourseTag
 // there is no where clause, it will return the first record in the table
 func (dao *DAO) GetCourseTag(ctx context.Context, dbOpts *database.Options) (*models.CourseTag, error) {
 	builderOpts := newBuilderOptions(models.COURSE_TAG_TABLE).
-		WithColumns(
-			models.COURSE_TAG_TABLE+".*",
-			models.COURSE_TABLE_TITLE+" AS course_title",
-			models.TAG_TABLE_TAG+" AS tag_tag",
-		).
+		WithColumns(models.CourseTagColumns()...).
 		WithJoin(models.COURSE_TABLE, fmt.Sprintf("%s = %s", models.COURSE_TABLE_ID, models.COURSE_TAG_TABLE_COURSE_ID)).
 		WithJoin(models.TAG_TABLE, fmt.Sprintf("%s = %s", models.TAG_TABLE_ID, models.COURSE_TAG_TABLE_TAG_ID)).
 		SetDbOpts(dbOpts).
@@ -98,11 +94,7 @@ func (dao *DAO) GetCourseTag(ctx context.Context, dbOpts *database.Options) (*mo
 // in the options
 func (dao *DAO) ListCourseTags(ctx context.Context, dbOpts *database.Options) ([]*models.CourseTag, error) {
 	builderOpts := newBuilderOptions(models.COURSE_TAG_TABLE).
-		WithColumns(
-			models.COURSE_TAG_TABLE+".*",
-			models.COURSE_TABLE_TITLE+" AS course_title",
-			models.TAG_TABLE_TAG+" AS tag_tag",
-		).
+		WithColumns(models.CourseTagColumns()...).
 		WithJoin(models.COURSE_TABLE, fmt.Sprintf("%s = %s", models.COURSE_TABLE_ID, models.COURSE_TAG_TABLE_COURSE_ID)).
 		WithJoin(models.TAG_TABLE, fmt.Sprintf("%s = %s", models.TAG_TABLE_ID, models.COURSE_TAG_TABLE_TAG_ID)).
 		SetDbOpts(dbOpts)

@@ -48,9 +48,7 @@ func (dao *DAO) CreateOrReplaceSession(ctx context.Context, session *models.Sess
 // there is no where clause, it will return the first record in the table
 func (dao *DAO) GetSession(ctx context.Context, dbOpts *database.Options) (*models.Session, error) {
 	builderOpts := newBuilderOptions(models.SESSION_TABLE).
-		WithColumns(
-			models.SESSION_TABLE + ".*",
-		).
+		WithColumns(models.SessionColumns()...).
 		SetDbOpts(dbOpts).
 		WithLimit(1)
 
@@ -63,9 +61,7 @@ func (dao *DAO) GetSession(ctx context.Context, dbOpts *database.Options) (*mode
 // in the options
 func (dao *DAO) ListSessions(ctx context.Context, dbOpts *database.Options) ([]*models.Session, error) {
 	builderOpts := newBuilderOptions(models.SESSION_TABLE).
-		WithColumns(
-			models.SESSION_TABLE + ".*",
-		).
+		WithColumns(models.SessionColumns()...).
 		SetDbOpts(dbOpts)
 
 	return listGeneric[models.Session](ctx, dao, *builderOpts)

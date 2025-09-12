@@ -108,7 +108,7 @@ func (dao *DAO) GetAssetMetadata(ctx context.Context, assetID string) (*models.A
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assetID})
 
 	builderOpts := newBuilderOptions(models.ASSET_TABLE).
-		WithColumns(models.AssetMetadataJoinColumns()...).
+		WithColumns(models.AssetMetadataRowColumns()...).
 		WithLeftJoin(models.MEDIA_VIDEO_TABLE, fmt.Sprintf("%s = %s", models.ASSET_TABLE_ID, models.MEDIA_VIDEO_TABLE_ASSET_ID)).
 		WithLeftJoin(models.MEDIA_AUDIO_TABLE, fmt.Sprintf("%s = %s", models.ASSET_TABLE_ID, models.MEDIA_AUDIO_TABLE_ASSET_ID)).
 		SetDbOpts(dbOpts).
@@ -128,6 +128,43 @@ func (dao *DAO) GetAssetMetadata(ctx context.Context, assetID string) (*models.A
 	}
 
 	return row.ToDomain(), nil
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ListAssetMetadata gets all records asset metadata based upon the where clause and pagination
+// in the options
+func (dao *DAO) ListAssetMetadata(ctx context.Context, dbOpts *database.Options) ([]*models.AssetMetadata, error) {
+	builderOpts := newBuilderOptions(models.ASSET_TABLE).
+		WithColumns(models.AssetMetadataRowColumns()...).
+		WithLeftJoin(models.MEDIA_VIDEO_TABLE, fmt.Sprintf("%s = %s", models.ASSET_TABLE_ID, models.MEDIA_VIDEO_TABLE_ASSET_ID)).
+		WithLeftJoin(models.MEDIA_AUDIO_TABLE, fmt.Sprintf("%s = %s", models.ASSET_TABLE_ID, models.MEDIA_AUDIO_TABLE_ASSET_ID)).
+		SetDbOpts(dbOpts)
+
+	rows, err := listGeneric[models.AssetMetadataRow](ctx, dao, *builderOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(rows) == 0 {
+		return nil, nil
+	}
+
+	records := make([]*models.AssetMetadata, 0, len(rows))
+	for i := range rows {
+		r := rows[i]
+
+		if !r.VideoID.Valid && !r.AudioID.Valid {
+			continue
+		}
+		records = append(records, r.ToDomain())
+	}
+
+	if len(records) == 0 {
+		return nil, nil
+	}
+
+	return records, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -206,43 +243,6 @@ func (dao *DAO) UpdateAssetMetadata(ctx context.Context, metadata *models.AssetM
 
 		return nil
 	})
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// ListAssetMetadata gets all records asset metadata based upon the where clause and pagination
-// in the options
-func (dao *DAO) ListAssetMetadata(ctx context.Context, dbOpts *database.Options) ([]*models.AssetMetadata, error) {
-	builderOpts := newBuilderOptions(models.ASSET_TABLE).
-		WithColumns(models.AssetMetadataJoinColumns()...).
-		WithLeftJoin(models.MEDIA_VIDEO_TABLE, fmt.Sprintf("%s = %s", models.ASSET_TABLE_ID, models.MEDIA_VIDEO_TABLE_ASSET_ID)).
-		WithLeftJoin(models.MEDIA_AUDIO_TABLE, fmt.Sprintf("%s = %s", models.ASSET_TABLE_ID, models.MEDIA_AUDIO_TABLE_ASSET_ID)).
-		SetDbOpts(dbOpts)
-
-	rows, err := listGeneric[models.AssetMetadataRow](ctx, dao, *builderOpts)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(rows) == 0 {
-		return nil, nil
-	}
-
-	records := make([]*models.AssetMetadata, 0, len(rows))
-	for i := range rows {
-		r := rows[i]
-
-		if !r.VideoID.Valid && !r.AudioID.Valid {
-			continue
-		}
-		records = append(records, r.ToDomain())
-	}
-
-	if len(records) == 0 {
-		return nil, nil
-	}
-
-	return records, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

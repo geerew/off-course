@@ -10,51 +10,6 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// AssetMetadata defines metadata for an asset
-type AssetMetadata struct {
-	AssetID string `db:"asset_id"` // Immutable
-
-	// Joins
-	VideoMetadata *VideoMetadata
-	AudioMetadata *AudioMetadata
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-type VideoMetadata struct {
-	Base
-	DurationSec int
-
-	// Container
-	Container  string
-	MIMEType   string
-	SizeBytes  int64
-	OverallBPS int
-
-	// Video
-	VideoCodec string
-	Width      int
-	Height     int
-	FPSNum     int
-	FPSDen     int
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// ~~~
-
-type AudioMetadata struct {
-	Base
-	Language      string
-	Codec         string
-	Profile       string
-	Channels      int
-	ChannelLayout string
-	SampleRate    int
-	Bitrate       int
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 const (
 	// Tables
 	MEDIA_VIDEO_TABLE = "asset_media_video"
@@ -116,11 +71,40 @@ const (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// AssetMetadataRow is a flat, JOIN-friendly row for scanning.
-type AssetMetadataRow struct {
-	AssetID string `db:"asset_id"`
+// AssetMetadata defines metadata for an asset
+type AssetMetadata struct {
+	AssetID string `db:"asset_id"` // Immutable
 
-	// video (nullable if LEFT JOIN misses)
+	// Joins
+	VideoMetadata *VideoMetadata
+	AudioMetadata *AudioMetadata
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// VideoMetadata defines video metadata for an asset
+type VideoMetadata struct {
+	Base
+	DurationSec int
+
+	// Container
+	Container  string
+	MIMEType   string
+	SizeBytes  int64
+	OverallBPS int
+
+	// Video
+	VideoCodec string
+	Width      int
+	Height     int
+	FPSNum     int
+	FPSDen     int
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// VideoMetaJoinedRow is for use in scanning joined video metadata rows
+type VideoMetaJoinedRow struct {
 	VideoID      sql.NullString `db:"video_id"`
 	DurationSec  sql.NullInt64  `db:"duration_sec"`
 	Container    sql.NullString `db:"container"`
@@ -134,8 +118,26 @@ type AssetMetadataRow struct {
 	FPSDen       sql.NullInt64  `db:"fps_den"`
 	VideoCreated types.DateTime `db:"video_created_at"`
 	VideoUpdated types.DateTime `db:"video_updated_at"`
+}
 
-	// audio (nullable)
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// AudioMetadata defines audio metadata for an asset
+type AudioMetadata struct {
+	Base
+	Language      string
+	Codec         string
+	Profile       string
+	Channels      int
+	ChannelLayout string
+	SampleRate    int
+	Bitrate       int
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// AudioMetaJoinedRow is for use in scanning joined audio metadata rows
+type AudioMetaJoinedRow struct {
 	AudioID            sql.NullString `db:"audio_id"`
 	AudioLanguage      sql.NullString `db:"audio_language"`
 	AudioCodec         sql.NullString `db:"audio_codec"`
@@ -150,41 +152,16 @@ type AssetMetadataRow struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func AssetMetadataJoinColumns() []string {
-	return []string{
-		fmt.Sprintf("%s AS asset_id", ASSET_TABLE_ID),
-
-		// Video
-		fmt.Sprintf("%s AS video_id", MEDIA_VIDEO_TABLE_ID),
-		fmt.Sprintf("%s AS duration_sec", MEDIA_VIDEO_TABLE_DURATION),
-		fmt.Sprintf("%s AS container", MEDIA_VIDEO_TABLE_CONTAINER),
-		fmt.Sprintf("%s AS mime_type", MEDIA_VIDEO_TABLE_MIME_TYPE),
-		fmt.Sprintf("%s AS size_bytes", MEDIA_VIDEO_TABLE_SIZE_BYTES),
-		fmt.Sprintf("%s AS overall_bps", MEDIA_VIDEO_TABLE_OVERALL_BPS),
-		fmt.Sprintf("%s AS video_codec", MEDIA_VIDEO_TABLE_CODEC),
-		fmt.Sprintf("%s AS width", MEDIA_VIDEO_TABLE_WIDTH),
-		fmt.Sprintf("%s AS height", MEDIA_VIDEO_TABLE_HEIGHT),
-		fmt.Sprintf("%s AS fps_num", MEDIA_VIDEO_TABLE_FPS_NUM),
-		fmt.Sprintf("%s AS fps_den", MEDIA_VIDEO_TABLE_FPS_DEN),
-		fmt.Sprintf("%s AS video_created_at", MEDIA_VIDEO_TABLE_CREATED_AT),
-		fmt.Sprintf("%s AS video_updated_at", MEDIA_VIDEO_TABLE_UPDATED_AT),
-
-		// Audio
-		fmt.Sprintf("%s AS audio_id", MEDIA_AUDIO_TABLE_ID),
-		fmt.Sprintf("%s AS audio_language", MEDIA_AUDIO_TABLE_LANGUAGE),
-		fmt.Sprintf("%s AS audio_codec", MEDIA_AUDIO_TABLE_CODEC),
-		fmt.Sprintf("%s AS audio_profile", MEDIA_AUDIO_TABLE_PROFILE),
-		fmt.Sprintf("%s AS audio_channels", MEDIA_AUDIO_TABLE_CHANNELS),
-		fmt.Sprintf("%s AS audio_channel_layout", MEDIA_AUDIO_TABLE_CHANNEL_LAYOUT),
-		fmt.Sprintf("%s AS audio_sample_rate", MEDIA_AUDIO_TABLE_SAMPLE_RATE),
-		fmt.Sprintf("%s AS audio_bitrate", MEDIA_AUDIO_TABLE_BITRATE),
-		fmt.Sprintf("%s AS audio_created_at", MEDIA_AUDIO_TABLE_CREATED_AT),
-		fmt.Sprintf("%s AS audio_updated_at", MEDIA_AUDIO_TABLE_UPDATED_AT),
-	}
+// AssetMetadataRow is for use in scanning joined asset metadata rows
+type AssetMetadataRow struct {
+	AssetID string `db:"asset_id"`
+	VideoMetaJoinedRow
+	AudioMetaJoinedRow
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// ToDomain converts AssetMetadataRow to AssetMetadata
 func (r *AssetMetadataRow) ToDomain() *AssetMetadata {
 	out := &AssetMetadata{
 		AssetID: r.AssetID,
@@ -241,4 +218,40 @@ func (r *AssetMetadataRow) ToDomain() *AssetMetadata {
 	}
 
 	return out
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// AssetMetadataRowColumns returns the list of columns to use when populating `AssetMetadataRow`
+func AssetMetadataRowColumns() []string {
+	return []string{
+		fmt.Sprintf("%s AS asset_id", ASSET_TABLE_ID),
+
+		// Video
+		fmt.Sprintf("%s AS video_id", MEDIA_VIDEO_TABLE_ID),
+		fmt.Sprintf("%s AS duration_sec", MEDIA_VIDEO_TABLE_DURATION),
+		fmt.Sprintf("%s AS container", MEDIA_VIDEO_TABLE_CONTAINER),
+		fmt.Sprintf("%s AS mime_type", MEDIA_VIDEO_TABLE_MIME_TYPE),
+		fmt.Sprintf("%s AS size_bytes", MEDIA_VIDEO_TABLE_SIZE_BYTES),
+		fmt.Sprintf("%s AS overall_bps", MEDIA_VIDEO_TABLE_OVERALL_BPS),
+		fmt.Sprintf("%s AS video_codec", MEDIA_VIDEO_TABLE_CODEC),
+		fmt.Sprintf("%s AS width", MEDIA_VIDEO_TABLE_WIDTH),
+		fmt.Sprintf("%s AS height", MEDIA_VIDEO_TABLE_HEIGHT),
+		fmt.Sprintf("%s AS fps_num", MEDIA_VIDEO_TABLE_FPS_NUM),
+		fmt.Sprintf("%s AS fps_den", MEDIA_VIDEO_TABLE_FPS_DEN),
+		fmt.Sprintf("%s AS video_created_at", MEDIA_VIDEO_TABLE_CREATED_AT),
+		fmt.Sprintf("%s AS video_updated_at", MEDIA_VIDEO_TABLE_UPDATED_AT),
+
+		// Audio
+		fmt.Sprintf("%s AS audio_id", MEDIA_AUDIO_TABLE_ID),
+		fmt.Sprintf("%s AS audio_language", MEDIA_AUDIO_TABLE_LANGUAGE),
+		fmt.Sprintf("%s AS audio_codec", MEDIA_AUDIO_TABLE_CODEC),
+		fmt.Sprintf("%s AS audio_profile", MEDIA_AUDIO_TABLE_PROFILE),
+		fmt.Sprintf("%s AS audio_channels", MEDIA_AUDIO_TABLE_CHANNELS),
+		fmt.Sprintf("%s AS audio_channel_layout", MEDIA_AUDIO_TABLE_CHANNEL_LAYOUT),
+		fmt.Sprintf("%s AS audio_sample_rate", MEDIA_AUDIO_TABLE_SAMPLE_RATE),
+		fmt.Sprintf("%s AS audio_bitrate", MEDIA_AUDIO_TABLE_BITRATE),
+		fmt.Sprintf("%s AS audio_created_at", MEDIA_AUDIO_TABLE_CREATED_AT),
+		fmt.Sprintf("%s AS audio_updated_at", MEDIA_AUDIO_TABLE_UPDATED_AT),
+	}
 }

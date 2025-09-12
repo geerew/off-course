@@ -26,8 +26,8 @@ func (dao *DAO) UpsertAssetProgress(ctx context.Context, courseID string, assetP
 	}
 	assetProgress.UserID = principal.UserID
 
-	if assetProgress.VideoPos < 0 {
-		assetProgress.VideoPos = 0
+	if assetProgress.Position < 0 {
+		assetProgress.Position = 0
 	}
 
 	// Get the existing asset, ensuring it belongs to the course
@@ -73,14 +73,15 @@ func (dao *DAO) UpsertAssetProgress(ctx context.Context, courseID string, assetP
 
 			builderOpts := newBuilderOptions(models.ASSET_PROGRESS_TABLE).
 				WithData(map[string]interface{}{
-					models.BASE_ID:                     assetProgress.ID,
-					models.ASSET_PROGRESS_ASSET_ID:     assetProgress.AssetID,
-					models.ASSET_PROGRESS_USER_ID:      assetProgress.UserID,
-					models.ASSET_PROGRESS_VIDEO_POS:    assetProgress.VideoPos,
-					models.ASSET_PROGRESS_COMPLETED:    assetProgress.Completed,
-					models.ASSET_PROGRESS_COMPLETED_AT: assetProgress.CompletedAt,
-					models.BASE_CREATED_AT:             assetProgress.CreatedAt,
-					models.BASE_UPDATED_AT:             assetProgress.UpdatedAt,
+					models.BASE_ID:                      assetProgress.ID,
+					models.ASSET_PROGRESS_ASSET_ID:      assetProgress.AssetID,
+					models.ASSET_PROGRESS_USER_ID:       assetProgress.UserID,
+					models.ASSET_PROGRESS_POSITION:      assetProgress.Position,
+					models.ASSET_PROGRESS_PROGRESS_FRAC: assetProgress.ProgressFrac,
+					models.ASSET_PROGRESS_COMPLETED:     assetProgress.Completed,
+					models.ASSET_PROGRESS_COMPLETED_AT:  assetProgress.CompletedAt,
+					models.BASE_CREATED_AT:              assetProgress.CreatedAt,
+					models.BASE_UPDATED_AT:              assetProgress.UpdatedAt,
 				})
 
 			if err := createGeneric(txCtx, dao, *builderOpts); err != nil {
@@ -106,10 +107,11 @@ func (dao *DAO) UpsertAssetProgress(ctx context.Context, courseID string, assetP
 
 			builderOpts := newBuilderOptions(models.ASSET_PROGRESS_TABLE).
 				WithData(map[string]interface{}{
-					models.ASSET_PROGRESS_VIDEO_POS:    assetProgress.VideoPos,
-					models.ASSET_PROGRESS_COMPLETED:    assetProgress.Completed,
-					models.ASSET_PROGRESS_COMPLETED_AT: assetProgress.CompletedAt,
-					models.BASE_UPDATED_AT:             assetProgress.UpdatedAt,
+					models.ASSET_PROGRESS_POSITION:      assetProgress.Position,
+					models.ASSET_PROGRESS_PROGRESS_FRAC: assetProgress.ProgressFrac,
+					models.ASSET_PROGRESS_COMPLETED:     assetProgress.Completed,
+					models.ASSET_PROGRESS_COMPLETED_AT:  assetProgress.CompletedAt,
+					models.BASE_UPDATED_AT:              assetProgress.UpdatedAt,
 				}).
 				SetDbOpts(dbOpts)
 
@@ -128,9 +130,7 @@ func (dao *DAO) UpsertAssetProgress(ctx context.Context, courseID string, assetP
 // there is no where clause, it will return the first record in the table
 func (dao *DAO) GetAssetProgress(ctx context.Context, dbOpts *database.Options) (*models.AssetProgress, error) {
 	builderOpts := newBuilderOptions(models.ASSET_PROGRESS_TABLE).
-		WithColumns(
-			models.ASSET_PROGRESS_TABLE + ".*",
-		).
+		WithColumns(models.AssetProgressColumns()...).
 		SetDbOpts(dbOpts).
 		WithLimit(1)
 
@@ -143,9 +143,7 @@ func (dao *DAO) GetAssetProgress(ctx context.Context, dbOpts *database.Options) 
 // in the options
 func (dao *DAO) ListAssetProgress(ctx context.Context, dbOpts *database.Options) ([]*models.AssetProgress, error) {
 	builderOpts := newBuilderOptions(models.ASSET_PROGRESS_TABLE).
-		WithColumns(
-			models.ASSET_PROGRESS_TABLE + ".*",
-		).
+		WithColumns(models.AssetProgressColumns()...).
 		SetDbOpts(dbOpts)
 
 	return listGeneric[models.AssetProgress](ctx, dao, *builderOpts)
@@ -157,7 +155,7 @@ func (dao *DAO) ListAssetProgress(ctx context.Context, dbOpts *database.Options)
 // TODO add tests
 func (dao *DAO) ListAssetProgressIDs(ctx context.Context, dbOpts *database.Options) ([]string, error) {
 	builderOpts := newBuilderOptions(models.ASSET_PROGRESS_TABLE).
-		WithColumns(models.ASSET_PROGRESS_TABLE + "." + models.BASE_ID).
+		WithColumns(models.ASSET_PROGRESS_TABLE_ID).
 		SetDbOpts(dbOpts)
 
 	return pluck[string](ctx, dao, *builderOpts)
