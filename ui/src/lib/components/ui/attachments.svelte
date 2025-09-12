@@ -27,7 +27,7 @@
 	</Dropdown.Trigger>
 
 	<Dropdown.Content
-		class="text-foreground-alt-3 z-10 flex max-h-[10rem] w-auto max-w-[15rem] overflow-y-scroll px-1 py-2"
+		class="text-foreground-alt-3 z-10 flex max-h-[10rem] w-auto max-w-[15rem] min-w-[11rem] overflow-y-scroll px-1 py-2"
 		align="start"
 		portalProps={{ disabled: true }}
 	>
