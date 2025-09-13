@@ -184,7 +184,7 @@ func Test_GetAsset(t *testing.T) {
 			Completed:   true,
 			CompletedAt: types.NowDateTime(),
 		}
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
 		// Get the asset again with progress
 		record, err = dao.GetAsset(ctx, dbOpts)
@@ -231,7 +231,7 @@ func Test_GetAsset(t *testing.T) {
 
 			Position: 200,
 		}
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress2))
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress2))
 
 		// Confirm there are 2 asset progress records
 		builderOpts := newBuilderOptions(models.ASSET_PROGRESS_TABLE)
@@ -395,7 +395,7 @@ func Test_ListAssets(t *testing.T) {
 			Position:  20,
 			Completed: true,
 		}
-		require.NoError(t, dao.UpsertAssetProgress(ctx, courses[0].ID, assetProgress))
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
 		// List again)
 		records, err = dao.ListAssets(ctx, dbOpts)
@@ -439,7 +439,7 @@ func Test_ListAssets(t *testing.T) {
 			Position:  50,
 			Completed: true,
 		}
-		require.NoError(t, dao.UpsertAssetProgress(ctx, courses[1].ID, assetProgress2))
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress2))
 
 		// List again
 		records, err = dao.ListAssets(ctx, dbOpts)

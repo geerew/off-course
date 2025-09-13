@@ -2,7 +2,9 @@ package dao
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/database"
@@ -12,7 +14,7 @@ import (
 )
 
 // UpsertAssetProgress upserts an asset progress record for a user
-func (dao *DAO) UpsertAssetProgress(ctx context.Context, courseID string, assetProgress *models.AssetProgress) error {
+func (dao *DAO) UpsertAssetProgress(ctx context.Context, assetProgress *models.AssetProgress) error {
 	if assetProgress == nil {
 		return utils.ErrNilPtr
 	}
@@ -68,6 +70,10 @@ func (dao *DAO) UpsertAssetProgress(ctx context.Context, courseID string, assetP
 	return dao.db.RunInTransaction(ctx, func(txCtx context.Context) error {
 		// Upsert position, completed, completed_at, updated_at
 		if err := createGeneric(txCtx, dao, *upsertBuilder); err != nil {
+			if strings.HasPrefix(err.Error(), "FOREIGN KEY constraint failed") {
+				return sql.ErrNoRows
+			}
+
 			return err
 		}
 
@@ -77,7 +83,8 @@ func (dao *DAO) UpsertAssetProgress(ctx context.Context, courseID string, assetP
 		}
 
 		// Sync course progress
-		return dao.SyncCourseProgress(txCtx, courseID)
+		err := dao.SyncCourseProgress(txCtx, assetProgress.AssetID)
+		return err
 	})
 }
 

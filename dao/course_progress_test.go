@@ -70,7 +70,7 @@ func Test_GetCourseProgress(t *testing.T) {
 
 		// Set the asset progress to 50% complete
 		ap := &models.AssetProgress{AssetID: video.ID, Position: 50}
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, ap))
+		require.NoError(t, dao.UpsertAssetProgress(ctx, ap))
 
 		cp, err = dao.GetCourseProgress(ctx, opts)
 		require.NoError(t, err)
@@ -84,7 +84,7 @@ func Test_GetCourseProgress(t *testing.T) {
 		// Update position to 100 (100%) and set completed
 		ap.Completed = true
 		ap.Position = 100
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, ap))
+		require.NoError(t, dao.UpsertAssetProgress(ctx, ap))
 
 		cp2, err := dao.GetCourseProgress(ctx, opts)
 
@@ -183,7 +183,7 @@ func Test_GetCourseProgress(t *testing.T) {
 
 		// A @ 50s (0.5), B @ 0 (0.0), Doc not completed (0.0):
 		// percent = round(100 * (0.5 + 0 + 0) / 3) = 17
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, &models.AssetProgress{
+		require.NoError(t, dao.UpsertAssetProgress(ctx, &models.AssetProgress{
 			AssetID:  vA.ID,
 			Position: 50,
 		}))
@@ -195,7 +195,7 @@ func Test_GetCourseProgress(t *testing.T) {
 		require.False(t, cp.StartedAt.IsZero())
 
 		// Now B @ 100/200 (0.5): avg = (0.5 + 0.5 + 0) / 3 = 0.333.. -> 33
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, &models.AssetProgress{
+		require.NoError(t, dao.UpsertAssetProgress(ctx, &models.AssetProgress{
 			AssetID:  vB.ID,
 			Position: 100,
 		}))
@@ -205,7 +205,7 @@ func Test_GetCourseProgress(t *testing.T) {
 		require.Equal(t, 33, cp.Percent)
 
 		// Mark doc completed (1.0): avg = (0.5 + 0.5 + 1.0) / 3 = 0.666.. -> 67
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, &models.AssetProgress{
+		require.NoError(t, dao.UpsertAssetProgress(ctx, &models.AssetProgress{
 			AssetID:   doc.ID,
 			Completed: true,
 		}))
@@ -216,12 +216,12 @@ func Test_GetCourseProgress(t *testing.T) {
 		require.True(t, cp.CompletedAt.IsZero()) // not 100 yet
 
 		// Complete both videos: (1 + 1 + 1) / 3 = 1.0 -> 100, completed_at set
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, &models.AssetProgress{
+		require.NoError(t, dao.UpsertAssetProgress(ctx, &models.AssetProgress{
 			AssetID:   vA.ID,
 			Completed: true,
 			Position:  100,
 		}))
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, &models.AssetProgress{
+		require.NoError(t, dao.UpsertAssetProgress(ctx, &models.AssetProgress{
 			AssetID:   vB.ID,
 			Completed: true,
 			Position:  200,
@@ -282,7 +282,7 @@ func Test_ListCourseProgress(t *testing.T) {
 				AssetID:  asset.ID,
 				Position: 5,
 			}
-			require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+			require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 			time.Sleep(1 * time.Millisecond)
 		}
 
@@ -339,7 +339,7 @@ func Test_ListCourseProgress(t *testing.T) {
 				AssetID:  asset.ID,
 				Position: 5,
 			}
-			require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+			require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 			time.Sleep(1 * time.Millisecond)
 		}
 
@@ -399,7 +399,7 @@ func Test_ListCourseProgress(t *testing.T) {
 			AssetID:  asset.ID,
 			Position: 5,
 		}
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
 		opts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_PROGRESS_TABLE_COURSE_ID: course.ID})
 		records, err := dao.ListCourseProgress(ctx, opts)
@@ -444,7 +444,7 @@ func Test_ListCourseProgress(t *testing.T) {
 				AssetID:  asset.ID,
 				Position: 5,
 			}
-			require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+			require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 			time.Sleep(1 * time.Millisecond)
 		}
 
@@ -502,7 +502,7 @@ func Test_DeleteCourseProgress(t *testing.T) {
 			AssetID:  asset.ID,
 			Position: 5,
 		}
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
 		opts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_PROGRESS_TABLE_COURSE_ID: course.ID})
 		require.Nil(t, dao.DeleteCourseProgress(ctx, opts))
@@ -545,7 +545,7 @@ func Test_DeleteCourseProgress(t *testing.T) {
 			AssetID:  asset.ID,
 			Position: 5,
 		}
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
 		opts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_PROGRESS_TABLE_ID: "non-existent"})
 		require.Nil(t, dao.DeleteCourseProgress(ctx, opts))
@@ -589,7 +589,7 @@ func Test_DeleteCourseProgress(t *testing.T) {
 			AssetID:  asset.ID,
 			Position: 5,
 		}
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
 		require.ErrorIs(t, dao.DeleteCourseProgress(ctx, nil), utils.ErrWhere)
 
@@ -632,7 +632,7 @@ func Test_DeleteCourseProgress(t *testing.T) {
 			AssetID:  asset.ID,
 			Position: 5,
 		}
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
 		require.Nil(t, dao.DeleteCourses(ctx, dbOpts))

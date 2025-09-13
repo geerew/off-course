@@ -11,10 +11,11 @@ import (
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// SyncCourseProgress calculates the course progress for a given course ID and the user
-// in the context
-func (dao *DAO) SyncCourseProgress(ctx context.Context, courseID string) error {
-	if courseID == "" {
+
+// SyncCourseProgressByAsset recomputes a user's course progress for the course
+// that contains the given assetID. If the asset doesn't exist, this is a no-op.
+func (dao *DAO) SyncCourseProgress(ctx context.Context, assetId string) error {
+	if assetId == "" {
 		return utils.ErrId
 	}
 
@@ -27,12 +28,10 @@ func (dao *DAO) SyncCourseProgress(ctx context.Context, courseID string) error {
 	sqlSync := buildSyncCourseProgressSQL()
 
 	args := []any{
-		// ap: WHERE assets.course_id = ? AND assets_progress.user_id = ?
-		courseID, userID,
-		// w:  WHERE assets.course_id = ?
-		courseID,
-		// VALUES: id, course_id, user_id
-		security.PseudorandomString(10), courseID, userID,
+		assetId,
+		userID,
+		security.PseudorandomString(10),
+		userID,
 	}
 
 	q := database.QuerierFromContext(ctx, dao.db)
@@ -88,29 +87,37 @@ func (dao *DAO) DeleteCourseProgress(ctx context.Context, dbOpts *database.Optio
 // buildSyncCourseProgressSQL returns the CTE+UPSERT query for course progress
 func buildSyncCourseProgressSQL() string {
 	return fmt.Sprintf(`
-WITH ap AS (
+WITH vars AS (
+  SELECT (
+    SELECT %s
+    FROM %s
+    WHERE %s = ?
+  ) AS course_id
+),
+ap AS (
   SELECT
     %s AS asset_id,
     %s AS position,
     %s AS completed,
-    %s AS progress_frac,
+    COALESCE(%s, 0.0) AS progress_frac,
     %s AS created_at
   FROM %s
   JOIN %s
     ON %s = %s
-  WHERE %s = ? AND %s = ?
+  WHERE %s = (SELECT course_id FROM vars)
+    AND %s = ?
 ),
 w AS (
   SELECT
     %s AS asset_id,
-    CASE WHEN %s > 0 THEN %s ELSE 1 END AS w
+    CASE WHEN %s > 0 THEN %s ELSE 1 END AS weight
   FROM %s
-  WHERE %s = ?
+  WHERE %s = (SELECT course_id FROM vars)
 ),
 totals AS (
   SELECT
-    COALESCE(SUM(w.w), 0) AS total_weight,
-    COALESCE(SUM(COALESCE(ap.progress_frac, 0) * w.w), 0.0) AS progress_weighted,
+    COALESCE(SUM(w.weight), 0) AS total_weight,
+    COALESCE(SUM(ap.progress_frac * w.weight), 0.0) AS progress_weighted,
     MIN(CASE WHEN (ap.position > 0 OR ap.completed = 1) THEN ap.created_at END) AS started_at
   FROM w
   LEFT JOIN ap ON ap.asset_id = w.asset_id
@@ -128,34 +135,40 @@ INSERT INTO %s (
 )
 VALUES (
   ?,  -- id
-  ?,  -- course_id
+  (SELECT course_id FROM vars),  -- course_id
   ?,  -- user_id
   (SELECT CASE WHEN progress_weighted > 0 THEN 1 ELSE 0 END FROM totals),
   (SELECT started_at FROM totals),
-  (SELECT CASE WHEN total_weight = 0 THEN 0
-               ELSE CAST(ROUND(100.0 * progress_weighted / total_weight) AS INT)
-          END FROM totals),
-
-  -- completed_at on INSERT too (not just in UPDATE)
+  (SELECT CASE
+            WHEN total_weight = 0 THEN 0
+            ELSE CAST(ROUND(100.0 * progress_weighted / total_weight) AS INT)
+          END
+   FROM totals),
+  -- set completed_at on insert if already 100
   (SELECT CASE
             WHEN total_weight > 0 AND progress_weighted >= total_weight
               THEN STRFTIME('%%Y-%%m-%%d %%H:%%M:%%f','NOW')
             ELSE NULL
-          END FROM totals),
-
+          END
+   FROM totals),
   STRFTIME('%%Y-%%m-%%d %%H:%%M:%%f','NOW'),
   STRFTIME('%%Y-%%m-%%d %%H:%%M:%%f','NOW')
 )
 ON CONFLICT(%s, %s) DO UPDATE SET
   %s = (SELECT CASE WHEN progress_weighted > 0 THEN 1 ELSE 0 END FROM totals),
+
   %s = CASE
          WHEN %s = 0 AND (SELECT started_at FROM totals) IS NOT NULL
            THEN (SELECT started_at FROM totals)
          ELSE %s
        END,
-  %s = (SELECT CASE WHEN total_weight = 0 THEN 0
-                    ELSE CAST(ROUND(100.0 * progress_weighted / total_weight) AS INT)
-               END FROM totals),
+
+  %s = (SELECT CASE
+                 WHEN total_weight = 0 THEN 0
+                 ELSE CAST(ROUND(100.0 * progress_weighted / total_weight) AS INT)
+               END
+        FROM totals),
+
   %s = CASE
          WHEN (SELECT total_weight FROM totals) > 0
               AND (SELECT progress_weighted FROM totals) >= (SELECT total_weight FROM totals)
@@ -168,29 +181,35 @@ ON CONFLICT(%s, %s) DO UPDATE SET
            THEN NULL
          ELSE %s
        END,
+
   %s = STRFTIME('%%Y-%%m-%%d %%H:%%M:%%f','NOW');
 `,
-		// ap
+		// vars: SELECT course_id FROM assets WHERE id = ?
+		models.ASSET_TABLE_COURSE_ID, // assets.course_id
+		models.ASSET_TABLE,           // assets
+		models.ASSET_TABLE_ID,        // assets.id
+
+		// ap: select list (from assets_progress joined to assets)
 		models.ASSET_PROGRESS_TABLE_ASSET_ID,
 		models.ASSET_PROGRESS_TABLE_POSITION,
 		models.ASSET_PROGRESS_TABLE_COMPLETED,
 		models.ASSET_PROGRESS_TABLE_PROGRESS_FRAC,
 		models.ASSET_PROGRESS_TABLE_CREATED_AT,
-		models.ASSET_PROGRESS_TABLE,
-		models.ASSET_TABLE,
-		models.ASSET_TABLE_ID,
-		models.ASSET_PROGRESS_TABLE_ASSET_ID,
-		models.ASSET_TABLE_COURSE_ID,
-		models.ASSET_PROGRESS_TABLE_USER_ID,
+		models.ASSET_PROGRESS_TABLE,          // FROM assets_progress
+		models.ASSET_TABLE,                   // JOIN assets
+		models.ASSET_TABLE_ID,                // assets.id
+		models.ASSET_PROGRESS_TABLE_ASSET_ID, // assets_progress.asset_id
+		models.ASSET_TABLE_COURSE_ID,         // WHERE assets.course_id = vars.course_id
+		models.ASSET_PROGRESS_TABLE_USER_ID,  // AND assets_progress.user_id = ?
 
-		// w
+		// w: weights from assets
 		models.ASSET_TABLE_ID,
 		models.ASSET_TABLE_WEIGHT,
 		models.ASSET_TABLE_WEIGHT,
 		models.ASSET_TABLE,
 		models.ASSET_TABLE_COURSE_ID,
 
-		// insert columns
+		// INSERT INTO courses_progress (...)
 		models.COURSE_PROGRESS_TABLE,
 		models.BASE_ID,
 		models.COURSE_PROGRESS_COURSE_ID,
@@ -202,11 +221,11 @@ ON CONFLICT(%s, %s) DO UPDATE SET
 		models.BASE_CREATED_AT,
 		models.BASE_UPDATED_AT,
 
-		// conflict keys
+		// ON CONFLICT keys
 		models.COURSE_PROGRESS_COURSE_ID,
 		models.COURSE_PROGRESS_USER_ID,
 
-		// update set
+		// UPDATE SET
 		models.COURSE_PROGRESS_STARTED,
 		models.COURSE_PROGRESS_STARTED_AT,
 		models.COURSE_PROGRESS_STARTED,

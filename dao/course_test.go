@@ -138,7 +138,7 @@ func Test_GetCourse(t *testing.T) {
 			AssetID:  asset.ID,
 			Position: 30,
 		}
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
 		// Read course progress for user 1 (should be ~50%)
 		record, err = dao.GetCourse(ctx, dbOpts)
@@ -168,7 +168,7 @@ func Test_GetCourse(t *testing.T) {
 			AssetID:   asset.ID,
 			Completed: true,
 		}
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress2))
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress2))
 
 		// Confirm there are 2 asset_progress rows (one per user)
 		builderOpts := newBuilderOptions(models.ASSET_PROGRESS_TABLE)
@@ -290,7 +290,7 @@ func Test_ListCourses(t *testing.T) {
 					AssetID:   asset.ID,
 					Completed: true,
 				}
-				require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+				require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 			}
 
 			time.Sleep(1 * time.Millisecond)
@@ -339,7 +339,7 @@ func Test_ListCourses(t *testing.T) {
 			AssetID:   assets[1].ID,
 			Completed: true,
 		}
-		require.NoError(t, dao.UpsertAssetProgress(ctx, courses[1].ID, assetProgress2))
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress2))
 
 		// List again
 		records, err = dao.ListCourses(ctx, dbOpts)
