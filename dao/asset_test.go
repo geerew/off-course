@@ -321,12 +321,10 @@ func Test_ListAssets(t *testing.T) {
 	t.Run("success with relations", func(t *testing.T) {
 		dao, ctx := setup(t)
 
-		courses := []*models.Course{}
 		assets := []*models.Asset{}
 		for i := range 3 {
 			course := &models.Course{Title: fmt.Sprintf("Course %d", i), Path: fmt.Sprintf("/course-%d", i)}
 			require.NoError(t, dao.CreateCourse(ctx, course))
-			courses = append(courses, course)
 
 			lesson := &models.Lesson{
 				CourseID: course.ID,
