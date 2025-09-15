@@ -1016,6 +1016,34 @@ func TestCourses_GetLesson(t *testing.T) {
 					Path:      fmt.Sprintf("/course-1/%02d video %d {%02d}.mp4", ag.Prefix.Int16, j+1, j+1),
 				}
 				require.NoError(t, router.dao.CreateAsset(ctx, asset))
+
+				// Create asset metadata
+				meta := &models.AssetMetadata{
+					AssetID: asset.ID,
+					VideoMetadata: &models.VideoMetadata{
+						DurationSec: 120,
+						Container:   "mov,mp4,m4a,3gp,3g2,mj2",
+						MIMEType:    "video/mp4",
+						SizeBytes:   1024,
+						OverallBPS:  200000,
+						VideoCodec:  "h264",
+						Width:       1280,
+						Height:      720,
+						FPSNum:      30,
+						FPSDen:      1,
+					},
+					AudioMetadata: nil,
+				}
+				require.NoError(t, router.dao.CreateAssetMetadata(ctx, meta))
+
+				// Mark the asset as completed
+				assetProgress := &models.AssetProgress{
+					AssetID:     asset.ID,
+					Position:    120,
+					Completed:   true,
+					CompletedAt: types.NowDateTime(),
+				}
+				require.NoError(t, router.dao.UpsertAssetProgress(ctx, assetProgress))
 			}
 		}
 
@@ -1031,6 +1059,12 @@ func TestCourses_GetLesson(t *testing.T) {
 		require.NoError(t, json.Unmarshal(body, &resp))
 		require.Equal(t, target.ID, resp.ID)
 		require.Equal(t, target.Title, resp.Title)
+
+		// Lesson status
+		require.Equal(t, resp.Started, true)
+		require.Equal(t, resp.Completed, true)
+		require.Equal(t, 2, resp.AssetsCompleted)
+		require.Equal(t, 240, resp.TotalVideoDuration)
 
 		// Attachments
 		require.Len(t, resp.Attachments, 2)

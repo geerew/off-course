@@ -21,8 +21,10 @@ type fileSystemResponse struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type fileInfoResponse struct {
-	Title          string                   `json:"title"`
-	Path           string                   `json:"path"`
+	Title string `json:"title"`
+	Path  string `json:"path"`
+
+	// Only relevant when a directory
 	Classification types.PathClassification `json:"classification"`
 }
 
@@ -137,8 +139,8 @@ func courseTagResponseHelper(courseTags []*models.CourseTag) []*courseTagRespons
 type lessonResponse struct {
 	ID        string         `json:"id"`
 	CourseID  string         `json:"courseId"`
-	Title     string         `json:"title"`
 	Prefix    int            `json:"prefix"`
+	Title     string         `json:"title"`
 	Module    string         `json:"module"`
 	CreatedAt types.DateTime `json:"createdAt"`
 	UpdatedAt types.DateTime `json:"updatedAt"`
@@ -146,6 +148,12 @@ type lessonResponse struct {
 	// Relations
 	Assets      []*assetResponse      `json:"assets"`
 	Attachments []*attachmentResponse `json:"attachments"`
+
+	// Generated during the response helper (when assets include progress)
+	Started            bool `json:"started"`
+	Completed          bool `json:"completed"`
+	AssetsCompleted    int  `json:"assetsCompleted"`
+	TotalVideoDuration int  `json:"totalVideoDuration"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -164,6 +172,28 @@ func lessonResponseHelper(lessons []*models.Lesson) []*lessonResponse {
 
 			Assets:      assetResponseHelper(lesson.Assets),
 			Attachments: attachmentResponseHelper(lesson.Attachments),
+		}
+
+		// Counts + Duration
+		for _, a := range lesson.Assets {
+			// Set the total duration
+			if a.AssetMetadata != nil && a.AssetMetadata.VideoMetadata != nil {
+				response.TotalVideoDuration += a.AssetMetadata.VideoMetadata.DurationSec
+			}
+
+			// Set the number of completed assets and whether the lesson has started
+			if a.Progress != nil {
+				if a.Progress.Completed {
+					response.AssetsCompleted++
+				}
+
+				if a.Progress.Completed || a.Progress.Position > 0 {
+					response.Started = true
+				}
+			}
+
+			// Set lesson as completed if all assets are completed (and there is at least one asset)
+			response.Completed = len(lesson.Assets) > 0 && response.AssetsCompleted == len(lesson.Assets)
 		}
 
 		responses = append(responses, response)
