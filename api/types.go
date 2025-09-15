@@ -203,6 +203,61 @@ func lessonResponseHelper(lessons []*models.Lesson) []*lessonResponse {
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Module
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+type moduleResponse struct {
+	Module  string           `json:"module"`
+	Index   int              `json:"index"`
+	Lessons []lessonResponse `json:"lessons"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+type modulesResponse struct {
+	Modules []moduleResponse `json:"modules"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func modulesResponseHelper(lessons []*models.Lesson) modulesResponse {
+	const noChapter = "(no chapter)"
+
+	modulesMap := make(map[string][]lessonResponse)
+	order := []string{}
+
+	for _, g := range lessons {
+		moduleName := strings.TrimSpace(g.Module)
+		if moduleName == "" {
+			moduleName = noChapter
+		}
+
+		lesson := lessonResponseHelper([]*models.Lesson{g})[0]
+
+		if _, ok := modulesMap[moduleName]; !ok {
+			order = append(order, moduleName)
+			modulesMap[moduleName] = []lessonResponse{*lesson}
+		} else {
+			modulesMap[moduleName] = append(modulesMap[moduleName], *lesson)
+		}
+	}
+
+	// Build ordered modules with 1-based index, ensuring lessons are ordered by prefix
+	modules := make([]moduleResponse, 0, len(order))
+	for i, name := range order {
+		lessons := modulesMap[name]
+		sort.SliceStable(lessons, func(i, j int) bool { return lessons[i].Prefix < lessons[j].Prefix })
+
+		modules = append(modules, moduleResponse{
+			Module:  name,
+			Index:   i + 1,
+			Lessons: lessons,
+		})
+	}
+
+	return modulesResponse{Modules: modules}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Asset
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -385,113 +440,6 @@ func attachmentResponseHelper(attachments []*models.Attachment) []*attachmentRes
 	}
 
 	return responses
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Module
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-type moduleLessonResponse struct {
-	ID                  string                `json:"id"`
-	CourseID            string                `json:"courseId"`
-	Prefix              int                   `json:"prefix"`
-	Title               string                `json:"title"`
-	Assets              []*assetResponse      `json:"assets"`
-	Attachments         []*attachmentResponse `json:"attachments"`
-	Completed           bool                  `json:"completed"`
-	StartedAssetCount   int                   `json:"startedAssetCount"`
-	CompletedAssetCount int                   `json:"completedAssetCount"`
-	TotalVideoDuration  int                   `json:"totalVideoDuration"`
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-type moduleResponse struct {
-	Module  string                 `json:"module"`
-	Index   int                    `json:"index"`
-	Lessons []moduleLessonResponse `json:"lessons"`
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-type modulesResponse struct {
-	Modules []moduleResponse `json:"modules"`
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-func modulesResponseHelper(lessons []*models.Lesson) modulesResponse {
-	const noChapter = "(no chapter)"
-
-	deriveGroupTitle := func(g *models.Lesson) string {
-		if len(g.Assets) > 0 && g.Assets[0].Title != "" {
-			return g.Assets[0].Title
-		}
-		return g.Title
-	}
-
-	modMap := make(map[string][]moduleLessonResponse)
-	order := []string{}
-
-	for _, g := range lessons {
-		moduleName := strings.TrimSpace(g.Module)
-		if moduleName == "" {
-			moduleName = noChapter
-		}
-
-		// Build lesson
-		lesson := moduleLessonResponse{
-			ID:          g.ID,
-			CourseID:    g.CourseID,
-			Prefix:      int(g.Prefix.Int16),
-			Title:       deriveGroupTitle(g),
-			Assets:      assetResponseHelper(g.Assets),
-			Attachments: attachmentResponseHelper(g.Attachments),
-		}
-
-		// Counts + Duration
-		var started, completed, totalDur int
-		for _, a := range g.Assets {
-			if a.AssetMetadata != nil && a.AssetMetadata.VideoMetadata != nil {
-				totalDur += a.AssetMetadata.VideoMetadata.DurationSec
-			}
-
-			if a.Progress != nil {
-				if a.Progress.Completed {
-					completed++
-				}
-
-				if a.Progress.Completed || a.Progress.Position > 0 {
-					started++
-				}
-			}
-		}
-		lesson.TotalVideoDuration = totalDur
-		lesson.StartedAssetCount = started
-		lesson.CompletedAssetCount = completed
-		lesson.Completed = len(g.Assets) > 0 && completed == len(g.Assets)
-
-		if _, ok := modMap[moduleName]; !ok {
-			order = append(order, moduleName)
-			modMap[moduleName] = []moduleLessonResponse{lesson}
-		} else {
-			modMap[moduleName] = append(modMap[moduleName], lesson)
-		}
-	}
-
-	// Build ordered modules with 1-based index
-	modules := make([]moduleResponse, 0, len(order))
-	for i, name := range order {
-		// ensure lessons are ordered by prefix (they should already be; keep as safety)
-		lessons := modMap[name]
-		sort.SliceStable(lessons, func(i, j int) bool { return lessons[i].Prefix < lessons[j].Prefix })
-
-		modules = append(modules, moduleResponse{
-			Module:  name,
-			Index:   i + 1,
-			Lessons: lessons,
-		})
-	}
-
-	return modulesResponse{Modules: modules}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
