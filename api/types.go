@@ -133,7 +133,7 @@ func courseTagResponseHelper(courseTags []*models.CourseTag) []*courseTagRespons
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Asset Group
+// Lesson
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type lessonResponse struct {
