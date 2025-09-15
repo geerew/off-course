@@ -207,8 +207,8 @@ func lessonResponseHelper(lessons []*models.Lesson) []*lessonResponse {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type moduleResponse struct {
+	Prefix  int              `json:"prefix"`
 	Module  string           `json:"module"`
-	Index   int              `json:"index"`
 	Lessons []lessonResponse `json:"lessons"`
 }
 
@@ -248,8 +248,8 @@ func modulesResponseHelper(lessons []*models.Lesson) modulesResponse {
 		sort.SliceStable(lessons, func(i, j int) bool { return lessons[i].Prefix < lessons[j].Prefix })
 
 		modules = append(modules, moduleResponse{
+			Prefix:  i + 1,
 			Module:  name,
-			Index:   i + 1,
 			Lessons: lessons,
 		})
 	}
@@ -304,8 +304,8 @@ type assetAudioMetadataResponse struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type assetMetadataResponse struct {
-	VideoMetadata assetVideoMetadataResponse `json:"videoMetadata,omitempty"`
-	AudioMetadata assetAudioMetadataResponse `json:"audioMetadata,omitempty"`
+	Video assetVideoMetadataResponse `json:"video,omitempty"`
+	Audio assetAudioMetadataResponse `json:"audio,omitempty"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -325,8 +325,8 @@ type assetResponse struct {
 	UpdatedAt types.DateTime `json:"updatedAt"`
 
 	// Relations
-	AssetMetadata *assetMetadataResponse `json:"assetMetadata,omitempty"`
-	Progress      *assetProgressResponse `json:"progress,omitempty"`
+	Metadata *assetMetadataResponse `json:"metadata"`
+	Progress *assetProgressResponse `json:"progress,omitempty"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -336,11 +336,10 @@ func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 	for _, asset := range assets {
 
 		// Asset metadata
-		var assetMetadata *assetMetadataResponse
+		assetMetadata := &assetMetadataResponse{}
 		if asset.AssetMetadata != nil {
-			assetMetadata = &assetMetadataResponse{}
 			if asset.AssetMetadata.VideoMetadata != nil {
-				assetMetadata.VideoMetadata = assetVideoMetadataResponse{
+				assetMetadata.Video = assetVideoMetadataResponse{
 					DurationSec: asset.AssetMetadata.VideoMetadata.DurationSec,
 					Container:   asset.AssetMetadata.VideoMetadata.Container,
 					MIMEType:    asset.AssetMetadata.VideoMetadata.MIMEType,
@@ -355,16 +354,14 @@ func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 			}
 
 			if asset.AssetMetadata.AudioMetadata != nil {
-				assetMetadata = &assetMetadataResponse{
-					AudioMetadata: assetAudioMetadataResponse{
-						Language:      asset.AssetMetadata.AudioMetadata.Language,
-						Codec:         asset.AssetMetadata.AudioMetadata.Codec,
-						Profile:       asset.AssetMetadata.AudioMetadata.Profile,
-						Channels:      asset.AssetMetadata.AudioMetadata.Channels,
-						ChannelLayout: asset.AssetMetadata.AudioMetadata.ChannelLayout,
-						SampleRate:    asset.AssetMetadata.AudioMetadata.SampleRate,
-						BitRate:       asset.AssetMetadata.AudioMetadata.BitRate,
-					},
+				assetMetadata.Audio = assetAudioMetadataResponse{
+					Language:      asset.AssetMetadata.AudioMetadata.Language,
+					Codec:         asset.AssetMetadata.AudioMetadata.Codec,
+					Profile:       asset.AssetMetadata.AudioMetadata.Profile,
+					Channels:      asset.AssetMetadata.AudioMetadata.Channels,
+					ChannelLayout: asset.AssetMetadata.AudioMetadata.ChannelLayout,
+					SampleRate:    asset.AssetMetadata.AudioMetadata.SampleRate,
+					BitRate:       asset.AssetMetadata.AudioMetadata.BitRate,
 				}
 			}
 		}
@@ -391,8 +388,8 @@ func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 			CreatedAt: asset.CreatedAt,
 			UpdatedAt: asset.UpdatedAt,
 
-			AssetMetadata: assetMetadata,
-			Progress:      progress,
+			Metadata: assetMetadata,
+			Progress: progress,
 		}
 
 		// Set sub-prefix and sub-title if available
