@@ -65,13 +65,13 @@
 		try {
 			const sort = 'sort:"courses.title asc"';
 			const q = filterValue ? `${filterValue} ${sort}` : sort;
-
 			const courseReqParams: CourseReqParams = {
 				q,
-				withProgress: true,
+				withUserProgress: true,
 				page: paginationPage,
 				perPage: paginationPerPage
 			};
+
 			const data = await GetCourses(courseReqParams);
 			paginationTotal = data.totalItems;
 

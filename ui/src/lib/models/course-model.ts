@@ -83,7 +83,7 @@ export type CoursePaginationModel = InferOutput<typeof CoursePaginationSchema>;
 // Request parameters for courses
 export type CourseReqParams = PaginationReqParams & {
 	q?: string;
-	withProgress?: boolean;
+	withUserProgress?: boolean;
 };
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

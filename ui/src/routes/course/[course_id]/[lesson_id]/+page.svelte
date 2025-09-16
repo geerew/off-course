@@ -65,7 +65,7 @@
 			course = await GetCourse(courseId);
 			if (!course) throw new Error('Course not found');
 
-			modules = await GetCourseModules(course.id, { withProgress: true });
+			modules = await GetCourseModules(course.id, { withUserProgress: true });
 
 			selectedLesson = findLesson(lessonId, modules);
 			if (!selectedLesson) throw new Error('Failed to find lesson');

@@ -46,7 +46,7 @@ export const AssetVideoMetadataSchema = object({
 	container: string(),
 	mimeType: string(),
 	sizeBytes: number(),
-	overallBPS: number(),
+	overallBps: number(),
 	videoCodec: string(),
 	width: number(),
 	height: number(),
@@ -60,13 +60,13 @@ export type AssetVideoMetadataModel = InferOutput<typeof AssetVideoMetadataSchem
 
 // Asset audio metadata schema
 export const AssetAudioMetadataSchema = object({
-	Language: string(),
-	Codec: string(),
-	Profile: string(),
-	Channels: number(),
-	ChannelLayout: string(),
-	SampleRate: number(),
-	BitRate: number()
+	language: string(),
+	codec: string(),
+	profile: string(),
+	channels: number(),
+	channelLayout: string(),
+	sampleRate: number(),
+	bitRate: number()
 });
 
 export type AssetAudioMetadataModel = InferOutput<typeof AssetAudioMetadataSchema>;

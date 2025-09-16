@@ -48,5 +48,5 @@ export type ModulesModel = InferOutput<typeof ModulesSchema>;
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export type ModulesReqParams = {
-	withProgress?: boolean;
+	withUserProgress?: boolean;
 };

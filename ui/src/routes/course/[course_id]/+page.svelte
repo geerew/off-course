@@ -109,12 +109,12 @@
 		try {
 			if (!page.params.course_id) throw new Error('No course ID provided');
 
-			const courseReqParams: CourseReqParams = { withProgress: true };
+			const courseReqParams: CourseReqParams = { withUserProgress: true };
 			course = await GetCourse(page.params.course_id, courseReqParams);
 
 			tags = await GetCourseTags(course.id);
 
-			const moduleReqParams: CourseReqParams = { withProgress: true };
+			const moduleReqParams: CourseReqParams = { withUserProgress: true };
 			modules = await GetCourseModules(course.id, moduleReqParams);
 
 			await loadCourseImage(course.id);
