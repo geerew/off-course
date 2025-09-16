@@ -258,6 +258,8 @@ func parseInt(s string) int { i, _ := strconv.Atoi(s); return i }
 
 func parseInt64(s string) int64 { i, _ := strconv.ParseInt(s, 10, 64); return i }
 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 func parseFPS(r string) (n, d int) {
 	parts := strings.Split(r, "/")
 	if len(parts) == 2 {
@@ -290,6 +292,9 @@ func guessMIME(formatName, filename string) string {
 	}
 	return "application/octet-stream"
 }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 func normalizeChannels(ch int, layout string) int {
 	if ch > 0 {
 		return ch

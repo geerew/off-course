@@ -3,6 +3,7 @@ import { clsx, type ClassValue } from 'clsx';
 import DOMPurify from 'dompurify';
 import MarkdownIt from 'markdown-it';
 import { twMerge } from 'tailwind-merge';
+import type { VideoMimeType } from 'vidstack';
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -60,4 +61,20 @@ const md = new MarkdownIt({ html: true, linkify: true, typographer: true });
 // Sanitize the rendered HTML to prevent XSS attacks
 export function renderMarkdown(raw: string): string {
 	return DOMPurify.sanitize(md.render(raw));
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+export function toVideoMimeType(m?: string): VideoMimeType | undefined {
+	if (!m) return undefined;
+	const lower = m.toLowerCase();
+
+	if (lower === 'video/mp4' || lower === 'video/quicktime') return 'video/mp4';
+	if (lower === 'video/webm') return 'video/webm';
+	if (lower === 'video/3gpp' || lower === 'video/3gp') return 'video/3gp';
+	if (lower === 'video/ogg') return 'video/ogg';
+	if (lower === 'video/avi') return 'video/avi';
+	if (lower === 'video/mpeg') return 'video/mpeg';
+
+	return undefined;
 }

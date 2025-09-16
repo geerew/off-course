@@ -5,7 +5,8 @@
 		MediaRateChangeEvent,
 		MediaSourceChangeEvent,
 		MediaTimeUpdateEvent,
-		MediaVolumeChangeEvent
+		MediaVolumeChangeEvent,
+		VideoMimeType
 	} from 'vidstack';
 	import 'vidstack/bundle';
 	import type { MediaPlayerElement } from 'vidstack/elements';
@@ -18,12 +19,19 @@
 
 	type Props = {
 		src: string;
+		srcType?: VideoMimeType;
 		startTime: number;
 		onTimeChange: (time: number) => void;
 		onCompleted: (time: number) => void;
 	};
 
-	let { src: videoSrc = $bindable(), startTime, onTimeChange, onCompleted }: Props = $props();
+	let {
+		src: videoSrc = $bindable(),
+		srcType = 'video/mp4',
+		startTime,
+		onTimeChange,
+		onCompleted
+	}: Props = $props();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -145,7 +153,7 @@
 		autoplay={mediaPreferences.current.autoplay}
 		src={{
 			src: videoSrc,
-			type: 'video/mp4'
+			type: srcType
 		}}
 		class="group/player relative aspect-video overflow-hidden rounded-md"
 	>

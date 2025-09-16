@@ -26,7 +26,7 @@
 	import type { AssetModel, AssetProgressUpdateModel } from '$lib/models/asset-model';
 	import type { CourseModel } from '$lib/models/course-model';
 	import type { LessonModel, ModulesModel } from '$lib/models/module-model';
-	import { cn, renderMarkdown } from '$lib/utils';
+	import { cn, renderMarkdown, toVideoMimeType } from '$lib/utils';
 	import { Dialog } from 'bits-ui';
 	import prettyMs from 'pretty-ms';
 	import { ElementSize } from 'runed';
@@ -395,22 +395,30 @@
 											onclick={async () => {
 												if (!selectedLesson || !course) return;
 
-												// Invert completed state
+												// Update local state by inverting the completed state and updating started
+												// and assetsCompleted
 												selectedLesson.completed = !selectedLesson.completed;
 
-												// Update the number of completed assets
 												if (selectedLesson.completed) {
+													selectedLesson.started = true;
 													selectedLesson.assetsCompleted = selectedLesson.assets.length;
 												} else {
 													selectedLesson.assetsCompleted = 0;
 												}
 
+												// Update this lessons assets to match the lesson completed state (local and
+												// backend)
 												await Promise.all(
-													selectedLesson.assets.map((asset) => () => {
+													selectedLesson.assets.map(async (asset) => {
+														if (!selectedLesson) return;
+
+														asset.progress.completed = selectedLesson.completed;
+
 														const progress: AssetProgressUpdateModel = {
-															completed: asset.progress.completed || false
+															completed: asset.progress.completed
 														};
-														UpdateCourseAssetProgress(
+
+														await UpdateCourseAssetProgress(
 															asset.courseId,
 															asset.lessonId,
 															asset.id,
@@ -446,6 +454,7 @@
 								{#if asset.type === 'video'}
 									<VideoPlayer
 										src={`/api/courses/${course.id}/lessons/${selectedLesson.id}/assets/${asset.id}/serve`}
+										srcType={toVideoMimeType(asset.metadata.video?.mimeType) || 'video/object'}
 										startTime={asset.progress.position || 0}
 										onTimeChange={async (time: number) => {
 											if (!selectedLesson) return;
@@ -468,6 +477,9 @@
 										}}
 										onCompleted={async (time: number) => {
 											if (!selectedLesson) return;
+
+											asset.progress.position = time;
+											asset.progress.completed = true;
 
 											const progress: AssetProgressUpdateModel = {
 												completed: true,
