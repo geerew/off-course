@@ -320,7 +320,7 @@ type assetResponse struct {
 	SubTitle  string         `json:"subTitle,omitempty"`
 	Module    string         `json:"module"`
 	Path      string         `json:"path"`
-	Type      types.Asset    `json:"assetType"`
+	Type      types.Asset    `json:"type"`
 	CreatedAt types.DateTime `json:"createdAt"`
 	UpdatedAt types.DateTime `json:"updatedAt"`
 
