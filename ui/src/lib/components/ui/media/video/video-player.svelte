@@ -66,19 +66,29 @@
 	function timeChange(e: MediaTimeUpdateEvent) {
 		if (duration === -1) return;
 
-		const currentSecond = Math.floor(e.detail.currentTime);
-		if (currentSecond === 0 || currentSecond === lastLoggedSecond) return;
+		const sec = Math.floor(e.detail.currentTime);
+		if (sec === 0) return;
 
-		lastLoggedSecond = currentSecond;
+		// If video is < 5s long, consider it "complete" at (duration - 1s),
+		// otherwise at (duration - 5s)
+		const nearEndThreshold = duration < 5 ? 1 : 5;
 
-		if (currentSecond >= duration - 5) {
-			if (completeDispatched) return;
-			completeDispatched = true;
-			onCompleted(Math.ceil(duration));
-		} else {
-			completeDispatched = false;
-			onTimeChange(currentSecond);
+		// Fire completion as soon as we cross the near-end threshold.
+		if (sec >= Math.max(0, Math.floor(duration) - nearEndThreshold)) {
+			if (!completeDispatched) {
+				completeDispatched = true;
+				onCompleted(Math.max(1, Math.ceil(duration)));
+			}
+			return;
 		}
+
+		completeDispatched = false;
+
+		// Throttle progress: only every 3 seconds
+		if (sec % 3 !== 0 || sec === lastLoggedSecond) return;
+
+		lastLoggedSecond = sec;
+		onTimeChange(sec);
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
