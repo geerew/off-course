@@ -1,22 +1,17 @@
 import { APIError } from '$lib/api-error.svelte';
-import { type AssetModel } from '$lib/models/asset-model';
+import { type AssetProgressUpdateModel } from '$lib/models/asset-model';
 import {
 	CoursePaginationSchema,
 	CourseSchema,
 	CourseTagSchema,
+	type CourseCreateModel,
 	type CourseModel,
 	type CoursePaginationModel,
 	type CourseReqParams,
-	type CourseTagsModel,
-	type CreateCourseModel,
-	type CreateCourseTagModel
+	type CourseTagCreateModel,
+	type CourseTagsModel
 } from '$lib/models/course-model';
-import {
-	ModulesSchema,
-	type LessonModel,
-	type ModulesModel,
-	type ModulesReqParams
-} from '$lib/models/module-model';
+import { ModulesSchema, type ModulesModel, type ModulesReqParams } from '$lib/models/module-model';
 import { buildQueryString } from '$lib/utils';
 import { array, safeParse } from 'valibot';
 import { apiFetch } from './fetch';
@@ -24,10 +19,10 @@ import { apiFetch } from './fetch';
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Get a course
-export async function GetCourse(id: string, params?: CourseReqParams): Promise<CourseModel> {
+export async function GetCourse(courseId: string, params?: CourseReqParams): Promise<CourseModel> {
 	const qs = params && buildQueryString(params);
 
-	const response = await apiFetch(`/api/courses/${id}${qs ? `?${qs}` : ''}`);
+	const response = await apiFetch(`/api/courses/${courseId}${qs ? `?${qs}` : ''}`);
 
 	if (response.ok) {
 		const data = (await response.json()) as CourseModel;
@@ -64,7 +59,7 @@ export async function GetCourses(params?: CourseReqParams): Promise<CoursePagina
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Create a course
-export async function CreateCourse(data: CreateCourseModel): Promise<void> {
+export async function CreateCourse(data: CourseCreateModel): Promise<void> {
 	const response = await apiFetch('/api/courses', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
@@ -80,8 +75,8 @@ export async function CreateCourse(data: CreateCourseModel): Promise<void> {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Delete a course
-export async function DeleteCourse(id: string): Promise<void> {
-	const response = await apiFetch(`/api/courses/${id}`, {
+export async function DeleteCourse(courseId: string): Promise<void> {
+	const response = await apiFetch(`/api/courses/${courseId}`, {
 		method: 'DELETE',
 		headers: {
 			'Content-Type': 'application/json'
@@ -97,8 +92,8 @@ export async function DeleteCourse(id: string): Promise<void> {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Delete course progress (for a specific user)
-export async function DeleteCourseProgress(id: string): Promise<void> {
-	const response = await apiFetch(`/api/courses/${id}/progress`, {
+export async function DeleteCourseProgress(courseId: string): Promise<void> {
+	const response = await apiFetch(`/api/courses/${courseId}/progress`, {
 		method: 'DELETE',
 		headers: {
 			'Content-Type': 'application/json'
@@ -114,8 +109,8 @@ export async function DeleteCourseProgress(id: string): Promise<void> {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Get all course tags
-export async function GetCourseTags(id: string): Promise<CourseTagsModel> {
-	const response = await apiFetch(`/api/courses/${id}/tags`);
+export async function GetCourseTags(courseId: string): Promise<CourseTagsModel> {
+	const response = await apiFetch(`/api/courses/${courseId}/tags`);
 
 	if (response.ok) {
 		const data = (await response.json()) as CourseTagsModel;
@@ -132,8 +127,8 @@ export async function GetCourseTags(id: string): Promise<CourseTagsModel> {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Create a course tag
-export async function CreateCourseTag(id: string, data: CreateCourseTagModel): Promise<void> {
-	const response = await apiFetch(`/api/courses/${id}/tags`, {
+export async function CreateCourseTag(courseId: string, data: CourseTagCreateModel): Promise<void> {
+	const response = await apiFetch(`/api/courses/${courseId}/tags`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify(data)
@@ -148,8 +143,8 @@ export async function CreateCourseTag(id: string, data: CreateCourseTagModel): P
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Delete a course tag
-export async function DeleteCourseTag(id: string, tag: string): Promise<void> {
-	const response = await apiFetch(`/api/courses/${id}/tags/${tag}`, {
+export async function DeleteCourseTag(courseId: string, tag: string): Promise<void> {
+	const response = await apiFetch(`/api/courses/${courseId}/tags/${tag}`, {
 		method: 'DELETE',
 		headers: {
 			'Content-Type': 'application/json'
@@ -165,15 +160,20 @@ export async function DeleteCourseTag(id: string, tag: string): Promise<void> {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Update a course assets progress
-export async function UpdateCourseAssetProgress(asset: AssetModel): Promise<void> {
+export async function UpdateCourseAssetProgress(
+	courseId: string,
+	lessonId: string,
+	assetId: string,
+	data: AssetProgressUpdateModel
+): Promise<void> {
 	const response = await apiFetch(
-		`/api/courses/${asset.courseId}/lessons/${asset.lessonId}/assets/${asset.id}/progress`,
+		`/api/courses/${courseId}/lessons/${lessonId}/assets/${assetId}/progress`,
 		{
 			method: 'PUT',
 			headers: {
 				'Content-Type': 'application/json'
 			},
-			body: JSON.stringify(asset.progress)
+			body: JSON.stringify(data)
 		}
 	);
 
@@ -186,9 +186,13 @@ export async function UpdateCourseAssetProgress(asset: AssetModel): Promise<void
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Serve a course asset
-export async function ServeCourseAsset(asset: AssetModel): Promise<string> {
+export async function ServeCourseAsset(
+	courseId: string,
+	lessonId: string,
+	assetId: string
+): Promise<string> {
 	const response = await apiFetch(
-		`/api/courses/${asset.courseId}/lessons/${asset.lessonId}/assets/${asset.id}/serve`
+		`/api/courses/${courseId}/lessons/${lessonId}/assets/${assetId}/serve`
 	);
 
 	if (response.ok) {
@@ -217,22 +221,6 @@ export async function GetCourseModules(
 			throw new APIError(response.status, 'Invalid response from the server');
 		}
 		return result.output;
-	} else {
-		const data = await response.json();
-		throw new APIError(response.status, data.message || 'Unknown error');
-	}
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// Serve the description of a course lesson
-export async function ServeCourseLessonDescription(lesson: LessonModel): Promise<string> {
-	const response = await apiFetch(
-		`/api/courses/${lesson.courseId}/lessons/${lesson.id}/description`
-	);
-
-	if (response.ok) {
-		return await response.text();
 	} else {
 		const data = await response.json();
 		throw new APIError(response.status, data.message || 'Unknown error');

@@ -1,14 +1,10 @@
-<!-- TODO Open on asset when the course is ongoing -->
-<!-- TODO Rework `load more` to allowing setting the amount to load -->
-<!-- TODO Support marking courses as new (backend work too) -->
-<!-- TODO Don't use the scan status here as normal users cannot access it. Instead when course.maintenance is true, rescan for that course -->
 <script lang="ts">
 	import { GetCourses } from '$lib/api/course-api';
 	import { FilterBar } from '$lib/components';
 	import { LogoIcon, WarningIcon } from '$lib/components/icons';
 	import Spinner from '$lib/components/spinner.svelte';
 	import { Badge, Button } from '$lib/components/ui';
-	import type { CoursesModel } from '$lib/models/course-model';
+	import type { CourseReqParams, CoursesModel } from '$lib/models/course-model';
 	import { scanMonitor } from '$lib/scans.svelte';
 	import { cn, remCalc } from '$lib/utils';
 	import { Avatar } from 'bits-ui';
@@ -70,12 +66,13 @@
 			const sort = 'sort:"courses.title asc"';
 			const q = filterValue ? `${filterValue} ${sort}` : sort;
 
-			const data = await GetCourses({
+			const courseReqParams: CourseReqParams = {
 				q,
 				withProgress: true,
 				page: paginationPage,
 				perPage: paginationPerPage
-			});
+			};
+			const data = await GetCourses(courseReqParams);
 			paginationTotal = data.totalItems;
 
 			if (append) {

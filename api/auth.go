@@ -61,20 +61,20 @@ func (api authAPI) register(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusForbidden, "Sign-up is disabled", nil)
 	}
 
-	userReq := &userRequest{}
+	registerReq := &registerRequest{}
 
-	if err := c.BodyParser(userReq); err != nil {
+	if err := c.BodyParser(registerReq); err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
 	}
 
-	if userReq.Username == "" || userReq.Password == "" {
+	if registerReq.Username == "" || registerReq.Password == "" {
 		return errorResponse(c, fiber.StatusBadRequest, "Username and/or password cannot be empty", nil)
 	}
 
 	user := &models.User{
-		Username:     userReq.Username,
-		DisplayName:  userReq.Username, // Set the display name to the username by default
-		PasswordHash: auth.GeneratePassword(userReq.Password),
+		Username:     registerReq.Username,
+		DisplayName:  registerReq.Username, // Set the display name to the username by default
+		PasswordHash: auth.GeneratePassword(registerReq.Password),
 	}
 
 	// The first user will always be an admin
@@ -115,23 +115,23 @@ func (api authAPI) bootstrap(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api authAPI) login(c *fiber.Ctx) error {
-	userReq := &userRequest{}
+	loginReq := &loginRequest{}
 
-	if err := c.BodyParser(userReq); err != nil {
+	if err := c.BodyParser(loginReq); err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
 	}
 
-	if userReq.Username == "" || userReq.Password == "" {
+	if loginReq.Username == "" || loginReq.Password == "" {
 		return errorResponse(c, fiber.StatusBadRequest, "Username and/or password cannot be empty", nil)
 	}
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: userReq.Username})
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: loginReq.Username})
 	user, err := api.dao.GetUser(c.UserContext(), dbOpts)
 	if err != nil || user == nil {
 		return errorResponse(c, fiber.StatusUnauthorized, "Invalid username and/or password", nil)
 	}
 
-	if !auth.ComparePassword(user.PasswordHash, userReq.Password) {
+	if !auth.ComparePassword(user.PasswordHash, loginReq.Password) {
 		return errorResponse(c, fiber.StatusUnauthorized, "Invalid username and/or password", nil)
 	}
 
@@ -190,25 +190,25 @@ func (api authAPI) updateMe(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error getting user information", err)
 	}
 
-	userReq := &userRequest{}
-	if err := c.BodyParser(userReq); err != nil {
+	updateReq := &selfUpdateRequest{}
+	if err := c.BodyParser(updateReq); err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
 	}
 
-	if userReq.DisplayName == "" && userReq.Password == "" {
+	if updateReq.DisplayName == "" && updateReq.Password == "" {
 		return errorResponse(c, fiber.StatusBadRequest, "No data to update", nil)
 	}
 
-	if userReq.DisplayName != "" {
-		user.DisplayName = userReq.DisplayName
+	if updateReq.DisplayName != "" {
+		user.DisplayName = updateReq.DisplayName
 	}
 
-	if userReq.Password != "" {
-		if !auth.ComparePassword(user.PasswordHash, userReq.CurrentPassword) {
+	if updateReq.Password != "" {
+		if !auth.ComparePassword(user.PasswordHash, updateReq.CurrentPassword) {
 			return errorResponse(c, fiber.StatusBadRequest, "Invalid current password", nil)
 		}
 
-		user.PasswordHash = auth.GeneratePassword(userReq.Password)
+		user.PasswordHash = auth.GeneratePassword(updateReq.Password)
 	}
 
 	err = api.dao.UpdateUser(ctx, user)
@@ -238,12 +238,12 @@ func (api authAPI) deleteMe(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error getting user information", err)
 	}
 
-	userReq := &userRequest{}
-	if err := c.BodyParser(userReq); err != nil {
+	deleteReq := &selfDeleteRequest{}
+	if err := c.BodyParser(deleteReq); err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
 	}
 
-	if !auth.ComparePassword(user.PasswordHash, userReq.CurrentPassword) {
+	if !auth.ComparePassword(user.PasswordHash, deleteReq.CurrentPassword) {
 		return errorResponse(c, fiber.StatusBadRequest, "Invalid password", nil)
 	}
 

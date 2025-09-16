@@ -16,6 +16,7 @@
 		SelectAllIcon
 	} from '$lib/components/icons';
 	import { Badge, Button, Checkbox, Dialog, Drawer, Dropdown } from '$lib/components/ui';
+	import type { CourseCreateModel } from '$lib/models/course-model';
 	import { FsPathClassification, type FsModel } from '$lib/models/fs-model';
 	import { cn, remCalc } from '$lib/utils';
 	import { Separator } from 'bits-ui';
@@ -171,7 +172,7 @@
 		try {
 			await Promise.all(
 				Object.keys(selectedCourses).map((path) =>
-					CreateCourse({ path, title: selectedCourses[path] })
+					CreateCourse({ path, title: selectedCourses[path] } satisfies CourseCreateModel)
 				)
 			);
 			successFn?.();

@@ -1,9 +1,3 @@
-<!-- TODO Add scan button (admin) -->
-<!-- TODO Edit anything/everything (admin) -->
-<!-- TODO Change asset play/restart button to a menu with play/restart, clear progress  -->
-<!-- TODO Don't allow clicking the start button when in maintenance -->
-<!-- TODO Hide the asset play button when in maintenance -->
-<!-- TODO Add mark Complete -->
 <script lang="ts">
 	import { page } from '$app/state';
 	import { GetCourse, GetCourseModules, GetCourseTags } from '$lib/api/course-api';
@@ -30,7 +24,7 @@
 	import { Badge, Dropdown } from '$lib/components/ui';
 	import Attachments from '$lib/components/ui/attachments.svelte';
 	import Button from '$lib/components/ui/button.svelte';
-	import type { CourseModel, CourseTagsModel } from '$lib/models/course-model';
+	import type { CourseModel, CourseReqParams, CourseTagsModel } from '$lib/models/course-model';
 	import type { ModulesModel } from '$lib/models/module-model';
 	import { cn } from '$lib/utils';
 	import { useId } from 'bits-ui';
@@ -87,21 +81,21 @@
 	let lessonToResume = $derived.by(() => {
 		if (!modules) return null;
 
-		// 1) started but not completed
+		// Started but not completed
 		for (const mod of modules.modules) {
 			for (const lesson of mod.lessons) {
-				if (lesson.startedAssetCount > 0 && !lesson.completed) return lesson;
+				if (lesson.started && !lesson.completed) return lesson;
 			}
 		}
 
-		// 2) any incomplete
+		// Any incomplete
 		for (const mod of modules.modules) {
 			for (const lesson of mod.lessons) {
 				if (!lesson.completed) return lesson;
 			}
 		}
 
-		// 3) fallback: very first lesson (if any)
+		// Fallback to first lesson
 		return modules.modules[0]?.lessons[0] ?? null;
 	});
 
@@ -114,9 +108,15 @@
 	async function fetcher(): Promise<void> {
 		try {
 			if (!page.params.course_id) throw new Error('No course ID provided');
-			course = await GetCourse(page.params.course_id, { withProgress: true });
+
+			const courseReqParams: CourseReqParams = { withProgress: true };
+			course = await GetCourse(page.params.course_id, courseReqParams);
+
 			tags = await GetCourseTags(course.id);
-			modules = await GetCourseModules(course.id, { withProgress: true });
+
+			const moduleReqParams: CourseReqParams = { withProgress: true };
+			modules = await GetCourseModules(course.id, moduleReqParams);
+
 			await loadCourseImage(course.id);
 		} catch (error) {
 			throw error;
@@ -125,6 +125,7 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	// Load the course image, if available
 	async function loadCourseImage(courseId: string): Promise<void> {
 		try {
 			const response = await fetch(`/api/courses/${courseId}/card`);
@@ -353,22 +354,31 @@
 										bind:open={openCourseProgressDialog}
 										{course}
 										successFn={() => {
+											// Clear course progress (local state)
 											if (!course) return;
 
-											// Clear course-level progress
-											course.progress = undefined;
+											course.progress = {
+												percent: 0,
+												startedAt: '',
+												started: false,
+												completedAt: ''
+											};
 
-											// Clear all lesson + asset progress in the new modules structure
+											// Clear asset progress (local state)
 											if (!modules) return;
 
 											for (const mod of modules.modules) {
 												for (const lesson of mod.lessons) {
 													lesson.completed = false;
-													lesson.startedAssetCount = 0;
-													lesson.completedAssetCount = 0;
+													lesson.started = false;
+													lesson.assetsCompleted = 0;
 
 													for (const asset of lesson.assets) {
-														asset.progress = undefined;
+														asset.progress = {
+															position: 0,
+															completed: false,
+															completedAt: ''
+														};
 													}
 												}
 											}
@@ -415,7 +425,7 @@
 									<div class="col-span-full sm:col-span-1">
 										<div class="border-foreground-alt-2 -mt-px inline-flex border-t pt-px">
 											<div class="text-background-primary-alt-1 pt-6 font-semibold sm:pt-10">
-												Module {pad2(m.index)}
+												Module {pad2(m.prefix)}
 											</div>
 										</div>
 									</div>
@@ -454,7 +464,7 @@
 																	<TickCircleIcon
 																		class="stroke-background-success fill-background-success [&_path]:stroke-foreground size-5 place-self-start stroke-1 [&_path]:stroke-1"
 																	/>
-																{:else if lesson.startedAssetCount > 0}
+																{:else if lesson.started}
 																	<EllipsisCircleIcon
 																		class="[&_path]:fill-foreground-alt-1 [&_path]:stroke-foreground size-5 place-self-start fill-amber-700 stroke-amber-700 stroke-1 [&_path]:stroke-2"
 																	/>
@@ -480,7 +490,7 @@
 																				{#if isCollection}
 																					collection
 																				{:else}
-																					{lesson.assets[0].assetType}
+																					{lesson.assets[0].type}
 																				{/if}
 																			</span>
 

@@ -6,7 +6,12 @@
 	import { Oops } from '$lib/components/';
 	import { ScanIcon, UndoIcon, XIcon } from '$lib/components/icons';
 	import { Badge, Button, Dialog, Drawer } from '$lib/components/ui';
-	import type { CourseModel, CoursesModel, CourseTagsModel } from '$lib/models/course-model';
+	import type {
+		CourseModel,
+		CoursesModel,
+		CourseTagCreateModel,
+		CourseTagsModel
+	} from '$lib/models/course-model';
 	import { cn, remCalc } from '$lib/utils';
 	import { Combobox } from 'bits-ui';
 	import { Debounced } from 'runed';
@@ -227,7 +232,7 @@
 					value.map(async (c) => {
 						await Promise.all(
 							toAdd.map(async (tag) => {
-								await CreateCourseTag(c.id, { tag });
+								await CreateCourseTag(c.id, { tag } satisfies CourseTagCreateModel);
 							})
 						);
 					})
@@ -238,7 +243,7 @@
 				// Add the tags for this course
 				await Promise.all(
 					toAdd.map(async (tag) => {
-						await CreateCourseTag(value.id, { tag });
+						await CreateCourseTag(value.id, { tag } satisfies CourseTagCreateModel);
 					})
 				);
 

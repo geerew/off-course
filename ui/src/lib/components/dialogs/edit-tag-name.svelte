@@ -3,7 +3,7 @@
 	import { UpdateTag } from '$lib/api/tag-api';
 	import { Spinner } from '$lib/components';
 	import { Button, Dialog, Input } from '$lib/components/ui';
-	import type { TagModel } from '$lib/models/tag-model';
+	import type { TagModel, TagUpdateModel } from '$lib/models/tag-model';
 	import type { Snippet } from 'svelte';
 	import { toast } from 'svelte-sonner';
 
@@ -38,7 +38,7 @@
 		isPosting = true;
 
 		try {
-			await UpdateTag(value.id, { tag: newValue });
+			await UpdateTag(value.id, { tag: newValue } satisfies TagUpdateModel);
 			value.tag = newValue;
 			open = false;
 			successFn?.();

@@ -16,12 +16,12 @@ export const LessonSchema = object({
 	courseId: string(),
 	prefix: number(),
 	title: string(),
-	assets: array(AssetSchema),
-	attachments: array(AttachmentSchema),
+	started: boolean(),
 	completed: boolean(),
-	startedAssetCount: number(),
-	completedAssetCount: number(),
-	totalVideoDuration: number()
+	assetsCompleted: number(),
+	totalVideoDuration: number(),
+	assets: array(AssetSchema),
+	attachments: array(AttachmentSchema)
 });
 
 export type LessonModel = InferOutput<typeof LessonSchema>;
@@ -30,8 +30,8 @@ export type LessonModel = InferOutput<typeof LessonSchema>;
 
 // Module schema
 export const ModuleSchema = object({
+	prefix: number(),
 	module: string(),
-	index: number(),
 	lessons: array(LessonSchema)
 });
 

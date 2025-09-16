@@ -5,7 +5,7 @@
 	import { auth } from '$lib/auth.svelte';
 	import { Spinner } from '$lib/components';
 	import { Button, Dialog, Input } from '$lib/components/ui';
-	import type { UserModel } from '$lib/models/user-model';
+	import type { SelfUpdateModel, UserModel, UserUpdateModel } from '$lib/models/user-model';
 	import type { Snippet } from 'svelte';
 	import { toast } from 'svelte-sonner';
 
@@ -43,10 +43,10 @@
 
 		try {
 			if (deletingSelf) {
-				await UpdateSelf({ displayName: newValue });
+				await UpdateSelf({ displayName: newValue } satisfies SelfUpdateModel);
 				await auth.me();
 			} else {
-				await UpdateUser(value.id, { displayName: newValue });
+				await UpdateUser(value.id, { displayName: newValue } satisfies UserUpdateModel);
 			}
 
 			open = false;

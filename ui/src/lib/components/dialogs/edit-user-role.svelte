@@ -6,7 +6,8 @@
 		SelectUserRoles,
 		type UserModel,
 		type UserRole,
-		type UsersModel
+		type UsersModel,
+		type UserUpdateModel
 	} from '$lib/models/user-model';
 	import type { Snippet } from 'svelte';
 	import { toast } from 'svelte-sonner';
@@ -45,10 +46,14 @@
 
 		try {
 			if (isArray) {
-				await Promise.all(Object.values(value).map((u) => UpdateUser(u.id, { role: roleValue })));
+				await Promise.all(
+					Object.values(value).map((u) =>
+						UpdateUser(u.id, { role: roleValue } satisfies UserUpdateModel)
+					)
+				);
 				toast.success('Users role updated');
 			} else {
-				await UpdateUser(value.id, { role: roleValue });
+				await UpdateUser(value.id, { role: roleValue } satisfies UserUpdateModel);
 				toast.success('Updated role');
 			}
 

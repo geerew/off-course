@@ -4,6 +4,7 @@
 	import { Spinner } from '$lib/components';
 	import { PlusIcon, ScanIcon, XIcon } from '$lib/components/icons';
 	import { Badge, Button, Dialog, Drawer, Input } from '$lib/components/ui';
+	import type { TagCreateModel } from '$lib/models/tag-model';
 	import { remCalc } from '$lib/utils';
 	import { toast } from 'svelte-sonner';
 	import { innerWidth } from 'svelte/reactivity/window';
@@ -88,7 +89,7 @@
 		isPosting = true;
 
 		try {
-			await Promise.all(toAdd.map((name) => CreateTag({ tag: name })));
+			await Promise.all(toAdd.map((name) => CreateTag({ tag: name } satisfies TagCreateModel)));
 			toast.success('Tags added');
 			successFn?.();
 		} catch (error) {

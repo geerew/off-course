@@ -6,6 +6,7 @@
 	import { DeleteIcon, DotsIcon, OverviewIcon, ScanIcon, TagIcon } from '$lib/components/icons';
 	import { Dropdown } from '$lib/components/ui';
 	import type { CourseModel } from '$lib/models/course-model';
+	import type { ScanCreateModel } from '$lib/models/scan-model';
 	import { scanMonitor } from '$lib/scans.svelte';
 	import { toast } from 'svelte-sonner';
 
@@ -26,7 +27,7 @@
 
 	async function doScan() {
 		try {
-			await StartScan({ courseId: course.id });
+			await StartScan({ courseId: course.id } satisfies ScanCreateModel);
 			scanMonitor.trackCourses(course);
 			onScan?.();
 		} catch (error) {

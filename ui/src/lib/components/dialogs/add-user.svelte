@@ -3,7 +3,7 @@
 	import { Spinner } from '$lib/components';
 	import { PlusIcon, UserIcon } from '$lib/components/icons';
 	import { Button, Dialog, Drawer, Input, PasswordInput, Select } from '$lib/components/ui';
-	import { SelectUserRoles, type UserRole } from '$lib/models/user-model';
+	import { SelectUserRoles, type UserCreateModel, type UserRole } from '$lib/models/user-model';
 	import { remCalc } from '$lib/utils';
 	import { Separator } from 'bits-ui';
 	import { toast } from 'svelte-sonner';
@@ -85,7 +85,7 @@
 				displayName: displayNameValue,
 				password: passwordValue,
 				role: roleValue === '' ? 'user' : roleValue
-			});
+			} satisfies UserCreateModel);
 
 			successFn?.();
 			toast.success('User created');

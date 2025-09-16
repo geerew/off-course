@@ -24,7 +24,10 @@ export const SelectUserRoles = [
 ];
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Course Progress
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// Course progress schema
 export const CourseProgressSchema = object({
 	started: boolean(),
 	startedAt: string(),
@@ -32,6 +35,10 @@ export const CourseProgressSchema = object({
 	completedAt: string()
 });
 
+export type CourseProgressModel = InferOutput<typeof CourseProgressSchema>;
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Course
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Course schema
@@ -44,6 +51,7 @@ export const CourseSchema = object({
 	duration: number(),
 	initialScan: optional(boolean()),
 	maintenance: boolean(),
+	scanStatus: optional(string()),
 	progress: optional(CourseProgressSchema)
 });
 
@@ -52,22 +60,42 @@ export type CoursesModel = CourseModel[];
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Create course schema
-export const CreateCourseSchema = object({
+// Course create schema
+export const CourseCreateSchema = object({
 	title: string(),
 	path: string()
 });
 
-export type CreateCourseModel = InferOutput<typeof CreateCourseSchema>;
+export type CourseCreateModel = InferOutput<typeof CourseCreateSchema>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Create course tag schema
+// Paginated courses schema
+export const CoursePaginationSchema = object({
+	...BasePaginationSchema.entries,
+	items: array(CourseSchema)
+});
+
+export type CoursePaginationModel = InferOutput<typeof CoursePaginationSchema>;
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Request parameters for courses
+export type CourseReqParams = PaginationReqParams & {
+	q?: string;
+	withProgress?: boolean;
+};
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Course Tags
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Course tag create schema
 export const CreateCourseTagSchema = object({
 	tag: string()
 });
 
-export type CreateCourseTagModel = InferOutput<typeof CreateCourseTagSchema>;
+export type CourseTagCreateModel = InferOutput<typeof CreateCourseTagSchema>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -79,19 +107,3 @@ export const CourseTagSchema = object({
 
 export type CourseTagModel = InferOutput<typeof CourseTagSchema>;
 export type CourseTagsModel = CourseTagModel[];
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-export const CoursePaginationSchema = object({
-	...BasePaginationSchema.entries,
-	items: array(CourseSchema)
-});
-
-export type CoursePaginationModel = InferOutput<typeof CoursePaginationSchema>;
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-export type CourseReqParams = PaginationReqParams & {
-	q?: string;
-	withProgress?: boolean;
-};
