@@ -2,11 +2,11 @@ import { APIError } from '$lib/api-error.svelte';
 import {
 	TagPaginationSchema,
 	TagSchema,
-	type CreateTagModel,
+	type TagCreateModel,
 	type TagModel,
 	type TagPaginationModel,
 	type TagReqParams,
-	type UpdateTagModel
+	type TagUpdateModel
 } from '$lib/models/tag-model';
 import { buildQueryString } from '$lib/utils';
 import { safeParse } from 'valibot';
@@ -70,7 +70,7 @@ export async function GetTagNames(params?: TagReqParams): Promise<string[]> {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Create a tag
-export async function CreateTag(data: CreateTagModel): Promise<void> {
+export async function CreateTag(data: TagCreateModel): Promise<void> {
 	const response = await apiFetch('/api/tags', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
@@ -86,8 +86,8 @@ export async function CreateTag(data: CreateTagModel): Promise<void> {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Update a tag
-export async function UpdateTag(id: string, data: UpdateTagModel): Promise<void> {
-	const response = await apiFetch(`/api/tags/${id}`, {
+export async function UpdateTag(tagId: string, data: TagUpdateModel): Promise<void> {
+	const response = await apiFetch(`/api/tags/${tagId}`, {
 		method: 'PUT',
 		headers: {
 			'Content-Type': 'application/json'
@@ -104,8 +104,8 @@ export async function UpdateTag(id: string, data: UpdateTagModel): Promise<void>
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Delete a tag
-export async function DeleteTag(id: string): Promise<void> {
-	const response = await apiFetch(`/api/tags/${id}`, {
+export async function DeleteTag(tagId: string): Promise<void> {
+	const response = await apiFetch(`/api/tags/${tagId}`, {
 		method: 'DELETE',
 		headers: {
 			'Content-Type': 'application/json'

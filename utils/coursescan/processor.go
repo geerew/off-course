@@ -101,7 +101,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	attachmentOps := reconcileAttachments(scannedAttachments, existingAttachments)
 
 	// FFprobe only assets that need it
-	videoMetadataByPath := probeVideos(assetOps)
+	assetMetadataByPath := probeVideos(assetOps)
 
 	updatedCourse := course.CardPath != scanned.cardPath
 	if updatedCourse {
@@ -121,7 +121,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 			updatedCourse = true
 		}
 
-		if updated, err := applyAssetOps(txCtx, s, course, assetOps, videoMetadataByPath); err != nil {
+		if updated, err := applyAssetOps(txCtx, s, course, assetOps, assetMetadataByPath); err != nil {
 			return err
 		} else if updated {
 			updatedCourse = true
@@ -415,7 +415,7 @@ func flatAttachmentsAndAssets(lessons []*models.Lesson) ([]*models.Attachment, [
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // probeVideos probes videos assets that match the operations create, replace, or swap
-func probeVideos(ops []Op) map[string]*models.VideoMetadata {
+func probeVideos(ops []Op) map[string]*models.AssetMetadata {
 	var targets []*models.Asset
 	for _, op := range ops {
 		switch v := op.(type) {
@@ -437,18 +437,32 @@ func probeVideos(ops []Op) map[string]*models.VideoMetadata {
 		}
 	}
 
-	videoMetadataByPath := map[string]*models.VideoMetadata{}
+	assetMetadataByPath := map[string]*models.AssetMetadata{}
 	mediaProbe := media.MediaProbe{}
 
 	for _, asset := range targets {
 		if info, err := mediaProbe.ProbeVideo(asset.Path); err == nil {
-			videoMetadataByPath[asset.Path] = &models.VideoMetadata{
-				VideoMetadataInfo: models.VideoMetadataInfo{
-					Duration:   info.Duration,
-					Width:      info.Width,
-					Height:     info.Height,
-					Codec:      info.Codec,
-					Resolution: info.Resolution,
+			assetMetadataByPath[asset.Path] = &models.AssetMetadata{
+				VideoMetadata: &models.VideoMetadata{
+					DurationSec: info.DurationSec,
+					Container:   info.File.Container,
+					MIMEType:    info.File.MIMEType,
+					SizeBytes:   info.File.SizeBytes,
+					OverallBPS:  info.File.OverallBPS,
+					VideoCodec:  info.Video.Codec,
+					Width:       info.Video.Width,
+					Height:      info.Video.Height,
+					FPSNum:      info.Video.FPSNum,
+					FPSDen:      info.Video.FPSDen,
+				},
+				AudioMetadata: &models.AudioMetadata{
+					Language:      info.Audio.Language,
+					Codec:         info.Audio.Codec,
+					Profile:       info.Audio.Profile,
+					Channels:      info.Audio.Channels,
+					ChannelLayout: info.Audio.ChannelLayout,
+					SampleRate:    info.Audio.SampleRate,
+					BitRate:       info.Audio.BitRate,
 				},
 			}
 		} else {
@@ -460,7 +474,7 @@ func probeVideos(ops []Op) map[string]*models.VideoMetadata {
 		}
 	}
 
-	return videoMetadataByPath
+	return assetMetadataByPath
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -571,7 +585,7 @@ func applyAssetOps(
 	s *CourseScan,
 	course *models.Course,
 	ops []Op,
-	videoMetadataByPath map[string]*models.VideoMetadata,
+	assetMetadataByPath map[string]*models.AssetMetadata,
 ) (bool, error) {
 	if len(ops) == 0 {
 		return false, nil
@@ -589,14 +603,14 @@ func applyAssetOps(
 			}
 
 			// If the asset is a video, also create video metadata
-			if metadata := videoMetadataByPath[v.New.Path]; metadata != nil && v.New.Type.IsVideo() {
+			if metadata := assetMetadataByPath[v.New.Path]; metadata != nil && v.New.Type.IsVideo() {
 				metadata.AssetID = v.New.ID
 
-				if err := s.dao.CreateVideoMetadata(ctx, metadata); err != nil {
+				if err := s.dao.CreateAssetMetadata(ctx, metadata); err != nil {
 					return false, err
 				}
 
-				course.Duration += metadata.Duration
+				course.Duration += metadata.VideoMetadata.DurationSec
 			}
 
 		case UpdateAssetOp:
@@ -639,8 +653,8 @@ func applyAssetOps(
 				return false, err
 			}
 
-			if v.Existing.VideoMetadata != nil {
-				course.Duration -= v.Existing.VideoMetadata.Duration
+			if v.Existing.AssetMetadata != nil {
+				course.Duration -= v.Existing.AssetMetadata.VideoMetadata.DurationSec
 			}
 
 			v.New.LessonID = v.Existing.LessonID
@@ -649,14 +663,14 @@ func applyAssetOps(
 			}
 
 			// If the asset is a video, also create video metadata
-			if metadata := videoMetadataByPath[v.New.Path]; metadata != nil && v.New.Type.IsVideo() {
+			if metadata := assetMetadataByPath[v.New.Path]; metadata != nil && v.New.Type.IsVideo() {
 				metadata.AssetID = v.New.ID
 
-				if err := s.dao.CreateVideoMetadata(ctx, metadata); err != nil {
+				if err := s.dao.CreateAssetMetadata(ctx, metadata); err != nil {
 					return false, err
 				}
 
-				course.Duration += metadata.Duration
+				course.Duration += metadata.VideoMetadata.DurationSec
 			}
 
 		case OverwriteAssetOp:
@@ -699,8 +713,8 @@ func applyAssetOps(
 					return false, err
 				}
 
-				if existing.VideoMetadata != nil {
-					course.Duration -= existing.VideoMetadata.Duration
+				if existing.AssetMetadata != nil {
+					course.Duration -= existing.AssetMetadata.VideoMetadata.DurationSec
 				}
 			}
 
@@ -714,14 +728,14 @@ func applyAssetOps(
 				}
 
 				// If the asset is a video, also create video metadata
-				if metadata := videoMetadataByPath[newAsset.Path]; metadata != nil && newAsset.Type.IsVideo() {
+				if metadata := assetMetadataByPath[newAsset.Path]; metadata != nil && newAsset.Type.IsVideo() {
 					metadata.AssetID = newAsset.ID
 
-					if err := s.dao.CreateVideoMetadata(ctx, metadata); err != nil {
+					if err := s.dao.CreateAssetMetadata(ctx, metadata); err != nil {
 						return false, err
 					}
 
-					course.Duration += metadata.Duration
+					course.Duration += metadata.VideoMetadata.DurationSec
 				}
 			}
 
@@ -735,8 +749,8 @@ func applyAssetOps(
 				return false, err
 			}
 
-			if v.Deleted.VideoMetadata != nil {
-				course.Duration -= v.Deleted.VideoMetadata.Duration
+			if v.Deleted.AssetMetadata != nil {
+				course.Duration -= v.Deleted.AssetMetadata.VideoMetadata.DurationSec
 			}
 		}
 	}
@@ -1104,6 +1118,7 @@ func (p *parsedFile) toAsset(fs afero.Fs, module, courseID string) (*models.Asse
 		Path:      p.NormalizedPath,
 		FileSize:  stat.Size(),
 		ModTime:   mtime,
+		Weight:    1,
 	}
 
 	return asset, nil

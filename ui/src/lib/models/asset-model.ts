@@ -19,25 +19,67 @@ export type AssetType = InferOutput<typeof AssetTypeSchema>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// Asset progress schema
+export const AssetProgressSchema = object({
+	position: number(),
+	completed: boolean(),
+	completedAt: string()
+});
+
+export type AssetProgressModel = InferOutput<typeof AssetProgressSchema>;
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Asset progress update schema
+export const AssetProgressUpdateSchema = object({
+	position: optional(number()),
+	completed: boolean()
+});
+
+export type AssetProgressUpdateModel = InferOutput<typeof AssetProgressUpdateSchema>;
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Asset video metadata schema
 export const AssetVideoMetadataSchema = object({
-	duration: number(),
+	durationSec: number(),
+	container: string(),
+	mimeType: string(),
+	sizeBytes: number(),
+	overallBps: number(),
+	videoCodec: string(),
 	width: number(),
 	height: number(),
-	codec: string(),
-	resolution: string()
+	fpsNum: number(),
+	fpsDen: number()
 });
 
 export type AssetVideoMetadataModel = InferOutput<typeof AssetVideoMetadataSchema>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-export const AssetProgressSchema = object({
-	videoPos: number(),
-	completed: boolean(),
-	completedAt: string()
+// Asset audio metadata schema
+export const AssetAudioMetadataSchema = object({
+	language: string(),
+	codec: string(),
+	profile: string(),
+	channels: number(),
+	channelLayout: string(),
+	sampleRate: number(),
+	bitRate: number()
 });
 
-export type AssetProgressModel = InferOutput<typeof AssetProgressSchema>;
+export type AssetAudioMetadataModel = InferOutput<typeof AssetAudioMetadataSchema>;
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Asset metadata schema
+export const AssetMetadataSchema = object({
+	video: optional(AssetVideoMetadataSchema),
+	audio: optional(AssetAudioMetadataSchema)
+});
+
+export type AssetMetadataModel = InferOutput<typeof AssetMetadataSchema>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -52,9 +94,9 @@ export const AssetSchema = object({
 	subTitle: optional(string()),
 	module: string(),
 	path: string(),
-	assetType: AssetTypeSchema,
-	videoMetadata: optional(AssetVideoMetadataSchema),
-	progress: optional(AssetProgressSchema)
+	type: AssetTypeSchema,
+	metadata: AssetMetadataSchema,
+	progress: AssetProgressSchema
 });
 
 export type AssetModel = InferOutput<typeof AssetSchema>;

@@ -2,7 +2,6 @@ package dao
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"slices"
 	"strings"
@@ -65,15 +64,17 @@ func (dao *DAO) CreateCourse(ctx context.Context, course *models.Course) error {
 // GetCourse gets a record from the courses table based upon the where clause in the options. If
 // there is no where clause, it will return the first record in the table
 //
-// By default, progress is not included. Use `WithProgress()` on the options to include it
+// By default, progress is not included. Use `WithUserProgress()` on the options to include it
 func (dao *DAO) GetCourse(ctx context.Context, dbOpts *database.Options) (*models.Course, error) {
-	// When progress is not included, use a simpler query
-	if dbOpts == nil || !dbOpts.IncludeProgress {
-		builderOpts := newBuilderOptions(models.COURSE_TABLE).
-			WithColumns(models.COURSE_TABLE + ".*").
-			SetDbOpts(dbOpts).
-			WithLimit(1)
+	builderOpts := newBuilderOptions(models.COURSE_TABLE).
+		WithColumns(models.CourseColumns()...).
+		SetDbOpts(dbOpts).
+		WithLimit(1)
 
+	includeProgress := dbOpts != nil && dbOpts.IncludeUserProgress
+
+	// When progress is not included, use a simpler query
+	if !includeProgress {
 		return getGeneric[models.Course](ctx, dao, *builderOpts)
 	}
 
@@ -83,64 +84,20 @@ func (dao *DAO) GetCourse(ctx context.Context, dbOpts *database.Options) (*model
 		return nil, err
 	}
 
-	builderOpts := newBuilderOptions(models.COURSE_TABLE).
-		WithColumns(
-			models.COURSE_TABLE+".*",
-			fmt.Sprintf("%s AS course_started", models.COURSE_PROGRESS_TABLE_STARTED),
-			fmt.Sprintf("%s AS course_started_at", models.COURSE_PROGRESS_TABLE_STARTED_AT),
-			fmt.Sprintf("%s AS course_percent", models.COURSE_PROGRESS_TABLE_PERCENT),
-			fmt.Sprintf("%s AS course_completed_at", models.COURSE_PROGRESS_TABLE_COMPLETED_AT),
-		).
-		WithLeftJoin(models.COURSE_PROGRESS_TABLE, fmt.Sprintf("%s = %s AND %s = '%s'", models.COURSE_PROGRESS_TABLE_COURSE_ID, models.COURSE_TABLE_ID, models.COURSE_PROGRESS_TABLE_USER_ID, principal.UserID)).
-		SetDbOpts(dbOpts).
-		WithLimit(1)
+	builderOpts = builderOpts.
+		WithColumns(models.CourseProgressRowColumns()...).
+		WithLeftJoin(models.COURSE_PROGRESS_TABLE, fmt.Sprintf("%s = %s AND %s = '%s'", models.COURSE_PROGRESS_TABLE_COURSE_ID, models.COURSE_TABLE_ID, models.COURSE_PROGRESS_TABLE_USER_ID, principal.UserID))
 
-	row, err := getRow(ctx, dao, *builderOpts)
+	row, err := getGeneric[models.CourseRow](ctx, dao, *builderOpts)
 	if err != nil {
 		return nil, err
 	}
 
-	course := &models.Course{}
-	var (
-		started   sql.NullBool
-		startedAt types.DateTime
-		percent   sql.NullInt64
-		completed types.DateTime
-	)
-
-	err = row.Scan(
-		&course.ID,
-		&course.Title,
-		&course.Path,
-		&course.CardPath,
-		&course.Available,
-		&course.Duration,
-		&course.InitialScan,
-		&course.Maintenance,
-		&course.CreatedAt,
-		&course.UpdatedAt,
-		// Progress
-		&started,
-		&startedAt,
-		&percent,
-		&completed,
-	)
-
-	if err != nil {
-		return nil, err
+	if row == nil {
+		return nil, nil
 	}
 
-	// Attach progress
-	//
-	// When no progress is found, each field will be set to its zero value
-	course.Progress = &models.CourseProgressInfo{
-		Started:     started.Bool,
-		StartedAt:   startedAt,
-		Percent:     int(percent.Int64),
-		CompletedAt: completed,
-	}
-
-	return course, nil
+	return row.ToDomain(), nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -148,14 +105,16 @@ func (dao *DAO) GetCourse(ctx context.Context, dbOpts *database.Options) (*model
 // ListCourses gets all records from the courses table based upon the where clause and pagination
 // in the options
 //
-// By default, progress is not included. Use `WithProgress()` on the options to include it
+// By default, progress is not included. Use `WithUserProgress()` on the options to include it
 func (dao *DAO) ListCourses(ctx context.Context, dbOpts *database.Options) ([]*models.Course, error) {
-	// When progress is not included, use a simpler query
-	if dbOpts == nil || !dbOpts.IncludeProgress {
-		builderOpts := newBuilderOptions(models.COURSE_TABLE).
-			WithColumns(models.COURSE_TABLE + ".*").
-			SetDbOpts(dbOpts)
+	builderOpts := newBuilderOptions(models.COURSE_TABLE).
+		WithColumns(models.CourseColumns()...).
+		SetDbOpts(dbOpts)
 
+	includeProgress := dbOpts != nil && dbOpts.IncludeUserProgress
+
+	// When progress is not included, use a simpler query
+	if !includeProgress {
 		return listGeneric[models.Course](ctx, dao, *builderOpts)
 	}
 
@@ -165,73 +124,26 @@ func (dao *DAO) ListCourses(ctx context.Context, dbOpts *database.Options) ([]*m
 		return nil, err
 	}
 
-	builderOpts := newBuilderOptions(models.COURSE_TABLE).
-		WithColumns(
-			models.COURSE_TABLE+".*",
-			fmt.Sprintf("%s AS course_started", models.COURSE_PROGRESS_TABLE_STARTED),
-			fmt.Sprintf("%s AS course_started_at", models.COURSE_PROGRESS_TABLE_STARTED_AT),
-			fmt.Sprintf("%s AS course_percent", models.COURSE_PROGRESS_TABLE_PERCENT),
-			fmt.Sprintf("%s AS course_completed_at", models.COURSE_PROGRESS_TABLE_COMPLETED_AT),
-		).
-		WithLeftJoin(models.COURSE_PROGRESS_TABLE, fmt.Sprintf("%s = %s AND %s = '%s'", models.COURSE_PROGRESS_TABLE_COURSE_ID, models.COURSE_TABLE_ID, models.COURSE_PROGRESS_TABLE_USER_ID, principal.UserID)).
-		SetDbOpts(dbOpts)
+	builderOpts = builderOpts.
+		WithColumns(models.CourseProgressRowColumns()...).
+		WithLeftJoin(models.COURSE_PROGRESS_TABLE, fmt.Sprintf("%s = %s AND %s = '%s'", models.COURSE_PROGRESS_TABLE_COURSE_ID, models.COURSE_TABLE_ID, models.COURSE_PROGRESS_TABLE_USER_ID, principal.UserID))
 
-	rows, err := getRows(ctx, dao, *builderOpts)
+	rows, err := listGeneric[models.CourseRow](ctx, dao, *builderOpts)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var courses []*models.Course
-	for rows.Next() {
-		var (
-			course      models.Course
-			started     sql.NullBool
-			startedAt   types.DateTime
-			percent     sql.NullInt64
-			completedAt types.DateTime
-		)
-
-		err := rows.Scan(
-			&course.ID,
-			&course.Title,
-			&course.Path,
-			&course.CardPath,
-			&course.Available,
-			&course.Duration,
-			&course.InitialScan,
-			&course.Maintenance,
-			&course.CreatedAt,
-			&course.UpdatedAt,
-			// Progress
-			&started,
-			&startedAt,
-			&percent,
-			&completedAt,
-		)
-
-		if err != nil {
-			return nil, err
-		}
-
-		// Attach progress
-		//
-		// When no progress is found, each field will be set to its zero value
-		course.Progress = &models.CourseProgressInfo{
-			Started:     started.Bool,
-			StartedAt:   startedAt,
-			Percent:     int(percent.Int64),
-			CompletedAt: completedAt,
-		}
-
-		courses = append(courses, &course)
+	if len(rows) == 0 {
+		return nil, nil
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, err
+	records := make([]*models.Course, 0, len(rows))
+	for i := range rows {
+		r := rows[i]
+		records = append(records, r.ToDomain())
 	}
 
-	return courses, nil
+	return records, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

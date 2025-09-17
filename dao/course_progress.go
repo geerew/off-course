@@ -3,76 +3,40 @@ package dao
 import (
 	"context"
 	"fmt"
-	"math"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
-	"github.com/geerew/off-course/utils/types"
+	"github.com/geerew/off-course/utils/security"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// SyncCourseProgress calculates the course progress for a given course ID and upserts a
-// course progress record based upon the course id + user id
-func (dao *DAO) SyncCourseProgress(ctx context.Context, courseID string) error {
-	if courseID == "" {
-		return utils.ErrCourseId
+
+// SyncCourseProgressByAsset recomputes a user's course progress for the course
+// that contains the given assetID. If the asset doesn't exist, this is a no-op.
+func (dao *DAO) SyncCourseProgress(ctx context.Context, assetId string) error {
+	if assetId == "" {
+		return utils.ErrId
 	}
 
 	principal, err := principalFromCtx(ctx)
 	if err != nil {
 		return err
 	}
+	userID := principal.UserID
 
-	metrics, err := dao.fetchCourseMetrics(ctx, courseID, principal.UserID)
-	if err != nil {
-		return err
+	sqlSync := buildSyncCourseProgressSQL()
+
+	args := []any{
+		assetId,
+		userID,
+		security.PseudorandomString(10),
+		userID,
 	}
 
-	courseProgress := &models.CourseProgress{
-		CourseID: courseID,
-		UserID:   principal.UserID,
-	}
-
-	courseProgress.RefreshId()
-	courseProgress.RefreshCreatedAt()
-	courseProgress.RefreshUpdatedAt()
-
-	setProgress(*metrics, courseProgress)
-
-	builderOpts := newBuilderOptions(models.COURSE_PROGRESS_TABLE).
-		WithData(
-			map[string]interface{}{
-				models.BASE_ID:                      courseProgress.ID,
-				models.COURSE_PROGRESS_COURSE_ID:    courseProgress.CourseID,
-				models.COURSE_PROGRESS_USER_ID:      courseProgress.UserID,
-				models.COURSE_PROGRESS_STARTED:      courseProgress.Started,
-				models.COURSE_PROGRESS_STARTED_AT:   courseProgress.StartedAt,
-				models.COURSE_PROGRESS_PERCENT:      courseProgress.Percent,
-				models.COURSE_PROGRESS_COMPLETED_AT: courseProgress.CompletedAt,
-				models.BASE_CREATED_AT:              courseProgress.CreatedAt,
-				models.BASE_UPDATED_AT:              courseProgress.UpdatedAt,
-			},
-		).WithSuffix("" +
-		"ON CONFLICT( " + models.COURSE_PROGRESS_TABLE_COURSE_ID + "," + models.COURSE_PROGRESS_TABLE_USER_ID + ") DO UPDATE " +
-		"SET " +
-		models.COURSE_PROGRESS_PERCENT + " = excluded. " + models.COURSE_PROGRESS_PERCENT + ", " +
-		models.COURSE_PROGRESS_STARTED + " = excluded. " + models.COURSE_PROGRESS_STARTED + ", " +
-		// StartedAt case (only if it is NULL → non-NULL or non-NULL → NULL)
-		models.COURSE_PROGRESS_STARTED_AT + " = CASE " +
-		"WHEN (coalesce(" + models.COURSE_PROGRESS_STARTED_AT + ",'') = '' AND excluded." + models.COURSE_PROGRESS_STARTED_AT + " IS NOT NULL AND excluded." + models.COURSE_PROGRESS_STARTED_AT + " != '') THEN excluded." + models.COURSE_PROGRESS_STARTED_AT + " " +
-		"WHEN (" + models.COURSE_PROGRESS_STARTED_AT + " IS NOT NULL AND " + models.COURSE_PROGRESS_STARTED_AT + " != '' AND (excluded." + models.COURSE_PROGRESS_STARTED_AT + " IS NULL OR excluded." + models.COURSE_PROGRESS_STARTED_AT + " = '')) THEN '' " +
-		"ELSE " + models.COURSE_PROGRESS_STARTED_AT + " END, " +
-		// CompletedAt case (only if it is NULL → non-NULL or non-NULL → NULL)
-		models.COURSE_PROGRESS_COMPLETED_AT + " = CASE " +
-		"WHEN (coalesce(" + models.COURSE_PROGRESS_COMPLETED_AT + ",'') = '' AND excluded." + models.COURSE_PROGRESS_COMPLETED_AT + " IS NOT NULL AND excluded." + models.COURSE_PROGRESS_COMPLETED_AT + " != '') THEN excluded." + models.COURSE_PROGRESS_COMPLETED_AT + " " +
-		"WHEN (" + models.COURSE_PROGRESS_COMPLETED_AT + " IS NOT NULL AND " + models.COURSE_PROGRESS_COMPLETED_AT + " != '' AND (excluded." + models.COURSE_PROGRESS_COMPLETED_AT + " IS NULL OR excluded." + models.COURSE_PROGRESS_COMPLETED_AT + " = '')) THEN '' " +
-		"ELSE " + models.COURSE_PROGRESS_COMPLETED_AT + " END, " +
-		// Update the updated_at field
-		models.BASE_UPDATED_AT + " = excluded." + models.BASE_UPDATED_AT)
-
-	return createGeneric(ctx, dao, *builderOpts)
+	q := database.QuerierFromContext(ctx, dao.db)
+	_, err = q.ExecContext(ctx, sqlSync, args...)
+	return err
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -81,9 +45,7 @@ func (dao *DAO) SyncCourseProgress(ctx context.Context, courseID string) error {
 // there is no where clause, it will return the first record in the table
 func (dao *DAO) GetCourseProgress(ctx context.Context, dbOpts *database.Options) (*models.CourseProgress, error) {
 	builderOpts := newBuilderOptions(models.COURSE_PROGRESS_TABLE).
-		WithColumns(
-			models.COURSE_PROGRESS_TABLE + ".*",
-		).
+		WithColumns(models.CourseProgressColumns()...).
 		SetDbOpts(dbOpts).
 		WithLimit(1)
 
@@ -96,13 +58,13 @@ func (dao *DAO) GetCourseProgress(ctx context.Context, dbOpts *database.Options)
 // in the options
 func (dao *DAO) ListCourseProgress(ctx context.Context, dbOpts *database.Options) ([]*models.CourseProgress, error) {
 	builderOpts := newBuilderOptions(models.COURSE_PROGRESS_TABLE).
-		WithColumns(
-			models.COURSE_PROGRESS_TABLE + ".*",
-		).
+		WithColumns(models.CourseProgressColumns()...).
 		SetDbOpts(dbOpts)
 
 	return listGeneric[models.CourseProgress](ctx, dao, *builderOpts)
 }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // DeleteCourseProgress deletes records from the course progress table
 //
@@ -120,146 +82,158 @@ func (dao *DAO) DeleteCourseProgress(ctx context.Context, dbOpts *database.Optio
 	return err
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Private
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~ helpers ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-type courseMetrics struct {
-	VideoCount             int   `db:"video_count"`
-	NonVideoCount          int   `db:"non_video_count"`
-	VideosWithMeta         int   `db:"videos_with_metadata"`
-	TotalVideoDuration     int64 `db:"total_video_duration"`
-	WatchedVideoDuration   int64 `db:"watched_video_duration"`
-	CompletedNoMetaCount   int   `db:"completed_videos_no_metadata"`
-	TotalNoMetaCount       int   `db:"total_videos_no_metadata"`
-	CompletedNonVideoCount int   `db:"completed_non_video_count"`
-	StartedAssetCount      int   `db:"started_count"`
-}
+// buildSyncCourseProgressSQL returns the CTE+UPSERT query for course progress
+func buildSyncCourseProgressSQL() string {
+	return fmt.Sprintf(`
+WITH vars AS (
+  SELECT (
+    SELECT %s
+    FROM %s
+    WHERE %s = ?
+  ) AS course_id
+),
+ap AS (
+  SELECT
+    %s AS asset_id,
+    %s AS position,
+    %s AS completed,
+    COALESCE(%s, 0.0) AS progress_frac,
+    %s AS created_at
+  FROM %s
+  JOIN %s
+    ON %s = %s
+  WHERE %s = (SELECT course_id FROM vars)
+    AND %s = ?
+),
+w AS (
+  SELECT
+    %s AS asset_id,
+    CASE WHEN %s > 0 THEN %s ELSE 1 END AS weight
+  FROM %s
+  WHERE %s = (SELECT course_id FROM vars)
+),
+totals AS (
+  SELECT
+    COALESCE(SUM(w.weight), 0) AS total_weight,
+    COALESCE(SUM(ap.progress_frac * w.weight), 0.0) AS progress_weighted,
+    MIN(CASE WHEN (ap.position > 0 OR ap.completed = 1) THEN ap.created_at END) AS started_at
+  FROM w
+  LEFT JOIN ap ON ap.asset_id = w.asset_id
+)
+INSERT INTO %s (
+  %s,  -- id
+  %s,  -- course_id
+  %s,  -- user_id
+  %s,  -- started
+  %s,  -- started_at
+  %s,  -- percent
+  %s,  -- completed_at
+  %s,  -- created_at
+  %s   -- updated_at
+)
+VALUES (
+  ?,  -- id
+  (SELECT course_id FROM vars),  -- course_id
+  ?,  -- user_id
+  (SELECT CASE WHEN progress_weighted > 0 THEN 1 ELSE 0 END FROM totals),
+  (SELECT started_at FROM totals),
+  (SELECT CASE
+            WHEN total_weight = 0 THEN 0
+            ELSE CAST(ROUND(100.0 * progress_weighted / total_weight) AS INT)
+          END
+   FROM totals),
+  -- set completed_at on insert if already 100
+  (SELECT CASE
+            WHEN total_weight > 0 AND progress_weighted >= total_weight
+              THEN STRFTIME('%%Y-%%m-%%d %%H:%%M:%%f','NOW')
+            ELSE NULL
+          END
+   FROM totals),
+  STRFTIME('%%Y-%%m-%%d %%H:%%M:%%f','NOW'),
+  STRFTIME('%%Y-%%m-%%d %%H:%%M:%%f','NOW')
+)
+ON CONFLICT(%s, %s) DO UPDATE SET
+  %s = (SELECT CASE WHEN progress_weighted > 0 THEN 1 ELSE 0 END FROM totals),
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  %s = CASE
+         WHEN %s = 0 AND (SELECT started_at FROM totals) IS NOT NULL
+           THEN (SELECT started_at FROM totals)
+         ELSE %s
+       END,
 
-// fetchCourseMetrics retrieves various metrics for a course based on the course ID and user ID
-//
-// TODO Change this to work around the lesson
-// TODO Change the userID to use ? instead of string interpolation
-func (dao *DAO) fetchCourseMetrics(ctx context.Context, courseID, userID string) (*courseMetrics, error) {
-	dbOpts := database.NewOptions().
-		WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: courseID})
+  %s = (SELECT CASE
+                 WHEN total_weight = 0 THEN 0
+                 ELSE CAST(ROUND(100.0 * progress_weighted / total_weight) AS INT)
+               END
+        FROM totals),
 
-	builderOpts := newBuilderOptions(models.COURSE_TABLE).
-		WithColumns(
-			// Count of video
-			"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' THEN 1 END) AS video_count",
-			// Count of non-video assets
-			"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"!='video' THEN 1 END) AS non_video_count",
-			// Count of videos with metadata whose duration > 0
-			"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' AND "+models.VIDEO_METADATA_TABLE_DURATION+">0 THEN 1 END) AS videos_with_metadata",
-			// Total duration of all video assets
-			"COALESCE(SUM(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' THEN "+models.VIDEO_METADATA_TABLE_DURATION+" END),0) AS total_video_duration",
-			// Total watched duration of videos with metadata
-			"COALESCE(SUM(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' AND "+models.VIDEO_METADATA_TABLE_DURATION+">0 THEN CASE WHEN "+models.ASSET_PROGRESS_TABLE_COMPLETED+" THEN "+models.VIDEO_METADATA_TABLE_DURATION+" ELSE MIN("+models.ASSET_PROGRESS_TABLE_VIDEO_POS+", "+models.VIDEO_METADATA_TABLE_DURATION+") END END),0) AS watched_video_duration",
-			// Count of completed video assets without metadata
-			"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' AND ("+models.VIDEO_METADATA_TABLE_DURATION+" IS NULL OR "+models.VIDEO_METADATA_TABLE_DURATION+"=0) AND "+models.ASSET_PROGRESS_TABLE_COMPLETED+" THEN 1 END) AS completed_videos_no_metadata",
-			// Count of total video assets without metadata
-			"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"='video' AND ("+models.VIDEO_METADATA_TABLE_DURATION+" IS NULL OR "+models.VIDEO_METADATA_TABLE_DURATION+"=0) THEN 1 END) AS total_videos_no_metadata",
-			// Count of completed non-video assets
-			"COUNT(CASE WHEN "+models.ASSET_TABLE_TYPE+"!='video' AND "+models.ASSET_PROGRESS_TABLE_COMPLETED+" THEN 1 END) AS completed_non_video_count",
-			// Count of started assets (video or non-video)
-			"COALESCE(SUM(CASE WHEN "+models.ASSET_PROGRESS_TABLE_VIDEO_POS+">0 OR "+models.ASSET_PROGRESS_TABLE_COMPLETED+" THEN 1 ELSE 0 END), 0) AS started_count",
-		).
-		WithLeftJoin(models.ASSET_TABLE, fmt.Sprintf("%s = %s", models.ASSET_TABLE_COURSE_ID, models.COURSE_TABLE_ID)).
-		WithLeftJoin(models.ASSET_PROGRESS_TABLE, fmt.Sprintf("%s = %s AND %s = '%s'", models.ASSET_PROGRESS_TABLE_ASSET_ID, models.ASSET_TABLE_ID, models.ASSET_PROGRESS_TABLE_USER_ID, userID)).
-		WithLeftJoin(models.VIDEO_METADATA_TABLE, fmt.Sprintf("%s = %s", models.VIDEO_METADATA_TABLE_ASSET_ID, models.ASSET_TABLE_ID)).
-		WithGroupBy(models.COURSE_TABLE_ID).
-		SetDbOpts(dbOpts)
+  %s = CASE
+         WHEN (SELECT total_weight FROM totals) > 0
+              AND (SELECT progress_weighted FROM totals) >= (SELECT total_weight FROM totals)
+              AND %s IS NULL
+           THEN STRFTIME('%%Y-%%m-%%d %%H:%%M:%%f','NOW')
+         WHEN NOT (
+               (SELECT total_weight FROM totals) > 0
+               AND (SELECT progress_weighted FROM totals) >= (SELECT total_weight FROM totals)
+              )
+           THEN NULL
+         ELSE %s
+       END,
 
-	metrics, err := getGeneric[courseMetrics](ctx, dao, *builderOpts)
-	if err != nil {
-		return nil, err
-	}
+  %s = STRFTIME('%%Y-%%m-%%d %%H:%%M:%%f','NOW');
+`,
+		// vars: SELECT course_id FROM assets WHERE id = ?
+		models.ASSET_TABLE_COURSE_ID, // assets.course_id
+		models.ASSET_TABLE,           // assets
+		models.ASSET_TABLE_ID,        // assets.id
 
-	if metrics == nil {
-		return nil, utils.ErrCourseId
-	}
+		// ap: select list (from assets_progress joined to assets)
+		models.ASSET_PROGRESS_TABLE_ASSET_ID,
+		models.ASSET_PROGRESS_TABLE_POSITION,
+		models.ASSET_PROGRESS_TABLE_COMPLETED,
+		models.ASSET_PROGRESS_TABLE_PROGRESS_FRAC,
+		models.ASSET_PROGRESS_TABLE_CREATED_AT,
+		models.ASSET_PROGRESS_TABLE,          // FROM assets_progress
+		models.ASSET_TABLE,                   // JOIN assets
+		models.ASSET_TABLE_ID,                // assets.id
+		models.ASSET_PROGRESS_TABLE_ASSET_ID, // assets_progress.asset_id
+		models.ASSET_TABLE_COURSE_ID,         // WHERE assets.course_id = vars.course_id
+		models.ASSET_PROGRESS_TABLE_USER_ID,  // AND assets_progress.user_id = ?
 
-	return metrics, nil
-}
+		// w: weights from assets
+		models.ASSET_TABLE_ID,
+		models.ASSET_TABLE_WEIGHT,
+		models.ASSET_TABLE_WEIGHT,
+		models.ASSET_TABLE,
+		models.ASSET_TABLE_COURSE_ID,
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		// INSERT INTO courses_progress (...)
+		models.COURSE_PROGRESS_TABLE,
+		models.BASE_ID,
+		models.COURSE_PROGRESS_COURSE_ID,
+		models.COURSE_PROGRESS_USER_ID,
+		models.COURSE_PROGRESS_STARTED,
+		models.COURSE_PROGRESS_STARTED_AT,
+		models.COURSE_PROGRESS_PERCENT,
+		models.COURSE_PROGRESS_COMPLETED_AT,
+		models.BASE_CREATED_AT,
+		models.BASE_UPDATED_AT,
 
-// setProgress calculates the progress of a course based on the provided metrics and updates the
-// course progress object accordingly
-func setProgress(metrics courseMetrics, courseProgress *models.CourseProgress) {
-	var percent int
-	var started bool
-	var startedAt types.DateTime
-	var completedAt types.DateTime
+		// ON CONFLICT keys
+		models.COURSE_PROGRESS_COURSE_ID,
+		models.COURSE_PROGRESS_USER_ID,
 
-	// Set the percent
-	totalAssets := metrics.VideoCount + metrics.NonVideoCount
-	if totalAssets > 0 {
-		// Video with metadata
-		vw := 0.0
-		if metrics.VideosWithMeta > 0 && metrics.TotalVideoDuration > 0 {
-			vw = float64(metrics.WatchedVideoDuration) / float64(metrics.TotalVideoDuration)
-		}
-
-		// Video without metadata
-		vnm := 0.0
-		if metrics.TotalNoMetaCount > 0 {
-			vnm = float64(metrics.CompletedNoMetaCount) / float64(metrics.TotalNoMetaCount)
-		}
-
-		// Non-video assets
-		nv := 0.0
-		if metrics.NonVideoCount > 0 {
-			nv = float64(metrics.CompletedNonVideoCount) / float64(metrics.NonVideoCount)
-		}
-
-		weightedSum := 0.0
-		totalWeight := 0.0
-		if metrics.VideosWithMeta > 0 {
-			w := float64(metrics.VideosWithMeta) / float64(totalAssets)
-			weightedSum += vw * w
-			totalWeight += w
-		}
-
-		if metrics.TotalNoMetaCount > 0 {
-			w := float64(metrics.TotalNoMetaCount) / float64(totalAssets)
-			weightedSum += vnm * w
-			totalWeight += w
-		}
-
-		if metrics.NonVideoCount > 0 {
-			w := float64(metrics.NonVideoCount) / float64(totalAssets)
-			weightedSum += nv * w
-			totalWeight += w
-		}
-
-		if totalWeight > 0 {
-			percent = int(math.Floor((weightedSum / totalWeight) * 100))
-		}
-	}
-
-	if percent > 100 {
-		percent = 100
-	}
-
-	now := types.NowDateTime()
-
-	// started and startedAt
-	if metrics.StartedAssetCount > 0 || percent > 0 {
-		started = true
-		startedAt = now
-	}
-
-	// completed
-	if percent == 100 {
-		completedAt = now
-	}
-
-	courseProgress.Percent = percent
-	courseProgress.Started = started
-	courseProgress.StartedAt = startedAt
-	courseProgress.CompletedAt = completedAt
+		// UPDATE SET
+		models.COURSE_PROGRESS_STARTED,
+		models.COURSE_PROGRESS_STARTED_AT,
+		models.COURSE_PROGRESS_STARTED,
+		models.COURSE_PROGRESS_STARTED_AT,
+		models.COURSE_PROGRESS_PERCENT,
+		models.COURSE_PROGRESS_COMPLETED_AT,
+		models.COURSE_PROGRESS_COMPLETED_AT,
+		models.COURSE_PROGRESS_COMPLETED_AT,
+		models.BASE_UPDATED_AT,
+	)
 }

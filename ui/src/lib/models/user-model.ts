@@ -14,6 +14,8 @@ export const SelectUserRoles = [
 ];
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// User
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // User schema
 export const UserSchema = object({
@@ -28,48 +30,50 @@ export type UsersModel = UserModel[];
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Create user schema
-export const CreateUserSchema = object({
+// User create schema
+export const UserCreateSchema = object({
 	username: string(),
 	displayName: string(),
 	role: UserRoleSchema,
 	password: string()
 });
 
-export type CreateUserModel = InferOutput<typeof CreateUserSchema>;
+export type UserCreateModel = InferOutput<typeof UserCreateSchema>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Update user schema
-export const UpdateUserSchema = partial(
+// User update schema
+export const UserUpdateSchema = partial(
 	object({
-		...omit(CreateUserSchema, ['username']).entries,
+		...omit(UserCreateSchema, ['username']).entries,
 		currentPassword: string()
 	})
 );
 
-export type UpdateUserModel = InferOutput<typeof UpdateUserSchema>;
+export type UserUpdateModel = InferOutput<typeof UserUpdateSchema>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Self
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Update self schema
-export const UpdateSelfSchema = partial(
+// Self update schema
+export const SelfUpdateSchema = partial(
 	object({
-		...omit(CreateUserSchema, ['role']).entries,
+		...omit(UserCreateSchema, ['username', 'role']).entries,
 		currentPassword: string()
 	})
 );
 
-export type UpdateSelfModel = InferOutput<typeof UpdateSelfSchema>;
+export type SelfUpdateModel = InferOutput<typeof SelfUpdateSchema>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Delete self schema
-export const DeleteSelfSchema = object({
+// Self delete schema
+export const SelfDeleteSchema = object({
 	currentPassword: string()
 });
 
-export type DeleteSelfModel = InferOutput<typeof DeleteSelfSchema>;
+export type SelfDeleteModel = InferOutput<typeof SelfDeleteSchema>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

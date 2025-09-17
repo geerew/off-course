@@ -1,10 +1,6 @@
-<!-- TODO When page contains a group of assets, only allow 1 video to play -->
-<!-- TODO find a way to show which assets are completed when page contains a group of assets -->
-<!-- TODO rework description to support description type so we can render md vs txt -->
 <script lang="ts">
 	import { afterNavigate, goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import type { APIError } from '$lib/api-error.svelte';
 	import {
 		GetCourse,
 		GetCourseModules,
@@ -27,14 +23,13 @@
 	import { Button, Dropdown, Tooltip } from '$lib/components/ui';
 	import Attachments from '$lib/components/ui/attachments.svelte';
 	import { VideoPlayer } from '$lib/components/ui/media';
-	import type { AssetModel } from '$lib/models/asset-model';
+	import type { AssetModel, AssetProgressUpdateModel } from '$lib/models/asset-model';
 	import type { CourseModel } from '$lib/models/course-model';
 	import type { LessonModel, ModulesModel } from '$lib/models/module-model';
-	import { cn, renderMarkdown } from '$lib/utils';
+	import { cn, renderMarkdown, toVideoMimeType } from '$lib/utils';
 	import { Dialog } from 'bits-ui';
 	import prettyMs from 'pretty-ms';
 	import { ElementSize } from 'runed';
-	import { toast } from 'svelte-sonner';
 	import { SvelteMap } from 'svelte/reactivity';
 
 	let course = $state<CourseModel>();
@@ -61,16 +56,22 @@
 	// Fetch the course, then the assets for the course
 	async function fetcher(): Promise<void> {
 		try {
-			course = await GetCourse(page.params.course_id);
-			modules = await GetCourseModules(course.id, { withProgress: true });
+			const courseId = page.params.course_id;
+			if (!courseId) throw new Error('No course ID provided');
 
-			selectedLesson = findLesson(page.params.lesson_id, modules);
-			if (!selectedLesson) {
-				throw new Error('Lesson not found');
-			}
+			const lessonId = page.params.lesson_id;
+			if (!lessonId) throw new Error('No lesson ID provided');
+
+			course = await GetCourse(courseId);
+			if (!course) throw new Error('Course not found');
+
+			modules = await GetCourseModules(course.id, { withUserProgress: true });
+
+			selectedLesson = findLesson(lessonId, modules);
+			if (!selectedLesson) throw new Error('Failed to find lesson');
 
 			for (const a of selectedLesson.assets) {
-				if (a.assetType === 'markdown' || a.assetType === 'text') {
+				if (a.type === 'markdown' || a.type === 'text') {
 					void loadAndRenderContent(a);
 				}
 			}
@@ -88,19 +89,6 @@
 
 	// After navigating, make sure to scroll to the top of the page
 	afterNavigate(() => mainEl?.scrollTo({ top: 0, behavior: 'smooth' }));
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	// Update the asset progress in the database
-	// TODO
-	async function updateAssetProgress(asset: AssetModel): Promise<void> {
-		if (!course || !asset.progress) return;
-		try {
-			await UpdateCourseAssetProgress(asset);
-		} catch (error) {
-			toast.error((error as APIError).message);
-		}
-	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -132,17 +120,16 @@
 
 	// Set the rendered description for the asset
 	async function loadAndRenderContent(asset: AssetModel): Promise<string> {
-		if (!asset || (asset.assetType !== 'markdown' && asset.assetType !== 'text')) return '';
+		if (!asset || (asset.type !== 'markdown' && asset.type !== 'text')) return '';
 
-		console.log('Loading content for asset:', asset.id);
 		if (contentCache.has(asset.id)) {
 			return contentCache.get(asset.id)!;
 		}
 
-		const raw = await ServeCourseAsset(asset);
+		const raw = await ServeCourseAsset(asset.courseId, asset.lessonId, asset.id);
 		if (!raw) return '';
 
-		const rendered = asset.assetType === 'text' ? raw : renderMarkdown(raw);
+		const rendered = asset.type === 'text' ? raw : renderMarkdown(raw);
 
 		// Update reactive state map
 		contentCache.set(asset.id, rendered);
@@ -168,7 +155,10 @@
 		const lessonId = page.params.lesson_id;
 		if (!initDone || !selectedLesson || !modules) return;
 
-		console.log('in here now');
+		if (!lessonId) {
+			throw new Error('No lesson ID provided');
+		}
+
 		selectedLesson = findLesson(lessonId, modules);
 		if (!selectedLesson) {
 			throw new Error('Lesson not found');
@@ -261,7 +251,7 @@
 									<TickCircleIcon
 										class="stroke-background-success fill-background-success [&_path]:stroke-foreground absolute -left-2.5 size-5 place-self-start stroke-1 [&_path]:stroke-1"
 									/>
-								{:else if lesson.startedAssetCount > 0}
+								{:else if lesson.started}
 									<EllipsisCircleIcon
 										class="[&_path]:fill-foreground-alt-1 [&_path]:stroke-foreground-alt-1 absolute -left-2.5 size-5 place-self-start fill-amber-700 stroke-amber-700 stroke-1 [&_path]:stroke-2"
 									/>
@@ -278,7 +268,7 @@
 													{#if isCollection}
 														collection
 													{:else}
-														{lesson.assets[0].assetType}
+														{lesson.assets[0].type}
 													{/if}
 												</span>
 
@@ -320,7 +310,7 @@
 	{#if course && selectedLesson}
 		<div
 			class={cn(
-				'grid grid-rows-1 gap-6 pt-[calc(var(--header-height)+1))]',
+				'grid min-h-0 grid-rows-1 gap-6 pt-[calc(var(--header-height)+1))]',
 				menuPopupMode ? 'grid-cols-1' : 'grid-cols-[var(--course-menu-width)_1fr]'
 			)}
 		>
@@ -342,14 +332,12 @@
 					</Dialog.Portal>
 				</Dialog.Root>
 			{:else}
-				<div class="relative row-span-full">
-					<div class="absolute inset-0">
-						<nav
-							class="border-background-alt-4 sticky top-[calc(var(--header-height)+1px)] left-0 flex h-[calc(100dvh-(var(--header-height)+1px))] w-[--course-menu-width] flex-col gap-2 overflow-x-hidden overflow-y-auto border-r pb-8"
-						>
-							{@render menuContents()}
-						</nav>
-					</div>
+				<div class="relative row-span-full min-h-0">
+					<nav
+						class="border-background-alt-4 bg-background sticky top-[calc(var(--header-height)+1px)] max-h-[calc(100dvh-(var(--header-height)+1px))] w-[--course-menu-width] overflow-x-hidden overflow-y-auto overscroll-contain border-r pb-8"
+					>
+						{@render menuContents()}
+					</nav>
 				</div>
 			{/if}
 
@@ -405,24 +393,38 @@
 													: 'bg-background-alt-5 text-foreground-alt-3 hover:bg-background-alt-6 hover:text-foreground-alt-2'
 											)}
 											onclick={async () => {
-												if (!selectedLesson) return;
+												if (!selectedLesson || !course) return;
 
+												// Update local state by inverting the completed state and updating started
+												// and assetsCompleted
 												selectedLesson.completed = !selectedLesson.completed;
 
-												selectedLesson.assets.forEach((asset) => {
-													if (!asset.progress) {
-														asset.progress = {
-															completed: true,
-															completedAt: '',
-															videoPos: 0
-														};
-													} else {
-														asset.progress.completed = selectedLesson?.completed || false;
-													}
-												});
+												if (selectedLesson.completed) {
+													selectedLesson.started = true;
+													selectedLesson.assetsCompleted = selectedLesson.assets.length;
+												} else {
+													selectedLesson.assetsCompleted = 0;
+												}
 
+												// Update this lessons assets to match the lesson completed state (local and
+												// backend)
 												await Promise.all(
-													selectedLesson.assets.map((asset) => updateAssetProgress(asset))
+													selectedLesson.assets.map(async (asset) => {
+														if (!selectedLesson) return;
+
+														asset.progress.completed = selectedLesson.completed;
+
+														const progress: AssetProgressUpdateModel = {
+															completed: asset.progress.completed
+														};
+
+														await UpdateCourseAssetProgress(
+															asset.courseId,
+															asset.lessonId,
+															asset.id,
+															progress
+														);
+													})
 												);
 											}}
 										>
@@ -449,48 +451,57 @@
 									</span>
 								{/if}
 
-								{#if asset.assetType === 'video'}
+								{#if asset.type === 'video'}
 									<VideoPlayer
 										src={`/api/courses/${course.id}/lessons/${selectedLesson.id}/assets/${asset.id}/serve`}
-										startTime={asset.progress?.videoPos || 0}
-										onTimeChange={(time: number) => {
-											if (!asset.progress) {
-												asset.progress = {
-													completed: false,
-													completedAt: '',
-													videoPos: time
-												};
-											} else {
-												asset.progress.videoPos = time;
-											}
-
-											updateAssetProgress(asset);
-
+										srcType={toVideoMimeType(asset.metadata.video?.mimeType) || 'video/object'}
+										startTime={asset.progress.position || 0}
+										onTimeChange={async (time: number) => {
 											if (!selectedLesson) return;
-											selectedLesson.startedAssetCount = 1;
+
+											asset.progress.position = time;
+
+											const progress: AssetProgressUpdateModel = {
+												completed: asset.progress.completed,
+												position: time
+											};
+
+											await UpdateCourseAssetProgress(
+												asset.courseId,
+												asset.lessonId,
+												asset.id,
+												progress
+											);
+
+											selectedLesson.started = true;
 										}}
-										onCompleted={(time: number) => {
-											if (!asset.progress) {
-												asset.progress = {
-													completed: true,
-													completedAt: '',
-													videoPos: time
-												};
-											} else {
-												asset.progress.videoPos = time;
-												asset.progress.completed = true;
-											}
-
-											updateAssetProgress(asset);
-
+										onCompleted={async (time: number) => {
 											if (!selectedLesson) return;
-											selectedLesson.completedAssetCount += 1;
 
-											if (selectedLesson.completedAssetCount >= selectedLesson.assets.length)
+											asset.progress.position = time;
+											asset.progress.completed = true;
+
+											const progress: AssetProgressUpdateModel = {
+												completed: true,
+												position: time
+											};
+
+											await UpdateCourseAssetProgress(
+												asset.courseId,
+												asset.lessonId,
+												asset.id,
+												progress
+											);
+
+											// Update the local state
+											selectedLesson.started = true;
+											selectedLesson.assetsCompleted += 1;
+
+											if (selectedLesson.assetsCompleted === selectedLesson.assets.length)
 												selectedLesson.completed = true;
 										}}
 									/>
-								{:else if asset.assetType === 'markdown'}
+								{:else if asset.type === 'markdown'}
 									<div class="typography">
 										{#if contentCache.has(asset.id)}
 											<div class="typography">{@html contentCache.get(asset.id)}</div>
@@ -504,7 +515,7 @@
 											{/await}
 										{/if}
 									</div>
-								{:else if asset.assetType === 'text'}
+								{:else if asset.type === 'text'}
 									{#if contentCache.has(asset.id)}
 										<div class="whitespace-pre-wrap">{contentCache.get(asset.id)}</div>
 									{:else}
@@ -516,7 +527,7 @@
 											<div class="text-foreground-error text-sm">Failed to load content</div>
 										{/await}
 									{/if}
-								{:else if asset.assetType === 'html'}
+								{:else if asset.type === 'html'}
 									(TODO HTML )
 								{:else}
 									(TODO PDF)
@@ -537,7 +548,7 @@
 									>
 										<LeftChevronIcon class="size-5 stroke-[1.5]" />
 										<span class="text-base leading-tight font-medium">
-											{previousLesson.title}
+											{previousLesson.prefix}. {previousLesson.title}
 										</span>
 									</Button>
 								{/if}
@@ -555,6 +566,7 @@
 										}}
 									>
 										<span class="text-base leading-tight font-medium">
+											{nextLesson.prefix}.
 											{nextLesson.title}
 										</span>
 										<RightChevronIcon class="size-5 stroke-[1.5]" />

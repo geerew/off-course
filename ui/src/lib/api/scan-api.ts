@@ -1,10 +1,10 @@
 import { APIError } from '$lib/api-error.svelte';
 import {
 	ScanPaginationSchema,
+	type ScanCreateModel,
 	type ScanModel,
 	type ScanPaginationModel,
-	type ScanReqParams,
-	type StartScanModel
+	type ScanReqParams
 } from '$lib/models/scan-model';
 import { buildQueryString } from '$lib/utils';
 import { safeParse } from 'valibot';
@@ -59,7 +59,7 @@ export async function GetAllScans(params?: ScanReqParams): Promise<ScanModel[]> 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Start a scan
-export async function StartScan(data: StartScanModel): Promise<void> {
+export async function StartScan(data: ScanCreateModel): Promise<void> {
 	const response = await apiFetch('/api/scans', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },

@@ -1,9 +1,3 @@
-<!-- TODO Add scan button (admin) -->
-<!-- TODO Edit anything/everything (admin) -->
-<!-- TODO Change asset play/restart button to a menu with play/restart, clear progress  -->
-<!-- TODO Don't allow clicking the start button when in maintenance -->
-<!-- TODO Hide the asset play button when in maintenance -->
-<!-- TODO Add mark Complete -->
 <script lang="ts">
 	import { page } from '$app/state';
 	import { GetCourse, GetCourseModules, GetCourseTags } from '$lib/api/course-api';
@@ -18,10 +12,12 @@
 		DurationIcon,
 		EllipsisCircleIcon,
 		FilesIcon,
+		LoaderCircleIcon,
 		LogoIcon,
 		ModulesIcon,
 		PathIcon,
 		PlayCircleIcon,
+		TagIcon,
 		TickCircleIcon,
 		UpdatedIcon,
 		WarningIcon
@@ -29,8 +25,9 @@
 	import { Badge, Dropdown } from '$lib/components/ui';
 	import Attachments from '$lib/components/ui/attachments.svelte';
 	import Button from '$lib/components/ui/button.svelte';
-	import type { CourseModel, CourseTagsModel } from '$lib/models/course-model';
+	import type { CourseModel, CourseReqParams, CourseTagsModel } from '$lib/models/course-model';
 	import type { ModulesModel } from '$lib/models/module-model';
+	import { cn } from '$lib/utils';
 	import { useId } from 'bits-ui';
 	import prettyMs from 'pretty-ms';
 
@@ -69,59 +66,57 @@
 		return count;
 	});
 
-	// The number of attachments in this course
-	let attachmentCount = $derived.by(() => {
-		if (!modules) return 0;
-		let count = 0;
-		for (const m of modules.modules) {
-			for (const lesson of m.lessons) {
-				count += lesson.attachments.length;
-			}
-		}
-		return count;
-	});
-
 	// First lesson to resume (prefer started-but-incomplete; else first incomplete; else first lesson)
 	let lessonToResume = $derived.by(() => {
 		if (!modules) return null;
 
-		// 1) started but not completed
+		// Started but not completed
 		for (const mod of modules.modules) {
 			for (const lesson of mod.lessons) {
-				if (lesson.startedAssetCount > 0 && !lesson.completed) return lesson;
+				if (lesson.started && !lesson.completed) return lesson;
 			}
 		}
 
-		// 2) any incomplete
+		// Any incomplete
 		for (const mod of modules.modules) {
 			for (const lesson of mod.lessons) {
 				if (!lesson.completed) return lesson;
 			}
 		}
 
-		// 3) fallback: very first lesson (if any)
+		// Fallback to first lesson
 		return modules.modules[0]?.lessons[0] ?? null;
 	});
 
-	let loadPromise = $state(fetchCourse());
+	let loadPromise = $state(fetcher());
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Fetch the course, then the assets for the course, then build a chapter structure from the
 	// assets
-	async function fetchCourse(): Promise<void> {
+	async function fetcher(): Promise<void> {
+		console.log('in here');
 		try {
-			course = await GetCourse(page.params.course_id);
+			if (!page.params.course_id) throw new Error('No course ID provided');
+
+			const courseReqParams: CourseReqParams = { withUserProgress: true };
+			course = await GetCourse(page.params.course_id, courseReqParams);
+
 			tags = await GetCourseTags(course.id);
-			modules = await GetCourseModules(course.id, { withProgress: true });
+
+			const moduleReqParams: CourseReqParams = { withUserProgress: true };
+			modules = await GetCourseModules(course.id, moduleReqParams);
+
 			await loadCourseImage(course.id);
 		} catch (error) {
+			console.error('Error loading course page:', error);
 			throw error;
 		}
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	// Load the course image, if available
 	async function loadCourseImage(courseId: string): Promise<void> {
 		try {
 			const response = await fetch(`/api/courses/${courseId}/card`);
@@ -160,105 +155,153 @@
 	{#if course}
 		<div class="flex w-full flex-col">
 			<div class="flex w-full place-content-center">
-				<div class="container-px flex w-full max-w-7xl flex-col gap-6 py-10">
+				<div class="container-px flex w-full max-w-7xl flex-col gap-6 pt-5 pb-10 lg:pt-10">
 					<div class="grid w-full grid-cols-1 gap-6 lg:grid-cols-[1fr_minmax(0,23rem)] lg:gap-10">
 						<!-- Information -->
 						<div class="order-2 flex h-full w-full flex-col justify-between gap-5 lg:order-1">
-							<div class="flex h-full w-full flex-col gap-5">
-								<div class="text-foreground-alt-1 text-2xl font-semibold">
+							<div class="flex h-full w-full flex-col gap-4">
+								<!-- Title -->
+								<div class="text-foreground-alt-1 text-lg font-semibold md:text-2xl">
 									{course.title}
 								</div>
 
-								<!-- Course overview -->
-								<div class="flex flex-col gap-5 text-sm">
-									<div class="flex flex-row items-center gap-3">
-										<!-- Modules -->
-										<div class="flex flex-row items-center gap-2 font-semibold">
-											<ModulesIcon class="text-foreground-alt-3 size-4.5" />
-											<span>
-												{moduleCount} module{moduleCount != 1 ? 's' : ''}
-											</span>
+								<!-- Status -->
+								{#if !course.available || course.maintenance || (course.initialScan !== undefined && !course.initialScan)}
+									<div class="flex h-7 flex-col gap-x-3 gap-y-3 text-sm sm:flex-row">
+										<div class="flex flex-row items-center gap-2">
+											{#if !course.initialScan}
+												<Badge class="bg-background-warning text-foreground-alt-1"
+													>Initial Scan</Badge
+												>
+											{:else if course.maintenance}
+												<Badge class="bg-background-warning text-foreground-alt-1"
+													>Maintenance</Badge
+												>
+											{:else}
+												<Badge class="bg-background-error text-foreground-alt-1">Unavailable</Badge>
+											{/if}
 										</div>
+									</div>
+								{/if}
 
-										<DotIcon class="text-foreground-alt-3 text-xl" />
+								<!-- Overview -->
+								<div class="flex flex-col gap-x-3 gap-y-3 text-sm sm:flex-row">
+									<div class="flex flex-row items-center gap-2 font-semibold">
+										<ModulesIcon class="text-foreground-alt-3 size-4.5" />
+										<span class="text-nowrap">
+											{moduleCount} module{moduleCount != 1 ? 's' : ''}
+										</span>
+									</div>
 
-										<!-- Assets -->
-										<div class="flex flex-row items-center gap-2 font-semibold">
-											<FilesIcon class="text-foreground-alt-3 size-4.5" />
-											<span>
-												{lessonCount} lesson{lessonCount != 1 ? 's' : ''}
-											</span>
-										</div>
+									<DotIcon class="text-foreground-alt-3 hidden text-xl sm:inline" />
 
-										<DotIcon class="text-foreground-alt-3 text-xl" />
+									<div class="flex flex-row items-center gap-2 font-semibold">
+										<FilesIcon class="text-foreground-alt-3 size-4.5" />
+										<span class="text-nowrap">
+											{lessonCount} lesson{lessonCount != 1 ? 's' : ''}
+										</span>
+									</div>
 
-										<!-- Duration -->
-										<div class="flex flex-row items-center gap-2 font-semibold">
-											<DurationIcon class="text-foreground-alt-3 size-4.5" />
-											<span
-												class={course.duration ? 'text-foreground-alt-1' : 'text-foreground-alt-3'}
-											>
-												{course.duration
-													? prettyMs(course.duration * 1000, { hideSeconds: true })
-													: '-'}
-											</span>
-										</div>
+									<DotIcon class="text-foreground-alt-3 hidden text-xl sm:inline" />
+
+									<div
+										class="flex basis-full flex-row items-center gap-2 font-semibold sm:basis-auto"
+									>
+										<DurationIcon class="text-foreground-alt-3 size-4.5" />
+										<span
+											class={cn(
+												'text-nowrap',
+												course.duration ? 'text-foreground-alt-1' : 'text-foreground-alt-3'
+											)}
+										>
+											{course.duration
+												? prettyMs(course.duration * 1000, { hideSeconds: true })
+												: '-'}
+										</span>
 									</div>
 								</div>
 
-								<!-- Path, Created At, Updated At, Status -->
-								<div class="flex flex-col gap-2 text-sm">
-									{#if auth.user?.role === 'admin'}
-										<div class="text-foreground-alt-2 flex flex-row items-start gap-2">
-											<PathIcon class="text-foreground-alt-3 size-4.5 shrink-0" />
-											<span class="wrap-anywhere whitespace-normal" title={course.path}
-												>{course.path}</span
+								<!-- Progress Bar -->
+								{#if course.progress?.started}
+									<div class="flex h-7 flex-row items-center gap-2">
+										<LoaderCircleIcon class="text-foreground-alt-3 size-4.5" />
+
+										<div
+											class="bg-background-alt-3 relative h-5 w-full max-w-56 overflow-hidden rounded-md"
+											aria-labelledby={labelId}
+											role="progressbar"
+											aria-valuenow={course.progress.percent}
+											aria-valuemin="0"
+											aria-valuemax="100"
+										>
+											<div
+												class="bg-background-primary-alt-1/70 h-full transition-all duration-1000 ease-in-out"
+												style={`width: ${course.progress.percent}%`}
+											></div>
+
+											<div
+												id={labelId}
+												class="text-foreground-alt-1 absolute inset-0 flex items-center justify-center text-xs font-medium drop-shadow-sm"
 											>
-										</div>
-									{/if}
-
-									<div class="text-foreground-alt-2 flex flex-row items-center gap-3">
-										<!-- Added -->
-										<div class="flex flex-row items-center gap-2">
-											<AddedIcon class="text-foreground-alt-3 size-4.5" />
-											<span>
-												<NiceDate date={course.createdAt} prefix="Added:" />
-											</span>
-										</div>
-
-										<DotIcon class="text-xl" />
-
-										<!-- Updated -->
-										<div class="flex flex-row items-center gap-2">
-											<UpdatedIcon class="text-foreground-alt-3 size-4.5" />
-											<span>
-												<NiceDate date={course.updatedAt} prefix="Updated:" />
-											</span>
-										</div>
-
-										{#if !course.available || course.maintenance || (course.initialScan !== undefined && !course.initialScan)}
-											<DotIcon class="text-xl" />
-
-											<div class="flex flex-row items-center gap-2">
-												{#if !course.initialScan}
-													<span class="text-amber-600">Initial scan</span>
-												{:else if course.maintenance}
-													<span class="text-background-success">Maintenance</span>
-												{:else}
-													<span class="text-foreground-error">Unavailable</span>
-												{/if}
+												{course.progress.percent}%
 											</div>
-										{/if}
+										</div>
+									</div>
+								{/if}
+
+								<!-- Path -->
+								{#if auth.user?.role === 'admin'}
+									<div
+										class="text-foreground-alt-2 flex flex-row items-start gap-2 text-sm leading-7"
+									>
+										<div class="mt-1">
+											<PathIcon class="text-foreground-alt-3 size-4.5 shrink-0" />
+										</div>
+
+										<span class="wrap-anywhere whitespace-normal" title={course.path}
+											>{course.path}</span
+										>
+									</div>
+								{/if}
+
+								<!-- Created/updated -->
+								<div
+									class="text-foreground-alt-2 flex flex-col gap-x-3 gap-y-3 text-sm sm:flex-row"
+								>
+									<div class="flex flex-row items-center gap-2">
+										<AddedIcon class="text-foreground-alt-3 size-4.5" />
+										<span>
+											<NiceDate date={course.createdAt} prefix="Added:" />
+										</span>
+									</div>
+
+									<DotIcon class="text-foreground-alt-3 hidden text-xl sm:inline" />
+
+									<div class="flex flex-row items-center gap-2">
+										<UpdatedIcon class="text-foreground-alt-3 size-4.5" />
+										<span>
+											<NiceDate date={course.updatedAt} prefix="Updated:" />
+										</span>
 									</div>
 								</div>
 
 								<!-- Tags -->
-								<div class="flex flex-wrap gap-2">
-									{#each tags as tag}
-										<Badge class="text-sm  select-none">
-											{tag.tag}
-										</Badge>
-									{/each}
+								<div class="flex flex-col gap-4 py-2 text-sm">
+									<div class="flex flex-row items-center gap-2">
+										<TagIcon class="text-foreground-alt-3 size-4.5 stroke-2" />
+										<span>Tags</span>
+									</div>
+									{#if tags.length === 0}
+										<span class="text-foreground-alt-2 px-2">-</span>
+									{:else}
+										<div class="flex flex-wrap gap-2 px-2">
+											{#each tags as tag}
+												<Badge class="text-sm  select-none">
+													{tag.tag}
+												</Badge>
+											{/each}
+										</div>
+									{/if}
 								</div>
 							</div>
 
@@ -276,7 +319,7 @@
 											}
 										}}
 									>
-										{#if course.progress}
+										{#if course.progress?.started}
 											Resume Course
 										{:else}
 											Start Course
@@ -290,10 +333,10 @@
 											<DotsIcon class="size-5 stroke-[1.5]" />
 										</Dropdown.Trigger>
 
-										<Dropdown.Content class="z-60 w-38">
+										<Dropdown.Content class="z-60 w-38" align="start">
 											<Dropdown.Item
 												class="data-disabled:pointer-events-none"
-												disabled={!course?.progress}
+												disabled={!course?.progress?.started}
 												onclick={async () => {
 													openCourseProgressDialog = true;
 												}}
@@ -308,22 +351,31 @@
 										bind:open={openCourseProgressDialog}
 										{course}
 										successFn={() => {
+											// Clear course progress (local state)
 											if (!course) return;
 
-											// Clear course-level progress
-											course.progress = undefined;
+											course.progress = {
+												percent: 0,
+												startedAt: '',
+												started: false,
+												completedAt: ''
+											};
 
-											// Clear all lesson + asset progress in the new modules structure
+											// Clear asset progress (local state)
 											if (!modules) return;
 
 											for (const mod of modules.modules) {
 												for (const lesson of mod.lessons) {
 													lesson.completed = false;
-													lesson.startedAssetCount = 0;
-													lesson.completedAssetCount = 0;
+													lesson.started = false;
+													lesson.assetsCompleted = 0;
 
 													for (const asset of lesson.assets) {
-														asset.progress = undefined;
+														asset.progress = {
+															position: 0,
+															completed: false,
+															completedAt: ''
+														};
 													}
 												}
 											}
@@ -353,33 +405,6 @@
 										<LogoIcon class="fill-background-alt-3 w-16 md:w-20" />
 									</div>
 								{/if}
-
-								<!-- Progress Bar Overlay -->
-								{#if course?.progress}
-									<div class="absolute right-0 bottom-0 left-0 w-full">
-										<div
-											class="bg-background-alt-3/80 relative h-5 w-full overflow-hidden backdrop-blur-sm"
-											aria-labelledby={labelId}
-											role="progressbar"
-											aria-valuenow={course.progress.percent}
-											aria-valuemin="0"
-											aria-valuemax="100"
-										>
-											<div
-												class="bg-background-primary-alt-1/70 h-full transition-all duration-1000 ease-in-out"
-												style={`width: ${course.progress.percent}%`}
-											></div>
-
-											<!-- Progress Text Inside Bar -->
-											<div
-												id={labelId}
-												class="text-foreground-alt-1 absolute inset-0 flex items-center justify-center text-xs font-medium drop-shadow-sm"
-											>
-												{course.progress.percent}%
-											</div>
-										</div>
-									</div>
-								{/if}
 							</div>
 						</div>
 					</div>
@@ -387,9 +412,8 @@
 			</div>
 
 			<!-- Course Content -->
-
 			<div class="bg-background flex w-full place-content-center">
-				<div class="container-px flex w-full max-w-7xl flex-col pt-0 sm:py-7">
+				<div class="container-px flex w-full max-w-7xl flex-col pb-10">
 					<div class="text-foreground-alt-1 flex flex-col gap-12 sm:gap-16">
 						{#if modules && modules.modules.length > 0}
 							{#each modules.modules as m}
@@ -397,7 +421,7 @@
 									<div class="col-span-full sm:col-span-1">
 										<div class="border-foreground-alt-2 -mt-px inline-flex border-t pt-px">
 											<div class="text-background-primary-alt-1 pt-6 font-semibold sm:pt-10">
-												Module {pad2(m.index)}
+												Module {pad2(m.prefix)}
 											</div>
 										</div>
 									</div>
@@ -436,7 +460,7 @@
 																	<TickCircleIcon
 																		class="stroke-background-success fill-background-success [&_path]:stroke-foreground size-5 place-self-start stroke-1 [&_path]:stroke-1"
 																	/>
-																{:else if lesson.startedAssetCount > 0}
+																{:else if lesson.started}
 																	<EllipsisCircleIcon
 																		class="[&_path]:fill-foreground-alt-1 [&_path]:stroke-foreground size-5 place-self-start fill-amber-700 stroke-amber-700 stroke-1 [&_path]:stroke-2"
 																	/>
@@ -462,7 +486,7 @@
 																				{#if isCollection}
 																					collection
 																				{:else}
-																					{lesson.assets[0].assetType}
+																					{lesson.assets[0].type}
 																				{/if}
 																			</span>
 

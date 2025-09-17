@@ -1,11 +1,13 @@
 <script lang="ts">
+	import { pushState } from '$app/navigation';
+	import { page } from '$app/state';
 	import type { APIError } from '$lib/api-error.svelte';
 	import { CreateCourse } from '$lib/api/course-api';
 	import { GetFileSystem } from '$lib/api/fs-api';
 	import { Oops, Spinner } from '$lib/components';
 	import {
 		ActionIcon,
-		BackArrowIcon,
+		ArrowBackIcon,
 		CourseIcon,
 		DeselectAllIcon,
 		PlusIcon,
@@ -14,11 +16,12 @@
 		SelectAllIcon
 	} from '$lib/components/icons';
 	import { Badge, Button, Checkbox, Dialog, Drawer, Dropdown } from '$lib/components/ui';
+	import type { CourseCreateModel } from '$lib/models/course-model';
 	import { FsPathClassification, type FsModel } from '$lib/models/fs-model';
 	import { cn, remCalc } from '$lib/utils';
 	import { Separator } from 'bits-ui';
 	import { toast } from 'svelte-sonner';
-	import { innerWidth } from 'svelte/reactivity/window';
+	import { innerWidth, outerHeight } from 'svelte/reactivity/window';
 	import theme from 'tailwindcss/defaultTheme';
 
 	type Props = {
@@ -37,7 +40,11 @@
 		files: []
 	});
 
-	let paths: string[] = $state([]);
+	// When the filesystem for a path has been loaded, this will be set
+	let currentPath = $state('');
+	let pathHistory = $state<string[]>([]);
+
+	// When a path is selected, this will be set
 	let selectedPath = $state('');
 
 	let selectedCourses: Record<string, string> = $state({});
@@ -45,9 +52,14 @@
 
 	let isPosting = $state(false);
 	let isRefreshing = $state(false);
+	let isMovingBack = $state(false);
 
-	const mdBreakpoint = +theme.screens.md.replace('rem', '');
-	let isDesktop = $derived(remCalc(innerWidth.current ?? 0) > mdBreakpoint);
+	const widthBreakpoint = +theme.screens.md.replace('rem', '');
+	const heightBreakpoint = 520;
+	let showDialog = $derived(
+		remCalc(innerWidth.current ?? 0) > widthBreakpoint &&
+			(outerHeight.current ?? 0) > heightBreakpoint
+	);
 
 	let deselectAllDisabled = $derived.by(() => {
 		if (isPosting || isRefreshing || selectedCoursesCount === 0) return true;
@@ -66,31 +78,66 @@
 
 	let mainEl: HTMLElement | null = null;
 
-	const backId = 'back-' + Math.random().toString(36);
-
 	let loadPromise = $state<Promise<void>>();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	// As pathHistory changes, this will trigger
 	$effect(() => {
-		if (open) {
-			selectedCourses = {};
-			paths = [];
+		if (!open) return;
+
+		const path = pathHistory.length > 0 ? pathHistory[pathHistory.length - 1] : '';
+		if (path == currentPath) return;
+
+		if (currentPath !== '' && currentPath.startsWith(path)) {
+			isMovingBack = true;
+		} else {
+			selectedPath = path;
+		}
+
+		load(path).then(() => {
+			currentPath = path;
 			selectedPath = '';
-			loadPromise = load('');
+			isMovingBack = false;
+		});
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// This effect triggers when the page state changes, such as the back button being
+	// clicked. It will close the modal if it is open and it shouldn't be
+	$effect(() => {
+		const s = page.state as { modal?: 'add-courses' } | undefined;
+		const shouldBeOpen = s?.modal === 'add-courses';
+		if (open && !shouldBeOpen) {
+			open = false;
+			cleanup();
 		}
 	});
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	// Load the drives or the directories of the selected path
-	async function load(path: string): Promise<void> {
-		if (path === '' || paths.includes(path)) {
-			selectedPath = backId;
-		} else {
-			selectedPath = path;
+	function openModal() {
+		// Only add an entry if we’re not already on the modal state
+		const s = page.state as { modal?: 'add-courses' } | undefined;
+		if (s?.modal !== 'add-courses') {
+			pushState('', { modal: 'add-courses' as const });
 		}
 
+		loadPromise = load('');
+	}
+
+	function cleanup() {
+		selectedCourses = {};
+		currentPath = '';
+		selectedPath = '';
+		pathHistory = [];
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Load the drives or the directories of the selected path
+	async function load(path: string): Promise<void> {
 		try {
 			const flickerPromise = new Promise((resolve) => setTimeout(resolve, 200));
 			const [response] = await Promise.all([GetFileSystem(path), flickerPromise]);
@@ -100,24 +147,9 @@
 			fs = response;
 		} catch (error) {
 			throw error;
-		} finally {
-			if (path !== '' && !paths.includes(path)) paths.push(path);
-			selectedPath = '';
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	// Move the user back to the previous path
-	async function moveBack() {
-		if (paths.length === 1) {
-			await load('');
-		} else {
-			await load(paths[paths.length - 2]);
-		}
-
-		paths.pop();
-	}
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Print the number of selected courses
@@ -140,7 +172,7 @@
 		try {
 			await Promise.all(
 				Object.keys(selectedCourses).map((path) =>
-					CreateCourse({ path, title: selectedCourses[path] })
+					CreateCourse({ path, title: selectedCourses[path] } satisfies CourseCreateModel)
 				)
 			);
 			successFn?.();
@@ -154,7 +186,7 @@
 </script>
 
 {#snippet trigger()}
-	{#if isDesktop}
+	{#if showDialog}
 		<Dialog.Trigger class="flex h-10 w-auto flex-row items-center gap-2 px-5">
 			<PlusIcon class="size-5 stroke-[1.5]" />
 			Add Courses
@@ -171,10 +203,10 @@
 	<Button
 		variant="ghost"
 		class="mr-2.5 w-auto"
-		disabled={isRefreshing}
+		disabled={isRefreshing || isPosting || isMovingBack}
 		onclick={async () => {
 			isRefreshing = true;
-			paths.length > 0 ? await load(paths[paths.length - 1]) : await load('');
+			await load(currentPath);
 			isRefreshing = false;
 		}}
 	>
@@ -208,53 +240,57 @@
 				<Spinner class="bg-foreground-alt-3 size-4" />
 			</div>
 		{:then _}
-			<!-- Back button -->
-			{#if paths.length > 0}
-				{#key paths[paths.length - 1]}
-					<div class="border-background-alt-3 flex flex-row items-center border-b">
-						<Button
-							variant="ghost"
-							class=" h-14 grow justify-start rounded-none px-3 py-2 text-start duration-0"
-							disabled={selectedPath !== '' || isPosting || isRefreshing}
-							onclick={async () => {
-								await moveBack();
-							}}
-						>
-							<BackArrowIcon class="size-4 stroke-2" />
-							<span>Back</span>
-						</Button>
+			<!-- 
+				Back button 
+				
+				Only render when the selected path is not empty or the user is moving
+				back to prevent layout shift when navigating directories
+			-->
+			{#if currentPath !== '' || isMovingBack}
+				<div class="border-background-alt-3 flex flex-row items-center border-b">
+					<Button
+						variant="ghost"
+						class=" h-14 grow justify-start rounded-none px-3 py-2 text-start duration-0"
+						disabled={isMovingBack || isPosting || isRefreshing || selectedPath !== ''}
+						onclick={async () => {
+							pathHistory.length > 0 ? pathHistory.pop() : null;
+						}}
+					>
+						<ArrowBackIcon class="size-4 stroke-2" />
+						<span>Back</span>
+					</Button>
 
-						{#if backId === selectedPath}
-							<div class="flex h-full w-20 shrink-0 justify-center">
-								<div class="flex w-full place-content-center">
-									<Spinner class="bg-foreground-alt-3 size-2.5" />
-								</div>
+					{#if isMovingBack}
+						<div class="flex h-full w-20 shrink-0 justify-center">
+							<div class="flex w-full place-content-center">
+								<Spinner class="bg-foreground-alt-3 size-2.5" />
 							</div>
-						{/if}
-					</div>
-				{/key}
+						</div>
+					{/if}
+				</div>
 			{/if}
 
 			<!-- Filesystem directories -->
 			{#each fs.directories as dir (dir.path)}
-				<div class="border-background-alt-3 flex min-h-14 flex-row items-stretch border-b">
+				<div class="border-background-alt-3 flex flex-row items-stretch border-b">
 					<Button
 						variant="ghost"
-						class=" h-auto grow justify-start rounded-none px-3 py-2 text-start wrap-anywhere whitespace-normal duration-0"
+						class="!h-auto min-h-14 min-w-0 shrink grow basis-0 items-center justify-start rounded-none px-3 py-2 text-start break-words whitespace-normal duration-0"
 						disabled={isPosting ||
 							isRefreshing ||
+							isMovingBack ||
 							selectedPath !== '' ||
 							selectedCourses[dir.path] !== undefined ||
 							dir.classification === FsPathClassification.Course}
 						onclick={async () => {
-							await load(dir.path);
+							pathHistory.push(dir.path);
 						}}
 					>
-						{dir.title}
+						<span class="block min-w-0 break-words">{dir.title}</span>
 					</Button>
 
 					<!-- Selection -->
-					<div class="flex w-20 shrink-0 justify-center self-stretch">
+					<div class="flex w-20 flex-none shrink-0 basis-20 justify-center self-stretch">
 						<Separator.Root
 							orientation="vertical"
 							class="bg-background-alt-3 h-full w-px shrink-0"
@@ -324,7 +360,7 @@
 {/snippet}
 
 {#snippet selectDeselect()}
-	{#if isDesktop}
+	{#if showDialog}
 		<div class="flex justify-start gap-2">
 			<Button
 				variant="outline"
@@ -417,8 +453,19 @@
 	{/if}
 {/snippet}
 
-{#if isDesktop}
-	<Dialog.Root bind:open {trigger}>
+{#if showDialog}
+	<Dialog.Root
+		bind:open
+		{trigger}
+		onOpenChange={(open) => {
+			if (open) {
+				openModal();
+			} else {
+				cleanup();
+				history.back();
+			}
+		}}
+	>
 		<Dialog.Content class="inline-flex h-[min(calc(100vh-10rem),50rem)] max-w-2xl flex-col">
 			<Dialog.Header>
 				<div class="flex items-center gap-2">
@@ -443,7 +490,17 @@
 		</Dialog.Content>
 	</Dialog.Root>
 {:else}
-	<Drawer.Root bind:open>
+	<Drawer.Root
+		bind:open
+		onOpenChange={(open) => {
+			if (open) {
+				openModal();
+			} else {
+				cleanup();
+				history.back();
+			}
+		}}
+	>
 		{@render trigger()}
 
 		<Drawer.Content class="bg-background-alt-2" handleClass="bg-background-alt-4">

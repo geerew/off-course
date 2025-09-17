@@ -169,10 +169,11 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		lessons := make([]*models.Lesson, 0)
 		dbOpts := database.NewOptions().
 			WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: course.ID}).
 			WithOrderBy(models.LESSON_TABLE_MODULE+" asc", models.LESSON_TABLE_PREFIX+" asc")
+
+		lessons := []*models.Lesson{}
 
 		// Add file 1, file 2 and file 3 (create op)
 		{

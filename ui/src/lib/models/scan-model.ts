@@ -9,6 +9,15 @@ export type ScanStatus = InferOutput<typeof ScanStatusSchema>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// Scan create schema
+export const ScanCreateSchema = object({
+	courseId: string()
+});
+
+export type ScanCreateModel = InferOutput<typeof ScanCreateSchema>;
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // Scan schema
 export const ScanSchema = object({
 	...BaseSchema.entries,
@@ -19,15 +28,6 @@ export const ScanSchema = object({
 
 export type ScanModel = InferOutput<typeof ScanSchema>;
 export type ScansModel = ScanModel[];
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// Create scan schema
-export const StartScanSchema = object({
-	courseId: string()
-});
-
-export type StartScanModel = InferOutput<typeof StartScanSchema>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

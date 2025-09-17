@@ -9,8 +9,6 @@ import (
 	"github.com/geerew/off-course/utils"
 )
 
-// Key   string `db:"key"`   // Immutable
-// Value string `db:"value"` // Mutable
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // CreateParam inserts a new param record
@@ -50,9 +48,7 @@ func (dao *DAO) CreateParam(ctx context.Context, param *models.Param) error {
 // there is no where clause, it will return the first record in the table
 func (dao *DAO) GetParam(ctx context.Context, dbOpts *database.Options) (*models.Param, error) {
 	builderOpts := newBuilderOptions(models.PARAM_TABLE).
-		WithColumns(
-			models.PARAM_TABLE + ".*",
-		).
+		WithColumns(models.ParamColumns()...).
 		SetDbOpts(dbOpts).
 		WithLimit(1)
 
@@ -65,9 +61,7 @@ func (dao *DAO) GetParam(ctx context.Context, dbOpts *database.Options) (*models
 // in the options
 func (dao *DAO) ListParams(ctx context.Context, dbOpts *database.Options) ([]*models.Param, error) {
 	builderOpts := newBuilderOptions(models.PARAM_TABLE).
-		WithColumns(
-			models.PARAM_TABLE + ".*",
-		).
+		WithColumns(models.ParamColumns()...).
 		SetDbOpts(dbOpts)
 
 	return listGeneric[models.Param](ctx, dao, *builderOpts)

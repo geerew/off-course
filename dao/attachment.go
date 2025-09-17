@@ -53,9 +53,7 @@ func (dao *DAO) CreateAttachment(ctx context.Context, attachment *models.Attachm
 // there is no where clause, it will return the first record in the table
 func (dao *DAO) GetAttachment(ctx context.Context, dbOpts *database.Options) (*models.Attachment, error) {
 	builderOpts := newBuilderOptions(models.ATTACHMENT_TABLE).
-		WithColumns(
-			models.ATTACHMENT_TABLE + ".*",
-		).
+		WithColumns(models.AttachmentColumns()...).
 		SetDbOpts(dbOpts).
 		WithLimit(1)
 
@@ -68,9 +66,7 @@ func (dao *DAO) GetAttachment(ctx context.Context, dbOpts *database.Options) (*m
 // in the options
 func (dao *DAO) ListAttachments(ctx context.Context, dbOpts *database.Options) ([]*models.Attachment, error) {
 	builderOpts := newBuilderOptions(models.ATTACHMENT_TABLE).
-		WithColumns(
-			models.ATTACHMENT_TABLE + ".*",
-		).
+		WithColumns(models.AttachmentColumns()...).
 		SetDbOpts(dbOpts)
 
 	return listGeneric[models.Attachment](ctx, dao, *builderOpts)

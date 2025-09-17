@@ -103,6 +103,12 @@ func (api coursesAPI) getCourses(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
+	if raw := c.Query("withUserProgress"); raw != "" {
+		if v, err := strconv.ParseBool(raw); err == nil && v {
+			dbOpts.WithUserProgress()
+		}
+	}
+
 	courses, err := api.dao.ListCourses(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up courses", err)
@@ -128,6 +134,13 @@ func (api coursesAPI) getCourse(c *fiber.Ctx) error {
 	}
 
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: id})
+
+	if raw := c.Query("withUserProgress"); raw != "" {
+		if v, err := strconv.ParseBool(raw); err == nil && v {
+			dbOpts.WithUserProgress()
+		}
+	}
+
 	course, err := api.dao.GetCourse(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up course", err)
@@ -297,11 +310,11 @@ func (api coursesAPI) getLessons(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
-	dbOpts.WithAssetVideoMetadata().WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: id})
+	dbOpts.WithAssetMetadata().WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: id})
 
-	if raw := c.Query("withProgress"); raw != "" {
+	if raw := c.Query("withUserProgress"); raw != "" {
 		if v, err := strconv.ParseBool(raw); err == nil && v {
-			dbOpts.WithProgress()
+			dbOpts.WithUserProgress()
 		}
 	}
 
@@ -325,15 +338,15 @@ func (api coursesAPI) getLesson(c *fiber.Ctx) error {
 	lessonId := c.Params("lesson")
 
 	dbOpts := database.NewOptions().
-		WithAssetVideoMetadata().
+		WithAssetMetadata().
 		WithWhere(squirrel.And{
 			squirrel.Eq{models.LESSON_TABLE_ID: lessonId},
 			squirrel.Eq{models.LESSON_TABLE_COURSE_ID: id},
 		})
 
-	if raw := c.Query("withProgress"); raw != "" {
+	if raw := c.Query("withUserProgress"); raw != "" {
 		if v, err := strconv.ParseBool(raw); err == nil && v {
-			dbOpts.WithProgress()
+			dbOpts.WithUserProgress()
 		}
 	}
 
@@ -374,11 +387,11 @@ func (api coursesAPI) getModules(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
-	dbOpts.WithAssetVideoMetadata().WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: id})
+	dbOpts.WithAssetMetadata().WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: id})
 
-	if raw := c.Query("withProgress"); raw != "" {
+	if raw := c.Query("withUserProgress"); raw != "" {
 		if v, err := strconv.ParseBool(raw); err == nil && v {
-			dbOpts.WithProgress()
+			dbOpts.WithUserProgress()
 		}
 	}
 
@@ -552,7 +565,6 @@ func (api coursesAPI) serveAsset(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api coursesAPI) updateAssetProgress(c *fiber.Ctx) error {
-	courseId := c.Params("id")
 	assetId := c.Params("asset")
 
 	req := &assetProgressRequest{}
@@ -561,11 +573,9 @@ func (api coursesAPI) updateAssetProgress(c *fiber.Ctx) error {
 	}
 
 	assetProgress := &models.AssetProgress{
-		AssetID: assetId,
-		AssetProgressInfo: models.AssetProgressInfo{
-			VideoPos:  req.VideoPos,
-			Completed: req.Completed,
-		},
+		AssetID:   assetId,
+		Position:  req.Position,
+		Completed: req.Completed,
 	}
 
 	_, ctx, err := principalCtx(c)
@@ -573,7 +583,7 @@ func (api coursesAPI) updateAssetProgress(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	if err := api.dao.UpsertAssetProgress(ctx, courseId, assetProgress); err != nil {
+	if err := api.dao.UpsertAssetProgress(ctx, assetProgress); err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Asset not found", nil)
 		}

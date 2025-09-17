@@ -62,9 +62,7 @@ func (dao *DAO) CountUsers(ctx context.Context, dbOpts *database.Options) (int, 
 // there is no where clause, it will return the first record in the table
 func (dao *DAO) GetUser(ctx context.Context, dbOpts *database.Options) (*models.User, error) {
 	builderOpts := newBuilderOptions(models.USER_TABLE).
-		WithColumns(
-			models.USER_TABLE + ".*",
-		).
+		WithColumns(models.UserColumns()...).
 		SetDbOpts(dbOpts).
 		WithLimit(1)
 
@@ -77,9 +75,7 @@ func (dao *DAO) GetUser(ctx context.Context, dbOpts *database.Options) (*models.
 // in the options
 func (dao *DAO) ListUsers(ctx context.Context, dbOpts *database.Options) ([]*models.User, error) {
 	builderOpts := newBuilderOptions(models.USER_TABLE).
-		WithColumns(
-			models.USER_TABLE + ".*",
-		).
+		WithColumns(models.UserColumns()...).
 		SetDbOpts(dbOpts)
 
 	return listGeneric[models.User](ctx, dao, *builderOpts)

@@ -5,7 +5,7 @@
 	import { auth } from '$lib/auth.svelte';
 	import { Spinner } from '$lib/components';
 	import { Button, Dialog, Drawer, PasswordInput } from '$lib/components/ui';
-	import type { UserModel } from '$lib/models/user-model';
+	import type { SelfUpdateModel, UserModel, UserUpdateModel } from '$lib/models/user-model';
 	import { remCalc } from '$lib/utils';
 	import { Separator } from 'bits-ui';
 	import type { Snippet } from 'svelte';
@@ -63,9 +63,9 @@
 					return;
 				}
 
-				await UpdateSelf({ currentPassword, password: newPassword });
+				await UpdateSelf({ currentPassword, password: newPassword } satisfies SelfUpdateModel);
 			} else {
-				await UpdateUser(value.id, { password: newPassword });
+				await UpdateUser(value.id, { password: newPassword } satisfies UserUpdateModel);
 			}
 
 			successFn?.();

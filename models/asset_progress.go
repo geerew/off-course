@@ -1,6 +1,7 @@
 package models
 
 import (
+	"database/sql"
 	"fmt"
 
 	"github.com/geerew/off-course/utils/types"
@@ -8,50 +9,88 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// AssetProgress defines the model for an asset progress
-type AssetProgress struct {
-	Base
-	AssetID string `db:"asset_id"` // Immutable
-	UserID  string `db:"user_id"`  // Immutable
-	AssetProgressInfo
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// AssetProgressInfo defines a minified AssetProgress model
-type AssetProgressInfo struct {
-	VideoPos    int            `db:"video_pos"`    // Mutable
-	Completed   bool           `db:"completed"`    // Mutable
-	CompletedAt types.DateTime `db:"completed_at"` // Mutable
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 const (
-	ASSET_PROGRESS_TABLE        = "assets_progress"
-	ASSET_PROGRESS_ASSET_ID     = "asset_id"
-	ASSET_PROGRESS_USER_ID      = "user_id"
-	ASSET_PROGRESS_VIDEO_POS    = "video_pos"
-	ASSET_PROGRESS_COMPLETED    = "completed"
-	ASSET_PROGRESS_COMPLETED_AT = "completed_at"
+	ASSET_PROGRESS_TABLE = "assets_progress"
 
-	ASSET_PROGRESS_TABLE_ID           = ASSET_PROGRESS_TABLE + "." + BASE_ID
-	ASSET_PROGRESS_TABLE_CREATED_AT   = ASSET_PROGRESS_TABLE + "." + BASE_CREATED_AT
-	ASSET_PROGRESS_TABLE_UPDATED_AT   = ASSET_PROGRESS_TABLE + "." + BASE_UPDATED_AT
-	ASSET_PROGRESS_TABLE_ASSET_ID     = ASSET_PROGRESS_TABLE + "." + ASSET_PROGRESS_ASSET_ID
-	ASSET_PROGRESS_TABLE_USER_ID      = ASSET_PROGRESS_TABLE + "." + ASSET_PROGRESS_USER_ID
-	ASSET_PROGRESS_TABLE_VIDEO_POS    = ASSET_PROGRESS_TABLE + "." + ASSET_PROGRESS_VIDEO_POS
-	ASSET_PROGRESS_TABLE_COMPLETED    = ASSET_PROGRESS_TABLE + "." + ASSET_PROGRESS_COMPLETED
-	ASSET_PROGRESS_TABLE_COMPLETED_AT = ASSET_PROGRESS_TABLE + "." + ASSET_PROGRESS_COMPLETED_AT
+	ASSET_PROGRESS_ASSET_ID      = "asset_id"
+	ASSET_PROGRESS_USER_ID       = "user_id"
+	ASSET_PROGRESS_POSITION      = "position"
+	ASSET_PROGRESS_PROGRESS_FRAC = "progress_frac"
+	ASSET_PROGRESS_COMPLETED     = "completed"
+	ASSET_PROGRESS_COMPLETED_AT  = "completed_at"
+
+	ASSET_PROGRESS_TABLE_ID            = ASSET_PROGRESS_TABLE + "." + BASE_ID
+	ASSET_PROGRESS_TABLE_CREATED_AT    = ASSET_PROGRESS_TABLE + "." + BASE_CREATED_AT
+	ASSET_PROGRESS_TABLE_UPDATED_AT    = ASSET_PROGRESS_TABLE + "." + BASE_UPDATED_AT
+	ASSET_PROGRESS_TABLE_ASSET_ID      = ASSET_PROGRESS_TABLE + "." + ASSET_PROGRESS_ASSET_ID
+	ASSET_PROGRESS_TABLE_USER_ID       = ASSET_PROGRESS_TABLE + "." + ASSET_PROGRESS_USER_ID
+	ASSET_PROGRESS_TABLE_POSITION      = ASSET_PROGRESS_TABLE + "." + ASSET_PROGRESS_POSITION
+	ASSET_PROGRESS_TABLE_PROGRESS_FRAC = ASSET_PROGRESS_TABLE + "." + ASSET_PROGRESS_PROGRESS_FRAC
+	ASSET_PROGRESS_TABLE_COMPLETED     = ASSET_PROGRESS_TABLE + "." + ASSET_PROGRESS_COMPLETED
+	ASSET_PROGRESS_TABLE_COMPLETED_AT  = ASSET_PROGRESS_TABLE + "." + ASSET_PROGRESS_COMPLETED_AT
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// AssetProgressJoinColumns returns the columns to join asset progress
-func AssetProgressJoinColumns() []string {
+// AssetProgress defines the model for an asset progress
+type AssetProgress struct {
+	Base
+	AssetID      string         `db:"asset_id"`      // Immutable
+	UserID       string         `db:"user_id"`       // Immutable
+	Position     int            `db:"position"`      // Mutable
+	ProgressFrac float64        `db:"progress_frac"` // Mutable
+	Completed    bool           `db:"completed"`     // Mutable
+	CompletedAt  types.DateTime `db:"completed_at"`  // Mutable
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// AssetProgressColumns returns the list of columns in the asset progress table
+func AssetProgressColumns() []string {
 	return []string{
-		fmt.Sprintf("%s AS video_pos", ASSET_PROGRESS_TABLE_VIDEO_POS),
+		fmt.Sprintf("%s AS id", ASSET_PROGRESS_TABLE_ID),
+		fmt.Sprintf("%s AS created_at", ASSET_PROGRESS_TABLE_CREATED_AT),
+		fmt.Sprintf("%s AS updated_at", ASSET_PROGRESS_TABLE_UPDATED_AT),
+		fmt.Sprintf("%s AS asset_id", ASSET_PROGRESS_TABLE_ASSET_ID),
+		fmt.Sprintf("%s AS user_id", ASSET_PROGRESS_TABLE_USER_ID),
+		fmt.Sprintf("%s AS position", ASSET_PROGRESS_TABLE_POSITION),
+		fmt.Sprintf("%s AS progress_frac", ASSET_PROGRESS_TABLE_PROGRESS_FRAC),
 		fmt.Sprintf("%s AS completed", ASSET_PROGRESS_TABLE_COMPLETED),
 		fmt.Sprintf("%s AS completed_at", ASSET_PROGRESS_TABLE_COMPLETED_AT),
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// AssetProgressRow is used to scan joined asset progress rows. The values will zero
+// out if no progress exists
+type AssetProgressRow struct {
+	Position     sql.NullInt64   `db:"progress_position"`
+	ProgressFrac sql.NullFloat64 `db:"progress_progress_frac"`
+	Completed    sql.NullBool    `db:"progress_completed"`
+	CompletedAt  types.DateTime  `db:"progress_completed_at"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ToDomain converts AssetProgressRow to AssetProgress
+func (r AssetProgressRow) ToDomain() *AssetProgress {
+	return &AssetProgress{
+		Position:     int(r.Position.Int64),
+		ProgressFrac: r.ProgressFrac.Float64,
+		Completed:    r.Completed.Bool,
+		CompletedAt:  r.CompletedAt,
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// AssetProgressRowColumns returns the list of columns to use when populating `AssetProgressRow`
+func AssetProgressRowColumns() []string {
+	return []string{
+		fmt.Sprintf("%s AS progress_position", ASSET_PROGRESS_TABLE_POSITION),
+		fmt.Sprintf("%s AS progress_progress_frac", ASSET_PROGRESS_TABLE_PROGRESS_FRAC),
+		fmt.Sprintf("%s AS progress_completed", ASSET_PROGRESS_TABLE_COMPLETED),
+		fmt.Sprintf("%s AS progress_completed_at", ASSET_PROGRESS_TABLE_COMPLETED_AT),
 	}
 }

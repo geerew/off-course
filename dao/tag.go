@@ -56,10 +56,7 @@ func (dao *DAO) CountTags(ctx context.Context, dbOpts *database.Options) (int, e
 // there is no where clause, it will return the first record in the table
 func (dao *DAO) GetTag(ctx context.Context, dbOpts *database.Options) (*models.Tag, error) {
 	builderOpts := newBuilderOptions(models.TAG_TABLE).
-		WithColumns(
-			models.TAG_TABLE+".*",
-			fmt.Sprintf("COUNT(%s) as course_count", models.COURSE_TAG_TABLE_COURSE_ID),
-		).
+		WithColumns(models.TagColumns()...).
 		WithLeftJoin(models.COURSE_TAG_TABLE, fmt.Sprintf("%s = %s", models.COURSE_TAG_TABLE_TAG_ID, models.TAG_TABLE_ID)).
 		WithGroupBy(models.TAG_TABLE_ID).
 		SetDbOpts(dbOpts).
@@ -74,10 +71,7 @@ func (dao *DAO) GetTag(ctx context.Context, dbOpts *database.Options) (*models.T
 // in the options
 func (dao *DAO) ListTags(ctx context.Context, dbOpts *database.Options) ([]*models.Tag, error) {
 	builderOpts := newBuilderOptions(models.TAG_TABLE).
-		WithColumns(
-			models.TAG_TABLE+".*",
-			fmt.Sprintf("COUNT(%s) as course_count", models.COURSE_TAG_TABLE_COURSE_ID),
-		).
+		WithColumns(models.TagColumns()...).
 		WithLeftJoin(models.COURSE_TAG_TABLE, fmt.Sprintf("%s = %s", models.COURSE_TAG_TABLE_TAG_ID, models.TAG_TABLE_ID)).
 		WithGroupBy(models.TAG_TABLE_ID).
 		SetDbOpts(dbOpts)

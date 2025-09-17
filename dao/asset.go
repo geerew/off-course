@@ -2,14 +2,12 @@ package dao
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
-	"github.com/geerew/off-course/utils/types"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -65,118 +63,63 @@ func (dao *DAO) CountAssets(ctx context.Context, dbOpts *database.Options) (int,
 // GetAsset gets a record from the assets table based upon the where clause in the options. If
 // there is no where clause, it will return the first record in the table
 //
-// By default, progress is not included. Use `WithProgress()` on the options to include it
+// By default, progress is not included. Use `WithUserProgress()` on the options to include it
 // By default, video metadata is not included. Use `WithAssetVideoMetadata()` on the options to include it
 func (dao *DAO) GetAsset(ctx context.Context, dbOpts *database.Options) (*models.Asset, error) {
 	builderOpts := newBuilderOptions(models.ASSET_TABLE).
-		WithColumns(models.ASSET_TABLE + ".*").
+		WithColumns(models.AssetColumns()...).
 		SetDbOpts(dbOpts).
 		WithLimit(1)
 
+	includeProgress := dbOpts != nil && dbOpts.IncludeUserProgress
+	includeMetadata := dbOpts != nil && dbOpts.IncludeAssetMetadata
+
 	// When relations are not included, use a simpler query
-	if dbOpts == nil || (!dbOpts.IncludeProgress && !dbOpts.IncludeAssetVideoMetadata) {
+	if !includeProgress && !includeMetadata {
 		return getGeneric[models.Asset](ctx, dao, *builderOpts)
 	}
 
 	// Add the progress columns and join
-	if dbOpts.IncludeProgress {
+	if includeProgress {
 		principal, err := principalFromCtx(ctx)
 		if err != nil {
 			return nil, err
 		}
 
 		builderOpts = builderOpts.
-			WithColumns(models.AssetProgressJoinColumns()...).
-			WithLeftJoin(models.ASSET_PROGRESS_TABLE, fmt.Sprintf("%s = %s AND %s = '%s'", models.ASSET_PROGRESS_TABLE_ASSET_ID, models.ASSET_TABLE_ID, models.ASSET_PROGRESS_TABLE_USER_ID, principal.UserID))
+			WithColumns(models.AssetProgressRowColumns()...).
+			WithLeftJoin(
+				models.ASSET_PROGRESS_TABLE,
+				fmt.Sprintf(
+					"%s = %s AND %s = '%s'",
+					models.ASSET_PROGRESS_TABLE_ASSET_ID,
+					models.ASSET_TABLE_ID,
+					models.ASSET_PROGRESS_TABLE_USER_ID,
+					principal.UserID,
+				),
+			)
 	}
-
 	// Add the asset metadata columns and join
-	if dbOpts.IncludeAssetVideoMetadata {
+	if includeMetadata {
 		builderOpts = builderOpts.
-			WithColumns(models.VideoMetadataJoinColumns()...).
-			WithLeftJoin(models.VIDEO_METADATA_TABLE, fmt.Sprintf("%s = %s", models.VIDEO_METADATA_TABLE_ASSET_ID, models.ASSET_TABLE_ID))
+			WithColumns(models.AssetMetadataRowColumns()...).
+			WithLeftJoin(models.MEDIA_VIDEO_TABLE,
+				fmt.Sprintf("%s = %s", models.MEDIA_VIDEO_TABLE_ASSET_ID, models.ASSET_TABLE_ID)).
+			WithLeftJoin(models.MEDIA_AUDIO_TABLE,
+				fmt.Sprintf("%s = %s", models.MEDIA_AUDIO_TABLE_ASSET_ID, models.ASSET_TABLE_ID))
 	}
 
-	row, err := getRow(ctx, dao, *builderOpts)
+	row, err := getGeneric[models.AssetRow](ctx, dao, *builderOpts)
 	if err != nil {
 		return nil, err
 	}
 
-	asset := &models.Asset{}
-	scanTargets := []interface{}{
-		&asset.ID,
-		&asset.CourseID,
-		&asset.LessonID,
-		&asset.Title,
-		&asset.Prefix,
-		&asset.SubPrefix,
-		&asset.SubTitle,
-		&asset.Module,
-		&asset.Type,
-		&asset.Path,
-		&asset.FileSize,
-		&asset.ModTime,
-		&asset.Hash,
-		&asset.CreatedAt,
-		&asset.UpdatedAt,
+	if row == nil {
+		return nil, nil
 	}
 
-	var (
-		// Progress
-		videoPos    sql.NullInt64
-		completed   sql.NullBool
-		completedAt types.DateTime
-		// Metadata
-		duration sql.NullInt64
-		width    sql.NullInt64
-		height   sql.NullInt64
-		res      sql.NullString
-		codec    sql.NullString
-	)
-
-	if dbOpts.IncludeProgress {
-		scanTargets = append(scanTargets,
-			&videoPos,
-			&completed,
-			&completedAt,
-		)
-	}
-
-	if dbOpts.IncludeAssetVideoMetadata {
-		scanTargets = append(scanTargets,
-			&duration,
-			&width,
-			&height,
-			&res,
-			&codec,
-		)
-	}
-
-	if err = row.Scan(scanTargets...); err != nil {
-		return nil, err
-	}
-
-	// Attach progress
-	if dbOpts.IncludeProgress {
-		asset.Progress = &models.AssetProgressInfo{
-			VideoPos:    int(videoPos.Int64),
-			Completed:   completed.Bool,
-			CompletedAt: completedAt,
-		}
-	}
-
-	// Attach video metadata
-	if asset.Type.IsVideo() && dbOpts.IncludeAssetVideoMetadata {
-		asset.VideoMetadata = &models.VideoMetadataInfo{
-			Duration:   int(duration.Int64),
-			Width:      int(width.Int64),
-			Height:     int(height.Int64),
-			Resolution: res.String,
-			Codec:      codec.String,
-		}
-	}
-
-	return asset, nil
+	// Map to domain
+	return row.ToDomain(includeProgress, includeMetadata), nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -184,128 +127,66 @@ func (dao *DAO) GetAsset(ctx context.Context, dbOpts *database.Options) (*models
 // ListAssets gets all records from the assets table based upon the where clause and pagination
 // in the options
 //
-// By default, progress is not included. Use `WithProgress()` on the options to include it
+// By default, progress is not included. Use `WithUserProgress()` on the options to include it
+// By default, video metadata is not included. Use `WithAssetVideoMetadata()` on the options to include it
 func (dao *DAO) ListAssets(ctx context.Context, dbOpts *database.Options) ([]*models.Asset, error) {
 	builderOpts := newBuilderOptions(models.ASSET_TABLE).
-		WithColumns(models.ASSET_TABLE + ".*").
+		WithColumns(models.AssetColumns()...).
 		SetDbOpts(dbOpts)
 
+	includeProgress := dbOpts != nil && dbOpts.IncludeUserProgress
+	includeMetadata := dbOpts != nil && dbOpts.IncludeAssetMetadata
+
 	// When relations are not included, use a simpler query
-	if dbOpts == nil || (!dbOpts.IncludeProgress && !dbOpts.IncludeAssetVideoMetadata) {
+	if !includeProgress && !includeMetadata {
 		return listGeneric[models.Asset](ctx, dao, *builderOpts)
 	}
 
-	// Add the progress columns and join
-	if dbOpts.IncludeProgress {
+	// Progress join
+	if includeProgress {
 		principal, err := principalFromCtx(ctx)
 		if err != nil {
 			return nil, err
 		}
-
 		builderOpts = builderOpts.
-			WithColumns(models.AssetProgressJoinColumns()...).
-			WithLeftJoin(models.ASSET_PROGRESS_TABLE, fmt.Sprintf("%s = %s AND %s = '%s'", models.ASSET_PROGRESS_TABLE_ASSET_ID, models.ASSET_TABLE_ID, models.ASSET_PROGRESS_TABLE_USER_ID, principal.UserID))
+			WithColumns(models.AssetProgressRowColumns()...).
+			WithLeftJoin(
+				models.ASSET_PROGRESS_TABLE,
+				fmt.Sprintf(
+					"%s = %s AND %s = '%s'",
+					models.ASSET_PROGRESS_TABLE_ASSET_ID,
+					models.ASSET_TABLE_ID,
+					models.ASSET_PROGRESS_TABLE_USER_ID,
+					principal.UserID,
+				),
+			)
 	}
 
-	// Add the asset metadata columns and join
-	if dbOpts.IncludeAssetVideoMetadata {
+	// Metadata joins
+	if includeMetadata {
 		builderOpts = builderOpts.
-			WithColumns(models.VideoMetadataJoinColumns()...).
-			WithLeftJoin(models.VIDEO_METADATA_TABLE, fmt.Sprintf("%s = %s", models.VIDEO_METADATA_TABLE_ASSET_ID, models.ASSET_TABLE_ID))
+			WithColumns(models.AssetMetadataRowColumns()...).
+			WithLeftJoin(models.MEDIA_VIDEO_TABLE,
+				fmt.Sprintf("%s = %s", models.MEDIA_VIDEO_TABLE_ASSET_ID, models.ASSET_TABLE_ID)).
+			WithLeftJoin(models.MEDIA_AUDIO_TABLE,
+				fmt.Sprintf("%s = %s", models.MEDIA_AUDIO_TABLE_ASSET_ID, models.ASSET_TABLE_ID))
 	}
 
-	rows, err := getRows(ctx, dao, *builderOpts)
+	rows, err := listGeneric[models.AssetRow](ctx, dao, *builderOpts)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var assets []*models.Asset
-	for rows.Next() {
-
-		asset := &models.Asset{}
-		scanTargets := []interface{}{
-			&asset.ID,
-			&asset.CourseID,
-			&asset.LessonID,
-			&asset.Title,
-			&asset.Prefix,
-			&asset.SubPrefix,
-			&asset.SubTitle,
-			&asset.Module,
-			&asset.Type,
-			&asset.Path,
-			&asset.FileSize,
-			&asset.ModTime,
-			&asset.Hash,
-			&asset.CreatedAt,
-			&asset.UpdatedAt,
-		}
-
-		var (
-			// Progress
-			videoPos    sql.NullInt64
-			completed   sql.NullBool
-			completedAt types.DateTime
-			// Metadata
-			duration sql.NullInt64
-			width    sql.NullInt64
-			height   sql.NullInt64
-			res      sql.NullString
-			codec    sql.NullString
-		)
-
-		if dbOpts.IncludeProgress {
-			scanTargets = append(scanTargets,
-				&videoPos,
-				&completed,
-				&completedAt,
-			)
-		}
-		if dbOpts.IncludeAssetVideoMetadata {
-			scanTargets = append(scanTargets,
-				&duration,
-				&width,
-				&height,
-				&res,
-				&codec,
-			)
-		}
-
-		if err := rows.Scan(scanTargets...); err != nil {
-			return nil, err
-		}
-
-		// Attach progress
-		//
-		// When no progress is found, each field will be set to its zero value
-		if dbOpts.IncludeProgress {
-			asset.Progress = &models.AssetProgressInfo{
-				VideoPos:    int(videoPos.Int64),
-				Completed:   completed.Bool,
-				CompletedAt: completedAt,
-			}
-		}
-
-		// Attach video metadata
-		if asset.Type.IsVideo() && dbOpts.IncludeAssetVideoMetadata {
-			asset.VideoMetadata = &models.VideoMetadataInfo{
-				Duration:   int(duration.Int64),
-				Width:      int(width.Int64),
-				Height:     int(height.Int64),
-				Resolution: res.String,
-				Codec:      codec.String,
-			}
-		}
-
-		assets = append(assets, asset)
+	if len(rows) == 0 {
+		return nil, nil
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, err
+	records := make([]*models.Asset, 0, len(rows))
+	for i := range rows {
+		records = append(records, rows[i].ToDomain(includeProgress, includeMetadata))
 	}
 
-	return assets, nil
+	return records, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

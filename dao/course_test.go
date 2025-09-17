@@ -76,15 +76,17 @@ func Test_GetCourse(t *testing.T) {
 	t.Run("success with relations", func(t *testing.T) {
 		dao, ctx := setup(t)
 
+		// Create course
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
+		// Read course (no progress yet) for default user (principal from setup)
 		dbOpts := database.NewOptions().
 			WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID}).
-			WithProgress()
+			WithUserProgress()
 
 		record, err := dao.GetCourse(ctx, dbOpts)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.Equal(t, course.ID, record.ID)
 		require.NotNil(t, record.Progress)
 		require.False(t, record.Progress.Started)
@@ -92,6 +94,7 @@ func Test_GetCourse(t *testing.T) {
 		require.True(t, record.Progress.StartedAt.IsZero())
 		require.True(t, record.Progress.CompletedAt.IsZero())
 
+		// Create lesson + asset
 		lesson := &models.Lesson{
 			CourseID: course.ID,
 			Title:    "Asset Group 1",
@@ -100,7 +103,6 @@ func Test_GetCourse(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
-		// Create Asset
 		asset := &models.Asset{
 			CourseID: course.ID,
 			LessonID: lesson.ID,
@@ -112,15 +114,42 @@ func Test_GetCourse(t *testing.T) {
 			FileSize: 1024,
 			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     "1234",
+			Weight:   1,
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
 
-		// Create an asset progress (and therefore a course progress) for the default
-		// user
-		assetProgress := &models.AssetProgress{AssetID: asset.ID}
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+		// Attach video metadata so fractional progress can be computed
+		require.NoError(t, dao.CreateAssetMetadata(ctx, &models.AssetMetadata{
+			AssetID: asset.ID,
+			VideoMetadata: &models.VideoMetadata{
+				DurationSec: 60, // 60s total, so 30s -> 50%
+				Container:   "mp4",
+				MIMEType:    "video/mp4",
+				VideoCodec:  "h264",
+				Width:       1280,
+				Height:      720,
+				FPSNum:      30,
+				FPSDen:      1,
+			},
+		}))
 
-		// Create another user
+		// User 1: partial progress (position=30 of 60 => ~50%)
+		assetProgress := &models.AssetProgress{
+			AssetID:  asset.ID,
+			Position: 30,
+		}
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
+
+		// Read course progress for user 1 (should be ~50%)
+		record, err = dao.GetCourse(ctx, dbOpts)
+		require.NoError(t, err)
+		require.NotNil(t, record.Progress)
+		require.True(t, record.Progress.Started)
+		require.Equal(t, 50, record.Progress.Percent)
+		require.False(t, record.Progress.StartedAt.IsZero())
+		require.True(t, record.Progress.CompletedAt.IsZero())
+
+		// Create a second user
 		user2 := &models.User{
 			Username:     "user2",
 			DisplayName:  "User 2",
@@ -129,29 +158,27 @@ func Test_GetCourse(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateUser(ctx, user2))
 
-		// Set the principal to user2, which is picked up when interacting with progress
+		// Switch principal in ctx to user2
 		principal := ctx.Value(types.PrincipalContextKey).(types.Principal)
 		principal.UserID = user2.ID
 		ctx = context.WithValue(ctx, types.PrincipalContextKey, principal)
 
-		// Create an asset progress (and therefore another course progress) for the
-		// new user
+		// User 2: mark the same asset completed (-> 100%)
 		assetProgress2 := &models.AssetProgress{
-			AssetID:           asset.ID,
-			AssetProgressInfo: models.AssetProgressInfo{Completed: true},
+			AssetID:   asset.ID,
+			Completed: true,
 		}
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress2))
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress2))
 
-		// Confirm there are 2 asset progress records
+		// Confirm there are 2 asset_progress rows (one per user)
 		builderOpts := newBuilderOptions(models.ASSET_PROGRESS_TABLE)
 		count, err := countGeneric(ctx, dao, *builderOpts)
 		require.NoError(t, err)
 		require.Equal(t, 2, count)
 
-		// Get the course for user 2
+		// Read course for user 2; should be 100%
 		record, err = dao.GetCourse(ctx, dbOpts)
-
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.Equal(t, course.ID, record.ID)
 		require.NotNil(t, record.Progress)
 		require.True(t, record.Progress.Started)
@@ -171,7 +198,7 @@ func Test_GetCourse(t *testing.T) {
 	t.Run("missing principal", func(t *testing.T) {
 		dao, _ := setup(t)
 
-		dbOpts := database.NewOptions().WithProgress()
+		dbOpts := database.NewOptions().WithUserProgress()
 		record, err := dao.GetCourse(context.Background(), dbOpts)
 		require.ErrorIs(t, err, utils.ErrPrincipal)
 		require.Nil(t, record)
@@ -213,7 +240,7 @@ func Test_ListCourses(t *testing.T) {
 			time.Sleep(1 * time.Millisecond)
 		}
 
-		dbOpts := database.NewOptions().WithProgress()
+		dbOpts := database.NewOptions().WithUserProgress()
 
 		records, err := dao.ListCourses(ctx, dbOpts)
 		require.Nil(t, err)
@@ -260,10 +287,10 @@ func Test_ListCourses(t *testing.T) {
 			// progress) for the default user
 			if i == 0 {
 				assetProgress := &models.AssetProgress{
-					AssetID:           asset.ID,
-					AssetProgressInfo: models.AssetProgressInfo{Completed: true},
+					AssetID:   asset.ID,
+					Completed: true,
 				}
-				require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+				require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 			}
 
 			time.Sleep(1 * time.Millisecond)
@@ -309,10 +336,10 @@ func Test_ListCourses(t *testing.T) {
 		// For course 2, create an asset progress (and therefore another course progress) for the
 		// new user
 		assetProgress2 := &models.AssetProgress{
-			AssetID:           assets[1].ID,
-			AssetProgressInfo: models.AssetProgressInfo{Completed: true},
+			AssetID:   assets[1].ID,
+			Completed: true,
 		}
-		require.NoError(t, dao.UpsertAssetProgress(ctx, courses[1].ID, assetProgress2))
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress2))
 
 		// List again
 		records, err = dao.ListCourses(ctx, dbOpts)

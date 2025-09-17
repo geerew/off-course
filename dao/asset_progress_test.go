@@ -19,70 +19,237 @@ import (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func Test_UpsertAssetProgress(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
+	t.Run("success (video with duration)", func(t *testing.T) {
 		dao, ctx := setup(t)
 
+		// Course + lesson
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
 		lesson := &models.Lesson{
 			CourseID: course.ID,
-			Title:    "Asset Group 1",
+			Title:    "L1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Module:   "Module 1",
+			Module:   "M1",
 		}
 		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
+		// Asset (video)
 		asset := &models.Asset{
 			CourseID: course.ID,
 			LessonID: lesson.ID,
-			Title:    "Asset 1",
+			Title:    "Video A",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Module:   "Module 1",
+			Module:   "M1",
 			Type:     *types.NewAsset("mp4"),
-			Path:     "/course-1/01 asset.mp4",
+			Path:     "/course-1/01-video-a.mp4",
 			FileSize: 1024,
 			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     "1234",
+			Hash:     "hash-a",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
 
-		// Create asset progress
-		assetProgress := &models.AssetProgress{
-			AssetID:           asset.ID,
-			AssetProgressInfo: models.AssetProgressInfo{VideoPos: 50},
+		// Attach video metadata with duration=100s so pos=50 -> 0.5
+		meta := &models.AssetMetadata{
+			AssetID: asset.ID,
+			VideoMetadata: &models.VideoMetadata{
+				DurationSec: 100,
+				Container:   "mp4",
+				MIMEType:    "video/mp4",
+				VideoCodec:  "h264",
+				Width:       1280,
+				Height:      720,
+				FPSNum:      30,
+				FPSDen:      1,
+			},
 		}
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+		require.NoError(t, dao.CreateAssetMetadata(ctx, meta))
 
+		// Initial upsert @ 50s
+		assetProgress := &models.AssetProgress{
+			AssetID:  asset.ID,
+			Position: 50,
+		}
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
+
+		// Read back (by ID assigned during upsert)
 		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: assetProgress.ID})
 		record, err := dao.GetAssetProgress(ctx, opts)
 		require.NoError(t, err)
+		require.NotNil(t, record)
 		require.Equal(t, asset.ID, record.AssetID)
-		require.Equal(t, 50, record.VideoPos)
+		require.Equal(t, 50, record.Position)
+		require.InEpsilon(t, 0.5, record.ProgressFrac, 1e-9)
 		require.False(t, record.Completed)
 		require.True(t, record.CompletedAt.IsZero())
 
-		// Update asset progress
-		assetProgress.VideoPos = 100
+		// Update: move to 100s and mark completed
+		assetProgress.Position = 100
 		assetProgress.Completed = true
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
 		record, err = dao.GetAssetProgress(ctx, opts)
 		require.NoError(t, err)
-		require.Equal(t, asset.ID, record.AssetID)
-		require.Equal(t, 100, record.VideoPos)
+		require.Equal(t, 100, record.Position)
+		require.InEpsilon(t, 1.0, record.ProgressFrac, 1e-9)
 		require.True(t, record.Completed)
 		require.False(t, record.CompletedAt.IsZero())
 	})
 
+	t.Run("success (video without duration)", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		// Course + lesson
+		course := &models.Course{Title: "Course 2", Path: "/course-2"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		lesson := &models.Lesson{
+			CourseID: course.ID,
+			Title:    "L2",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+		}
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
+
+		// Asset (video type)
+		asset := &models.Asset{
+			CourseID: course.ID,
+			LessonID: lesson.ID,
+			Title:    "Video B (no metadata)",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+			Type:     *types.NewAsset("mp4"),
+			Path:     "/course-2/01-video-b.mp4",
+			FileSize: 2048,
+			ModTime:  time.Now().Format(time.RFC3339Nano),
+			Hash:     "hash-b",
+		}
+		require.NoError(t, dao.CreateAsset(ctx, asset))
+
+		// Upsert with position
+		assetProgress := &models.AssetProgress{
+			AssetID:  asset.ID,
+			Position: 50,
+		}
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
+
+		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: assetProgress.ID})
+		record, err := dao.GetAssetProgress(ctx, opts)
+		require.NoError(t, err)
+		require.NotNil(t, record)
+		require.Equal(t, 50, record.Position)
+		require.InDelta(t, 0.0, record.ProgressFrac, 1e-9)
+		require.False(t, record.Completed)
+		require.True(t, record.CompletedAt.IsZero())
+
+		// Mark completed
+		assetProgress.Completed = true
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
+
+		record, err = dao.GetAssetProgress(ctx, opts)
+		require.NoError(t, err)
+		require.True(t, record.Completed)
+		require.InDelta(t, 1.0, record.ProgressFrac, 1e-9)
+	})
+
+	t.Run("success (multiple assets)", func(t *testing.T) {
+		dao, ctx := setup(t)
+
+		// Course + lesson
+		course := &models.Course{Title: "Course 3", Path: "/course-3"}
+		require.NoError(t, dao.CreateCourse(ctx, course))
+
+		lesson := &models.Lesson{
+			CourseID: course.ID,
+			Title:    "L3",
+			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
+		}
+		require.NoError(t, dao.CreateLesson(ctx, lesson))
+
+		// Video #1 (duration 120)
+		video1 := &models.Asset{
+			CourseID: course.ID, LessonID: lesson.ID,
+			Title: "Video 120s", Prefix: sql.NullInt16{Int16: 1, Valid: true},
+			Type: *types.NewAsset("mp4"), Path: "/course-3/01-120s.mp4",
+			FileSize: 1111, ModTime: time.Now().Format(time.RFC3339Nano), Hash: "v1",
+		}
+		require.NoError(t, dao.CreateAsset(ctx, video1))
+		require.NoError(t, dao.CreateAssetMetadata(ctx, &models.AssetMetadata{
+			AssetID: video1.ID,
+			VideoMetadata: &models.VideoMetadata{
+				DurationSec: 120, MIMEType: "video/mp4", Container: "mp4",
+				VideoCodec: "h264", Width: 1280, Height: 720, FPSNum: 30, FPSDen: 1,
+			},
+		}))
+
+		// Video #2 (duration 30)
+		video2 := &models.Asset{
+			CourseID: course.ID, LessonID: lesson.ID,
+			Title: "Video 30s", Prefix: sql.NullInt16{Int16: 2, Valid: true},
+			Type: *types.NewAsset("mp4"), Path: "/course-3/02-30s.mp4",
+			FileSize: 2222, ModTime: time.Now().Format(time.RFC3339Nano), Hash: "v2",
+		}
+		require.NoError(t, dao.CreateAsset(ctx, video2))
+		require.NoError(t, dao.CreateAssetMetadata(ctx, &models.AssetMetadata{
+			AssetID: video2.ID,
+			VideoMetadata: &models.VideoMetadata{
+				DurationSec: 30, MIMEType: "video/mp4", Container: "mp4",
+				VideoCodec: "h264", Width: 1920, Height: 1080, FPSNum: 30, FPSDen: 1,
+			},
+		}))
+
+		// Document
+		doc := &models.Asset{
+			CourseID: course.ID, LessonID: lesson.ID,
+			Title: "Doc", Prefix: sql.NullInt16{Int16: 3, Valid: true},
+			Type: *types.NewAsset("md"), Path: "/course-3/03-doc.md",
+			FileSize: 3333, ModTime: time.Now().Format(time.RFC3339Nano), Hash: "d1",
+		}
+		require.NoError(t, dao.CreateAsset(ctx, doc))
+
+		// Upserts
+		// v1 @ 60/120 -> 0.5
+		v1p := &models.AssetProgress{AssetID: video1.ID, Position: 60}
+		require.NoError(t, dao.UpsertAssetProgress(ctx, v1p))
+		// v2 @ 15/30 -> 0.5
+		v2p := &models.AssetProgress{AssetID: video2.ID, Position: 15}
+		require.NoError(t, dao.UpsertAssetProgress(ctx, v2p))
+		// doc -> completed = 1 => 1.0
+		dp := &models.AssetProgress{AssetID: doc.ID, Completed: true}
+		require.NoError(t, dao.UpsertAssetProgress(ctx, dp))
+
+		// Verify v1
+		r1, err := dao.GetAssetProgress(ctx, database.NewOptions().WithWhere(
+			squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: v1p.ID},
+		))
+		require.NoError(t, err)
+		require.NotNil(t, r1)
+		require.InDelta(t, 0.5, r1.ProgressFrac, 1e-9)
+
+		// Verify v2
+		r2, err := dao.GetAssetProgress(ctx, database.NewOptions().WithWhere(
+			squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: v2p.ID},
+		))
+		require.NoError(t, err)
+		require.NotNil(t, r2)
+		require.InDelta(t, 0.5, r2.ProgressFrac, 1e-9)
+
+		// Verify doc
+		rd, err := dao.GetAssetProgress(ctx, database.NewOptions().WithWhere(
+			squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: dp.ID},
+		))
+		require.NoError(t, err)
+		require.NotNil(t, rd)
+		require.True(t, rd.Completed)
+		require.InDelta(t, 1.0, rd.ProgressFrac, 1e-9)
+	})
+
 	t.Run("nil", func(t *testing.T) {
 		dao, ctx := setup(t)
-		require.ErrorIs(t, dao.UpsertAssetProgress(ctx, "", nil), utils.ErrNilPtr)
+		require.ErrorIs(t, dao.UpsertAssetProgress(ctx, nil), utils.ErrNilPtr)
 	})
 
 	t.Run("missing principal", func(t *testing.T) {
 		dao, _ := setup(t)
-		require.ErrorIs(t, dao.UpsertAssetProgress(context.Background(), "", &models.AssetProgress{}), utils.ErrPrincipal)
+		require.ErrorIs(t, dao.UpsertAssetProgress(context.Background(), &models.AssetProgress{AssetID: "1234"}), utils.ErrPrincipal)
 	})
 }
 
@@ -119,10 +286,10 @@ func Test_GetAssetProgress(t *testing.T) {
 
 		// Create asset progress
 		assetProgress := &models.AssetProgress{
-			AssetID:           asset.ID,
-			AssetProgressInfo: models.AssetProgressInfo{VideoPos: 50},
+			AssetID:  asset.ID,
+			Position: 50,
 		}
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
 		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: assetProgress.ID})
 		record, err := dao.GetAssetProgress(ctx, opts)
@@ -174,11 +341,11 @@ func Test_ListAssetProgress(t *testing.T) {
 
 			// Set the asset progress to 5
 			assetProgress := &models.AssetProgress{
-				AssetID:           asset.ID,
-				AssetProgressInfo: models.AssetProgressInfo{VideoPos: 5},
+				AssetID:  asset.ID,
+				Position: 5,
 			}
 			assetProgresses = append(assetProgresses, assetProgress)
-			require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+			require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 			time.Sleep(1 * time.Millisecond)
 		}
 
@@ -231,11 +398,11 @@ func Test_ListAssetProgress(t *testing.T) {
 
 			// Set the asset progress to 5
 			assetProgress := &models.AssetProgress{
-				AssetID:           asset.ID,
-				AssetProgressInfo: models.AssetProgressInfo{VideoPos: 5},
+				AssetID:  asset.ID,
+				Position: 5,
 			}
 			assetProgresses = append(assetProgresses, assetProgress)
-			require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+			require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 			time.Sleep(1 * time.Millisecond)
 		}
 
@@ -292,10 +459,10 @@ func Test_ListAssetProgress(t *testing.T) {
 
 		// Create asset progress
 		assetProgress := &models.AssetProgress{
-			AssetID:           asset.ID,
-			AssetProgressInfo: models.AssetProgressInfo{VideoPos: 50},
+			AssetID:  asset.ID,
+			Position: 50,
 		}
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
 		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: assetProgress.ID})
 		records, err := dao.ListAssetProgress(ctx, opts)
@@ -336,11 +503,11 @@ func Test_ListAssetProgress(t *testing.T) {
 
 			// Set the asset progress to 5
 			assetProgress := &models.AssetProgress{
-				AssetID:           asset.ID,
-				AssetProgressInfo: models.AssetProgressInfo{VideoPos: 5},
+				AssetID:  asset.ID,
+				Position: 5,
 			}
 			assetProgresses = append(assetProgresses, assetProgress)
-			require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+			require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 			time.Sleep(1 * time.Millisecond)
 		}
 
@@ -395,10 +562,10 @@ func Test_DeleteAssetProgress(t *testing.T) {
 
 		// Create asset progress
 		assetProgress := &models.AssetProgress{
-			AssetID:           asset.ID,
-			AssetProgressInfo: models.AssetProgressInfo{VideoPos: 50},
+			AssetID:  asset.ID,
+			Position: 50,
 		}
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
 		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: assetProgress.ID})
 		require.Nil(t, dao.DeleteAssetProgress(ctx, opts))
@@ -438,10 +605,10 @@ func Test_DeleteAssetProgress(t *testing.T) {
 
 		// Create asset progress
 		assetProgress := &models.AssetProgress{
-			AssetID:           asset.ID,
-			AssetProgressInfo: models.AssetProgressInfo{VideoPos: 50},
+			AssetID:  asset.ID,
+			Position: 50,
 		}
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
 		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: "non-existent"})
 		require.Nil(t, dao.DeleteAssetProgress(ctx, opts))
@@ -482,10 +649,10 @@ func Test_DeleteAssetProgress(t *testing.T) {
 
 		// Create asset progress
 		assetProgress := &models.AssetProgress{
-			AssetID:           asset.ID,
-			AssetProgressInfo: models.AssetProgressInfo{VideoPos: 50},
+			AssetID:  asset.ID,
+			Position: 50,
 		}
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
 		require.ErrorIs(t, dao.DeleteAssetProgress(ctx, nil), utils.ErrWhere)
 
@@ -525,10 +692,10 @@ func Test_DeleteAssetProgress(t *testing.T) {
 
 		// Create asset progress
 		assetProgress := &models.AssetProgress{
-			AssetID:           asset.ID,
-			AssetProgressInfo: models.AssetProgressInfo{VideoPos: 50},
+			AssetID:  asset.ID,
+			Position: 50,
 		}
-		require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
 		require.Nil(t, dao.DeleteCourses(ctx, dbOpts))
@@ -574,11 +741,11 @@ func Test_DeleteAssetProgressForCourse(t *testing.T) {
 
 			// Set the asset progress to 5
 			assetProgress := &models.AssetProgress{
-				AssetID:           asset.ID,
-				AssetProgressInfo: models.AssetProgressInfo{VideoPos: 5},
+				AssetID:  asset.ID,
+				Position: 5,
 			}
 			assetProgresses = append(assetProgresses, assetProgress)
-			require.NoError(t, dao.UpsertAssetProgress(ctx, course.ID, assetProgress))
+			require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 			time.Sleep(1 * time.Millisecond)
 		}
 

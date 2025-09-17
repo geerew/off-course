@@ -44,7 +44,7 @@ func (dao *DAO) CreateLesson(ctx context.Context, lesson *models.Lesson) error {
 func (dao *DAO) GetLesson(ctx context.Context, dbOpts *database.Options) (*models.Lesson, error) {
 	// Fetch lesson
 	builderOpts := newBuilderOptions(models.LESSON_TABLE).
-		WithColumns(models.LESSON_TABLE + ".*").
+		WithColumns(models.LessonColumns()...).
 		SetDbOpts(dbOpts).
 		WithLimit(1)
 
@@ -68,14 +68,14 @@ func (dao *DAO) GetLesson(ctx context.Context, dbOpts *database.Options) (*model
 	}
 	lesson.Attachments = attachments
 
-	// 3) Fetch assets (ordered by prefix + sub_prefix)
+	// Fetch assets (ordered by prefix + sub_prefix)
 	assetDbOpts := database.NewOptions().
 		WithWhere(squirrel.Eq{models.ASSET_LESSON_ID: lesson.ID}).
 		WithOrderBy(models.ASSET_TABLE_PREFIX + " ASC, " + models.ASSET_TABLE_SUB_PREFIX + " ASC")
 
 	if dbOpts != nil {
-		assetDbOpts.IncludeProgress = dbOpts.IncludeProgress
-		assetDbOpts.IncludeAssetVideoMetadata = dbOpts.IncludeAssetVideoMetadata
+		assetDbOpts.IncludeUserProgress = dbOpts.IncludeUserProgress
+		assetDbOpts.IncludeAssetMetadata = dbOpts.IncludeAssetMetadata
 	}
 
 	assets, err := dao.ListAssets(ctx, assetDbOpts)
@@ -94,7 +94,7 @@ func (dao *DAO) GetLesson(ctx context.Context, dbOpts *database.Options) (*model
 func (dao *DAO) ListLessons(ctx context.Context, dbOpts *database.Options) ([]*models.Lesson, error) {
 	// Fetch lessons
 	builderOpts := newBuilderOptions(models.LESSON_TABLE).
-		WithColumns(models.LESSON_TABLE + ".*").
+		WithColumns(models.LessonColumns()...).
 		SetDbOpts(dbOpts)
 
 	// Override order by
@@ -132,7 +132,7 @@ func (dao *DAO) ListLessons(ctx context.Context, dbOpts *database.Options) ([]*m
 		attMap[a.LessonID] = append(attMap[a.LessonID], a)
 	}
 
-	// Fetch assets for all groups
+	// Fetch assets for all lessons
 	assetDbOpts := database.NewOptions().
 		WithWhere(squirrel.Eq{models.ASSET_LESSON_ID: ids}).
 		WithOrderBy(
@@ -142,8 +142,8 @@ func (dao *DAO) ListLessons(ctx context.Context, dbOpts *database.Options) ([]*m
 		)
 
 	if dbOpts != nil {
-		assetDbOpts.IncludeProgress = dbOpts.IncludeProgress
-		assetDbOpts.IncludeAssetVideoMetadata = dbOpts.IncludeAssetVideoMetadata
+		assetDbOpts.IncludeUserProgress = dbOpts.IncludeUserProgress
+		assetDbOpts.IncludeAssetMetadata = dbOpts.IncludeAssetMetadata
 	}
 
 	assets, err := dao.ListAssets(ctx, assetDbOpts)

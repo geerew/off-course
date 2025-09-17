@@ -5,7 +5,7 @@
 	import { auth } from '$lib/auth.svelte';
 	import { Spinner } from '$lib/components';
 	import { Button, Dialog, Drawer, PasswordInput } from '$lib/components/ui';
-	import type { UserModel, UsersModel } from '$lib/models/user-model';
+	import type { SelfDeleteModel, UserModel, UsersModel } from '$lib/models/user-model';
 	import { remCalc } from '$lib/utils';
 	import { Separator } from 'bits-ui';
 	import type { Snippet } from 'svelte';
@@ -54,7 +54,7 @@
 				toast.success('Selected users deleted');
 			} else {
 				if (deletingSelf) {
-					await DeleteSelf({ currentPassword });
+					await DeleteSelf({ currentPassword } satisfies SelfDeleteModel);
 					auth.empty();
 					window.location.href = '/auth/login';
 				} else {

@@ -22,6 +22,7 @@ import (
 	"github.com/geerew/off-course/utils/security"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -32,10 +33,10 @@ var serveCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
 
-		httpAddr, _ := cmd.Flags().GetString("http")
-		isDev, _ := cmd.Flags().GetBool("dev")
-		dataDir, _ := cmd.Flags().GetString("data-dir")
-		disableSignup, _ := cmd.Flags().GetBool("disable-signup")
+		httpAddr := viper.GetString("http")
+		isDev := viper.GetBool("dev")
+		dataDir := viper.GetString("data-dir")
+		enableSignup := viper.GetBool("enable-signup")
 
 		appFs := appfs.New(afero.NewOsFs(), nil)
 
@@ -87,7 +88,7 @@ var serveCmd = &cobra.Command{
 			CourseScan:    courseScan,
 			HttpAddr:      httpAddr,
 			IsProduction:  !isDev,
-			SignupEnabled: !disableSignup,
+			SignupEnabled: enableSignup,
 		})
 
 		var wg sync.WaitGroup
@@ -129,7 +130,18 @@ func init() {
 	serveCmd.Flags().BoolP("dev", "d", false, "Run in development mode")
 	serveCmd.Flags().String("http", "127.0.0.1:9081", "TCP address to listen for the HTTP server")
 	serveCmd.Flags().String("data-dir", "./oc_data", "Directory to store data files")
-	serveCmd.Flags().Bool("disable-signup", false, "Disable user signup")
+	serveCmd.Flags().Bool("enable-signup", false, "Allow users to create new accounts")
+
+	// Bind flags
+	viper.SetEnvPrefix("OC")
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+	viper.AutomaticEnv()
+
+	// Bind each flag
+	_ = viper.BindPFlag("dev", serveCmd.Flags().Lookup("dev"))
+	_ = viper.BindPFlag("http", serveCmd.Flags().Lookup("http"))
+	_ = viper.BindPFlag("data-dir", serveCmd.Flags().Lookup("data-dir"))
+	_ = viper.BindPFlag("enable-signup", serveCmd.Flags().Lookup("enable-signup"))
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

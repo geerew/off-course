@@ -58,10 +58,7 @@ func (dao *DAO) CountScans(ctx context.Context, dbOpts *database.Options) (int, 
 // there is no where clause, it will return the first record in the table
 func (dao *DAO) GetScan(ctx context.Context, dbOpts *database.Options) (*models.Scan, error) {
 	builderOpts := newBuilderOptions(models.SCAN_TABLE).
-		WithColumns(
-			models.SCAN_TABLE+".*",
-			models.COURSE_TABLE_PATH+" AS course_path",
-		).
+		WithColumns(models.ScanColumns()...).
 		WithJoin(models.COURSE_TABLE, fmt.Sprintf("%s = %s", models.COURSE_TABLE_ID, models.SCAN_TABLE_COURSE_ID)).
 		SetDbOpts(dbOpts).
 		WithLimit(1)
@@ -75,10 +72,7 @@ func (dao *DAO) GetScan(ctx context.Context, dbOpts *database.Options) (*models.
 // in the options
 func (dao *DAO) ListScans(ctx context.Context, dbOpts *database.Options) ([]*models.Scan, error) {
 	builderOpts := newBuilderOptions(models.SCAN_TABLE).
-		WithColumns(
-			models.SCAN_TABLE+".*",
-			models.COURSE_TABLE_PATH+" AS course_path",
-		).
+		WithColumns(models.ScanColumns()...).
 		WithJoin(models.COURSE_TABLE, fmt.Sprintf("%s = %s", models.COURSE_TABLE_ID, models.SCAN_TABLE_COURSE_ID)).
 		SetDbOpts(dbOpts)
 

@@ -116,6 +116,8 @@ func TestAuth_Register(t *testing.T) {
 	})
 }
 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 func TestAuth_Bootstrap(t *testing.T) {
 	t.Run("201 (created)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)

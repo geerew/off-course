@@ -3,6 +3,7 @@
 	import FormLogin from '$lib/components/form/form-login.svelte';
 	import { WarningIcon } from '$lib/components/icons';
 	import { Button } from '$lib/components/ui';
+	import type { SignupStatusModel } from '$lib/models/auth-model';
 
 	let signupEnabled = $state(false);
 	let loadPromise = $state(fetchSignupStatus());
@@ -13,7 +14,7 @@
 		try {
 			const response = await fetch('/api/auth/signup-status');
 			if (!response.ok) throw new Error('Failed to fetch sign-up status');
-			const data = (await response.json()) as { enabled: boolean };
+			const data = (await response.json()) as SignupStatusModel;
 			signupEnabled = data.enabled;
 		} catch (error) {
 			console.error('Error fetching signup status:', error);

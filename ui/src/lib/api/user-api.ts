@@ -1,13 +1,12 @@
 import { APIError } from '$lib/api-error.svelte';
 import {
 	UserPaginationSchema,
-	type CreateUserModel,
-	type UpdateUserModel,
 	type UserPaginationModel,
 	type UserReqParams
 } from '$lib/models/user-model';
 import { buildQueryString } from '$lib/utils';
 import { safeParse } from 'valibot';
+import { type UserCreateModel, type UserUpdateModel } from './../models/user-model';
 import { apiFetch } from './fetch';
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -34,7 +33,7 @@ export async function GetUsers(params?: UserReqParams): Promise<UserPaginationMo
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Create a new user
-export async function CreateUser(data: CreateUserModel): Promise<void> {
+export async function CreateUser(data: UserCreateModel): Promise<void> {
 	const response = await apiFetch('/api/users', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
@@ -50,8 +49,8 @@ export async function CreateUser(data: CreateUserModel): Promise<void> {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Update a user
-export async function UpdateUser(id: string, data: UpdateUserModel): Promise<void> {
-	const response = await apiFetch(`/api/users/${id}`, {
+export async function UpdateUser(userId: string, data: UserUpdateModel): Promise<void> {
+	const response = await apiFetch(`/api/users/${userId}`, {
 		method: 'PUT',
 		headers: {
 			'Content-Type': 'application/json'
@@ -68,8 +67,8 @@ export async function UpdateUser(id: string, data: UpdateUserModel): Promise<voi
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Delete a user
-export async function DeleteUser(id: string): Promise<void> {
-	const response = await apiFetch(`/api/users/${id}`, {
+export async function DeleteUser(userId: string): Promise<void> {
+	const response = await apiFetch(`/api/users/${userId}`, {
 		method: 'DELETE',
 		headers: {
 			'Content-Type': 'application/json'
@@ -84,9 +83,9 @@ export async function DeleteUser(id: string): Promise<void> {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Revoke all sessions of a user
-export async function RevokeUserSessions(id: string): Promise<void> {
-	const response = await apiFetch(`/api/users/${id}/sessions`, {
+// Revoke all user sessions
+export async function RevokeUserSessions(userId: string): Promise<void> {
+	const response = await apiFetch(`/api/users/${userId}/sessions`, {
 		method: 'DELETE',
 		headers: {
 			'Content-Type': 'application/json'

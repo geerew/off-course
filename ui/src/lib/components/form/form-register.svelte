@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Spinner } from '$lib/components';
 	import { Button, Input, PasswordInput } from '$lib/components/ui';
+	import type { AuthRegisterModel } from '$lib/models/auth-model';
 	import { toast } from 'svelte-sonner';
 
 	let { endpoint }: { endpoint: string } = $props();
@@ -21,7 +22,7 @@
 			body: JSON.stringify({
 				username,
 				password
-			})
+			} satisfies AuthRegisterModel)
 		});
 
 		if (response.ok) {

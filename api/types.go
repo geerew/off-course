@@ -21,8 +21,10 @@ type fileSystemResponse struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type fileInfoResponse struct {
-	Title          string                   `json:"title"`
-	Path           string                   `json:"path"`
+	Title string `json:"title"`
+	Path  string `json:"path"`
+
+	// Only relevant when a directory
 	Classification types.PathClassification `json:"classification"`
 }
 
@@ -131,14 +133,14 @@ func courseTagResponseHelper(courseTags []*models.CourseTag) []*courseTagRespons
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Asset Group
+// Lesson
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type lessonResponse struct {
 	ID        string         `json:"id"`
 	CourseID  string         `json:"courseId"`
-	Title     string         `json:"title"`
 	Prefix    int            `json:"prefix"`
+	Title     string         `json:"title"`
 	Module    string         `json:"module"`
 	CreatedAt types.DateTime `json:"createdAt"`
 	UpdatedAt types.DateTime `json:"updatedAt"`
@@ -146,6 +148,12 @@ type lessonResponse struct {
 	// Relations
 	Assets      []*assetResponse      `json:"assets"`
 	Attachments []*attachmentResponse `json:"attachments"`
+
+	// Generated during the response helper (when assets include progress)
+	Started            bool `json:"started"`
+	Completed          bool `json:"completed"`
+	AssetsCompleted    int  `json:"assetsCompleted"`
+	TotalVideoDuration int  `json:"totalVideoDuration"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -166,6 +174,28 @@ func lessonResponseHelper(lessons []*models.Lesson) []*lessonResponse {
 			Attachments: attachmentResponseHelper(lesson.Attachments),
 		}
 
+		// Counts + Duration
+		for _, a := range lesson.Assets {
+			// Set the total duration
+			if a.AssetMetadata != nil && a.AssetMetadata.VideoMetadata != nil {
+				response.TotalVideoDuration += a.AssetMetadata.VideoMetadata.DurationSec
+			}
+
+			// Set the number of completed assets and whether the lesson has started
+			if a.Progress != nil {
+				if a.Progress.Completed {
+					response.AssetsCompleted++
+				}
+
+				if a.Progress.Completed || a.Progress.Position > 0 {
+					response.Started = true
+				}
+			}
+
+			// Set lesson as completed if all assets are completed (and there is at least one asset)
+			response.Completed = len(lesson.Assets) > 0 && response.AssetsCompleted == len(lesson.Assets)
+		}
+
 		responses = append(responses, response)
 	}
 
@@ -173,18 +203,73 @@ func lessonResponseHelper(lessons []*models.Lesson) []*lessonResponse {
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Module
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+type moduleResponse struct {
+	Prefix  int              `json:"prefix"`
+	Module  string           `json:"module"`
+	Lessons []lessonResponse `json:"lessons"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+type modulesResponse struct {
+	Modules []moduleResponse `json:"modules"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func modulesResponseHelper(lessons []*models.Lesson) modulesResponse {
+	const noChapter = "(no chapter)"
+
+	modulesMap := make(map[string][]lessonResponse)
+	order := []string{}
+
+	for _, g := range lessons {
+		moduleName := strings.TrimSpace(g.Module)
+		if moduleName == "" {
+			moduleName = noChapter
+		}
+
+		lesson := lessonResponseHelper([]*models.Lesson{g})[0]
+
+		if _, ok := modulesMap[moduleName]; !ok {
+			order = append(order, moduleName)
+			modulesMap[moduleName] = []lessonResponse{*lesson}
+		} else {
+			modulesMap[moduleName] = append(modulesMap[moduleName], *lesson)
+		}
+	}
+
+	// Build ordered modules with 1-based index, ensuring lessons are ordered by prefix
+	modules := make([]moduleResponse, 0, len(order))
+	for i, name := range order {
+		lessons := modulesMap[name]
+		sort.SliceStable(lessons, func(i, j int) bool { return lessons[i].Prefix < lessons[j].Prefix })
+
+		modules = append(modules, moduleResponse{
+			Prefix:  i + 1,
+			Module:  name,
+			Lessons: lessons,
+		})
+	}
+
+	return modulesResponse{Modules: modules}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Asset
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type assetProgressRequest struct {
-	VideoPos  int  `json:"videoPos"`
+	Position  int  `json:"position"`
 	Completed bool `json:"completed"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type assetProgressResponse struct {
-	VideoPos    int            `json:"videoPos"`
+	Position    int            `json:"position"`
 	Completed   bool           `json:"completed"`
 	CompletedAt types.DateTime `json:"completedAt"`
 }
@@ -192,11 +277,35 @@ type assetProgressResponse struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type assetVideoMetadataResponse struct {
-	Duration   int    `json:"duration"`
-	Width      int    `json:"width"`
-	Height     int    `json:"height"`
-	Codec      string `json:"codec"`
-	Resolution string `json:"resolution"`
+	DurationSec int    `json:"durationSec"`
+	Container   string `json:"container"`
+	MIMEType    string `json:"mimeType"`
+	SizeBytes   int64  `json:"sizeBytes"`
+	OverallBPS  int    `json:"overallBps"`
+	VideoCodec  string `json:"videoCodec"`
+	Width       int    `json:"width"`
+	Height      int    `json:"height"`
+	FPSNum      int    `json:"fpsNum"`
+	FPSDen      int    `json:"fpsDen"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+type assetAudioMetadataResponse struct {
+	Language      string `json:"language"`
+	Codec         string `json:"codec"`
+	Profile       string `json:"profile"`
+	Channels      int    `json:"channels"`
+	ChannelLayout string `json:"channelLayout"`
+	SampleRate    int    `json:"sampleRate"`
+	BitRate       int    `json:"bitRate"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+type assetMetadataResponse struct {
+	Video assetVideoMetadataResponse `json:"video,omitempty"`
+	Audio assetAudioMetadataResponse `json:"audio,omitempty"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -211,13 +320,13 @@ type assetResponse struct {
 	SubTitle  string         `json:"subTitle,omitempty"`
 	Module    string         `json:"module"`
 	Path      string         `json:"path"`
-	Type      types.Asset    `json:"assetType"`
+	Type      types.Asset    `json:"type"`
 	CreatedAt types.DateTime `json:"createdAt"`
 	UpdatedAt types.DateTime `json:"updatedAt"`
 
 	// Relations
-	VideoMetadata *assetVideoMetadataResponse `json:"videoMetadata,omitempty"`
-	Progress      *assetProgressResponse      `json:"progress,omitempty"`
+	Metadata *assetMetadataResponse `json:"metadata"`
+	Progress *assetProgressResponse `json:"progress,omitempty"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -225,15 +334,35 @@ type assetResponse struct {
 func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 	responses := []*assetResponse{}
 	for _, asset := range assets {
-		// Video metadata
-		var videoMetadata *assetVideoMetadataResponse
-		if asset.VideoMetadata != nil {
-			videoMetadata = &assetVideoMetadataResponse{
-				Duration:   asset.VideoMetadata.Duration,
-				Width:      asset.VideoMetadata.Width,
-				Height:     asset.VideoMetadata.Height,
-				Codec:      asset.VideoMetadata.Codec,
-				Resolution: asset.VideoMetadata.Resolution,
+
+		// Asset metadata
+		assetMetadata := &assetMetadataResponse{}
+		if asset.AssetMetadata != nil {
+			if asset.AssetMetadata.VideoMetadata != nil {
+				assetMetadata.Video = assetVideoMetadataResponse{
+					DurationSec: asset.AssetMetadata.VideoMetadata.DurationSec,
+					Container:   asset.AssetMetadata.VideoMetadata.Container,
+					MIMEType:    asset.AssetMetadata.VideoMetadata.MIMEType,
+					SizeBytes:   asset.AssetMetadata.VideoMetadata.SizeBytes,
+					OverallBPS:  asset.AssetMetadata.VideoMetadata.OverallBPS,
+					VideoCodec:  asset.AssetMetadata.VideoMetadata.VideoCodec,
+					Width:       asset.AssetMetadata.VideoMetadata.Width,
+					Height:      asset.AssetMetadata.VideoMetadata.Height,
+					FPSNum:      asset.AssetMetadata.VideoMetadata.FPSNum,
+					FPSDen:      asset.AssetMetadata.VideoMetadata.FPSDen,
+				}
+			}
+
+			if asset.AssetMetadata.AudioMetadata != nil {
+				assetMetadata.Audio = assetAudioMetadataResponse{
+					Language:      asset.AssetMetadata.AudioMetadata.Language,
+					Codec:         asset.AssetMetadata.AudioMetadata.Codec,
+					Profile:       asset.AssetMetadata.AudioMetadata.Profile,
+					Channels:      asset.AssetMetadata.AudioMetadata.Channels,
+					ChannelLayout: asset.AssetMetadata.AudioMetadata.ChannelLayout,
+					SampleRate:    asset.AssetMetadata.AudioMetadata.SampleRate,
+					BitRate:       asset.AssetMetadata.AudioMetadata.BitRate,
+				}
 			}
 		}
 
@@ -241,7 +370,7 @@ func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 		var progress *assetProgressResponse
 		if asset.Progress != nil {
 			progress = &assetProgressResponse{
-				VideoPos:    asset.Progress.VideoPos,
+				Position:    asset.Progress.Position,
 				Completed:   asset.Progress.Completed,
 				CompletedAt: asset.Progress.CompletedAt,
 			}
@@ -259,8 +388,8 @@ func assetResponseHelper(assets []*models.Asset) []*assetResponse {
 			CreatedAt: asset.CreatedAt,
 			UpdatedAt: asset.UpdatedAt,
 
-			VideoMetadata: videoMetadata,
-			Progress:      progress,
+			Metadata: assetMetadata,
+			Progress: progress,
 		}
 
 		// Set sub-prefix and sub-title if available
@@ -308,113 +437,6 @@ func attachmentResponseHelper(attachments []*models.Attachment) []*attachmentRes
 	}
 
 	return responses
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Module
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-type moduleLessonResponse struct {
-	ID                  string                `json:"id"`
-	CourseID            string                `json:"courseId"`
-	Prefix              int                   `json:"prefix"`
-	Title               string                `json:"title"`
-	Assets              []*assetResponse      `json:"assets"`
-	Attachments         []*attachmentResponse `json:"attachments"`
-	Completed           bool                  `json:"completed"`
-	StartedAssetCount   int                   `json:"startedAssetCount"`
-	CompletedAssetCount int                   `json:"completedAssetCount"`
-	TotalVideoDuration  int                   `json:"totalVideoDuration"`
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-type moduleResponse struct {
-	Module  string                 `json:"module"`
-	Index   int                    `json:"index"`
-	Lessons []moduleLessonResponse `json:"lessons"`
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-type modulesResponse struct {
-	Modules []moduleResponse `json:"modules"`
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-func modulesResponseHelper(lessons []*models.Lesson) modulesResponse {
-	const noChapter = "(no chapter)"
-
-	deriveGroupTitle := func(g *models.Lesson) string {
-		if len(g.Assets) > 0 && g.Assets[0].Title != "" {
-			return g.Assets[0].Title
-		}
-		return g.Title
-	}
-
-	modMap := make(map[string][]moduleLessonResponse)
-	order := []string{}
-
-	for _, g := range lessons {
-		moduleName := strings.TrimSpace(g.Module)
-		if moduleName == "" {
-			moduleName = noChapter
-		}
-
-		// Build lesson
-		lesson := moduleLessonResponse{
-			ID:          g.ID,
-			CourseID:    g.CourseID,
-			Prefix:      int(g.Prefix.Int16),
-			Title:       deriveGroupTitle(g),
-			Assets:      assetResponseHelper(g.Assets),
-			Attachments: attachmentResponseHelper(g.Attachments),
-		}
-
-		// Counts + Duration
-		var started, completed, totalDur int
-		for _, a := range g.Assets {
-			if a.VideoMetadata != nil {
-				totalDur += a.VideoMetadata.Duration
-			}
-
-			if a.Progress != nil {
-				if a.Progress.Completed {
-					completed++
-				}
-
-				if a.Progress.Completed || a.Progress.VideoPos > 0 {
-					started++
-				}
-			}
-		}
-		lesson.TotalVideoDuration = totalDur
-		lesson.StartedAssetCount = started
-		lesson.CompletedAssetCount = completed
-		lesson.Completed = len(g.Assets) > 0 && completed == len(g.Assets)
-
-		if _, ok := modMap[moduleName]; !ok {
-			order = append(order, moduleName)
-			modMap[moduleName] = []moduleLessonResponse{lesson}
-		} else {
-			modMap[moduleName] = append(modMap[moduleName], lesson)
-		}
-	}
-
-	// Build ordered modules with 1-based index
-	modules := make([]moduleResponse, 0, len(order))
-	for i, name := range order {
-		// ensure lessons are ordered by prefix (they should already be; keep as safety)
-		lessons := modMap[name]
-		sort.SliceStable(lessons, func(i, j int) bool { return lessons[i].Prefix < lessons[j].Prefix })
-
-		modules = append(modules, moduleResponse{
-			Module:  name,
-			Index:   i + 1,
-			Lessons: lessons,
-		})
-	}
-
-	return modulesResponse{Modules: modules}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -490,6 +512,8 @@ func tagResponseHelper(tags []*models.Tag) []*tagResponse {
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// User
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type userRequest struct {
 	Username        string `json:"username"`
@@ -526,9 +550,40 @@ func userResponseHelper(users []*models.User) []*userResponse {
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Auth
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type signupStatusResponse struct {
 	Enabled bool `json:"enabled"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+type registerRequest struct {
+	Username    string `json:"username"`
+	DisplayName string `json:"displayName"`
+	Password    string `json:"password"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+type loginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+type selfUpdateRequest struct {
+	DisplayName     string `json:"displayName"`
+	CurrentPassword string `json:"currentPassword"`
+	Password        string `json:"password"`
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+type selfDeleteRequest struct {
+	CurrentPassword string `json:"currentPassword"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

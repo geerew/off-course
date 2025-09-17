@@ -1,14 +1,10 @@
-<!-- TODO Open on asset when the course is ongoing -->
-<!-- TODO Rework `load more` to allowing setting the amount to load -->
-<!-- TODO Support marking courses as new (backend work too) -->
-<!-- TODO Don't use the scan status here as normal users cannot access it. Instead when course.maintenance is true, rescan for that course -->
 <script lang="ts">
 	import { GetCourses } from '$lib/api/course-api';
 	import { FilterBar } from '$lib/components';
 	import { LogoIcon, WarningIcon } from '$lib/components/icons';
 	import Spinner from '$lib/components/spinner.svelte';
 	import { Badge, Button } from '$lib/components/ui';
-	import type { CoursesModel } from '$lib/models/course-model';
+	import type { CourseReqParams, CoursesModel } from '$lib/models/course-model';
 	import { scanMonitor } from '$lib/scans.svelte';
 	import { cn, remCalc } from '$lib/utils';
 	import { Avatar } from 'bits-ui';
@@ -30,7 +26,7 @@
 
 	let loadingMore = $state(false);
 
-	let loadPromise = $state(fetchCourses(false));
+	let loadPromise = $state(fetcher(false));
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -61,7 +57,7 @@
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Fetch courses
-	async function fetchCourses(append: boolean): Promise<void> {
+	async function fetcher(append: boolean): Promise<void> {
 		if (!paginationPerPage) {
 			setPaginationPerPage(remCalc(window.innerWidth));
 		}
@@ -69,12 +65,14 @@
 		try {
 			const sort = 'sort:"courses.title asc"';
 			const q = filterValue ? `${filterValue} ${sort}` : sort;
-
-			const data = await GetCourses({
+			const courseReqParams: CourseReqParams = {
 				q,
+				withUserProgress: true,
 				page: paginationPage,
 				perPage: paginationPerPage
-			});
+			};
+
+			const data = await GetCourses(courseReqParams);
 			paginationTotal = data.totalItems;
 
 			if (append) {
@@ -109,7 +107,7 @@
 								if (filterValue !== filterAppliedValue) {
 									filterAppliedValue = filterValue;
 									paginationPage = 1;
-									loadPromise = fetchCourses(false);
+									loadPromise = fetcher(false);
 								}
 							}}
 						/>
@@ -192,7 +190,7 @@
 												<div class="flex justify-between">
 													<div class="flex gap-2">
 														<!-- Progress -->
-														{#if course.progress}
+														{#if course.progress?.started}
 															<Badge
 																class={cn(
 																	'text-foreground-alt-2',
@@ -209,18 +207,18 @@
 
 													<div class="flex gap-2 font-medium">
 														<!-- Maintenance -->
-														{#if !course.available || course.maintenance || (course.initialScan !== undefined && !course.initialScan)}
-															{#if course.initialScan !== undefined && !course.initialScan}
-																<Badge class="text-foreground-alt-1 bg-amber-800"
-																	>Initial Scan</Badge
-																>
-															{:else if course.maintenance}
-																<Badge class="text-foreground-alt-6 bg-background-primary-alt-1">
-																	Maintenance
-																</Badge>
-															{:else}
-																<Badge class="bg-background-error">Unavailable</Badge>
-															{/if}
+														{#if course.initialScan !== undefined && !course.initialScan}
+															<Badge class="bg-background-warning text-foreground-alt-1"
+																>Initial Scan</Badge
+															>
+														{:else if course.maintenance}
+															<Badge class="bg-background-warning text-foreground-alt-1"
+																>Maintenance</Badge
+															>
+														{:else if !course.available}
+															<Badge class="bg-background-error text-foreground-alt-1"
+																>Unavailable</Badge
+															>
 														{/if}
 													</div>
 												</div>
@@ -238,7 +236,7 @@
 											onclick={async () => {
 												paginationPage += 1;
 												loadingMore = true;
-												await fetchCourses(true);
+												await fetcher(true);
 												loadingMore = false;
 											}}
 										>

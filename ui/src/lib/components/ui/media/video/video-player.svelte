@@ -1,31 +1,37 @@
-<!-- TODO Add settings menu -->
-<!-- TODO Persist things from the settings menu, volume, muted in local storage -->
 <script lang="ts">
+	import { mediaPreferences } from '$lib/preferences.svelte';
 	import type {
 		MediaDurationChangeEvent,
+		MediaRateChangeEvent,
 		MediaSourceChangeEvent,
-		MediaTimeUpdateEvent
+		MediaTimeUpdateEvent,
+		MediaVolumeChangeEvent,
+		VideoMimeType
 	} from 'vidstack';
 	import 'vidstack/bundle';
 	import type { MediaPlayerElement } from 'vidstack/elements';
-	import Buffering from './ui/buffering.svelte';
-	import Fullscreen from './ui/fullscreen.svelte';
-	import Gestures from './ui/gestures.svelte';
-	import Play from './ui/play.svelte';
-	import TimeSlider from './ui/time-slider.svelte';
-	import Timestamp from './ui/timestamp.svelte';
-	import Volume from './ui/volume.svelte';
+	import MobileControlsLayout from './mobile-controls-layout.svelte';
+	import NormalControlsLayout from './normal-controls-layout.svelte';
+	import Buffering from './ui/components/buffering.svelte';
+	import Gestures from './ui/components/gestures.svelte';
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	type Props = {
 		src: string;
+		srcType?: VideoMimeType;
 		startTime: number;
 		onTimeChange: (time: number) => void;
 		onCompleted: (time: number) => void;
 	};
 
-	let { src: videoSrc = $bindable(), startTime, onTimeChange, onCompleted }: Props = $props();
+	let {
+		src: videoSrc = $bindable(),
+		srcType = 'video/mp4',
+		startTime,
+		onTimeChange,
+		onCompleted
+	}: Props = $props();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -60,19 +66,29 @@
 	function timeChange(e: MediaTimeUpdateEvent) {
 		if (duration === -1) return;
 
-		const currentSecond = Math.floor(e.detail.currentTime);
-		if (currentSecond === 0 || currentSecond === lastLoggedSecond) return;
+		const sec = Math.floor(e.detail.currentTime);
+		if (sec === 0) return;
 
-		lastLoggedSecond = currentSecond;
+		// If video is < 5s long, consider it "complete" at (duration - 1s),
+		// otherwise at (duration - 5s)
+		const nearEndThreshold = duration < 5 ? 1 : 5;
 
-		if (currentSecond >= duration - 5) {
-			if (completeDispatched) return;
-			completeDispatched = true;
-			onCompleted(Math.ceil(duration));
-		} else {
-			completeDispatched = false;
-			onTimeChange(currentSecond);
+		// Fire completion as soon as we cross the near-end threshold.
+		if (sec >= Math.max(0, Math.floor(duration) - nearEndThreshold)) {
+			if (!completeDispatched) {
+				completeDispatched = true;
+				onCompleted(Math.max(1, Math.ceil(duration)));
+			}
+			return;
 		}
+
+		completeDispatched = false;
+
+		// Throttle progress: only every 3 seconds
+		if (sec % 3 !== 0 || sec === lastLoggedSecond) return;
+
+		lastLoggedSecond = sec;
+		onTimeChange(sec);
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -82,6 +98,16 @@
 		if (!player) return;
 
 		player.currentTime = Math.floor(startTime) == Math.floor(duration) ? 0 : startTime;
+
+		// This is a workaround for PR https://github.com/vidstack/player/issues/1416
+		setTimeout(() => {
+			if (player) {
+				player.autoPlay = mediaPreferences.current.autoplay;
+				player.playbackRate = mediaPreferences.current.playbackRate;
+				player.volume = mediaPreferences.current.volume;
+				player.muted = mediaPreferences.current.muted;
+			}
+		}, 0);
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -93,6 +119,21 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	// Update the preferences with the playback rate
+	function rateChange(e: MediaRateChangeEvent) {
+		mediaPreferences.current.playbackRate = e.detail;
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Update the preferences with the volume
+	function volumeChange(e: MediaVolumeChangeEvent) {
+		mediaPreferences.current.volume = e.detail.volume;
+		mediaPreferences.current.muted = e.detail.muted;
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	$effect(() => {
 		if (!player) return;
 
@@ -100,54 +141,41 @@
 		player.addEventListener('can-play', canPlay);
 		player.addEventListener('time-update', timeChange);
 		player.addEventListener('duration-change', durationChange);
+		player.addEventListener('rate-change', rateChange);
+		player.addEventListener('volume-change', volumeChange);
 
 		return () => {
 			player.removeEventListener('source-change', sourceChange);
 			player.removeEventListener('can-play', canPlay);
 			player.removeEventListener('time-update', timeChange);
 			player.removeEventListener('duration-change', durationChange);
+			player.removeEventListener('rate-change', rateChange);
+			player.removeEventListener('volume-change', volumeChange);
 		};
 	});
 </script>
 
 <!-- TODO Handle src.type instead of hardcoding -->
-<media-player
-	bind:this={player}
-	playsInline
-	src={{
-		src: videoSrc,
-		type: 'video/mp4'
-	}}
-	class="relative"
->
-	<media-provider></media-provider>
-
-	<Gestures />
-
-	<Buffering />
-
-	<media-controls
-		class="pointer-events-none absolute inset-0 z-2 box-border flex h-full w-full flex-col opacity-0 transition-opacity duration-200 ease-out data-visible:opacity-100 data-visible:ease-in"
+<div class="transform-gpu backface-hidden">
+	<media-player
+		bind:this={player}
+		playsInline
+		autoplay={mediaPreferences.current.autoplay}
+		src={{
+			src: videoSrc,
+			type: srcType
+		}}
+		class="group/player relative aspect-video overflow-hidden rounded-md"
 	>
-		<div class="flex-1"></div>
+		<media-provider></media-provider>
 
-		<media-controls-group class="pointer-events-auto flex w-full items-center px-3">
-			<TimeSlider />
-		</media-controls-group>
+		<Gestures />
+		<Buffering />
 
-		<media-controls-group
-			class="pointer-events-auto relative flex w-full items-center gap-5 px-4 pt-1 pb-3"
-		>
-			<Play />
-			<Volume />
-			<Timestamp />
-			<div class="flex-1"></div>
-			<Fullscreen />
-			<!--<Settings isMobile={false} /> -->
-		</media-controls-group>
+		<!-- Shown when pointer=fine -->
+		<NormalControlsLayout />
 
-		<div
-			class="pointer-events-none absolute bottom-0 left-0 z-[-1] h-[99px] w-full [background-image:_url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAADGCAYAAAAT+OqFAAAAdklEQVQoz42QQQ7AIAgEF/T/D+kbq/RWAlnQyyazA4aoAB4FsBSA/bFjuF1EOL7VbrIrBuusmrt4ZZORfb6ehbWdnRHEIiITaEUKa5EJqUakRSaEYBJSCY2dEstQY7AuxahwXFrvZmWl2rh4JZ07z9dLtesfNj5q0FU3A5ObbwAAAABJRU5ErkJggg==)] bg-bottom bg-repeat-x"
-		></div>
-	</media-controls>
-</media-player>
+		<!-- Shown when pointer=coarse -->
+		<MobileControlsLayout />
+	</media-player>
+</div>
