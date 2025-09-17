@@ -242,11 +242,15 @@
 
 										<div class="flex flex-row items-center gap-2">
 											{#if !course.initialScan}
-												<span class="text-amber-600">Initial scan</span>
+												<Badge class="bg-background-warning text-foreground-alt-1"
+													>Initial Scan</Badge
+												>
 											{:else if course.maintenance}
-												<span class="text-background-success">Maintenance</span>
+												<Badge class="bg-background-warning text-foreground-alt-1"
+													>Maintenance</Badge
+												>
 											{:else}
-												<span class="text-foreground-error">Unavailable</span>
+												<Badge class="bg-background-error text-foreground-alt-1">Unavailable</Badge>
 											{/if}
 										</div>
 									{/if}
@@ -326,7 +330,7 @@
 											<DotsIcon class="size-5 stroke-[1.5]" />
 										</Dropdown.Trigger>
 
-										<Dropdown.Content class="z-60 w-38">
+										<Dropdown.Content class="z-60 w-38" align="start">
 											<Dropdown.Item
 												class="data-disabled:pointer-events-none"
 												disabled={!course?.progress?.started}

@@ -190,7 +190,7 @@
 												<div class="flex justify-between">
 													<div class="flex gap-2">
 														<!-- Progress -->
-														{#if course.progress}
+														{#if course.progress?.started}
 															<Badge
 																class={cn(
 																	'text-foreground-alt-2',
@@ -207,18 +207,18 @@
 
 													<div class="flex gap-2 font-medium">
 														<!-- Maintenance -->
-														{#if !course.available || course.maintenance || (course.initialScan !== undefined && !course.initialScan)}
-															{#if course.initialScan !== undefined && !course.initialScan}
-																<Badge class="text-foreground-alt-1 bg-amber-800"
-																	>Initial Scan</Badge
-																>
-															{:else if course.maintenance}
-																<Badge class="text-foreground-alt-6 bg-background-primary-alt-1">
-																	Maintenance
-																</Badge>
-															{:else}
-																<Badge class="bg-background-error">Unavailable</Badge>
-															{/if}
+														{#if course.initialScan !== undefined && !course.initialScan}
+															<Badge class="bg-background-warning text-foreground-alt-1"
+																>Initial Scan</Badge
+															>
+														{:else if course.maintenance}
+															<Badge class="bg-background-warning text-foreground-alt-1"
+																>Maintenance</Badge
+															>
+														{:else if !course.available}
+															<Badge class="bg-background-error text-foreground-alt-1"
+																>Unavailable</Badge
+															>
 														{/if}
 													</div>
 												</div>
