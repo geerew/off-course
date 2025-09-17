@@ -334,7 +334,7 @@
 			{:else}
 				<div class="relative row-span-full min-h-0">
 					<nav
-						class="border-background-alt-4 bg-background sticky top-[calc(var(--header-height)+1px)] max-h-[calc(100dvh-(var(--header-height)+1px))] w-[--course-menu-width] overflow-x-hidden overflow-y-auto overscroll-contain border-r pb-8"
+						class="border-background-alt-4 bg-background sticky top-[calc(var(--header-height)+1px)] h-[calc(100dvh-(var(--header-height)+1px))] w-[--course-menu-width] overflow-x-hidden overflow-y-auto overscroll-contain border-r pb-8"
 					>
 						{@render menuContents()}
 					</nav>
