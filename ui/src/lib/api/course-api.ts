@@ -217,9 +217,7 @@ export async function GetCourseModules(
 		const data = (await response.json()) as ModulesModel;
 		const result = safeParse(ModulesSchema, data);
 
-		if (!result.success) {
-			throw new APIError(response.status, 'Invalid response from the server');
-		}
+		if (!result.success) throw new APIError(response.status, 'Invalid response from the server');
 		return result.output;
 	} else {
 		const data = await response.json();

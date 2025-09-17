@@ -65,18 +65,6 @@
 		return count;
 	});
 
-	// The number of attachments in this course
-	let attachmentCount = $derived.by(() => {
-		if (!modules) return 0;
-		let count = 0;
-		for (const m of modules.modules) {
-			for (const lesson of m.lessons) {
-				count += lesson.attachments.length;
-			}
-		}
-		return count;
-	});
-
 	// First lesson to resume (prefer started-but-incomplete; else first incomplete; else first lesson)
 	let lessonToResume = $derived.by(() => {
 		if (!modules) return null;
@@ -106,6 +94,7 @@
 	// Fetch the course, then the assets for the course, then build a chapter structure from the
 	// assets
 	async function fetcher(): Promise<void> {
+		console.log('in here');
 		try {
 			if (!page.params.course_id) throw new Error('No course ID provided');
 
@@ -119,6 +108,7 @@
 
 			await loadCourseImage(course.id);
 		} catch (error) {
+			console.error('Error loading course page:', error);
 			throw error;
 		}
 	}
@@ -415,7 +405,6 @@
 			</div>
 
 			<!-- Course Content -->
-
 			<div class="bg-background flex w-full place-content-center">
 				<div class="container-px flex w-full max-w-7xl flex-col pt-0 sm:py-7">
 					<div class="text-foreground-alt-1 flex flex-col gap-12 sm:gap-16">
