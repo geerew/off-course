@@ -36,7 +36,7 @@
 
 			<Dropdown.Item>
 				<Button
-					href={`/api/courses/${courseId}/groups/${lessonId}/attachments/${attachment.id}/serve`}
+					href={`/api/courses/${courseId}/lessons/${lessonId}/attachments/${attachment.id}/serve`}
 					variant="ghost"
 					class="hover:text-foreground h-auto w-full justify-between gap-5 px-1.5 text-xs hover:bg-transparent"
 					download
