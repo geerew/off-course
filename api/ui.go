@@ -45,6 +45,8 @@ func (r *Router) bindUi() {
 				return c.Next()
 			}
 
+			// This is the port that the UI dev server exposes. If this changes, update the
+			// DEV_UI_PORT environment variable in the .air.toml file
 			port := os.Getenv("DEV_UI_PORT")
 			if port == "" {
 				port = "5173"
