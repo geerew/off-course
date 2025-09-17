@@ -17,6 +17,7 @@
 		ModulesIcon,
 		PathIcon,
 		PlayCircleIcon,
+		TagIcon,
 		TickCircleIcon,
 		UpdatedIcon,
 		WarningIcon
@@ -154,92 +155,19 @@
 	{#if course}
 		<div class="flex w-full flex-col">
 			<div class="flex w-full place-content-center">
-				<div class="container-px flex w-full max-w-7xl flex-col gap-6 py-10">
+				<div class="container-px flex w-full max-w-7xl flex-col gap-6 pt-5 pb-10 lg:pt-10">
 					<div class="grid w-full grid-cols-1 gap-6 lg:grid-cols-[1fr_minmax(0,23rem)] lg:gap-10">
 						<!-- Information -->
 						<div class="order-2 flex h-full w-full flex-col justify-between gap-5 lg:order-1">
 							<div class="flex h-full w-full flex-col gap-4">
-								<div class="text-foreground-alt-1 text-2xl font-semibold">
+								<!-- Title -->
+								<div class="text-foreground-alt-1 text-lg font-semibold md:text-2xl">
 									{course.title}
 								</div>
 
-								<!-- Course overview -->
-								<div class="flex flex-col gap-4 text-sm">
-									<div class="flex flex-wrap items-center gap-x-3 gap-y-4">
-										<!-- Modules -->
-										<div class="flex flex-row items-center gap-2 font-semibold">
-											<ModulesIcon class="text-foreground-alt-3 size-4.5" />
-											<span class="text-nowrap">
-												{moduleCount} module{moduleCount != 1 ? 's' : ''}
-											</span>
-										</div>
-
-										<DotIcon class="text-foreground-alt-3 text-xl" />
-
-										<!-- Assets -->
-										<div class="flex flex-row items-center gap-2 font-semibold">
-											<FilesIcon class="text-foreground-alt-3 size-4.5" />
-											<span class="text-nowrap">
-												{lessonCount} lesson{lessonCount != 1 ? 's' : ''}
-											</span>
-										</div>
-
-										<!-- separator only on sm+ when all three are in one row -->
-										<DotIcon class="text-foreground-alt-3 hidden text-xl sm:inline" />
-
-										<!-- Duration -->
-										<div
-											class="flex basis-full flex-row items-center gap-2 font-semibold sm:basis-auto"
-										>
-											<DurationIcon class="text-foreground-alt-3 size-4.5" />
-											<span
-												class={cn(
-													'text-nowrap',
-													course.duration ? 'text-foreground-alt-1' : 'text-foreground-alt-3'
-												)}
-											>
-												{course.duration
-													? prettyMs(course.duration * 1000, { hideSeconds: true })
-													: '-'}
-											</span>
-										</div>
-									</div>
-								</div>
-
-								<!-- Path, Created At, Updated At, Status -->
-								{#if auth.user?.role === 'admin'}
-									<div class="text-foreground-alt-2 flex flex-row items-start gap-2 text-sm">
-										<div class="mt-px">
-											<PathIcon class="text-foreground-alt-3 size-4.5 shrink-0" />
-										</div>
-										<span class="wrap-anywhere whitespace-normal" title={course.path}
-											>{course.path}</span
-										>
-									</div>
-								{/if}
-
-								<div class="text-foreground-alt-2 flex flex-row items-center gap-3 text-sm">
-									<!-- Added -->
-									<div class="flex flex-row items-center gap-2">
-										<AddedIcon class="text-foreground-alt-3 size-4.5" />
-										<span>
-											<NiceDate date={course.createdAt} prefix="Added:" />
-										</span>
-									</div>
-
-									<DotIcon class="text-foreground-alt-3  text-xl" />
-
-									<!-- Updated -->
-									<div class="flex flex-row items-center gap-2">
-										<UpdatedIcon class="text-foreground-alt-3 size-4.5" />
-										<span>
-											<NiceDate date={course.updatedAt} prefix="Updated:" />
-										</span>
-									</div>
-
-									{#if !course.available || course.maintenance || (course.initialScan !== undefined && !course.initialScan)}
-										<DotIcon class="text-xl" />
-
+								<!-- Status -->
+								{#if !course.available || course.maintenance || (course.initialScan !== undefined && !course.initialScan)}
+									<div class="flex h-7 flex-col gap-x-3 gap-y-3 text-sm sm:flex-row">
 										<div class="flex flex-row items-center gap-2">
 											{#if !course.initialScan}
 												<Badge class="bg-background-warning text-foreground-alt-1"
@@ -253,12 +181,49 @@
 												<Badge class="bg-background-error text-foreground-alt-1">Unavailable</Badge>
 											{/if}
 										</div>
-									{/if}
+									</div>
+								{/if}
+
+								<!-- Overview -->
+								<div class="flex flex-col gap-x-3 gap-y-3 text-sm sm:flex-row">
+									<div class="flex flex-row items-center gap-2 font-semibold">
+										<ModulesIcon class="text-foreground-alt-3 size-4.5" />
+										<span class="text-nowrap">
+											{moduleCount} module{moduleCount != 1 ? 's' : ''}
+										</span>
+									</div>
+
+									<DotIcon class="text-foreground-alt-3 hidden text-xl sm:inline" />
+
+									<div class="flex flex-row items-center gap-2 font-semibold">
+										<FilesIcon class="text-foreground-alt-3 size-4.5" />
+										<span class="text-nowrap">
+											{lessonCount} lesson{lessonCount != 1 ? 's' : ''}
+										</span>
+									</div>
+
+									<DotIcon class="text-foreground-alt-3 hidden text-xl sm:inline" />
+
+									<div
+										class="flex basis-full flex-row items-center gap-2 font-semibold sm:basis-auto"
+									>
+										<DurationIcon class="text-foreground-alt-3 size-4.5" />
+										<span
+											class={cn(
+												'text-nowrap',
+												course.duration ? 'text-foreground-alt-1' : 'text-foreground-alt-3'
+											)}
+										>
+											{course.duration
+												? prettyMs(course.duration * 1000, { hideSeconds: true })
+												: '-'}
+										</span>
+									</div>
 								</div>
 
 								<!-- Progress Bar -->
 								{#if course?.progress}
-									<div class="flex flex-row items-center gap-2">
+									<div class="flex h-7 flex-row items-center gap-2">
 										<LoaderCircleIcon class="text-foreground-alt-3 size-4.5" />
 
 										<div
@@ -274,7 +239,6 @@
 												style={`width: ${course.progress.percent}%`}
 											></div>
 
-											<!-- Progress Text Inside Bar -->
 											<div
 												id={labelId}
 												class="text-foreground-alt-1 absolute inset-0 flex items-center justify-center text-xs font-medium drop-shadow-sm"
@@ -285,13 +249,52 @@
 									</div>
 								{/if}
 
+								<!-- Path -->
+								{#if auth.user?.role === 'admin'}
+									<div
+										class="text-foreground-alt-2 flex flex-row items-start gap-2 text-sm leading-7"
+									>
+										<div class="mt-1">
+											<PathIcon class="text-foreground-alt-3 size-4.5 shrink-0" />
+										</div>
+
+										<span class="wrap-anywhere whitespace-normal" title={course.path}
+											>{course.path}</span
+										>
+									</div>
+								{/if}
+
+								<!-- Created/updated -->
+								<div
+									class="text-foreground-alt-2 flex flex-col gap-x-3 gap-y-3 text-sm sm:flex-row"
+								>
+									<div class="flex flex-row items-center gap-2">
+										<AddedIcon class="text-foreground-alt-3 size-4.5" />
+										<span>
+											<NiceDate date={course.createdAt} prefix="Added:" />
+										</span>
+									</div>
+
+									<DotIcon class="text-foreground-alt-3 hidden text-xl sm:inline" />
+
+									<div class="flex flex-row items-center gap-2">
+										<UpdatedIcon class="text-foreground-alt-3 size-4.5" />
+										<span>
+											<NiceDate date={course.updatedAt} prefix="Updated:" />
+										</span>
+									</div>
+								</div>
+
 								<!-- Tags -->
 								<div class="flex flex-col gap-4 py-2 text-sm">
-									<span>Tags</span>
+									<div class="flex flex-row items-center gap-2">
+										<TagIcon class="text-foreground-alt-3 size-4.5 stroke-2" />
+										<span>Tags</span>
+									</div>
 									{#if tags.length === 0}
-										<span class="text-foreground-alt-2">-</span>
+										<span class="text-foreground-alt-2 px-2">-</span>
 									{:else}
-										<div class="flex flex-wrap gap-2">
+										<div class="flex flex-wrap gap-2 px-2">
 											{#each tags as tag}
 												<Badge class="text-sm  select-none">
 													{tag.tag}
@@ -410,7 +413,7 @@
 
 			<!-- Course Content -->
 			<div class="bg-background flex w-full place-content-center">
-				<div class="container-px flex w-full max-w-7xl flex-col pt-0 sm:py-7">
+				<div class="container-px flex w-full max-w-7xl flex-col pt-0">
 					<div class="text-foreground-alt-1 flex flex-col gap-12 sm:gap-16">
 						{#if modules && modules.modules.length > 0}
 							{#each modules.modules as m}
