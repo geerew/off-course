@@ -222,7 +222,7 @@
 								</div>
 
 								<!-- Progress Bar -->
-								{#if course?.progress}
+								{#if course.progress?.started}
 									<div class="flex h-7 flex-row items-center gap-2">
 										<LoaderCircleIcon class="text-foreground-alt-3 size-4.5" />
 
