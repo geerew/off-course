@@ -1,4 +1,4 @@
-FROM node:18-alpine AS ui
+FROM node:22-alpine AS ui
 
 WORKDIR /src/ui
 
