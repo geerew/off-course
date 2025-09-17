@@ -413,7 +413,7 @@
 
 			<!-- Course Content -->
 			<div class="bg-background flex w-full place-content-center">
-				<div class="container-px flex w-full max-w-7xl flex-col pt-0">
+				<div class="container-px flex w-full max-w-7xl flex-col pb-10">
 					<div class="text-foreground-alt-1 flex flex-col gap-12 sm:gap-16">
 						{#if modules && modules.modules.length > 0}
 							{#each modules.modules as m}
