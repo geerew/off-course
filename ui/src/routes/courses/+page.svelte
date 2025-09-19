@@ -172,7 +172,7 @@
 											<!-- Title -->
 											<div class="mb-3">
 												<span
-													class="group-hover:text-background-primary font-semibold transition-colors duration-150"
+													class="group-hover:text-background-primary transition-colors duration-150"
 												>
 													{course.title}
 												</span>
