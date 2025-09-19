@@ -14,11 +14,6 @@
 
 	let filterValue = $state(`sort:"courses.title asc"`);
 	let filterApplied = $state(false);
-	// let filterOptions = {
-	// 	available: ['true', 'false'],
-	// 	tag: [],
-	// 	progress: ['not started', 'started', 'completed']
-	// };
 
 	let paginationPage = $state(1);
 	let paginationPerPage = $state<number>();

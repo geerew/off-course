@@ -57,7 +57,7 @@
 </script>
 
 <div class="flex h-10 items-center gap-3 rounded-lg">
-	<Dropdown.Root open={true}>
+	<Dropdown.Root>
 		<Dropdown.Trigger
 			class={cn(
 				'w-36 [&[data-state=open]>svg]:rotate-90 ',
