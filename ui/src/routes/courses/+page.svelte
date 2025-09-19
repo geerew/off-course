@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { GetCourses } from '$lib/api/course-api';
-	import { FilterBar } from '$lib/components';
 	import { LogoIcon, WarningIcon } from '$lib/components/icons';
 	import Spinner from '$lib/components/spinner.svelte';
 	import { Badge, Button } from '$lib/components/ui';
@@ -99,7 +98,7 @@
 			<div class="flex w-full flex-col gap-8">
 				<div class="flex w-full flex-row items-center justify-between gap-5">
 					<div class="flex max-w-[40rem] flex-1">
-						<FilterBar
+						<!-- <FilterBar
 							bind:value={filterValue}
 							disabled={!filterAppliedValue && courses.length === 0}
 							{filterOptions}
@@ -110,7 +109,7 @@
 									loadPromise = fetcher(false);
 								}
 							}}
-						/>
+						/> -->
 					</div>
 
 					{#if courses.length > 0}
@@ -127,130 +126,120 @@
 						<Spinner class="bg-foreground-alt-3 size-4" />
 					</div>
 				{:then _}
-					<div>
-						{#if courses.length === 0}
-							<div class="flex w-full flex-col items-center gap-2 pt-5">
-								<div class="flex flex-col items-center gap-2">
-									<div>No courses</div>
+					{#if courses.length === 0}
+						<div class="flex w-full flex-col items-center gap-2 pt-5">
+							<div class="flex flex-col items-center gap-2">
+								<div>No courses</div>
 
-									{#if filterAppliedValue}
-										<div class="text-foreground-alt-3">Try adjusting your filters</div>
-									{/if}
-								</div>
+								{#if filterAppliedValue}
+									<div class="text-foreground-alt-3">Try adjusting your filters</div>
+								{/if}
 							</div>
-						{:else}
-							<div class="flex flex-col gap-5">
-								<div class="grid-col-1 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-									{#each courses as course}
-										<Button
-											href={`/course/${course.id}`}
-											variant="ghost"
-											class={cn(
-												'bg-background-alt-1 hover:bg-background-alt-1 group h-auto items-start overflow-hidden rounded-lg p-0 text-start whitespace-normal md:flex-col'
-											)}
-										>
-											<!-- Card -->
-											<div class="h-px min-h-40 w-50 sm:w-90 md:min-h-35 md:w-full">
-												{#if course.hasCard}
-													<Avatar.Root class="h-full w-full">
-														<Avatar.Image
-															src={`/api/courses/${course.id}/card`}
-															class="h-full w-full object-cover"
-															data-card={course.hasCard}
-														/>
-
-														<Avatar.Fallback
-															class="bg-background-alt-2 flex h-full w-full items-center justify-center"
-														>
-															<LogoIcon class="fill-background-alt-3 size-15 md:size-20" />
-														</Avatar.Fallback>
-													</Avatar.Root>
-												{:else}
-													<div
+						</div>
+					{:else}
+						<div class="flex flex-col gap-5">
+							<div class="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 lg:grid-cols-3">
+								{#each courses as course}
+									<Button
+										href={`/course/${course.id}`}
+										variant="ghost"
+										class="group border-background-alt-3 flex h-full flex-col items-start rounded-lg border p-2 text-start whitespace-normal"
+									>
+										<div class="relative aspect-[16/9] max-h-40 w-full overflow-hidden rounded-lg">
+											{#if course.hasCard}
+												<Avatar.Root class="h-full w-full">
+													<Avatar.Image
+														src={`/api/courses/${course.id}/card`}
+														class="h-full w-full object-cover"
+														data-card={course.hasCard}
+													/>
+													<Avatar.Fallback
 														class="bg-background-alt-2 flex h-full w-full items-center justify-center"
 													>
 														<LogoIcon class="fill-background-alt-3 size-15 md:size-20" />
-													</div>
-												{/if}
-											</div>
+													</Avatar.Fallback>
+												</Avatar.Root>
+											{:else}
+												<div
+													class="bg-background-alt-2 z-1 flex h-full w-full items-center justify-center rounded-lg"
+												>
+													<LogoIcon class="fill-background-alt-3 size-15 md:size-20" />
+												</div>
+											{/if}
+										</div>
 
-											<div class="flex h-full w-full flex-col justify-between gap-3 p-2.5">
-												<!-- Course Title -->
+										<div class="flex w-full flex-1 flex-col justify-between gap-3 pt-2">
+											<!-- Title -->
+											<div class="mb-3">
 												<span
-													class={cn(
-														'font-semibold duration-150',
-														course.available
-															? 'group-hover:text-background-primary'
-															: 'text-foreground-alt-3'
-													)}
+													class="group-hover:text-background-primary font-semibold transition-colors duration-150"
 												>
 													{course.title}
 												</span>
+											</div>
 
-												<div class="flex justify-between">
-													<div class="flex gap-2">
-														<!-- Progress -->
-														{#if course.progress?.started}
-															<Badge
-																class={cn(
-																	'text-foreground-alt-2',
-																	course.progress.percent === 100 &&
-																		'bg-background-success text-foreground'
-																)}
-															>
-																{course.progress.percent === 100
-																	? 'Completed'
-																	: course.progress.percent + '%'}
-															</Badge>
-														{/if}
-													</div>
+											<div class="flex items-start justify-between">
+												<!-- Progress -->
+												<div class="flex gap-2">
+													{#if course.progress?.started}
+														<Badge
+															class={cn(
+																'text-foreground-alt-2',
+																course.progress.percent === 100 &&
+																	'bg-background-success text-foreground'
+															)}
+														>
+															{course.progress.percent === 100
+																? 'Completed'
+																: course.progress.percent + '%'}
+														</Badge>
+													{/if}
+												</div>
 
-													<div class="flex gap-2 font-medium">
-														<!-- Maintenance -->
-														{#if course.initialScan !== undefined && !course.initialScan}
-															<Badge class="bg-background-warning text-foreground-alt-1"
-																>Initial Scan</Badge
-															>
-														{:else if course.maintenance}
-															<Badge class="bg-background-warning text-foreground-alt-1"
-																>Maintenance</Badge
-															>
-														{:else if !course.available}
-															<Badge class="bg-background-error text-foreground-alt-1"
-																>Unavailable</Badge
-															>
-														{/if}
-													</div>
+												<div class="flex gap-2 font-medium">
+													{#if course.initialScan !== undefined && !course.initialScan}
+														<Badge class="bg-background-warning text-foreground-alt-1"
+															>Initial Scan</Badge
+														>
+													{:else if course.maintenance}
+														<Badge class="bg-background-warning text-foreground-alt-1"
+															>Maintenance</Badge
+														>
+													{:else if !course.available}
+														<Badge class="bg-background-error text-foreground-alt-1"
+															>Unavailable</Badge
+														>
+													{/if}
 												</div>
 											</div>
-										</Button>
-									{/each}
-								</div>
-
-								{#if paginationTotal && paginationTotal > courses.length}
-									<div class="flex w-full justify-center pt-5">
-										<Button
-											variant="default"
-											class="w-full px-4 text-base"
-											disabled={loadingMore}
-											onclick={async () => {
-												paginationPage += 1;
-												loadingMore = true;
-												await fetcher(true);
-												loadingMore = false;
-											}}
-										>
-											{#if loadingMore}
-												<Spinner class="bg-background-alt-4 size-4" />
-											{:else}
-												Load more
-											{/if}
-										</Button>
-									</div>
-								{/if}
+										</div>
+									</Button>
+								{/each}
 							</div>
-						{/if}
-					</div>
+
+							{#if paginationTotal && paginationTotal > courses.length}
+								<div class="flex w-full justify-center pt-5">
+									<Button
+										variant="default"
+										class="w-full px-4 text-base"
+										disabled={loadingMore}
+										onclick={async () => {
+											paginationPage += 1;
+											loadingMore = true;
+											await fetcher(true);
+											loadingMore = false;
+										}}
+									>
+										{#if loadingMore}
+											<Spinner class="bg-background-alt-4 size-4" />
+										{:else}
+											Load more
+										{/if}
+									</Button>
+								</div>
+							{/if}
+						</div>
+					{/if}
 				{:catch error}
 					<div class="flex w-full flex-col items-center gap-2 pt-10">
 						<WarningIcon class="text-foreground-error size-10" />
