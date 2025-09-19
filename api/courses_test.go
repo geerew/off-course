@@ -271,7 +271,7 @@ func TestCourses_GetCourses(t *testing.T) {
 		// Progress
 		{
 			q := `progress:started OR progress:completed OR progress:"not started"` + defaultSort
-			status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?q="+url.QueryEscape(q), nil))
+			status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?withUserProgress=true&q="+url.QueryEscape(q), nil))
 			require.NoError(t, err)
 			require.Equal(t, http.StatusOK, status)
 
@@ -283,7 +283,7 @@ func TestCourses_GetCourses(t *testing.T) {
 		// Complex filter
 		{
 			q := "(course AND (1 OR 2) OR course 4) AND available:true AND (tag:tag1 OR tag:tag4) OR progress:completed" + defaultSort
-			status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?q="+url.QueryEscape(q), nil))
+			status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?withUserProgress=true&q="+url.QueryEscape(q), nil))
 			require.NoError(t, err)
 			require.Equal(t, http.StatusOK, status)
 
