@@ -42,6 +42,7 @@ export { default as RefreshIcon } from './refresh.svelte';
 export { default as RightArrowIcon } from './right-arrow.svelte';
 export { default as RightChevronIcon } from './right-chevron.svelte';
 export { default as ScanIcon } from './scan.svelte';
+export { default as SearchIcon } from './search.svelte';
 export { default as SecureIcon } from './secure.svelte';
 export { default as SelectAllIcon } from './select-all.svelte';
 export { default as SessionIcon } from './session.svelte';

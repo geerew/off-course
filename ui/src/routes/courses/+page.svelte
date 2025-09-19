@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { GetCourses } from '$lib/api/course-api';
 	import { LogoIcon, WarningIcon } from '$lib/components/icons';
+	import Filter from '$lib/components/pages/courses/filter.svelte';
 	import Spinner from '$lib/components/spinner.svelte';
 	import { Badge, Button } from '$lib/components/ui';
 	import type { CourseReqParams, CoursesModel } from '$lib/models/course-model';
@@ -11,13 +12,13 @@
 
 	let courses: CoursesModel = $state([]);
 
-	let filterValue = $state('');
-	let filterAppliedValue = $state('');
-	let filterOptions = {
-		available: ['true', 'false'],
-		tag: [],
-		progress: ['not started', 'started', 'completed']
-	};
+	let filterValue = $state(`sort:"courses.title asc"`);
+	let filterApplied = $state(false);
+	// let filterOptions = {
+	// 	available: ['true', 'false'],
+	// 	tag: [],
+	// 	progress: ['not started', 'started', 'completed']
+	// };
 
 	let paginationPage = $state(1);
 	let paginationPerPage = $state<number>();
@@ -62,10 +63,8 @@
 		}
 
 		try {
-			const sort = 'sort:"courses.title asc"';
-			const q = filterValue ? `${filterValue} ${sort}` : sort;
 			const courseReqParams: CourseReqParams = {
-				q,
+				q: filterValue,
 				withUserProgress: true,
 				page: paginationPage,
 				perPage: paginationPerPage
@@ -79,13 +78,6 @@
 			} else {
 				courses = data.items;
 			}
-
-			// TODO change to use maintenance.svelte.ts
-			// const coursesToTrack = courses.filter(
-			// 	(course) => course.scanStatus === 'processing' || course.scanStatus === 'waiting'
-			// );
-
-			// scanMonitor.trackCourses(coursesToTrack);
 		} catch (error) {
 			throw error;
 		}
@@ -96,22 +88,16 @@
 	<div class="flex w-full max-w-7xl flex-col gap-6 px-5 py-10">
 		<div class="flex w-full place-content-center">
 			<div class="flex w-full flex-col gap-8">
-				<div class="flex w-full flex-row items-center justify-between gap-5">
-					<div class="flex max-w-[40rem] flex-1">
-						<!-- <FilterBar
-							bind:value={filterValue}
-							disabled={!filterAppliedValue && courses.length === 0}
-							{filterOptions}
-							onApply={async () => {
-								if (filterValue !== filterAppliedValue) {
-									filterAppliedValue = filterValue;
-									paginationPage = 1;
-									loadPromise = fetcher(false);
-								}
-							}}
-						/> -->
-					</div>
+				<Filter
+					bind:filter={filterValue}
+					onApply={async () => {
+						filterApplied = true;
+						paginationPage = 1;
+						await fetcher(false);
+					}}
+				/>
 
+				<div class="flex w-full justify-start">
 					{#if courses.length > 0}
 						<div class="flex flex-row justify-end">
 							<Badge class="text-sm">
@@ -131,7 +117,7 @@
 							<div class="flex flex-col items-center gap-2">
 								<div>No courses</div>
 
-								{#if filterAppliedValue}
+								{#if filterApplied}
 									<div class="text-foreground-alt-3">Try adjusting your filters</div>
 								{/if}
 							</div>
@@ -143,9 +129,12 @@
 									<Button
 										href={`/course/${course.id}`}
 										variant="ghost"
-										class="group border-background-alt-3 flex h-full flex-col items-start rounded-lg border p-2 text-start whitespace-normal"
+										class="group border-background-alt-3 flex h-full flex-row items-stretch gap-3 rounded-lg border p-2 text-start whitespace-normal md:flex-col"
 									>
-										<div class="relative aspect-[16/9] max-h-40 w-full overflow-hidden rounded-lg">
+										<!-- Media -->
+										<div
+											class="relative w-64 flex-shrink-0 overflow-hidden rounded-lg md:aspect-[16/9] md:h-auto md:max-h-40 md:w-full"
+										>
 											{#if course.hasCard}
 												<Avatar.Root class="h-full w-full">
 													<Avatar.Image
@@ -168,18 +157,19 @@
 											{/if}
 										</div>
 
-										<div class="flex w-full flex-1 flex-col justify-between gap-3 pt-2">
+										<!-- Body -->
+										<div
+											class="flex h-40 min-w-0 flex-1 flex-col justify-between pt-1 md:h-auto md:pt-2"
+										>
 											<!-- Title -->
-											<div class="mb-3">
-												<span
-													class="group-hover:text-background-primary transition-colors duration-150"
-												>
-													{course.title}
-												</span>
-											</div>
+											<span
+												class="group-hover:text-background-primary transition-colors duration-150"
+											>
+												{course.title}
+											</span>
 
-											<div class="flex items-start justify-between">
-												<!-- Progress -->
+											<!-- Footer -->
+											<div class="flex items-start justify-between pt-5">
 												<div class="flex gap-2">
 													{#if course.progress?.started}
 														<Badge
