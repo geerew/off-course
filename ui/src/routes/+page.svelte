@@ -105,12 +105,10 @@
 						<Button
 							href={`/course/${course.id}`}
 							variant="ghost"
-							class="group border-background-alt-3 flex h-full flex-row items-stretch gap-3 rounded-lg border p-2 text-start whitespace-normal md:flex-col"
+							class="group border-background-alt-3 flex h-full flex-col items-stretch gap-3 overflow-hidden rounded-lg border p-0 pb-2 text-start whitespace-normal"
 						>
-							<!-- Media -->
-							<div
-								class="relative max-h-40 w-64 flex-shrink-0 overflow-hidden rounded-lg md:aspect-[16/9] md:h-auto md:w-full"
-							>
+							<!-- Card -->
+							<div class="relative aspect-[16/9] max-h-40 w-full overflow-hidden">
 								{#if course.hasCard}
 									<Avatar.Root class="h-full w-full">
 										<Avatar.Image
@@ -133,15 +131,17 @@
 								{/if}
 							</div>
 
-							<!-- Body -->
-							<div class="flex h-40 min-w-0 flex-1 flex-col justify-between pt-1 md:h-auto md:pt-2">
+							<!-- Contents -->
+							<div class="flex min-w-0 flex-1 flex-col justify-between gap-4 px-2 pt-1.5">
 								<!-- Title -->
-								<span class="group-hover:text-background-primary transition-colors duration-150">
+								<span
+									class="group-hover:text-background-primary line-clamp-2 min-w-0 break-words transition-colors duration-150 md:line-clamp-none"
+								>
 									{course.title}
 								</span>
 
 								<!-- Footer -->
-								<div class="flex items-start justify-between pt-5">
+								<div class="flex items-start justify-between">
 									<div class="flex gap-2">
 										{#if course.progress?.started}
 											<Badge
