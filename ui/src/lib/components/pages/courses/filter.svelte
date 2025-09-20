@@ -95,6 +95,31 @@
 
 		initialized = true;
 	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	$effect(() => {
+		sort =
+			selectedSortColumn && selectedSortDirection
+				? `sort:"${selectedSortColumn} ${selectedSortDirection}"`
+				: '';
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Build 'progress' from selectedProgress array
+	$effect(() => {
+		progress = selectedProgress.length
+			? selectedProgress.map((v) => `progress:"${v}"`).join(' OR ')
+			: '';
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Build 'tags' from selectedTags array
+	$effect(() => {
+		tags = selectedTags.length ? selectedTags.map((v) => `tag:"${v}"`).join(' OR ') : '';
+	});
 </script>
 
 <div class="flex w-full flex-1 justify-between">
@@ -118,14 +143,15 @@
 			</Button>
 
 			<Dialog.Root bind:open={dialogOpen}>
-				<Dialog.Overlay
-					class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/60"
-				/>
+				<!-- <Dialog.Overlay
+					forceMount
+					class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/60 data-[state=closed]:pointer-events-none data-[state=closed]:hidden"
+				/> -->
 
 				<Dialog.Content
 					class="border-foreground-alt-4 bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left fixed top-0 left-0 z-50 h-full w-[var(--settings-menu-width)] border-r px-4 pt-4"
 				>
-					<nav class="flex h-full w-full flex-col gap-3 overflow-x-hidden overflow-y-auto pb-8">
+					<div class="flex h-full w-full flex-col gap-3 overflow-x-hidden overflow-y-auto pb-8">
 						<!-- Title -->
 						<div class="flex flex-row items-center justify-between px-1.5">
 							<div
@@ -176,7 +202,7 @@
 								onApply={applyFilter}
 							/>
 						</Accordion.Root>
-					</nav>
+					</div>
 				</Dialog.Content>
 			</Dialog.Root>
 		</div>

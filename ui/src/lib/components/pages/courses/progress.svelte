@@ -31,13 +31,6 @@
 		disabled = false,
 		onApply
 	}: Props = $props();
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	// As the selected progress changes, update the value
-	$effect(() => {
-		value = selected.map((v) => `progress:"${v}"`).join(' OR ');
-	});
 </script>
 
 {#if type === 'dropdown'}

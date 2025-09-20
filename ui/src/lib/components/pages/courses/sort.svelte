@@ -47,13 +47,6 @@
 		disabled = false,
 		onApply
 	}: Props = $props();
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	// As the selected column or direction changes, update the value
-	$effect(() => {
-		value = `sort:"${selectedColumn} ${selectedDirection}"`;
-	});
 </script>
 
 {#if type === 'dropdown'}

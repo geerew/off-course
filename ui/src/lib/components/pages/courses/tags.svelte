@@ -66,13 +66,6 @@
 			throw error;
 		}
 	}
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	// As the selected tags change, update the value
-	$effect(() => {
-		value = selected.map((v) => `tag:"${v}"`).join(' OR ');
-	});
 </script>
 
 {#snippet title()}
