@@ -132,7 +132,7 @@
 									>
 										<!-- Media -->
 										<div
-											class="relative w-64 flex-shrink-0 overflow-hidden rounded-lg md:aspect-[16/9] md:h-auto md:max-h-40 md:w-full"
+											class="relative max-h-40 w-64 flex-shrink-0 overflow-hidden rounded-lg md:aspect-[16/9] md:h-auto md:w-full"
 										>
 											{#if course.hasCard}
 												<Avatar.Root class="h-full w-full">
