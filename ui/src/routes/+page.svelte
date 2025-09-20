@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { GetCourses } from '$lib/api/course-api';
-	import { LogoIcon, WarningIcon } from '$lib/components/icons';
+	import { LogoIcon, RightChevronIcon, WarningIcon } from '$lib/components/icons';
 	import Spinner from '$lib/components/spinner.svelte';
 	import { Badge, Button } from '$lib/components/ui';
 	import type { CourseReqParams, CoursesModel } from '$lib/models/course-model';
@@ -8,12 +8,17 @@
 	import { Avatar } from 'bits-ui';
 	import theme from 'tailwindcss/defaultTheme';
 
+	type courseType = 'ongoing' | 'newest';
+
 	let ongoingCourses: CoursesModel = $state([]);
 	let newestCourses: CoursesModel = $state([]);
 
-	let paginationPerPage = $state<number>();
+	let courseLinks: Record<courseType, string> = {
+		ongoing: '/courses/?filter=started',
+		newest: '/courses/?filter=newest'
+	};
 
-	let loadingMore = $state(false);
+	let paginationPerPage = $state<number>();
 
 	let loadPromise = $state(fetcher());
 
@@ -70,77 +75,105 @@
 	}
 </script>
 
-{#snippet courses(courses: CoursesModel)}
-	<div class="flex flex-col gap-5">
-		<div class="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 lg:grid-cols-3">
-			{#each courses as course}
-				<Button
-					href={`/course/${course.id}`}
-					variant="ghost"
-					class="group border-background-alt-3 flex h-full flex-row items-stretch gap-3 rounded-lg border p-2 text-start whitespace-normal md:flex-col"
-				>
-					<!-- Media -->
-					<div
-						class="relative max-h-40 w-64 flex-shrink-0 overflow-hidden rounded-lg md:aspect-[16/9] md:h-auto md:w-full"
-					>
-						{#if course.hasCard}
-							<Avatar.Root class="h-full w-full">
-								<Avatar.Image
-									src={`/api/courses/${course.id}/card`}
-									class="h-full w-full object-cover"
-									data-card={course.hasCard}
-								/>
-								<Avatar.Fallback
-									class="bg-background-alt-2 flex h-full w-full items-center justify-center"
-								>
-									<LogoIcon class="fill-background-alt-3 size-15 md:size-20" />
-								</Avatar.Fallback>
-							</Avatar.Root>
-						{:else}
-							<div
-								class="bg-background-alt-2 z-1 flex h-full w-full items-center justify-center rounded-lg"
-							>
-								<LogoIcon class="fill-background-alt-3 size-15 md:size-20" />
-							</div>
-						{/if}
-					</div>
+{#snippet courses(type: courseType, courses: CoursesModel)}
+	<div class="flex w-full flex-col gap-4">
+		<div>
+			<Button
+				variant="ghost"
+				class="hover:text-background-primary-alt-1 gap-3.5"
+				href={courseLinks[type]}
+				data-sveltekit-reload
+			>
+				<span class="text-lg font-semibold">
+					{type === 'ongoing' ? 'Ongoing' : 'Newest'} Courses
+				</span>
 
-					<!-- Body -->
-					<div class="flex h-40 min-w-0 flex-1 flex-col justify-between pt-1 md:h-auto md:pt-2">
-						<!-- Title -->
-						<span class="group-hover:text-background-primary transition-colors duration-150">
-							{course.title}
-						</span>
-
-						<!-- Footer -->
-						<div class="flex items-start justify-between pt-5">
-							<div class="flex gap-2">
-								{#if course.progress?.started}
-									<Badge
-										class={cn(
-											'text-foreground-alt-2',
-											course.progress.percent === 100 && 'bg-background-success text-foreground'
-										)}
-									>
-										{course.progress.percent === 100 ? 'Completed' : course.progress.percent + '%'}
-									</Badge>
-								{/if}
-							</div>
-
-							<div class="flex gap-2 font-medium">
-								{#if course.initialScan !== undefined && !course.initialScan}
-									<Badge class="bg-background-warning text-foreground-alt-1">Initial Scan</Badge>
-								{:else if course.maintenance}
-									<Badge class="bg-background-warning text-foreground-alt-1">Maintenance</Badge>
-								{:else if !course.available}
-									<Badge class="bg-background-error text-foreground-alt-1">Unavailable</Badge>
-								{/if}
-							</div>
-						</div>
-					</div>
-				</Button>
-			{/each}
+				<RightChevronIcon class="size-4.5 stroke-2" />
+			</Button>
 		</div>
+
+		{#if courses.length === 0}
+			<div class="flex w-full flex-col items-center gap-2 pt-5">
+				<div class="flex flex-col items-center gap-2">
+					<div>No courses</div>
+				</div>
+			</div>
+		{:else}
+			<div class="flex flex-col gap-5">
+				<div class="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 lg:grid-cols-3">
+					{#each courses as course}
+						<Button
+							href={`/course/${course.id}`}
+							variant="ghost"
+							class="group border-background-alt-3 flex h-full flex-row items-stretch gap-3 rounded-lg border p-2 text-start whitespace-normal md:flex-col"
+						>
+							<!-- Media -->
+							<div
+								class="relative max-h-40 w-64 flex-shrink-0 overflow-hidden rounded-lg md:aspect-[16/9] md:h-auto md:w-full"
+							>
+								{#if course.hasCard}
+									<Avatar.Root class="h-full w-full">
+										<Avatar.Image
+											src={`/api/courses/${course.id}/card`}
+											class="h-full w-full object-cover"
+											data-card={course.hasCard}
+										/>
+										<Avatar.Fallback
+											class="bg-background-alt-2 flex h-full w-full items-center justify-center"
+										>
+											<LogoIcon class="fill-background-alt-3 size-15 md:size-20" />
+										</Avatar.Fallback>
+									</Avatar.Root>
+								{:else}
+									<div
+										class="bg-background-alt-2 z-1 flex h-full w-full items-center justify-center rounded-lg"
+									>
+										<LogoIcon class="fill-background-alt-3 size-15 md:size-20" />
+									</div>
+								{/if}
+							</div>
+
+							<!-- Body -->
+							<div class="flex h-40 min-w-0 flex-1 flex-col justify-between pt-1 md:h-auto md:pt-2">
+								<!-- Title -->
+								<span class="group-hover:text-background-primary transition-colors duration-150">
+									{course.title}
+								</span>
+
+								<!-- Footer -->
+								<div class="flex items-start justify-between pt-5">
+									<div class="flex gap-2">
+										{#if course.progress?.started}
+											<Badge
+												class={cn(
+													'text-foreground-alt-2',
+													course.progress.percent === 100 && 'bg-background-success text-foreground'
+												)}
+											>
+												{course.progress.percent === 100
+													? 'Completed'
+													: course.progress.percent + '%'}
+											</Badge>
+										{/if}
+									</div>
+
+									<div class="flex gap-2 font-medium">
+										{#if course.initialScan !== undefined && !course.initialScan}
+											<Badge class="bg-background-warning text-foreground-alt-1">Initial Scan</Badge
+											>
+										{:else if course.maintenance}
+											<Badge class="bg-background-warning text-foreground-alt-1">Maintenance</Badge>
+										{:else if !course.available}
+											<Badge class="bg-background-error text-foreground-alt-1">Unavailable</Badge>
+										{/if}
+									</div>
+								</div>
+							</div>
+						</Button>
+					{/each}
+				</div>
+			</div>
+		{/if}
 	</div>
 {/snippet}
 
@@ -153,31 +186,8 @@
 						<Spinner class="bg-foreground-alt-3 size-4" />
 					</div>
 				{:then _}
-					<div class="flex w-full flex-col gap-4">
-						<div class="text-foreground-alt-1 text-lg font-semibold">Ongoing Courses</div>
-						{#if ongoingCourses.length === 0}
-							<div class="flex w-full flex-col items-center gap-2 pt-5">
-								<div class="flex flex-col items-center gap-2">
-									<div>No courses</div>
-								</div>
-							</div>
-						{:else}
-							{@render courses(ongoingCourses)}
-						{/if}
-					</div>
-
-					<div class="flex w-full flex-col gap-4">
-						<div class="text-foreground-alt-1 text-lg font-semibold">Newest Courses</div>
-						{#if newestCourses.length === 0}
-							<div class="flex w-full flex-col items-center gap-2 pt-5">
-								<div class="flex flex-col items-center gap-2">
-									<div>No courses</div>
-								</div>
-							</div>
-						{:else}
-							{@render courses(newestCourses)}
-						{/if}
-					</div>
+					{@render courses('ongoing', ongoingCourses)}
+					{@render courses('newest', newestCourses)}
 				{:catch error}
 					<div class="flex w-full flex-col items-center gap-2 pt-10">
 						<WarningIcon class="text-foreground-error size-10" />

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { FilterIcon } from '$lib/components/icons';
 	import { Button } from '$lib/components/ui';
 	import type { SortDirection } from '$lib/types/sort';
@@ -22,6 +23,8 @@
 	let { filter = $bindable(''), disabled = false, onApply }: Props = $props();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	let initialized = $state(false);
 
 	let menuPopupMode = $state(false);
 	let windowWidth = $derived(remCalc(innerWidth.current ?? 0));
@@ -68,6 +71,30 @@
 		menuPopupMode = windowWidth >= +theme.screens.xl.replace('rem', '') ? false : true;
 		if (!menuPopupMode) dialogOpen = false;
 	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// On initial load, check for any filter query params
+	$effect(() => {
+		if (initialized) return;
+
+		const query = page.url.searchParams.get('filter') ?? '';
+		if (!query) {
+			initialized = true;
+			return;
+		}
+
+		if (query === 'newest') {
+			selectedSortColumn = 'courses.created_at';
+			selectedSortDirection = 'desc';
+		} else if (query === 'started') {
+			selectedProgress = ['started'];
+			selectedSortColumn = 'courses_progress.updated_at';
+			selectedSortDirection = 'desc';
+		}
+
+		initialized = true;
+	});
 </script>
 
 <div class="flex w-full flex-1 justify-between">
@@ -78,8 +105,7 @@
 			<Button
 				class={cn(
 					'relative flex h-10 w-auto flex-row items-center gap-2 px-4 py-0',
-					(progress || tags) &&
-						'after:bg-background-primary-alt-1 after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:rounded-b-lg'
+					(progress || tags) && 'border-b-background-primary-alt-1'
 				)}
 				variant="outline"
 				{disabled}
