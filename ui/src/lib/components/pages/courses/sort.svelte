@@ -3,7 +3,13 @@
 		{ label: 'Title', column: 'courses.title', asc: 'Ascending', desc: 'Descending' },
 		{ label: 'Available', column: 'courses.available', asc: 'Ascending', desc: 'Descending' },
 		{ label: 'Added', column: 'courses.created_at', asc: 'Oldest', desc: 'Newest' },
-		{ label: 'Updated', column: 'courses.updated_at', asc: 'Oldest', desc: 'Newest' }
+		{ label: 'Updated', column: 'courses.updated_at', asc: 'Oldest', desc: 'Newest' },
+		{
+			label: 'Progress',
+			column: 'courses_progress.updated_at',
+			asc: 'Oldest',
+			desc: 'Newest'
+		}
 	] as const satisfies SortColumns;
 
 	export type SortColumn = (typeof sortColumns)[number]['column'];
@@ -41,13 +47,6 @@
 		disabled = false,
 		onApply
 	}: Props = $props();
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	// As the selected column or direction changes, update the value
-	$effect(() => {
-		value = `sort:"${selectedColumn} ${selectedDirection}"`;
-	});
 </script>
 
 {#if type === 'dropdown'}
@@ -68,7 +67,7 @@
 		<Accordion.Header>
 			<Accordion.Trigger
 				class={cn(
-					'group data-[state=open]:border-b-background-primary-alt-1 data-[state=closed]:border-b-background-primary-alt-1 flex w-full flex-1 items-center justify-between border-b border-transparent px-2.5 py-2.5 font-medium transition-transform select-none hover:cursor-pointer data-[state=closed]:border-b-2'
+					'group data-[state=open]:border-b-background-primary-alt-1 data-[state=closed]:border-b-background-primary-alt-1 flex w-full flex-1 items-center justify-between border-b border-transparent px-2.5 py-5 font-medium transition-transform select-none hover:cursor-pointer data-[state=closed]:border-b-2'
 				)}
 			>
 				<div class="flex items-center gap-1.5">

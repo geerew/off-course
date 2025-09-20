@@ -31,13 +31,6 @@
 		disabled = false,
 		onApply
 	}: Props = $props();
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	// As the selected progress changes, update the value
-	$effect(() => {
-		value = selected.map((v) => `progress:"${v}"`).join(' OR ');
-	});
 </script>
 
 {#if type === 'dropdown'}
@@ -46,8 +39,7 @@
 			<Dropdown.Trigger
 				class={cn(
 					'relative w-36 [&[data-state=open]>svg]:rotate-90 ',
-					value &&
-						'after:bg-background-primary-alt-1 after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:rounded-b-lg'
+					value && 'border-b-background-primary-alt-1'
 				)}
 				{disabled}
 			>
@@ -97,7 +89,7 @@
 		<Accordion.Header>
 			<Accordion.Trigger
 				class={cn(
-					'group data-[state=open]:border-b-foreground-alt-4 flex w-full flex-1 items-center justify-between border-b border-transparent px-2.5 py-2.5 font-medium transition-transform select-none hover:cursor-pointer',
+					'group data-[state=open]:border-b-foreground-alt-4 flex w-full flex-1 items-center justify-between border-b border-transparent px-2.5 py-5 font-medium transition-transform select-none hover:cursor-pointer',
 					value &&
 						'data-[state=open]:border-b-background-primary-alt-1 data-[state=closed]:border-b-background-primary-alt-1 data-[state=closed]:border-b-2'
 				)}
@@ -111,7 +103,7 @@
 					<Button
 						variant="ghost"
 						class={cn(
-							'text-foreground-alt-3 hover:text-foreground-alt-2 p-0 text-sm hover:bg-transparent',
+							'text-foreground-alt-3 hover:text-foreground-alt-2 h-auto p-0 text-sm hover:bg-transparent',
 							!value && 'invisible'
 						)}
 						onclick={(e: MouseEvent) => {

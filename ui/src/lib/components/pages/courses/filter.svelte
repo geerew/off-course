@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { FilterIcon } from '$lib/components/icons';
 	import { Button } from '$lib/components/ui';
 	import type { SortDirection } from '$lib/types/sort';
@@ -22,6 +23,8 @@
 	let { filter = $bindable(''), disabled = false, onApply }: Props = $props();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	let initialized = $state(false);
 
 	let menuPopupMode = $state(false);
 	let windowWidth = $derived(remCalc(innerWidth.current ?? 0));
@@ -68,6 +71,55 @@
 		menuPopupMode = windowWidth >= +theme.screens.xl.replace('rem', '') ? false : true;
 		if (!menuPopupMode) dialogOpen = false;
 	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// On initial load, check for any filter query params
+	$effect(() => {
+		if (initialized) return;
+
+		const query = page.url.searchParams.get('filter') ?? '';
+		if (!query) {
+			initialized = true;
+			return;
+		}
+
+		if (query === 'newest') {
+			selectedSortColumn = 'courses.created_at';
+			selectedSortDirection = 'desc';
+		} else if (query === 'started') {
+			selectedProgress = ['started'];
+			selectedSortColumn = 'courses_progress.updated_at';
+			selectedSortDirection = 'desc';
+		}
+
+		initialized = true;
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	$effect(() => {
+		sort =
+			selectedSortColumn && selectedSortDirection
+				? `sort:"${selectedSortColumn} ${selectedSortDirection}"`
+				: '';
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Build 'progress' from selectedProgress array
+	$effect(() => {
+		progress = selectedProgress.length
+			? selectedProgress.map((v) => `progress:"${v}"`).join(' OR ')
+			: '';
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Build 'tags' from selectedTags array
+	$effect(() => {
+		tags = selectedTags.length ? selectedTags.map((v) => `tag:"${v}"`).join(' OR ') : '';
+	});
 </script>
 
 <div class="flex w-full flex-1 justify-between">
@@ -78,8 +130,7 @@
 			<Button
 				class={cn(
 					'relative flex h-10 w-auto flex-row items-center gap-2 px-4 py-0',
-					(progress || tags) &&
-						'after:bg-background-primary-alt-1 after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:rounded-b-lg'
+					(progress || tags) && 'border-b-background-primary-alt-1'
 				)}
 				variant="outline"
 				{disabled}
@@ -92,14 +143,15 @@
 			</Button>
 
 			<Dialog.Root bind:open={dialogOpen}>
-				<Dialog.Overlay
-					class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/60"
-				/>
+				<!-- <Dialog.Overlay
+					forceMount
+					class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/60 data-[state=closed]:pointer-events-none data-[state=closed]:hidden"
+				/> -->
 
 				<Dialog.Content
 					class="border-foreground-alt-4 bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left fixed top-0 left-0 z-50 h-full w-[var(--settings-menu-width)] border-r px-4 pt-4"
 				>
-					<nav class="flex h-full w-full flex-col gap-3 overflow-x-hidden overflow-y-auto pb-8">
+					<div class="flex h-full w-full flex-col gap-3 overflow-x-hidden overflow-y-auto pb-8">
 						<!-- Title -->
 						<div class="flex flex-row items-center justify-between px-1.5">
 							<div
@@ -150,7 +202,7 @@
 								onApply={applyFilter}
 							/>
 						</Accordion.Root>
-					</nav>
+					</div>
 				</Dialog.Content>
 			</Dialog.Root>
 		</div>

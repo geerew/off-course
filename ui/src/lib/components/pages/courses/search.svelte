@@ -22,7 +22,7 @@
 	let appliedValue = $state('');
 </script>
 
-<div class="group relative w-96">
+<div class="group relative flex flex-1 sm:w-96 sm:flex-none">
 	<Button
 		variant="ghost"
 		class="text-foreground-alt-3 group-focus-within:text-foreground-alt-1 absolute top-1/2 left-2.5 -translate-y-1/2 transform cursor-text rounded-full p-0 hover:bg-transparent"
@@ -40,7 +40,7 @@
 		bind:value
 		placeholder="Search courses..."
 		class={cn(
-			'placeholder:text-foreground-alt-3 focus:bg-alt-3 h-10 border-b-2 ps-10 pe-5 text-sm',
+			'placeholder:text-foreground-alt-3 focus:bg-alt-3 h-10 border-b ps-10 pe-5 text-sm',
 			appliedValue && 'border-b-background-primary-alt-1'
 		)}
 		{disabled}
