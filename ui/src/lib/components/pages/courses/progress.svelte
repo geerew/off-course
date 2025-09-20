@@ -1,4 +1,4 @@
-<script context="module" lang="ts">
+<script module lang="ts">
 	export let progressStates = [
 		{ label: 'Not Started', value: 'not started' },
 		{ label: 'Started', value: 'started' },

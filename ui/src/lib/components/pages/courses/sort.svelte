@@ -1,4 +1,4 @@
-<script context="module" lang="ts">
+<script module lang="ts">
 	let sortColumns = [
 		{ label: 'Title', column: 'courses.title', asc: 'Ascending', desc: 'Descending' },
 		{ label: 'Available', column: 'courses.available', asc: 'Ascending', desc: 'Descending' },
