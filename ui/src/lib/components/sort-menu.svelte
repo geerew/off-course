@@ -8,6 +8,7 @@
 		columns: SortColumns;
 		selectedColumn: string;
 		selectedDirection: SortDirection;
+		disabled?: boolean;
 		onUpdate?: () => void;
 	};
 
@@ -15,6 +16,7 @@
 		columns,
 		selectedColumn = $bindable(),
 		selectedDirection = $bindable(),
+		disabled = false,
 		onUpdate
 	}: Props = $props();
 
@@ -36,7 +38,7 @@
 </script>
 
 <Dropdown.Root>
-	<Dropdown.Trigger class="w-36 [&[data-state=open]>svg]:rotate-90">
+	<Dropdown.Trigger class="w-36 [&[data-state=open]>svg]:rotate-90" {disabled}>
 		{#if columns.length === 0}
 			<div class="flex items-center gap-1.5">
 				<WarningIcon class="size-4 stroke-[1.5]" />
@@ -66,7 +68,7 @@
 				<p class="text-foreground-alt-3 text-center text-sm">No columns</p>
 			</div>
 		{:else}
-			<div class="flex flex-col gap-1.5 p-1">
+			<div class="flex flex-col gap-1.5">
 				<Dropdown.RadioGroup bind:value={selectedColumn}>
 					{#each columns as column}
 						<Dropdown.RadioItem
@@ -84,7 +86,7 @@
 
 			<Dropdown.Separator />
 
-			<div class="flex flex-col gap-1.5 p-1">
+			<div class="flex flex-col gap-1.5">
 				<Dropdown.RadioGroup bind:value={selectedDirection}>
 					<Dropdown.RadioItem
 						value="asc"

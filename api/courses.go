@@ -91,9 +91,22 @@ func (api coursesAPI) getCourses(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
+	allowedQueryFilters := []string{"available", "tag"}
+
+	withUserProgress := false
+	if raw := c.Query("withUserProgress"); raw != "" {
+		if v, err := strconv.ParseBool(raw); err == nil && v {
+			withUserProgress = v
+		}
+	}
+
+	if withUserProgress {
+		allowedQueryFilters = append(allowedQueryFilters, "progress")
+	}
+
 	builderOpts := builderOptions{
 		DefaultOrderBy: defaultCoursesOrderBy,
-		AllowedFilters: []string{"available", "tag", "progress"},
+		AllowedFilters: allowedQueryFilters,
 		Paginate:       true,
 		AfterParseHook: coursesAfterParseHook,
 	}
@@ -103,10 +116,8 @@ func (api coursesAPI) getCourses(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
-	if raw := c.Query("withUserProgress"); raw != "" {
-		if v, err := strconv.ParseBool(raw); err == nil && v {
-			dbOpts.WithUserProgress()
-		}
+	if withUserProgress {
+		dbOpts.WithUserProgress()
 	}
 
 	courses, err := api.dao.ListCourses(ctx, dbOpts)
@@ -709,15 +720,15 @@ func (api coursesAPI) deleteTag(c *fiber.Ctx) error {
 func coursesAfterParseHook(parsed *queryparser.QueryResult, dbOpts *database.Options, userID string) {
 	dbOpts.WithWhere(coursesWhereBuilder(parsed.Expr))
 
-	if foundProgress, ok := parsed.FoundFilters["progress"]; ok && foundProgress {
-		dbOpts.WithLeftJoin(models.COURSE_PROGRESS_TABLE,
-			fmt.Sprintf("%s = %s AND %s = '%s'",
-				models.COURSE_PROGRESS_TABLE_COURSE_ID,
-				models.COURSE_TABLE_ID,
-				models.COURSE_PROGRESS_TABLE_USER_ID,
-				userID),
-		)
-	}
+	// if foundProgress, ok := parsed.FoundFilters["progress"]; ok && foundProgress {
+	// 	dbOpts.WithLeftJoin(models.COURSE_PROGRESS_TABLE,
+	// 		fmt.Sprintf("%s = %s AND %s = '%s'",
+	// 			models.COURSE_PROGRESS_TABLE_COURSE_ID,
+	// 			models.COURSE_TABLE_ID,
+	// 			models.COURSE_PROGRESS_TABLE_USER_ID,
+	// 			userID),
+	// 	)
+	// }
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

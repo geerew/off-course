@@ -95,7 +95,6 @@
 	// Fetch the course, then the assets for the course, then build a chapter structure from the
 	// assets
 	async function fetcher(): Promise<void> {
-		console.log('in here');
 		try {
 			if (!page.params.course_id) throw new Error('No course ID provided');
 
@@ -386,26 +385,22 @@
 						</div>
 
 						<!-- Card -->
-						<div class="relative order-1 flex w-full overflow-hidden rounded-lg lg:order-2">
-							<!-- Image Container -->
-							<div
-								class="relative flex h-full max-h-70 w-full items-center justify-center overflow-hidden [background-image:repeating-linear-gradient(-45deg,var(--color-background),var(--color-background)13px,var(--color-background-alt-1)13px,var(--color-background-alt-1)14px)] bg-[size:40px_40px]"
-							>
-								{#if courseImageLoaded && courseImageUrl}
+						<div class="relative order-1 flex h-50 w-full rounded-lg lg:order-2">
+							{#if courseImageLoaded && courseImageUrl}
+								<div class="z-1 flex h-full w-full items-center justify-center rounded-lg">
 									<img
 										src={courseImageUrl}
 										alt={course?.title}
 										class="h-auto max-h-full w-auto max-w-full rounded-lg object-contain"
 									/>
-								{:else}
-									<!-- Fallback -->
-									<div
-										class="bg-background-alt-2 flex h-50 w-full max-w-90 items-center justify-center rounded-lg"
-									>
-										<LogoIcon class="fill-background-alt-3 w-16 md:w-20" />
-									</div>
-								{/if}
-							</div>
+								</div>
+							{:else}
+								<div
+									class="bg-background-alt-2 z-1 flex h-full w-full items-center justify-center rounded-lg"
+								>
+									<LogoIcon class="fill-background-alt-3 w-16 md:w-20" />
+								</div>
+							{/if}
 						</div>
 					</div>
 				</div>
