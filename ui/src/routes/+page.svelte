@@ -93,10 +93,30 @@
 		</div>
 
 		{#if courses.length === 0}
-			<div class="flex w-full flex-col items-center gap-2 pt-5">
-				<div class="flex flex-col items-center gap-2">
-					<div>No courses</div>
-				</div>
+			<div
+				class="border-background-alt-3 relative flex h-50 w-full flex-col items-center justify-center gap-2 rounded-md border border-dashed"
+			>
+				<span class="text-foreground-alt-3 z-1 text-lg">No Courses</span>
+				<svg fill="none" class="stroke-background-alt-2 absolute h-full w-full">
+					<defs>
+						<pattern
+							id="pattern-1526ac66-f54a-4681-8fb8-0859d412f251"
+							width="10"
+							height="10"
+							x="0"
+							y="0"
+							patternUnits="userSpaceOnUse"
+						>
+							<path d="M-3 13 15-5M-5 5l18-18M-1 21 17 3"></path>
+						</pattern>
+					</defs>
+					<rect
+						width="100%"
+						height="100%"
+						fill="url(#pattern-1526ac66-f54a-4681-8fb8-0859d412f251)"
+						stroke="none"
+					></rect>
+				</svg>
 			</div>
 		{:else}
 			<div class="flex flex-col gap-5">
