@@ -8,11 +8,12 @@
 	import { scanMonitor } from '$lib/scans.svelte';
 	import { cn, remCalc } from '$lib/utils';
 	import { Avatar } from 'bits-ui';
+	import { tick } from 'svelte';
 	import theme from 'tailwindcss/defaultTheme';
 
 	let courses: CoursesModel = $state([]);
 
-	let filterValue = $state(`sort:"courses.title asc"`);
+	let filterValue = $state('');
 	let filterApplied = $state(false);
 
 	let paginationPage = $state(1);
@@ -53,6 +54,9 @@
 
 	// Fetch courses
 	async function fetcher(append: boolean): Promise<void> {
+		// Let the filters sort themselves out
+		await tick();
+
 		if (!paginationPerPage) {
 			setPaginationPerPage(remCalc(window.innerWidth));
 		}

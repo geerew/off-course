@@ -14,6 +14,7 @@ export { default as DurationIcon } from './duration.svelte';
 export { default as EditIcon } from './edit.svelte';
 export { default as EllipsisCircleIcon } from './ellipsis-circle.svelte';
 export { default as FilesIcon } from './files.svelte';
+export { default as FilterIcon } from './filter.svelte';
 export { default as FlagIcon } from './flag.svelte';
 export { default as HtmlIcon } from './html.svelte';
 export { default as LeftChevronIcon } from './left-chevron.svelte';
