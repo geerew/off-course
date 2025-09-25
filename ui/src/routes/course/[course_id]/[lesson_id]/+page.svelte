@@ -30,6 +30,7 @@
 	import { Dialog } from 'bits-ui';
 	import prettyMs from 'pretty-ms';
 	import { ElementSize } from 'runed';
+	import { tick } from 'svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 
 	let course = $state<CourseModel>();
@@ -47,6 +48,9 @@
 
 	let mainEl = $state() as HTMLElement;
 	const mainSize = new ElementSize(() => mainEl);
+
+	let staticMenuEl = $state<HTMLElement>();
+	let dialogMenuEl = $state<HTMLElement | null>(null);
 
 	let menuPopupMode = $state(false);
 	let dialogOpen = $state(false);
@@ -89,6 +93,9 @@
 
 	// After navigating, make sure to scroll to the top of the page
 	afterNavigate(() => mainEl?.scrollTo({ top: 0, behavior: 'smooth' }));
+
+	// After navigating, make sure to scroll the selected lesson into view
+	afterNavigate(() => scrollSelectedIntoView());
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -150,6 +157,53 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	// Get the active menu element (static or dialog)
+	function getActiveMenuEl(): HTMLElement | null {
+		return (menuPopupMode && dialogOpen ? dialogMenuEl : staticMenuEl) ?? null;
+	}
+
+	function raf() {
+		return new Promise<void>((r) => requestAnimationFrame(() => r()));
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Scroll the selected lesson into view
+	async function scrollSelectedIntoView() {
+		const container = getActiveMenuEl();
+		if (!container || !selectedLesson) return;
+		await tick();
+
+		const item = container.querySelector<HTMLElement>(`[data-lesson-id="${selectedLesson.id}"]`);
+		if (!item) return;
+
+		const top = item.offsetTop - container.offsetTop;
+		const target = Math.max(0, top + item.offsetHeight / 2 - container.clientHeight / 2);
+		container.scrollTo({ top: target, behavior: 'smooth' });
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Scroll the menu when it is ready (after dialog open animation)
+	async function scrollMenuWhenReady() {
+		// pick the active menu element
+		const container = menuPopupMode && dialogOpen ? dialogMenuEl : staticMenuEl;
+		if (!container || !selectedLesson) return;
+
+		// wait for DOM mount & initial paint(s)
+		await tick();
+		await raf(); // 1st paint
+		await raf(); // 2nd paint (after slide-in kicks in)
+
+		// now scroll
+		const item = container.querySelector<HTMLElement>(`[data-lesson-id="${selectedLesson.id}"]`);
+		if (!item) return;
+
+		item.scrollIntoView({ block: 'center', behavior: 'smooth' });
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	// Update the selected asset when the page changes
 	$effect(() => {
 		const lessonId = page.params.lesson_id;
@@ -179,6 +233,23 @@
 			menuPopupMode = true;
 		} else if (width > 1100) {
 			menuPopupMode = false;
+		}
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// When the menu changes (e.g. on initial load) or the selected lesson changes, scroll the selected
+	$effect(() => {
+		if (!selectedLesson || !modules) return;
+		scrollSelectedIntoView();
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// When the dialog opens in popup mode, scroll the selected lesson into view
+	$effect(() => {
+		if (menuPopupMode && dialogOpen) {
+			scrollMenuWhenReady();
 		}
 	});
 </script>
@@ -234,6 +305,8 @@
 
 							<Button
 								variant="ghost"
+								data-lesson-id={lesson.id}
+								data-selected={selectedLesson && selectedLesson.id === lesson.id}
 								class={cn(
 									'hover:text-foreground-alt-1 relative h-auto w-full justify-start rounded-none text-start whitespace-normal before:absolute before:duration-200 hover:before:top-0 hover:before:-left-px hover:before:h-full hover:before:w-px',
 									selectedLesson && selectedLesson.id === lesson.id
@@ -323,6 +396,7 @@
 						/>
 
 						<Dialog.Content
+							bind:ref={dialogMenuEl}
 							class="border-background-alt-4 bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left fixed top-0 left-0 z-50 h-full w-[var(--course-menu-width)] border-r"
 						>
 							<nav class="flex h-full w-full flex-col gap-2 overflow-x-hidden overflow-y-auto pb-8">
@@ -334,6 +408,7 @@
 			{:else}
 				<div class="relative row-span-full min-h-0">
 					<nav
+						bind:this={staticMenuEl}
 						class="border-background-alt-4 bg-background sticky top-[calc(var(--header-height)+1px)] h-[calc(100dvh-(var(--header-height)+1px))] w-[--course-menu-width] overflow-x-hidden overflow-y-auto overscroll-contain border-r pb-8"
 					>
 						{@render menuContents()}
