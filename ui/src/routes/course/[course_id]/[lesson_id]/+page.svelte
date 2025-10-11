@@ -528,6 +528,7 @@
 
 								{#if asset.type === 'video'}
 									<VideoPlayer
+										playerId={`${selectedLesson.id}-${asset.id}`}
 										src={`/api/courses/${course.id}/lessons/${selectedLesson.id}/assets/${asset.id}/serve`}
 										srcType={toVideoMimeType(asset.metadata.video?.mimeType) || 'video/object'}
 										startTime={asset.progress.position || 0}

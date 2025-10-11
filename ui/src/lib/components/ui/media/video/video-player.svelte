@@ -14,6 +14,7 @@
 	import NormalControlsLayout from './normal-controls-layout.svelte';
 	import Buffering from './ui/components/buffering.svelte';
 	import Gestures from './ui/components/gestures.svelte';
+	import { videoStateManager } from './video-state-manager';
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -23,6 +24,7 @@
 		startTime: number;
 		onTimeChange: (time: number) => void;
 		onCompleted: (time: number) => void;
+		playerId?: string;
 	};
 
 	let {
@@ -30,7 +32,8 @@
 		srcType = 'video/mp4',
 		startTime,
 		onTimeChange,
-		onCompleted
+		onCompleted,
+		playerId
 	}: Props = $props();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -40,6 +43,43 @@
 	let currentTime = -1;
 	let lastLoggedSecond = -1;
 	let completeDispatched = false;
+	let uniqueId: string;
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Generate a unique ID for this player instance
+	$effect(() => {
+		uniqueId = playerId || `video-${Math.random().toString(36).substr(2, 9)}`;
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Handle play event - register with state manager and pause others
+	function handlePlay() {
+		if (!player || !uniqueId) return;
+
+		// Register this player with the state manager
+		videoStateManager.register(uniqueId, () => {
+			if (player) {
+				player.pause();
+			}
+		});
+
+		// Set this as the current player and pause others
+		videoStateManager.setCurrentPlayer(uniqueId);
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Handle pause event - clear current player if this was the active one
+	function handlePause() {
+		if (!uniqueId) return;
+
+		// Only clear if this was the current player
+		if (videoStateManager.getCurrentPlayerId() === uniqueId) {
+			videoStateManager.clearCurrentPlayer();
+		}
+	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -143,6 +183,8 @@
 		player.addEventListener('duration-change', durationChange);
 		player.addEventListener('rate-change', rateChange);
 		player.addEventListener('volume-change', volumeChange);
+		player.addEventListener('play', handlePlay);
+		player.addEventListener('pause', handlePause);
 
 		return () => {
 			player.removeEventListener('source-change', sourceChange);
@@ -151,6 +193,13 @@
 			player.removeEventListener('duration-change', durationChange);
 			player.removeEventListener('rate-change', rateChange);
 			player.removeEventListener('volume-change', volumeChange);
+			player.removeEventListener('play', handlePlay);
+			player.removeEventListener('pause', handlePause);
+
+			// Unregister from state manager when component is destroyed
+			if (uniqueId) {
+				videoStateManager.unregister(uniqueId);
+			}
 		};
 	});
 </script>
