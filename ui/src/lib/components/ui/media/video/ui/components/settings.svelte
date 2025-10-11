@@ -259,7 +259,7 @@
 	</div>
 {/snippet}
 
-<div bind:this={settingsEl}>
+<div bind:this={settingsEl} class="flex">
 	{#if pointerType === 'fine'}
 		<Popover.Root bind:open onOpenChangeComplete={onOpenChange}>
 			<!-- 
@@ -276,7 +276,7 @@
 
 			<Popover.Trigger class="h-auto w-auto border-none px-0 [&[data-state=open]>svg]:rotate-90">
 				<MediaSettingsIcon
-					class="group-hover:fill-background-primary group-hover:stroke-background-primary size-7"
+					class="group-hover:fill-background-primary group-hover:stroke-background-primary size-7 stroke-white stroke-2"
 				/>
 			</Popover.Trigger>
 
@@ -306,7 +306,7 @@
 				class="h-auto w-auto border-none bg-transparent px-0 [&[data-state=open]>svg]:rotate-90"
 			>
 				<MediaSettingsIcon
-					class="group-hover:fill-background-primary group-hover:stroke-background-primary size-5 stroke-white"
+					class="group-hover:fill-background-primary group-hover:stroke-background-primary size-5 stroke-white sm:size-6 md:size-7"
 				/>
 			</Drawer.Trigger>
 

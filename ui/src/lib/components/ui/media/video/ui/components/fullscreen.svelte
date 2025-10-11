@@ -15,7 +15,9 @@
 		target="provider"
 		class="group relative inline-flex cursor-pointer items-center justify-center rounded-md ring-sky-400 outline-none ring-inset data-[focus]:ring-4"
 	>
-		<MediaMaximizeIcon class="not-media-fullscreen:block hidden size-4.5 stroke-white stroke-3" />
+		<MediaMaximizeIcon
+			class="not-media-fullscreen:block group-hover:stroke-background-primary hidden size-5 stroke-white stroke-2 sm:size-6 md:size-7"
+		/>
 	</media-fullscreen-button>
 {:else}
 	<media-tooltip showDelay={300} class="contents">
