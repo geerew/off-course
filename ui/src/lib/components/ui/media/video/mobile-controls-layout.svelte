@@ -20,15 +20,15 @@
 	</media-controls-group>
 
 	<media-controls-group
-		class="pointer-events-auto relative flex w-full basis-6/12 place-content-center items-center gap-5 px-4"
+		class="pointer-events-auto relative flex w-full basis-4/12 place-content-center items-center gap-5 px-4"
 	>
 		<Play isMobile={true} />
 	</media-controls-group>
 
 	<media-controls-group
-		class="pointer-events-auto relative flex w-full basis-3/12 flex-col items-center px-4 pb-1"
+		class="pointer-events-auto relative flex w-full basis-5/12 flex-col items-center justify-end px-4 pb-3"
 	>
-		<div class="flex w-full flex-row justify-between">
+		<div class="mb-2 flex w-full flex-row justify-between">
 			<Timestamp />
 			<Fullscreen isMobile={true} />
 		</div>
