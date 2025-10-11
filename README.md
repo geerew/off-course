@@ -1,249 +1,247 @@
-# Off Course (WIP)
-
-## Description
-
-`Off Course` is an application designed to enable viewing and managing course material locally
+# Off Course
 
 ## Overview
 
-- **Frontend**: SvelteKit with TypeScript
-- **Backend**: Golang with SQLite3 database
+Off Course is a local course management application that enables you to view, organize, and track progress through educational content stored on your local filesystem. It provides a web-based interface for browsing courses, tracking learning progress, and managing course materials without requiring an internet connection.
 
-## Running
+The application automatically scans course directories to identify assets (videos, HTML files, PDFs) and attachments, organizing them into structured lessons with progress tracking capabilities.
 
-To run `Off Course`, download the latest release for your platform from the [releases page]() and execute
+## Architecture
 
-By default, this the application will be available at `localhost:9081`
+### Frontend
 
-Note: You may override the port by setting the running the binary with `-port :<port>`
+- **SvelteKit** with TypeScript for the web interface
+- Modern, responsive UI with Tailwind CSS
+- Real-time progress tracking and course management
+- Built-in media player for video content
 
-### Database
+### Backend
 
-When first launched, `Off Course` will create a `oc_data` directory along side the binary
+- **Go** application with RESTful API
+- **SQLite** database for data persistence
+- File system scanning and course processing
+- Background job processing for course availability monitoring
 
-This directory will contain the database
-
-On subsequent runs, this database will be used
-
-## Usage
-
-### Adding a Course
-
-Courses may be added via the frontend, by navigating to `Settings` > `Courses` and clicking `Add Courses`
-
-This will open a dialog where you may navigate your file system and select courses to add
-
-The structure of a course on disk is important. See [Course Structure](#course-structure) for more information
-
-After adding courses, the table on this page will automatically refresh to show the newly added courses
-
-#### Scanning
-
-When a course is first added, it will be scanned in order to identify assets and attachments
-
-To see the details about a course click `...` > `Details` on a course row
-
-Over time, you may add or remove assets/attachments via the file system. To pull in the new information about a course, you may perform a manual scan by clicking `...` > `Scan` on a course row within the table
-
-Note: When a scan is performed, assets and attachments that have been removed from the file system will be removed from the database. As such, any progress information about these assets will be lost
-
-#### Availability
-
-Over time, the availability of courses may change. For example, a course may be removed from the file system, or simply renamed
-
-`Off Course` will not delete courses from the database when they are no longer available. Instead, it will mark them as unavailable, allowing you to maintain progress information about courses that you have previously added, but are no longer available
-
-If you wish to remove a course from the database, you may do so by clicking `...` > `Delete` on a row within the table
-
-Note: A job runs periodically in the background to check the availability of courses. In addition to this, when a manual scan is performed, the availability of courses will be checked
-
-## Course Structure
-
-A course is simply a directory containing assets and attachments.
-
-The name of the course will be the name of the directory
-
-### Card
-
-An image named `card.xxx` may be be placed at the root of the course directory, whereby `xxx` is a supported image extension (.jpg, .png, .webp, .tiff)
-
-### Assets and Attachments
-
-Assets and attachments are files within a course directory
-
-Assets are considered primary course material, such as videos, html files and pdf files
-
-Attachments are supplementary materials linked to assets
-
-#### File Organization
-
-Assets and attachments may be placed at the root of the course directory, or within subdirectories, which are seen as chapters/sections
-
-Subdirectories within subdirectories are ignored
-
-#### Filename
-
-The filename breakdown for assets and attachments is extremely important
-
-_Assets_
-
-Assets must start with a numerical prefix, followed by a descriptive title, and finally a supported asset type extension
-
-For example, `01 Introduction.mp4`
-
-See [Supported Asset Types](#supported-asset-types) for a list of supported asset types
-
-_Attachments_
-
-Attachments are linked to assets via the numerical prefix and as such attachments must start with a numerical prefix
-
-The prefix may optionally be followed by a descriptive title and an extension
-
-For example, `01`, `01.zip` and `01 Introduction Notes.txt` would all become attachments of `01 Introduction.mp4`
-
-Note: The prefix and title maybe separated by a space or a dash, for example `01 - Introduction.mp4` is also valid
-
-_other_
-
-Any other files will be ignored
-
-#### Asset Priority
-
-Assets have a priority: Video > HTML > PDF
-
-If multiple assets are identified with the same prefix, ex. `01`, the asset with the highest priority will become the asset. All remaining assets will be downgraded to attachments
-
-For example, if `01 Introduction.mp4` and `01 Introduction.html` both exist, `01 Introduction.mp4` will be the asset and `01 Introduction.html` will be an attachment
-
-If multiple assets are identified with the same prefix, ex `01`, and are of the same priority, ex `video`, the first asset seen alphabetically will become the asset. All remaining assets will be downgraded to attachments
-
-For example, if `01 Video 1.mp4` and `01 Video 2.mp4` both exist, `01 Video 1.mp4` will be the asset and `01 Video 2.mp4` will be an attachment
-
-#### Supported Asset Types
-
-The following extensions will be treated as assets, given the filename matches the naming structure described above
-
-**video**
-- avi
-- mkv
-- flac
-- mp4
-- m4a
-- mp3
-- ogv
-- ogm
-- ogg
-- oga
-- opus
-- webm
-- wav
-
-**HTML**
-- htm
-- html
-
-**PDF**
-- pdf
-
-### Example Structure
-
-```
-My Course/
-│
-├── card.jpg                    # Course card image
-│
-├── 01 Basics/                  # Chapter 1 content
-│   ├── 01 Overview.mp4         # Main asset for Chapter 1
-│   ├── 01 Overview Notes.txt   # Attachment to '01 Overview.mp4'
-│   └── 02 Example.html         # Main asset (HTML file)
-│
-└── 02 Advanced/                # Chapter 2 content
-    ├── 01 Deep Dive.pdf        # Main asset for Chapter 2
-    └── 01 Source Links.txt     # Attachment to '01 Deep Dive.pdf'
-...
-```
-
-
-## Development
+## Development Setup
 
 ### Prerequisites
 
 **Frontend**
-- Node.js >=20
+
+- Node.js >= 22.12.0
 - pnpm >= 8
 
 **Backend**
+
 - Go >= 1.20
+- [Air](https://github.com/cosmtrek/air) for hot reloading (recommended)
 
-### Running
+### Running in Development Mode
 
-Clone the repository
+1. **Clone the repository**
 
-```bash
-git clone https://github.com/geerew/off-course.git
-cd off-course
-```
-
-During development, the frontend and backend will be started separately
-
-**Backend**
-
-1. Install dependencies
    ```bash
+   git clone https://github.com/geerew/off-course.git
+   cd off-course
+   ```
+
+2. **Start the backend** (Terminal 1)
+
+   ```bash
+   # Install dependencies
    go mod download
-   ```
 
-2. Start the backend server
-   ```bash
+   # Run with air for hot reloading
+   air
+
+   # Or run directly
    go run main.go
+
+   # To change the port (default is 9080)
+   air -- --http 0.0.0.0:8080
    ```
 
-The backend will be running on `localhost:9081`
+3. **Start the frontend** (Terminal 2)
 
-**Frontend**
-
-1. Open a new terminal
-2. Navigate into `./ui`
-3. Create a `.env` file
-
-4. Add the following to the .env file
-
-   Note: Change the port to match the port the backend is running on, which by default is `9081`
-
-   ```
-   export PUBLIC_BACKEND=http://localhost:9081
-   ```
-
-5. Install dependencies
    ```bash
-    pnpm install
-   ```
+   cd ui
 
-6. Start the frontend
-   ```bash
+   # Install dependencies
+   pnpm install
+
+   # Start development server
    pnpm run dev
    ```
 
-The frontend will be running on `localhost:5173`
+4. **Access the application**
+   - Visit `http://localhost:9080` (not the SvelteKit dev server port)
+   - The backend serves the built frontend and handles API requests
 
-### Building
+### Database
 
-**Frontend**
+The application uses SQLite databases stored in the `oc_data` directory, created automatically when the application is first launched:
 
-1. Navigate into `./ui`
-2. Build
-   ```bash
-   pnpm run build
-   ```
+- `oc_data/data.db` - Main application data (courses, users, progress)
+- `oc_data/logs.db` - Application logs
 
-The frontend will be built to `./ui/build`
+The database is created relative to where the application is launched, so the `oc_data` directory will appear in your current working directory.
 
-**Backend**
+## Docker Setup
 
-1. Navigate into the root of the project
-2. Build
-   ```bash
-    go build
-   ```
+For production deployment, see the [Docker README](docker/README.md) for complete setup instructions including:
 
-The binary will be output as `./off-course` and will embed the frontend
+- Building Docker images
+- Docker Compose configuration
+- Volume mounting for data persistence
+- Environment variable configuration
+
+## Adding Courses
+
+### Course Structure
+
+Courses are organized as directories containing assets and attachments. The application automatically scans these directories to identify and organize content.
+
+#### Course Cards
+
+Place an image named `card.xxx` at the root of your course directory (where `xxx` is a supported image extension: `.jpg`, `.png`, `.webp`, `.tiff`).
+
+#### Assets vs Attachments
+
+- **Assets**: Primary course materials (videos, HTML files, PDFs, text files)
+- **Attachments**: Supplementary materials linked to specific assets
+
+#### File Organization
+
+```
+My Course/
+├── card.jpg                    # Course card image
+├── 01 Introduction.mp4         # Main asset
+├── 01 Notes.txt               # Attachment to '01 Introduction.mp4'
+├── Chapter 1/                 # Subdirectory (chapter/section)
+│   ├── 01 Overview.mp4         # Main asset for this chapter
+│   ├── 01 Overview Notes.txt   # Attachment
+│   └── 02 Example.html         # Another asset
+└── Chapter 2/
+    ├── 01 Deep Dive.pdf       # Main asset
+    └── 01 Source Links.txt     # Attachment
+```
+
+#### Filename Structure
+
+**Assets** must follow this pattern:
+
+```
+{number} {title}.{extension}
+```
+
+Examples:
+
+- `01 Introduction.mp4`
+- `02 Getting Started.html`
+- `03 Advanced Concepts.pdf`
+
+**Attachments** are linked to assets by numerical prefix:
+
+```
+{number} {optional title}.{extension}
+```
+
+Examples:
+
+- `01` (becomes attachment to `01 Introduction.mp4`)
+- `01 Notes.txt` (becomes attachment to `01 Introduction.mp4`)
+- `01 Introduction Notes.pdf` (becomes attachment to `01 Introduction.mp4`)
+
+#### Multiple Assets with Sub-Prefix
+
+For lessons with multiple assets (e.g., multiple video parts), use the sub-prefix syntax:
+
+```
+01 Introduction {1 Part 1}.mp4
+01 Introduction {2 Part 2}.mp4
+01 Introduction {3 Part 3}.mp4
+```
+
+This creates three separate assets for the same lesson, each with their own sub-prefix and optional sub-title.
+
+The assets will be rendered in the order of the sub-prefix on the same lesson page.
+
+#### Asset Priority
+
+When multiple assets share the same prefix (without sub-prefix), the system uses priority to determine the primary asset:
+
+1. **Video** (highest priority) - `.mp4`, `.avi`, `.mkv`, `.webm`, etc.
+2. **HTML** - `.html`, `.htm`
+3. **PDF** - `.pdf`
+4. **Markdown** - `.md`
+5. **Text** (lowest priority) - `.txt`
+
+Example: If you have both `01 Introduction.mp4` and `01 Introduction.html`, the video will be the primary asset and the HTML file will become an attachment.
+
+#### Supported Asset Types
+
+**Video/Audio:**
+
+- `.mp4`, `.avi`, `.mkv`, `.webm`, `.ogv`
+- `.mp3`, `.m4a`, `.ogg`, `.wav`, `.flac`
+
+**Documents:**
+
+- `.html`, `.htm`
+- `.pdf`
+- `.md`, `.txt`
+
+### Adding Courses via UI
+
+1. Navigate to **Settings** > **Courses**
+2. Click **Add Courses**
+3. Select course directories from your file system
+4. The application will automatically scan and organize the content
+
+### Scanning and Availability
+
+- **Automatic Scanning**: Courses are scanned when first added
+- **Manual Scanning**: Use the "Scan" option in the course menu to refresh content
+- **Availability Monitoring**: Background jobs check course availability
+- **Maintenance Mode**: Courses are locked during scanning to prevent conflicts
+
+## Contributing
+
+We welcome contributions! Here's how you can help:
+
+### Development
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-feature-name`
+3. Make your changes
+4. Run tests: `make test`
+5. Run quality checks: `make audit`
+6. Commit your changes: `git commit -m "Add your feature"`
+7. Push to your fork: `git push origin feature/your-feature-name`
+8. Create a Pull Request
+
+### Code Quality
+
+- Follow Go best practices and the existing code style
+- Write tests for new functionality
+- Ensure all tests pass: `make test`
+- Run the full audit: `make audit`
+- Format code: `make tidy`
+
+### Areas for Contribution
+
+- **Frontend**: UI/UX improvements, new features, accessibility
+- **Backend**: API enhancements, performance optimizations
+- **Course Processing**: Enhanced file type support, better scanning algorithms
+- **Documentation**: Improved guides, examples, API documentation
+- **Testing**: Additional test coverage, integration tests
+
+### Reporting Issues
+
+- Use GitHub Issues for bug reports and feature requests
+- Include steps to reproduce for bugs
+- Provide system information (OS, Go version, etc.)
+
+## License
+
+[Add your license information here]
