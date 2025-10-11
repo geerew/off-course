@@ -306,7 +306,7 @@
 				class="h-auto w-auto border-none bg-transparent px-0 [&[data-state=open]>svg]:rotate-90"
 			>
 				<MediaSettingsIcon
-					class="group-hover:fill-background-primary group-hover:stroke-background-primary size-7"
+					class="group-hover:fill-background-primary group-hover:stroke-background-primary size-5 stroke-white"
 				/>
 			</Drawer.Trigger>
 

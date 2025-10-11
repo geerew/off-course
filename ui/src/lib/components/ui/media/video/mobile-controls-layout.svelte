@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Fullscreen from './ui/components/fullscreen.svelte';
+	import Mute from './ui/components/mute.svelte';
 	import Play from './ui/components/play.svelte';
 	import Settings from './ui/components/settings.svelte';
 	import TimeSlider from './ui/components/time-slider.svelte';
@@ -12,7 +13,10 @@
 	<media-controls-group
 		class="pointer-events-auto relative flex w-full basis-3/12 flex-col items-end gap-2 px-4 pt-3"
 	>
-		<Settings />
+		<div class="flex items-center gap-4">
+			<Mute />
+			<Settings />
+		</div>
 	</media-controls-group>
 
 	<media-controls-group
