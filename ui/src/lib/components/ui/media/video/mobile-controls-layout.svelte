@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Fullscreen from './ui/components/fullscreen.svelte';
+	import Mute from './ui/components/mute.svelte';
 	import Play from './ui/components/play.svelte';
 	import Settings from './ui/components/settings.svelte';
 	import TimeSlider from './ui/components/time-slider.svelte';
@@ -12,19 +13,22 @@
 	<media-controls-group
 		class="pointer-events-auto relative flex w-full basis-3/12 flex-col items-end gap-2 px-4 pt-3"
 	>
-		<Settings />
+		<div class="flex items-center gap-4">
+			<Mute />
+			<Settings />
+		</div>
 	</media-controls-group>
 
 	<media-controls-group
-		class="pointer-events-auto relative flex w-full basis-6/12 place-content-center items-center gap-5 px-4"
+		class="pointer-events-auto relative flex w-full basis-4/12 place-content-center items-center gap-5 px-4"
 	>
 		<Play isMobile={true} />
 	</media-controls-group>
 
 	<media-controls-group
-		class="pointer-events-auto relative flex w-full basis-3/12 flex-col items-center px-4 pb-1"
+		class="pointer-events-auto relative flex w-full basis-5/12 flex-col items-center justify-end px-4 pb-3"
 	>
-		<div class="flex w-full flex-row justify-between">
+		<div class="mb-2 flex w-full flex-row justify-between">
 			<Timestamp />
 			<Fullscreen isMobile={true} />
 		</div>
