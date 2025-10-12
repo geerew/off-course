@@ -43,7 +43,7 @@ var adminResetPasswordCmd = &cobra.Command{
 
 		// Verify user exists and is admin
 		if err := verifyAdminUser(username, dataDir); err != nil {
-			errorMessage("Failed to verify admin user: %s", err)
+			errorMessage("%s", err)
 			os.Exit(1)
 		}
 
@@ -118,6 +118,10 @@ func verifyAdminUser(username, dataDir string) error {
 			return fmt.Errorf("user '%s' not found", username)
 		}
 		return fmt.Errorf("failed to lookup user: %w", err)
+	}
+
+	if user == nil {
+		return fmt.Errorf("user '%s' not found", username)
 	}
 
 	if user.Role != types.UserRoleAdmin {

@@ -22,46 +22,121 @@ The application automatically scans course directories to identify assets (video
 - File system scanning and course processing
 - Background job processing for course availability monitoring
 
-## Development Setup
+## Installation & Running
 
 ### Prerequisites
 
-**Frontend**
+**For Manual Installation:**
 
 - Node.js >= 22.12.0
 - pnpm >= 8
-
-**Backend**
-
 - Go >= 1.20
-- [Air](https://github.com/cosmtrek/air) for hot reloading (recommended)
 
-### Running in Development Mode
+**For Docker:**
 
-1. **Clone the repository**
+- Docker
+- Docker Compose
+
+### Building the Application
+
+The application consists of a Go backend that embeds a SvelteKit frontend. You must build the frontend first, then build the Go application which will embed the UI.
+
+1. **Build the Frontend**
+
+   ```bash
+   cd ui
+   pnpm install
+   pnpm run build
+   cd ..
+   ```
+
+2. **Build the Go Application**
+
+   ```bash
+   # Install Go dependencies
+   go mod download
+
+   # Build the application (embeds the UI)
+   go build -o off-course .
+
+   # Or build for specific platform
+   GOOS=linux GOARCH=amd64 go build -o off-course-linux .
+   ```
+
+The built application will include the frontend UI embedded within the Go binary.
+
+### Running Off Course
+
+#### Option 1: Docker (Recommended for Production)
+
+For production deployment, see the [Docker README](docker/README.md) for complete setup instructions including:
+
+- Building Docker images
+- Docker Compose configuration
+- Volume mounting for data persistence
+- Environment variable configuration
+
+Quick Docker start:
+
+```bash
+# Using Docker Compose
+docker-compose up -d
+
+# Or using Docker directly
+docker run -p 9081:9081 -v $(pwd)/oc_data:/app/oc_data off-course
+```
+
+#### Option 2: Manual Installation
+
+1. **Clone and Build**
 
    ```bash
    git clone https://github.com/geerew/off-course.git
    cd off-course
+
+   # Build the application (see Building section above)
+   cd ui && pnpm install && pnpm run build && cd ..
+   go build -o off-course .
    ```
 
-2. **Start the backend** (Terminal 1)
+2. **Run the Application**
+
+   ```bash
+   # Basic run
+   ./off-course serve
+
+   # With custom settings
+   ./off-course serve --http 0.0.0.0:8080 --data-dir ./my-data
+
+   # Enable user signup
+   ./off-course serve --enable-signup
+   ```
+
+3. **Access the Application**
+   - Visit `http://localhost:9081` (or your configured port)
+   - Create your first admin account when prompted
+
+### Development Mode
+
+For development with hot reloading:
+
+1. **Start the backend** (Terminal 1)
 
    ```bash
    # Install dependencies
    go mod download
 
-   # Run with air for hot reloading
+   # Run with air for hot reloading (recommended)
    air
 
    # Or run directly
    go run main.go
 
-   # To change the port (default is 9080)
+   # To change the port (default is 9081)
    air -- --http 0.0.0.0:8080
    ```
 
-3. **Start the frontend** (Terminal 2)
+2. **Start the frontend** (Terminal 2)
 
    ```bash
    cd ui
@@ -73,8 +148,8 @@ The application automatically scans course directories to identify assets (video
    pnpm run dev
    ```
 
-4. **Access the application**
-   - Visit `http://localhost:9080` (not the SvelteKit dev server port)
+3. **Access the application**
+   - Visit `http://localhost:9081` (not the SvelteKit dev server port)
    - The backend serves the built frontend and handles API requests
 
 ### Database
@@ -86,14 +161,55 @@ The application uses SQLite databases stored in the `oc_data` directory, created
 
 The database is created relative to where the application is launched, so the `oc_data` directory will appear in your current working directory.
 
-## Docker Setup
+### Admin Password Reset
 
-For production deployment, see the [Docker README](docker/README.md) for complete setup instructions including:
+If you get locked out of your admin account, you can reset the password using the CLI:
 
-- Building Docker images
-- Docker Compose configuration
-- Volume mounting for data persistence
-- Environment variable configuration
+```bash
+# Reset password for an admin user
+./off-course admin reset-password <username>
+
+# Example
+./off-course admin reset-password admin
+```
+
+This command will:
+
+1. Verify the user exists and is an admin
+2. Prompt for a new password
+3. Generate a secure recovery token
+4. Communicate with the running application to reset the password
+5. Clean up the recovery token automatically
+
+**Requirements:**
+
+- The application must be running
+- You need filesystem access to the data directory
+- The user must have admin role
+
+### CLI Commands
+
+Off Course includes several CLI commands for administration:
+
+```bash
+# Start the application
+./off-course serve [options]
+
+# Admin commands
+./off-course admin reset-password <username>  # Reset admin password
+
+# Get help for any command
+./off-course --help
+./off-course admin --help
+./off-course serve --help
+```
+
+**Available serve options:**
+
+- `--http <address>` - HTTP server address (default: 127.0.0.1:9081)
+- `--data-dir <path>` - Data directory path (default: ./oc_data)
+- `--enable-signup` - Allow user registration
+- `--dev` - Run in development mode
 
 ## Adding Courses
 
