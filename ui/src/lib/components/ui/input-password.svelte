@@ -39,7 +39,14 @@
 </script>
 
 <div class="relative w-full overflow-hidden rounded-md">
-	<Input bind:ref bind:value name="password" type="password" class="pe-10" {...restProps} />
+	<Input
+		bind:ref
+		bind:value
+		name="password"
+		type="password"
+		class="pe-10 {containerClass}"
+		{...restProps}
+	/>
 
 	<Button
 		type="button"
