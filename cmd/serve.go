@@ -89,6 +89,7 @@ var serveCmd = &cobra.Command{
 			HttpAddr:      httpAddr,
 			IsProduction:  !isDev,
 			SignupEnabled: enableSignup,
+			DataDir:       dataDir,
 		})
 
 		var wg sync.WaitGroup

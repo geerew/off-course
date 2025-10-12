@@ -46,6 +46,7 @@ type RouterConfig struct {
 	HttpAddr      string
 	IsProduction  bool
 	SignupEnabled bool
+	DataDir       string
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -142,6 +143,7 @@ func (r *Router) initRoutes() {
 	r.initTagRoutes()
 	r.initUserRoutes()
 	r.initLogRoutes()
+	r.initRecoveryRoutes()
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
