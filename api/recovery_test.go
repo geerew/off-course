@@ -30,6 +30,8 @@ func createTestRouter(t *testing.T) *Router {
 	return createTestRouterWithDataDir(t, "./oc_data")
 }
 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // createTestRouterWithDataDir creates a router with a specific data directory
 func createTestRouterWithDataDir(t *testing.T, dataDir string) *Router {
 	t.Helper()
