@@ -57,6 +57,19 @@ func (dao *DAO) GetAttachment(ctx context.Context, dbOpts *database.Options) (*m
 		SetDbOpts(dbOpts).
 		WithLimit(1)
 
+	// Add lesson and course joins if IncludeAttachment is enabled
+	if dbOpts != nil {
+		if dbOpts.IncludeCourse {
+			builderOpts = builderOpts.
+				WithJoin(models.COURSE_TABLE, models.LESSON_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
+		}
+
+		if dbOpts.IncludeLesson {
+			builderOpts = builderOpts.
+				WithJoin(models.LESSON_TABLE, models.ATTACHMENT_TABLE_LESSON_ID+" = "+models.LESSON_TABLE_ID)
+		}
+	}
+
 	return getGeneric[models.Attachment](ctx, dao, *builderOpts)
 }
 
@@ -68,6 +81,19 @@ func (dao *DAO) ListAttachments(ctx context.Context, dbOpts *database.Options) (
 	builderOpts := newBuilderOptions(models.ATTACHMENT_TABLE).
 		WithColumns(models.AttachmentColumns()...).
 		SetDbOpts(dbOpts)
+
+	// Add lesson and course joins if IncludeAttachment is enabled
+	if dbOpts != nil {
+		if dbOpts.IncludeCourse {
+			builderOpts = builderOpts.
+				WithJoin(models.COURSE_TABLE, models.LESSON_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
+		}
+
+		if dbOpts.IncludeLesson {
+			builderOpts = builderOpts.
+				WithJoin(models.LESSON_TABLE, models.ATTACHMENT_TABLE_LESSON_ID+" = "+models.LESSON_TABLE_ID)
+		}
+	}
 
 	return listGeneric[models.Attachment](ctx, dao, *builderOpts)
 }

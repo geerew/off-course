@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
 )
 
 func countBuilder(builderOpts builderOptions) (string, []interface{}, error) {
@@ -27,9 +26,6 @@ func countBuilder(builderOpts builderOptions) (string, []interface{}, error) {
 		if builderOpts.DbOpts.Where != nil {
 			commonBuilder = commonBuilder.Where(builderOpts.DbOpts.Where)
 		}
-
-		// Additional joins
-		commonBuilder = applyJoins(commonBuilder, builderOpts.DbOpts.Joins)
 	}
 
 	// Fast path when no GROUP BY/HAVING
@@ -127,8 +123,6 @@ func selectBuilder(builderOpts builderOptions) (string, []interface{}, error) {
 	if builderOpts.DbOpts != nil {
 		builder = builder.Where(builderOpts.DbOpts.Where)
 
-		builder = applyJoins(builder, builderOpts.DbOpts.Joins)
-
 		builder = builder.OrderBy(builderOpts.DbOpts.OrderBy...)
 
 		if builderOpts.DbOpts.OrderByClause != nil {
@@ -216,10 +210,10 @@ func deleteBuilder(builderOpts builderOptions) (string, []interface{}, error) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func applyJoins(builder squirrel.SelectBuilder, joins []database.Join) squirrel.SelectBuilder {
-	for _, join := range joins {
-		clause := fmt.Sprintf("%s ON %s", join.Table, join.Condition)
-		switch join.Type {
+func applyJoins(builder squirrel.SelectBuilder, joins []join) squirrel.SelectBuilder {
+	for _, j := range joins {
+		clause := fmt.Sprintf("%s ON %s", j.Table, j.Condition)
+		switch j.Type {
 		case "LEFT JOIN":
 			builder = builder.LeftJoin(clause)
 		case "RIGHT JOIN":

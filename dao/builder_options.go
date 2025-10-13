@@ -9,8 +9,8 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Join defines a join in a SQL query
-type Join struct {
+// join defines a join in a SQL query (internal to DAO)
+type join struct {
 	Type      string // "JOIN", "LEFT JOIN", "RIGHT JOIN", etc.
 	Table     string // Table to join with
 	Condition string // ON condition
@@ -46,7 +46,7 @@ type builderOptions struct {
 	Having squirrel.Sqlizer
 
 	// Joins to use in SELECT queries
-	Joins []database.Join
+	Joins []join
 
 	// Suffix is raw SQL to append to the query
 	//
@@ -115,7 +115,7 @@ func (o *builderOptions) WithHaving(pred squirrel.Sqlizer) *builderOptions {
 
 // AddJoin appends a join clause
 func (o *builderOptions) WithJoin(table, condition string) *builderOptions {
-	o.Joins = append(o.Joins, database.Join{Type: "JOIN", Table: table, Condition: condition})
+	o.Joins = append(o.Joins, join{Type: "JOIN", Table: table, Condition: condition})
 	return o
 }
 
@@ -123,7 +123,7 @@ func (o *builderOptions) WithJoin(table, condition string) *builderOptions {
 
 // WithLeftJoin appends a LEFT JOIN clause
 func (o *builderOptions) WithLeftJoin(table, onCondition string) *builderOptions {
-	o.Joins = append(o.Joins, database.Join{Type: "LEFT JOIN", Table: table, Condition: onCondition})
+	o.Joins = append(o.Joins, join{Type: "LEFT JOIN", Table: table, Condition: onCondition})
 	return o
 }
 
@@ -131,7 +131,7 @@ func (o *builderOptions) WithLeftJoin(table, onCondition string) *builderOptions
 
 // AddRightJoin appends a RIGHT JOIN clause
 func (o *builderOptions) WithRightJoin(table, condition string) *builderOptions {
-	o.Joins = append(o.Joins, database.Join{Type: "RIGHT JOIN", Table: table, Condition: condition})
+	o.Joins = append(o.Joins, join{Type: "RIGHT JOIN", Table: table, Condition: condition})
 	return o
 }
 

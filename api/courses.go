@@ -435,8 +435,8 @@ func (api coursesAPI) getAttachments(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
-	dbOpts.WithJoin(models.LESSON_TABLE, models.ATTACHMENT_TABLE_LESSON_ID+" = "+models.LESSON_TABLE_ID).
-		WithJoin(models.COURSE_TABLE, models.LESSON_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID).
+	dbOpts.WithCourse().
+		WithLesson().
 		WithWhere(squirrel.And{
 			squirrel.Eq{models.LESSON_TABLE_ID: lessonId},
 			squirrel.Eq{models.COURSE_TABLE_ID: id},
@@ -468,8 +468,8 @@ func (api coursesAPI) getAttachment(c *fiber.Ctx) error {
 	}
 
 	dbOpts := database.NewOptions().
-		WithJoin(models.LESSON_TABLE, models.ATTACHMENT_TABLE_LESSON_ID+" = "+models.LESSON_TABLE_ID).
-		WithJoin(models.COURSE_TABLE, models.LESSON_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID).
+		WithCourse().
+		WithLesson().
 		WithWhere(squirrel.And{
 			squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachmentId},
 			squirrel.Eq{models.LESSON_TABLE_ID: lessonId},
@@ -501,8 +501,8 @@ func (api coursesAPI) serveAttachment(c *fiber.Ctx) error {
 	}
 
 	dbOpts := database.NewOptions().
-		WithJoin(models.LESSON_TABLE, models.ATTACHMENT_TABLE_LESSON_ID+" = "+models.LESSON_TABLE_ID).
-		WithJoin(models.COURSE_TABLE, models.LESSON_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID).
+		WithCourse().
+		WithLesson().
 		WithWhere(squirrel.And{
 			squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachmentId},
 			squirrel.Eq{models.LESSON_TABLE_ID: lessonId},
@@ -535,8 +535,8 @@ func (api coursesAPI) serveAsset(c *fiber.Ctx) error {
 	assetId := c.Params("asset")
 
 	dbOpts := database.NewOptions().
-		WithJoin(models.COURSE_TABLE, models.LESSON_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID).
-		WithJoin(models.LESSON_TABLE, models.ASSET_LESSON_ID+" = "+models.LESSON_TABLE_ID).
+		WithCourse().
+		WithLesson().
 		WithWhere(squirrel.And{
 			squirrel.Eq{models.COURSE_TABLE_ID: id},
 			squirrel.Eq{models.LESSON_TABLE_ID: lessonId},
@@ -617,12 +617,25 @@ func (api coursesAPI) deleteAssetProgress(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
+	// First, verify the asset belongs to the specified course
+	asset, err := api.dao.GetAsset(ctx, database.NewOptions().
+		WithWhere(squirrel.And{
+			squirrel.Eq{models.ASSET_TABLE_ID: assetId},
+			squirrel.Eq{models.ASSET_TABLE_COURSE_ID: courseId},
+		}))
+
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up asset", err)
+	}
+
+	if asset == nil {
+		return errorResponse(c, fiber.StatusNotFound, "Asset not found for this course", nil)
+	}
+
 	dbOpts := database.NewOptions().
-		WithJoin(models.COURSE_TABLE, models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID).
 		WithWhere(squirrel.And{
 			squirrel.Eq{models.ASSET_PROGRESS_ASSET_ID: assetId},
 			squirrel.Eq{models.ASSET_PROGRESS_USER_ID: principal.UserID},
-			squirrel.Eq{models.COURSE_TABLE_ID: courseId},
 		})
 
 	if err := api.dao.DeleteAssetProgress(ctx, dbOpts); err != nil {
