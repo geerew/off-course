@@ -450,7 +450,7 @@ type ScanRequest struct {
 type scanResponse struct {
 	ID         string           `json:"id"`
 	CourseID   string           `json:"courseId"`
-	CoursePath string           `json:"coursePath"`
+	CoursePath string           `json:"coursePath,omitempty"`
 	Status     types.ScanStatus `json:"status"`
 	CreatedAt  types.DateTime   `json:"createdAt"`
 	UpdatedAt  types.DateTime   `json:"updatedAt"`
@@ -458,17 +458,22 @@ type scanResponse struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func scanResponseHelper(scans []*models.Scan) []*scanResponse {
+func scanResponseHelper(scans []*models.Scan, isAdmin bool) []*scanResponse {
 	responses := []*scanResponse{}
 	for _, scan := range scans {
-		responses = append(responses, &scanResponse{
-			ID:         scan.ID,
-			CourseID:   scan.CourseID,
-			CoursePath: scan.CoursePath,
-			Status:     scan.Status,
-			CreatedAt:  scan.CreatedAt,
-			UpdatedAt:  scan.UpdatedAt,
-		})
+		response := &scanResponse{
+			ID:        scan.ID,
+			CourseID:  scan.CourseID,
+			Status:    scan.Status,
+			CreatedAt: scan.CreatedAt,
+			UpdatedAt: scan.UpdatedAt,
+		}
+
+		if isAdmin {
+			response.CoursePath = scan.CoursePath
+		}
+
+		responses = append(responses, response)
 	}
 
 	return responses

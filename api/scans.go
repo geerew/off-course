@@ -10,6 +10,7 @@ import (
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/coursescan"
+	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -63,7 +64,7 @@ func (api *scansAPI) getScans(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up scan", err)
 	}
 
-	pResult, err := dbOpts.Pagination.BuildResult(scanResponseHelper(scans))
+	pResult, err := dbOpts.Pagination.BuildResult(scanResponseHelper(scans, principal.Role == types.UserRoleAdmin))
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error building pagination result", err)
 	}
@@ -76,7 +77,7 @@ func (api *scansAPI) getScans(c *fiber.Ctx) error {
 func (api *scansAPI) getScan(c *fiber.Ctx) error {
 	courseId := c.Params("courseId")
 
-	_, ctx, err := principalCtx(c)
+	principal, ctx, err := principalCtx(c)
 	if err != nil {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
@@ -91,7 +92,7 @@ func (api *scansAPI) getScan(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusNotFound, "Scan not found", nil)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(scanResponseHelper([]*models.Scan{scan})[0])
+	return c.Status(fiber.StatusOK).JSON(scanResponseHelper([]*models.Scan{scan}, principal.Role == types.UserRoleAdmin)[0])
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -106,7 +107,7 @@ func (api *scansAPI) createScan(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "A course ID is required", nil)
 	}
 
-	_, ctx, err := principalCtx(c)
+	principal, ctx, err := principalCtx(c)
 	if err != nil {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
@@ -120,7 +121,7 @@ func (api *scansAPI) createScan(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error creating scan job", err)
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(scanResponseHelper([]*models.Scan{scan})[0])
+	return c.Status(fiber.StatusCreated).JSON(scanResponseHelper([]*models.Scan{scan}, principal.Role == types.UserRoleAdmin)[0])
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
