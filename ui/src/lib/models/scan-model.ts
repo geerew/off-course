@@ -1,4 +1,4 @@
-import { array, object, picklist, string, type InferOutput } from 'valibot';
+import { array, object, optional, picklist, string, type InferOutput } from 'valibot';
 import { BaseSchema } from './base-model';
 import { BasePaginationSchema, type PaginationReqParams } from './pagination-model';
 
@@ -22,7 +22,7 @@ export type ScanCreateModel = InferOutput<typeof ScanCreateSchema>;
 export const ScanSchema = object({
 	...BaseSchema.entries,
 	courseId: string(),
-	coursePath: string(),
+	coursePath: optional(string()),
 	status: ScanStatusSchema
 });
 
