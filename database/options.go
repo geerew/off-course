@@ -8,15 +8,6 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Join defines a join in a SQL query
-type Join struct {
-	Type      string // "JOIN", "LEFT JOIN", "RIGHT JOIN", etc.
-	Table     string // Table to join with
-	Condition string // ON condition
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 // Options defines optional params for a database query
 type Options struct {
 	// ORDER BY
@@ -49,8 +40,11 @@ type Options struct {
 	// when performing a query
 	IncludeAssetMetadata bool
 
-	// Joins to use in SELECT queries
-	Joins []Join
+	// IncludeCourse indicates whether to include course table join
+	IncludeCourse bool
+
+	// IncludeLesson indicates whether to include lesson table join
+	IncludeLesson bool
 
 	// Used to paginate the results
 	Pagination *pagination.Pagination
@@ -88,21 +82,15 @@ func (o *Options) WithWhere(pred squirrel.Sqlizer) *Options {
 	return o
 }
 
-// WithJoin appends a join clause
-func (o *Options) WithJoin(table, condition string) *Options {
-	o.Joins = append(o.Joins, Join{Type: "JOIN", Table: table, Condition: condition})
+// WithCourse enables course table join
+func (o *Options) WithCourse() *Options {
+	o.IncludeCourse = true
 	return o
 }
 
-// WithLeftJoin appends a LEFT JOIN clause
-func (o *Options) WithLeftJoin(table, condition string) *Options {
-	o.Joins = append(o.Joins, Join{Type: "LEFT JOIN", Table: table, Condition: condition})
-	return o
-}
-
-// WithRightJoin appends a RIGHT JOIN clause
-func (o *Options) WithRightJoin(table, condition string) *Options {
-	o.Joins = append(o.Joins, Join{Type: "RIGHT JOIN", Table: table, Condition: condition})
+// WithLesson enables lesson table join
+func (o *Options) WithLesson() *Options {
+	o.IncludeLesson = true
 	return o
 }
 

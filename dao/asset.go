@@ -73,9 +73,11 @@ func (dao *DAO) GetAsset(ctx context.Context, dbOpts *database.Options) (*models
 
 	includeProgress := dbOpts != nil && dbOpts.IncludeUserProgress
 	includeMetadata := dbOpts != nil && dbOpts.IncludeAssetMetadata
+	includeCourse := dbOpts != nil && dbOpts.IncludeCourse
+	includeLesson := dbOpts != nil && dbOpts.IncludeLesson
 
-	// When relations are not included, use a simpler query
-	if !includeProgress && !includeMetadata {
+	// When no relations are included, use a simpler query
+	if !includeProgress && !includeMetadata && !includeCourse && !includeLesson {
 		return getGeneric[models.Asset](ctx, dao, *builderOpts)
 	}
 
@@ -109,6 +111,22 @@ func (dao *DAO) GetAsset(ctx context.Context, dbOpts *database.Options) (*models
 				fmt.Sprintf("%s = %s", models.MEDIA_AUDIO_TABLE_ASSET_ID, models.ASSET_TABLE_ID))
 	}
 
+	// Add lesson and course joins if enabled
+	if dbOpts != nil {
+		// If both course and lesson are requested, join lesson first, then course through lesson
+		if dbOpts.IncludeCourse && dbOpts.IncludeLesson {
+			builderOpts = builderOpts.
+				WithJoin(models.LESSON_TABLE, models.ASSET_TABLE_LESSON_ID+" = "+models.LESSON_TABLE_ID).
+				WithJoin(models.COURSE_TABLE, models.LESSON_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
+		} else if dbOpts.IncludeLesson {
+			// Only lesson join
+			builderOpts = builderOpts.WithJoin(models.LESSON_TABLE, models.ASSET_TABLE_LESSON_ID+" = "+models.LESSON_TABLE_ID)
+		} else if dbOpts.IncludeCourse {
+			// Only course join
+			builderOpts = builderOpts.WithJoin(models.COURSE_TABLE, models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
+		}
+	}
+
 	row, err := getGeneric[models.AssetRow](ctx, dao, *builderOpts)
 	if err != nil {
 		return nil, err
@@ -136,9 +154,11 @@ func (dao *DAO) ListAssets(ctx context.Context, dbOpts *database.Options) ([]*mo
 
 	includeProgress := dbOpts != nil && dbOpts.IncludeUserProgress
 	includeMetadata := dbOpts != nil && dbOpts.IncludeAssetMetadata
+	includeCourse := dbOpts != nil && dbOpts.IncludeCourse
+	includeLesson := dbOpts != nil && dbOpts.IncludeLesson
 
-	// When relations are not included, use a simpler query
-	if !includeProgress && !includeMetadata {
+	// When no relations are included, use a simpler query
+	if !includeProgress && !includeMetadata && !includeCourse && !includeLesson {
 		return listGeneric[models.Asset](ctx, dao, *builderOpts)
 	}
 
@@ -170,6 +190,22 @@ func (dao *DAO) ListAssets(ctx context.Context, dbOpts *database.Options) ([]*mo
 				fmt.Sprintf("%s = %s", models.MEDIA_VIDEO_TABLE_ASSET_ID, models.ASSET_TABLE_ID)).
 			WithLeftJoin(models.MEDIA_AUDIO_TABLE,
 				fmt.Sprintf("%s = %s", models.MEDIA_AUDIO_TABLE_ASSET_ID, models.ASSET_TABLE_ID))
+	}
+
+	// Add lesson and course joins if enabled
+	if dbOpts != nil {
+		// If both course and lesson are requested, join lesson first, then course through lesson
+		if dbOpts.IncludeCourse && dbOpts.IncludeLesson {
+			builderOpts = builderOpts.
+				WithJoin(models.LESSON_TABLE, models.ASSET_TABLE_LESSON_ID+" = "+models.LESSON_TABLE_ID).
+				WithJoin(models.COURSE_TABLE, models.LESSON_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
+		} else if dbOpts.IncludeLesson {
+			// Only lesson join
+			builderOpts = builderOpts.WithJoin(models.LESSON_TABLE, models.ASSET_TABLE_LESSON_ID+" = "+models.LESSON_TABLE_ID)
+		} else if dbOpts.IncludeCourse {
+			// Only course join
+			builderOpts = builderOpts.WithJoin(models.COURSE_TABLE, models.ASSET_TABLE_COURSE_ID+" = "+models.COURSE_TABLE_ID)
+		}
 	}
 
 	rows, err := listGeneric[models.AssetRow](ctx, dao, *builderOpts)
