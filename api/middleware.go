@@ -161,7 +161,7 @@ func authMiddleware(r *Router) fiber.Handler {
 			// Is API request
 			if strings.HasPrefix(path, "/api/") {
 				if strings.HasPrefix(path, "/api/auth/login") || (r.config.SignupEnabled && strings.HasPrefix(path, "/api/auth/register")) ||
-					strings.HasPrefix(path, "/api/auth/signup-status") {
+					strings.HasPrefix(path, "/api/auth/signup-status") || strings.HasPrefix(path, "/api/admin/recovery") {
 					return c.Next()
 				}
 				return c.SendStatus(fiber.StatusForbidden)
