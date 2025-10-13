@@ -13,9 +13,6 @@
 	<div class="flex min-w-sm flex-col gap-5">
 		<div class="mb-2.5 flex flex-col gap-2">
 			<div class="text-foreground-alt-1 text-center text-lg">Create administrator account</div>
-			<div class="text-foreground-alt-2 text-center text-sm">
-				Setting up your application for the first time
-			</div>
 		</div>
 
 		<FormRegister endpoint="/api/auth/bootstrap/{token}" />
