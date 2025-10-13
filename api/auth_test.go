@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -122,20 +123,62 @@ func TestAuth_Bootstrap(t *testing.T) {
 	t.Run("201 (created)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
-		// Create user
-		req := httptest.NewRequest(http.MethodPost, "/api/auth/bootstrap", strings.NewReader(`{"username": "test", "password": "abcd1234" }`))
+		// Clear the admin user to make it unbootstrapped
+		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "admin"})
+		err := router.dao.DeleteUsers(ctx, dbOpts)
+		require.NoError(t, err)
+		router.InitBootstrap()
+
+		// Generate a bootstrap token using the app's data directory and filesystem
+		bootstrapToken, err := auth.GenerateBootstrapToken(router.config.DataDir, router.config.AppFs.Fs)
+		require.NoError(t, err)
+
+		// Create user with token
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/bootstrap/"+bootstrapToken.Token, strings.NewReader(`{"username": "test", "password": "abcd1234" }`))
+		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+
+		status, _, err2 := requestHelper(t, router, req)
+		require.NoError(t, err2)
+		require.Equal(t, http.StatusCreated, status)
+
+		dbOpts2 := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test"})
+		record, err3 := router.dao.GetUser(ctx, dbOpts2)
+		require.NoError(t, err3)
+		require.NotEqual(t, "password", record.PasswordHash)
+		require.Equal(t, types.UserRoleAdmin, record.Role)
+		require.True(t, router.IsBootstrapped())
+	})
+
+	t.Run("401 (invalid token)", func(t *testing.T) {
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
+
+		// Clear the admin user to make it unbootstrapped
+		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "admin"})
+		err := router.dao.DeleteUsers(context.Background(), dbOpts)
+		require.NoError(t, err)
+		router.InitBootstrap()
+
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/bootstrap/invalid-token", strings.NewReader(`{"username": "test", "password": "abcd1234" }`))
+		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+
+		status, _, err2 := requestHelper(t, router, req)
+		require.NoError(t, err2)
+		require.Equal(t, http.StatusUnauthorized, status)
+	})
+
+	t.Run("403 (already bootstrapped)", func(t *testing.T) {
+		router, _ := setup(t, "admin", types.UserRoleAdmin)
+
+		// Generate a bootstrap token using the app's data directory and filesystem
+		bootstrapToken, err := auth.GenerateBootstrapToken(router.config.DataDir, router.config.AppFs.Fs)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/bootstrap/"+bootstrapToken.Token, strings.NewReader(`{"username": "test", "password": "abcd1234" }`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 
 		status, _, err := requestHelper(t, router, req)
 		require.NoError(t, err)
-		require.Equal(t, http.StatusCreated, status)
-
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test"})
-		record, err := router.dao.GetUser(ctx, dbOpts)
-		require.NoError(t, err)
-		require.NotEqual(t, "password", record.PasswordHash)
-		require.Equal(t, types.UserRoleAdmin, record.Role)
-		require.True(t, router.isBootstrapped())
+		require.Equal(t, http.StatusForbidden, status)
 	})
 }
 

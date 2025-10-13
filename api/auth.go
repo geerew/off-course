@@ -36,7 +36,7 @@ func (r *Router) initAuthRoutes() {
 	authGroup := r.api.Group("/auth")
 
 	authGroup.Get("/signup-status", authAPI.signupStatus)
-	authGroup.Post("/bootstrap", authAPI.bootstrap)
+	authGroup.Post("/bootstrap/:token", authAPI.bootstrap)
 	authGroup.Post("/register", authAPI.register)
 	authGroup.Post("/login", authAPI.login)
 	authGroup.Post("/logout", authAPI.logout)
@@ -57,7 +57,7 @@ func (api authAPI) signupStatus(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api authAPI) register(c *fiber.Ctx) error {
-	if api.r.isBootstrapped() && !api.r.config.SignupEnabled {
+	if api.r.IsBootstrapped() && !api.r.config.SignupEnabled {
 		return errorResponse(c, fiber.StatusForbidden, "Sign-up is disabled", nil)
 	}
 
@@ -78,7 +78,7 @@ func (api authAPI) register(c *fiber.Ctx) error {
 	}
 
 	// The first user will always be an admin
-	if !api.r.isBootstrapped() {
+	if !api.r.IsBootstrapped() {
 		user.Role = types.UserRoleAdmin
 	} else {
 		user.Role = types.UserRoleUser
@@ -104,9 +104,28 @@ func (api authAPI) register(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api authAPI) bootstrap(c *fiber.Ctx) error {
-	err := api.register(c)
+	token := c.Params("token")
+	if token == "" {
+		return errorResponse(c, fiber.StatusBadRequest, "Bootstrap token is required", nil)
+	}
+
+	// Check if already bootstrapped first
+	if api.r.IsBootstrapped() {
+		return errorResponse(c, fiber.StatusForbidden, "Application is already bootstrapped", nil)
+	}
+
+	// Validate bootstrap token
+	_, err := auth.ValidateBootstrapToken(token, api.r.config.DataDir, api.r.config.AppFs.Fs)
+	if err != nil {
+		api.r.config.Logger.Error("Invalid bootstrap token", "error", err)
+		return errorResponse(c, fiber.StatusUnauthorized, "Invalid or expired bootstrap token", nil)
+	}
+
+	// Create admin user using existing register logic
+	err = api.register(c)
 	if err == nil {
 		api.r.setBootstrapped()
+		auth.DeleteBootstrapToken(api.r.config.DataDir, api.r.config.AppFs.Fs)
 	}
 
 	return err

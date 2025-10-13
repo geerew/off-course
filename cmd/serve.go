@@ -10,6 +10,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/fatih/color"
 	"github.com/geerew/off-course/api"
 	"github.com/geerew/off-course/cron"
 	"github.com/geerew/off-course/dao"
@@ -17,6 +18,7 @@ import (
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/appfs"
+	"github.com/geerew/off-course/utils/auth"
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/security"
@@ -91,6 +93,30 @@ var serveCmd = &cobra.Command{
 			SignupEnabled: enableSignup,
 			DataDir:       dataDir,
 		})
+
+		// Check bootstrap status and generate token if needed
+		router.InitBootstrap()
+		if !router.IsBootstrapped() {
+			// Generate bootstrap token
+			bootstrapToken, err := auth.GenerateBootstrapToken(dataDir, appFs.Fs)
+			if err != nil {
+				utils.Errf("Failed to generate bootstrap token: %s", err)
+				os.Exit(1)
+			}
+
+			// Print bootstrap URL to console
+			bootstrapURL := fmt.Sprintf("http://%s/auth/bootstrap/%s", httpAddr, bootstrapToken.Token)
+			utils.Infof(
+				"%s %s\n",
+				"⚠️  Bootstrap required:",
+				color.CyanString(bootstrapURL),
+			)
+			utils.Infof("Token expires in 5 minutes\n")
+		} else {
+			// Clean up any leftover bootstrap token files
+			auth.DeleteBootstrapToken(dataDir, appFs.Fs)
+			utils.Infof("✓ Application bootstrapped\n")
+		}
 
 		var wg sync.WaitGroup
 		wg.Add(1)

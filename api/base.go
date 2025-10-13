@@ -98,7 +98,7 @@ func devRouter(config *RouterConfig, id string, role types.UserRole) *Router {
 
 // Serve serves the API and UI
 func (r *Router) Serve() error {
-	r.initBootstrap()
+	r.InitBootstrap()
 
 	ln, err := net.Listen("tcp", r.config.HttpAddr)
 	if err != nil {
@@ -163,9 +163,9 @@ func (r *Router) createSessionStore() {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// initBootstrap determines if the application is bootstrapped by checking if there is
+// InitBootstrap determines if the application is bootstrapped by checking if there is
 // an admin user
-func (r *Router) initBootstrap() {
+func (r *Router) InitBootstrap() {
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ROLE: types.UserRoleAdmin})
 	count, err := r.dao.CountUsers(context.Background(), dbOpts)
 	if err != nil {
@@ -188,7 +188,7 @@ func (r *Router) setBootstrapped() {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// isBootstrapped checks if the application is bootstrapped
-func (r *Router) isBootstrapped() bool {
+// IsBootstrapped checks if the application is bootstrapped
+func (r *Router) IsBootstrapped() bool {
 	return atomic.LoadInt32(&r.bootstrapped) == 1
 }

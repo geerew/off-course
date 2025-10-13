@@ -73,6 +73,9 @@ func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Conte
 	}
 	require.NoError(t, router.dao.CreateUser(context.Background(), &user))
 
+	// Initialize bootstrap status after creating user
+	router.InitBootstrap()
+
 	ctx := context.Background()
 	principal := types.Principal{
 		UserID: id,

@@ -103,9 +103,9 @@ func corsMiddleWare() fiber.Handler {
 // the creation of 1 admin user, which the /auth/bootstrap endpoint handles
 func bootstrapMiddleware(r *Router) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// If not bootstrapped, for everything through /auth/bootstrap or
+		// If not bootstrapped, force everything through /auth/bootstrap or
 		// /api/auth/bootstrap
-		if !r.isBootstrapped() {
+		if !r.IsBootstrapped() {
 			path := c.Path()
 
 			if r.isDevUIPath(path) || r.isProdUIPath(path) || r.isStaticPath(path) {
@@ -114,7 +114,7 @@ func bootstrapMiddleware(r *Router) fiber.Handler {
 
 			// API check
 			if strings.HasPrefix(path, "/api/") {
-				if strings.HasPrefix(path, "/api/auth/bootstrap") {
+				if strings.HasPrefix(path, "/api/auth/bootstrap/") {
 					c.Locals("bootstrapping", true)
 					return c.Next()
 				} else {
@@ -127,8 +127,21 @@ func bootstrapMiddleware(r *Router) fiber.Handler {
 				c.Locals("bootstrapping", true)
 				return c.Next()
 			} else {
-				return c.Redirect("/auth/bootstrap/")
+				return c.Redirect("/auth/bootstrap")
 			}
+		}
+
+		// If bootstrapped and someone accesses bootstrap URL, redirect appropriately
+		path := c.Path()
+		if strings.HasPrefix(path, "/auth/bootstrap/") {
+			// Check if user is logged in
+			session, err := r.sessionManager.Get(c)
+			if err != nil || !session.Fresh() {
+				// Not logged in, redirect to login
+				return c.Redirect("/auth/login")
+			}
+			// Logged in, redirect to home
+			return c.Redirect("/")
 		}
 
 		return c.Next()
