@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { GetCourses } from '$lib/api/course-api';
+	import { NiceDate } from '$lib/components';
 	import { LogoIcon, RightChevronIcon, WarningIcon } from '$lib/components/icons';
 	import Spinner from '$lib/components/spinner.svelte';
 	import { Badge, Button } from '$lib/components/ui';
@@ -163,6 +164,12 @@
 								<!-- Footer -->
 								<div class="flex items-start justify-between">
 									<div class="flex gap-2">
+										{#if type === 'newest'}
+											<Badge class="bg-background-alt-4 text-foreground-alt-1"
+												><NiceDate date={course.createdAt} /></Badge
+											>
+										{/if}
+
 										{#if course.progress?.started}
 											<Badge
 												class={cn(
