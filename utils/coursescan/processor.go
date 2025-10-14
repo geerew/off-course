@@ -794,7 +794,6 @@ func applyAttachmentOps(
 // A priority list for assets when picking a single asset
 var assetPriority = []types.AssetType{
 	types.AssetVideo,
-	types.AssetHTML,
 	types.AssetPDF,
 	types.AssetMarkdown,
 	types.AssetText,
@@ -982,7 +981,7 @@ type parsedFile struct {
 	// Lowercase extension (without dot)
 	Ext string
 
-	// Non-nill when type is one of video, html, pdf, markdown, text
+	// Non-nill when type is one of video, pdf, markdown, text
 	AssetType *types.Asset
 
 	// True when the file is a card

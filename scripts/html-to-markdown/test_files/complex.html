@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complex HTML Document</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+        }
+        .highlight {
+            background-color: yellow;
+            padding: 5px;
+        }
+    </style>
+    <script>
+        console.log('This script should be removed');
+        function greet() {
+            alert('Hello World!');
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded');
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1 style="color: red;">Complex HTML Document with Everything</h1>
+        
+        <p>This document contains JavaScript, CSS, inline styles, and various HTML elements that should be cleaned during conversion.</p>
+        
+        <h2>Features to Test</h2>
+        
+        <ul>
+            <li>JavaScript removal (check console logs)</li>
+            <li>CSS removal (style tags and inline styles)</li>
+            <li>Event handler removal</li>
+            <li>Content preservation</li>
+        </ul>
+        
+        <h3>Content Examples</h3>
+        
+        <p>Here's a paragraph with <strong>bold text</strong>, <em>italic text</em>, and <code>inline code</code>.</p>
+        
+        <blockquote>
+            This is a blockquote that should be converted to Markdown format.
+        </blockquote>
+        
+        <h4>Images and Links</h4>
+        
+        <p>Here's an image:</p>
+        <img src="https://via.placeholder.com/300x200" alt="Placeholder image" style="border: 1px solid black;">
+        
+        <p>And here's a <a href="https://github.com" onclick="greet()">link with an event handler</a> that should have the onclick removed.</p>
+        
+        <h4>Code Block</h4>
+        
+        <pre><code>def hello_world():
+    print("Hello, World!")
+    return True</code></pre>
+        
+        <h4>Tables</h4>
+        
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background-color: #f2f2f2;">
+                    <th>Name</th>
+                    <th>Age</th>
+                    <th>City</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Alice</td>
+                    <td>30</td>
+                    <td>New York</td>
+                </tr>
+                <tr>
+                    <td>Bob</td>
+                    <td>25</td>
+                    <td>San Francisco</td>
+                </tr>
+                <tr>
+                    <td>Charlie</td>
+                    <td>35</td>
+                    <td>Chicago</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <h4>Ordered List</h4>
+        
+        <ol>
+            <li>First item</li>
+            <li>Second item with <span class="highlight">highlighted text</span></li>
+            <li>Third item</li>
+        </ol>
+        
+        <h4>Nested Lists</h4>
+        
+        <ul>
+            <li>Parent item 1
+                <ul>
+                    <li>Child item 1.1</li>
+                    <li>Child item 1.2</li>
+                </ul>
+            </li>
+            <li>Parent item 2
+                <ul>
+                    <li>Child item 2.1</li>
+                </ul>
+            </li>
+        </ul>
+        
+        <button onclick="greet()" style="padding: 10px; background-color: blue; color: white;">
+            This button should be converted
+        </button>
+        
+        <script>
+            // More JavaScript that should be removed
+            function anotherFunction() {
+                return 'This should not appear in the markdown';
+            }
+        </script>
+    </div>
+</body>
+</html>
+

@@ -29,8 +29,6 @@ func TestAsset_NewAsset(t *testing.T) {
 		{"webm", AssetVideo},
 		{"wav", AssetVideo},
 		// document
-		{"html", AssetHTML},
-		{"htm", AssetHTML},
 		{"pdf", AssetPDF},
 		// markdown
 		{"md", AssetMarkdown},
@@ -51,20 +49,15 @@ func TestAsset_NewAsset(t *testing.T) {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func TestAsset_Set(t *testing.T) {
-	a := NewAsset("html")
-	require.Equal(t, AssetHTML, a.s)
-
-	// Set to video
-	a.SetVideo()
+	a := NewAsset("mp4")
 	require.Equal(t, AssetVideo, a.s)
-
-	// Set to HTML
-	a.SetHTML()
-	require.Equal(t, AssetHTML, a.s)
 
 	// Set to PDF
 	a.SetPDF()
 	require.Equal(t, AssetPDF, a.s)
+
+	a.SetVideo()
+	require.Equal(t, AssetVideo, a.s)
 
 	// Set to Markdown
 	a.SetMarkdown()
@@ -81,10 +74,6 @@ func TestAsset_Is(t *testing.T) {
 	// Is video
 	a := NewAsset("mp4")
 	require.True(t, a.IsVideo())
-
-	// Is HTML
-	a = NewAsset("html")
-	require.True(t, a.IsHTML())
 
 	// Is PDF
 	a = NewAsset("pdf")
@@ -109,9 +98,6 @@ func TestAsset_String(t *testing.T) {
 	a := NewAsset("mp4")
 	require.Equal(t, "video", a.String())
 
-	a = NewAsset("html")
-	require.Equal(t, "html", a.String())
-
 	a = NewAsset("pdf")
 	require.Equal(t, "pdf", a.String())
 
@@ -130,7 +116,6 @@ func TestAsset_MarshalJSON(t *testing.T) {
 		expected string
 	}{
 		{"mp4", `"video"`},
-		{"html", `"html"`},
 		{"pdf", `"pdf"`},
 		{"md", `"markdown"`},
 		{"txt", `"text"`},
@@ -162,7 +147,6 @@ func TestAsset_UnmarshalJSON(t *testing.T) {
 		{`"bob"`, "", "invalid asset type"},
 		// Success
 		{`"video"`, AssetVideo, ""},
-		{`"html"`, AssetHTML, ""},
 		{`"pdf"`, AssetPDF, ""},
 		{`"markdown"`, AssetMarkdown, ""},
 		{`"text"`, AssetText, ""},
@@ -188,7 +172,6 @@ func TestAsset_Value(t *testing.T) {
 		expected string
 	}{
 		{"mp4", "video"},
-		{"html", "html"},
 		{"pdf", "pdf"},
 		{"md", "markdown"},
 		{"txt", "text"},
@@ -219,7 +202,6 @@ func TestAsset_Scan(t *testing.T) {
 			expected string
 		}{
 			{"video", "video"},
-			{"html", "html"},
 			{"pdf", "pdf"},
 			{"markdown", "markdown"},
 			{"text", "text"},
