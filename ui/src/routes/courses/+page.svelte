@@ -22,6 +22,7 @@
 
 	let loadingMore = $state(false);
 	let hasMoreCourses = $state(true);
+	let loadingError = $state<string | null>(null);
 
 	let loadPromise = $state(fetcher(false));
 
@@ -81,8 +82,18 @@
 
 		loadingMore = true;
 		paginationPage += 1;
-		await fetcher(true);
-		loadingMore = false;
+
+		try {
+			loadingError = null;
+			await fetcher(true);
+		} catch (error) {
+			// Reset pagination page on error to prevent getting stuck
+			paginationPage -= 1;
+			loadingError = error instanceof Error ? error.message : 'Failed to load more courses';
+			console.error('Failed to load more courses:', error);
+		} finally {
+			loadingMore = false;
+		}
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -131,6 +142,7 @@
 						filterApplied = true;
 						paginationPage = 1;
 						hasMoreCourses = true;
+						loadingError = null;
 						await fetcher(false);
 					}}
 				/>
@@ -248,6 +260,20 @@
 										<div class="flex items-center gap-2">
 											<Spinner class="bg-background-alt-4 size-4" />
 											<span class="text-foreground-alt-3">Loading more courses...</span>
+										</div>
+									{:else if loadingError}
+										<div class="flex flex-col items-center gap-2">
+											<div class="text-foreground-error text-sm">Failed to load more courses</div>
+											<Button
+												variant="outline"
+												class="text-sm"
+												onclick={() => {
+													loadingError = null;
+													loadMoreCourses();
+												}}
+											>
+												Retry
+											</Button>
 										</div>
 									{/if}
 								</div>
