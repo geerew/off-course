@@ -199,27 +199,6 @@ func handleVideo(c *fiber.Ctx, appFs *appfs.AppFs, asset *models.Asset) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// handleHtml handles serving HTML files
-func handleHtml(c *fiber.Ctx, appFs *appfs.AppFs, asset *models.Asset) error {
-	// Open the HTML file
-	file, err := appFs.Fs.Open(asset.Path)
-	if err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error opening file", err)
-	}
-	defer file.Close()
-
-	// Read the content of the HTML file
-	content, err := afero.ReadAll(file)
-	if err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error reading file", err)
-	}
-
-	c.Set(fiber.HeaderContentType, "text/html")
-	return c.Status(fiber.StatusOK).Send(content)
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 // handleText handles serving text files and markdown files
 func handleText(c *fiber.Ctx, appFs *appfs.AppFs, asset *models.Asset) error {
 	file, err := appFs.Fs.Open(asset.Path)

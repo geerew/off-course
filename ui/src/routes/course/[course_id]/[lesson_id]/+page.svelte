@@ -603,8 +603,6 @@
 											<div class="text-foreground-error text-sm">Failed to load content</div>
 										{/await}
 									{/if}
-								{:else if asset.type === 'html'}
-									(TODO HTML )
 								{:else}
 									(TODO PDF)
 								{/if}

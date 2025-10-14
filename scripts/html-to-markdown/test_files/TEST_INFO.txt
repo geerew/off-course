@@ -1,0 +1,54 @@
+Test Files for HTML to Markdown Converter
+===========================================
+
+This directory contains sample HTML files to test the converter with different scenarios.
+
+Files:
+------
+
+1. simple.html
+   - Basic HTML fragment without <html> wrapper
+   - Contains: headers, paragraphs, lists, bold/italic text, links
+   - No JavaScript or CSS
+   - Perfect for testing basic conversion
+
+2. complex.html
+   - Full HTML document with everything
+   - Contains: JavaScript, CSS, inline styles, event handlers
+   - Multiple content types: tables, code blocks, blockquotes, nested lists
+   - Tests the removal of scripts, styles, and unwanted attributes
+
+3. article.html
+   - Realistic blog article/news page
+   - Contains: CSS styling, JavaScript analytics
+   - Structured content with headers, quotes, lists, links
+   - Tests conversion of typical web content
+
+4. with-images.htm
+   - Focus on image handling
+   - Various image scenarios: single, multiple, with captions
+   - Uses .htm extension (not .html)
+   - Tests image conversion to Markdown syntax
+
+How to Test:
+------------
+
+# Test all files at once
+python convert.py test_files/
+
+# Test individual files
+python convert.py test_files/simple.html
+python convert.py test_files/complex.html
+python convert.py test_files/article.html
+python convert.py test_files/with-images.htm
+
+Expected Results:
+-----------------
+Each .html or .htm file should generate a corresponding .md file in the same directory:
+- simple.md
+- complex.md
+- article.md
+- with-images.md
+
+The markdown files should contain only the content, without any JavaScript, CSS, or inline styles.
+

@@ -528,7 +528,7 @@ func (api coursesAPI) serveAttachment(c *fiber.Ctx) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// TODO Handle PDF and HTML
+// TODO Handle PDF
 func (api coursesAPI) serveAsset(c *fiber.Ctx) error {
 	id := c.Params("id")
 	lessonId := c.Params("lesson")
@@ -564,8 +564,6 @@ func (api coursesAPI) serveAsset(c *fiber.Ctx) error {
 
 	if asset.Type.IsVideo() {
 		return handleVideo(c, api.appFs, asset)
-	} else if asset.Type.IsHTML() {
-		return handleHtml(c, api.appFs, asset)
 	} else if asset.Type.IsText() || asset.Type.IsMarkdown() {
 		return handleText(c, api.appFs, asset)
 	}

@@ -175,19 +175,18 @@ func TestScanner_Processor(t *testing.T) {
 
 		lessons := []*models.Lesson{}
 
-		// Add file 1, file 2 and file 3 (create op)
+		// Add file 1, file 2 (create op)
 		{
 			scanner.appFs.Fs.Mkdir(course.Path, os.ModePerm)
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 file 1.mkv", course.Path), []byte("hash 1"), os.ModePerm)
-			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/02 file 2.html", course.Path), []byte("hash 2"), os.ModePerm)
-			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/03 file 3.pdf", course.Path), []byte("hash 3"), os.ModePerm)
+			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/02 file 2.pdf", course.Path), []byte("hash 2"), os.ModePerm)
 
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
 			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, lessons, 3)
+			require.Len(t, lessons, 2)
 
 			require.Len(t, lessons[0].Assets, 1)
 			require.Equal(t, "file 1", lessons[0].Assets[0].Title)
@@ -202,35 +201,27 @@ func TestScanner_Processor(t *testing.T) {
 			require.Equal(t, course.ID, lessons[1].Assets[0].CourseID)
 			require.Equal(t, 2, int(lessons[1].Assets[0].Prefix.Int16))
 			require.Empty(t, lessons[1].Assets[0].Module)
-			require.True(t, lessons[1].Assets[0].Type.IsHTML())
+			require.True(t, lessons[1].Assets[0].Type.IsPDF())
 			require.Equal(t, "ac4f5d7f5ca1f7b2a9e8107ca793b5ead43a1d04afdafabc9488e93b5d738b41", lessons[1].Assets[0].Hash)
-
-			require.Len(t, lessons[2].Assets, 1)
-			require.Equal(t, "file 3", lessons[2].Assets[0].Title)
-			require.Equal(t, course.ID, lessons[2].Assets[0].CourseID)
-			require.Equal(t, 3, int(lessons[2].Assets[0].Prefix.Int16))
-			require.Empty(t, lessons[2].Assets[0].Module)
-			require.True(t, lessons[2].Assets[0].Type.IsPDF())
-			require.Equal(t, "c4ca2e438d8809f0e4459bde1f948de8fe6289f1c179d506da8720fb79859be6", lessons[2].Assets[0].Hash)
 		}
 
 		// Add file 1 under a chapter (create op)
 		{
-			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 Chapter 1/01 file 1.pdf", course.Path), []byte("hash 4"), os.ModePerm)
+			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 Chapter 1/01 file 1.pdf", course.Path), []byte("hash 3"), os.ModePerm)
 
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
 
 			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, lessons, 4)
+			require.Len(t, lessons, 3)
 
-			require.Len(t, lessons[3].Assets, 1)
-			require.Equal(t, "file 1", lessons[3].Assets[0].Title)
-			require.Equal(t, course.ID, lessons[3].Assets[0].CourseID)
-			require.Equal(t, 1, int(lessons[3].Assets[0].Prefix.Int16))
-			require.Equal(t, "01 Chapter 1", lessons[3].Assets[0].Module)
-			require.True(t, lessons[3].Assets[0].Type.IsPDF())
+			require.Len(t, lessons[2].Assets, 1)
+			require.Equal(t, "file 1", lessons[2].Assets[0].Title)
+			require.Equal(t, course.ID, lessons[2].Assets[0].CourseID)
+			require.Equal(t, 1, int(lessons[2].Assets[0].Prefix.Int16))
+			require.Equal(t, "01 Chapter 1", lessons[2].Assets[0].Module)
+			require.True(t, lessons[2].Assets[0].Type.IsPDF())
 		}
 
 		// Delete file 1 in chapter (delete op)
@@ -242,98 +233,18 @@ func TestScanner_Processor(t *testing.T) {
 
 			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
 			require.NoError(t, err)
-			require.Len(t, lessons, 3)
+			require.Len(t, lessons, 2)
 
 			require.Len(t, lessons[0].Assets, 1)
 			require.Equal(t, fmt.Sprintf("%s/01 file 1.mkv", course.Path), lessons[0].Assets[0].Path)
 			require.Len(t, lessons[1].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/02 file 2.html", course.Path), lessons[1].Assets[0].Path)
-			require.Len(t, lessons[2].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/03 file 3.pdf", course.Path), lessons[2].Assets[0].Path)
+			require.Equal(t, fmt.Sprintf("%s/02 file 2.pdf", course.Path), lessons[1].Assets[0].Path)
 		}
 
-		// Rename file 3 to file 4 (update op)
+		// Rename file 2 to file 3 (update op)
 		{
-			existingAssetID := lessons[2].Assets[0].ID
-			scanner.appFs.Fs.Rename(fmt.Sprintf("%s/03 file 3.pdf", course.Path), fmt.Sprintf("%s/04 file 4.pdf", course.Path))
-
-			err := Processor(ctx, scanner, scan)
-			require.NoError(t, err)
-
-			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
-			require.NoError(t, err)
-			require.Len(t, lessons, 3)
-
-			require.Len(t, lessons[0].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/01 file 1.mkv", course.Path), lessons[0].Assets[0].Path)
-
-			require.Len(t, lessons[1].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/02 file 2.html", course.Path), lessons[1].Assets[0].Path)
-
-			require.Len(t, lessons[2].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/04 file 4.pdf", course.Path), lessons[2].Assets[0].Path)
-			require.Equal(t, existingAssetID, lessons[2].Assets[0].ID)
-		}
-
-		// Replace file 4 with new content (replace op)
-		{
-			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/04 file 4.pdf", course.Path), []byte("hash 4"), os.ModePerm)
-
-			err := Processor(ctx, scanner, scan)
-			require.NoError(t, err)
-
-			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
-			require.NoError(t, err)
-			require.Len(t, lessons, 3)
-
-			require.Len(t, lessons[0].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/01 file 1.mkv", course.Path), lessons[0].Assets[0].Path)
-
-			require.Len(t, lessons[1].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/02 file 2.html", course.Path), lessons[1].Assets[0].Path)
-
-			require.Len(t, lessons[2].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/04 file 4.pdf", course.Path), lessons[2].Assets[0].Path)
-			require.Equal(t, "file 4", lessons[2].Assets[0].Title)
-			require.Equal(t, course.ID, lessons[2].Assets[0].CourseID)
-			require.Equal(t, 4, int(lessons[2].Assets[0].Prefix.Int16))
-			require.Empty(t, lessons[2].Assets[0].Module)
-			require.True(t, lessons[2].Assets[0].Type.IsPDF())
-			require.Equal(t, "e72c82bb74988135e7b6c478fe3659a14b4941f867a93a23687ea172031e4e06", lessons[2].Assets[0].Hash)
-		}
-
-		// Swap file 1 and file 2 (swap op)
-		{
-			scanner.appFs.Fs.Rename(fmt.Sprintf("%s/01 file 1.mkv", course.Path), fmt.Sprintf("%s/02 file 2.html.temp", course.Path))
-			scanner.appFs.Fs.Rename(fmt.Sprintf("%s/02 file 2.html", course.Path), fmt.Sprintf("%s/01 file 1.mkv", course.Path))
-			scanner.appFs.Fs.Rename(fmt.Sprintf("%s/02 file 2.html.temp", course.Path), fmt.Sprintf("%s/02 file 2.html", course.Path))
-
-			err := Processor(ctx, scanner, scan)
-			require.NoError(t, err)
-
-			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
-			require.NoError(t, err)
-			require.Len(t, lessons, 3)
-
-			require.Len(t, lessons[0].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/01 file 1.mkv", course.Path), lessons[0].Assets[0].Path)
-			require.Len(t, lessons[1].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/02 file 2.html", course.Path), lessons[1].Assets[0].Path)
-			require.Len(t, lessons[2].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/04 file 4.pdf", course.Path), lessons[2].Assets[0].Path)
-
-			require.Equal(t, "ac4f5d7f5ca1f7b2a9e8107ca793b5ead43a1d04afdafabc9488e93b5d738b41", lessons[0].Assets[0].Hash)
-			require.Equal(t, "0657190350cbea662b6c15d703d9c7482308e511504d3308306d0f1ede153a34", lessons[1].Assets[0].Hash)
-		}
-
-		// Delete file 1 and move file 2 to file 1 (overwrite op)
-		{
-			require.NoError(t, scanner.appFs.Fs.Remove(fmt.Sprintf("%s/01 file 1.mkv", course.Path)))
-
-			require.NoError(t, scanner.appFs.Fs.Rename(
-				fmt.Sprintf("%s/02 file 2.html", course.Path),
-				fmt.Sprintf("%s/01 file 1.mkv", course.Path),
-			))
+			existingAssetID := lessons[1].Assets[0].ID
+			scanner.appFs.Fs.Rename(fmt.Sprintf("%s/02 file 2.pdf", course.Path), fmt.Sprintf("%s/03 file 3.pdf", course.Path))
 
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
@@ -345,7 +256,75 @@ func TestScanner_Processor(t *testing.T) {
 			require.Len(t, lessons[0].Assets, 1)
 			require.Equal(t, fmt.Sprintf("%s/01 file 1.mkv", course.Path), lessons[0].Assets[0].Path)
 			require.Len(t, lessons[1].Assets, 1)
-			require.Equal(t, fmt.Sprintf("%s/04 file 4.pdf", course.Path), lessons[1].Assets[0].Path)
+			require.Equal(t, fmt.Sprintf("%s/03 file 3.pdf", course.Path), lessons[1].Assets[0].Path)
+
+			require.Equal(t, existingAssetID, lessons[1].Assets[0].ID)
+		}
+
+		// Replace file 3 with new content (replace op)
+		{
+			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/03 file 3.pdf", course.Path), []byte("new hash 3"), os.ModePerm)
+
+			err := Processor(ctx, scanner, scan)
+			require.NoError(t, err)
+
+			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
+			require.NoError(t, err)
+			require.Len(t, lessons, 2)
+
+			require.Len(t, lessons[0].Assets, 1)
+			require.Equal(t, fmt.Sprintf("%s/01 file 1.mkv", course.Path), lessons[0].Assets[0].Path)
+
+			require.Len(t, lessons[1].Assets, 1)
+			require.Equal(t, fmt.Sprintf("%s/03 file 3.pdf", course.Path), lessons[1].Assets[0].Path)
+			require.Equal(t, "file 3", lessons[1].Assets[0].Title)
+			require.Equal(t, course.ID, lessons[1].Assets[0].CourseID)
+			require.Equal(t, 3, int(lessons[1].Assets[0].Prefix.Int16))
+			require.Empty(t, lessons[1].Assets[0].Module)
+			require.True(t, lessons[1].Assets[0].Type.IsPDF())
+			require.Equal(t, "638441f6644d2bf0a20dcf8f6e0b6b7df670c2ab14986af7b027796570fafbe0", lessons[1].Assets[0].Hash)
+		}
+
+		// Swap file 1 and file 3 (swap op)
+		{
+			scanner.appFs.Fs.Rename(fmt.Sprintf("%s/01 file 1.mkv", course.Path), fmt.Sprintf("%s/03 file 3.pdf.temp", course.Path))
+			scanner.appFs.Fs.Rename(fmt.Sprintf("%s/03 file 3.pdf", course.Path), fmt.Sprintf("%s/01 file 1.mkv", course.Path))
+			scanner.appFs.Fs.Rename(fmt.Sprintf("%s/03 file 3.pdf.temp", course.Path), fmt.Sprintf("%s/03 file 3.pdf", course.Path))
+
+			err := Processor(ctx, scanner, scan)
+			require.NoError(t, err)
+
+			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
+			require.NoError(t, err)
+			require.Len(t, lessons, 2)
+
+			require.Len(t, lessons[0].Assets, 1)
+			require.Equal(t, fmt.Sprintf("%s/01 file 1.mkv", course.Path), lessons[0].Assets[0].Path)
+			require.Len(t, lessons[1].Assets, 1)
+			require.Equal(t, fmt.Sprintf("%s/03 file 3.pdf", course.Path), lessons[1].Assets[0].Path)
+
+			require.Equal(t, "638441f6644d2bf0a20dcf8f6e0b6b7df670c2ab14986af7b027796570fafbe0", lessons[0].Assets[0].Hash)
+			require.Equal(t, "0657190350cbea662b6c15d703d9c7482308e511504d3308306d0f1ede153a34", lessons[1].Assets[0].Hash)
+		}
+
+		// Delete file 1 and move file 3 to file 1 (overwrite op)
+		{
+			require.NoError(t, scanner.appFs.Fs.Remove(fmt.Sprintf("%s/01 file 1.mkv", course.Path)))
+
+			require.NoError(t, scanner.appFs.Fs.Rename(
+				fmt.Sprintf("%s/03 file 3.pdf", course.Path),
+				fmt.Sprintf("%s/01 file 1.mkv", course.Path),
+			))
+
+			err := Processor(ctx, scanner, scan)
+			require.NoError(t, err)
+
+			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
+			require.NoError(t, err)
+			require.Len(t, lessons, 1)
+
+			require.Len(t, lessons[0].Assets, 1)
+			require.Equal(t, fmt.Sprintf("%s/01 file 1.mkv", course.Path), lessons[0].Assets[0].Path)
 
 			require.Equal(t, "0657190350cbea662b6c15d703d9c7482308e511504d3308306d0f1ede153a34", lessons[0].Assets[0].Hash)
 		}
@@ -354,7 +333,6 @@ func TestScanner_Processor(t *testing.T) {
 		{
 			// Delete all files but keep the course directory
 			scanner.appFs.Fs.RemoveAll(fmt.Sprintf("%s/01 file 1.mkv", course.Path))
-			scanner.appFs.Fs.RemoveAll(fmt.Sprintf("%s/04 file 4.pdf", course.Path))
 
 			err := Processor(ctx, scanner, scan)
 			require.NoError(t, err)
@@ -498,7 +476,7 @@ func TestScanner_Processor(t *testing.T) {
 	t.Run("asset priority", func(t *testing.T) {
 		scanner, ctx, _ := setup(t)
 
-		// Priority is VIDEO -> HTML -> PDF -> MARKDOWN -> TEXT
+		// Priority is VIDEO -> PDF -> MARKDOWN -> TEXT
 
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, scanner.dao.CreateCourse(ctx, course))
@@ -580,31 +558,6 @@ func TestScanner_Processor(t *testing.T) {
 			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), lessons[0].Attachments[1].Path)
 		}
 
-		// Add HTML asset
-		{
-			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 index.html", course.Path), []byte("index"), os.ModePerm)
-
-			err := Processor(ctx, scanner, scan)
-			require.NoError(t, err)
-
-			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
-			require.NoError(t, err)
-			require.Len(t, lessons, 1)
-
-			require.Len(t, lessons[0].Assets, 1)
-			require.Equal(t, "index", lessons[0].Assets[0].Title)
-			require.Equal(t, course.ID, lessons[0].Assets[0].CourseID)
-			require.Equal(t, 1, int(lessons[0].Assets[0].Prefix.Int16))
-			require.Empty(t, lessons[0].Assets[0].Module)
-			require.True(t, lessons[0].Assets[0].Type.IsHTML())
-			require.Equal(t, "1bc04b5291c26a46d918139138b992d2de976d6851d0893b0476b85bfbdfc6e6", lessons[0].Assets[0].Hash)
-
-			require.Len(t, lessons[0].Attachments, 3)
-			require.Equal(t, filepath.Join(course.Path, "01 markdown 1.md"), lessons[0].Attachments[0].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 pdf 1.pdf"), lessons[0].Attachments[1].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), lessons[0].Attachments[2].Path)
-		}
-
 		// Add VIDEO asset
 		{
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 video.mp4", course.Path), []byte("video"), os.ModePerm)
@@ -624,11 +577,10 @@ func TestScanner_Processor(t *testing.T) {
 			require.True(t, lessons[0].Assets[0].Type.IsVideo())
 			require.Equal(t, "0cab1c9617404faf2b24e221e189ca5945813e14d3f766345b09ca13bbe28ffc", lessons[0].Assets[0].Hash)
 
-			require.Len(t, lessons[0].Attachments, 4)
-			require.Equal(t, filepath.Join(course.Path, "01 index.html"), lessons[0].Attachments[0].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 markdown 1.md"), lessons[0].Attachments[1].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 pdf 1.pdf"), lessons[0].Attachments[2].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), lessons[0].Attachments[3].Path)
+			require.Len(t, lessons[0].Attachments, 3)
+			require.Equal(t, filepath.Join(course.Path, "01 markdown 1.md"), lessons[0].Attachments[0].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 pdf 1.pdf"), lessons[0].Attachments[1].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), lessons[0].Attachments[2].Path)
 		}
 
 		// Add another PDF asset
@@ -650,12 +602,11 @@ func TestScanner_Processor(t *testing.T) {
 			require.True(t, lessons[0].Assets[0].Type.IsVideo())
 			require.Equal(t, "0cab1c9617404faf2b24e221e189ca5945813e14d3f766345b09ca13bbe28ffc", lessons[0].Assets[0].Hash)
 
-			require.Len(t, lessons[0].Attachments, 5)
-			require.Equal(t, filepath.Join(course.Path, "01 index.html"), lessons[0].Attachments[0].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 markdown 1.md"), lessons[0].Attachments[1].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 pdf 1.pdf"), lessons[0].Attachments[2].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 pdf 2.pdf"), lessons[0].Attachments[3].Path)
-			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), lessons[0].Attachments[4].Path)
+			require.Len(t, lessons[0].Attachments, 4)
+			require.Equal(t, filepath.Join(course.Path, "01 markdown 1.md"), lessons[0].Attachments[0].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 pdf 1.pdf"), lessons[0].Attachments[1].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 pdf 2.pdf"), lessons[0].Attachments[2].Path)
+			require.Equal(t, filepath.Join(course.Path, "01 text 1.txt"), lessons[0].Attachments[3].Path)
 		}
 	})
 
@@ -873,8 +824,6 @@ func TestScanner_ParseFilename(t *testing.T) {
 			// PDF (including mixed case)
 			{"1 - doc.pdf", &parsedFile{Prefix: 1, Title: "doc", SubPrefix: nil, SubTitle: "", Ext: "pdf", AssetType: types.NewAsset("pdf"), IsCard: false, Original: "1 - doc.pdf", NormalizedPath: "1 - doc.pdf"}},
 			{"2 - REPORT.PDF", &parsedFile{Prefix: 2, Title: "REPORT", SubPrefix: nil, SubTitle: "", Ext: "pdf", AssetType: types.NewAsset("pdf"), IsCard: false, Original: "2 - REPORT.PDF", NormalizedPath: "2 - REPORT.PDF"}},
-			// HTML
-			{"1 index.html", &parsedFile{Prefix: 1, Title: "index", SubPrefix: nil, SubTitle: "", Ext: "html", AssetType: types.NewAsset("html"), IsCard: false, Original: "1 index.html", NormalizedPath: "1 index.html"}},
 			// Markdown
 			{"5 notes.md", &parsedFile{Prefix: 5, Title: "notes", SubPrefix: nil, SubTitle: "", Ext: "md", AssetType: types.NewAsset("md"), IsCard: false, Original: "5 notes.md", NormalizedPath: "5 notes.md"}},
 			// Text
@@ -971,7 +920,6 @@ func TestScanner_CategorizeFile(t *testing.T) {
 		{"0100 file.mp3", Asset},
 		{"1 - doc.pdf", Asset},
 		{"2 - REPORT.PDF", Asset},
-		{"1 index.html", Asset},
 		{"5 notes.md", Asset},
 		{"6 readme.txt", Asset},
 		{"01 file 0 {}.mp4", Asset},

@@ -2,9 +2,12 @@
 
 ## Overview
 
-Off Course is a local course management application that enables you to view, organize, and track progress through educational content stored on your local filesystem. It provides a web-based interface for browsing courses, tracking learning progress, and managing course materials without requiring an internet connection.
+Off Course is a local course management application that enables you to view, organize, and track progress through educational content
+stored on your local filesystem. It provides a web-based interface for browsing courses, tracking learning progress, and managing course
+materials without requiring an internet connection.
 
-The application automatically scans course directories to identify assets (videos, HTML files, PDFs) and attachments, organizing them into structured lessons with progress tracking capabilities.
+The application automatically scans course directories to identify assets (videos, PDFs, markdown files and text files) and attachments,
+organizing them into structured lessons with progress tracking capabilities.
 
 ## Architecture
 
@@ -39,7 +42,8 @@ The application automatically scans course directories to identify assets (video
 
 ### Building the Application
 
-The application consists of a Go backend that embeds a SvelteKit frontend. You must build the frontend first, then build the Go application which will embed the UI.
+The application consists of a Go backend that embeds a SvelteKit frontend. You must build the frontend first, then build the Go application
+which will embed the UI.
 
 1. **Build the Frontend**
 
@@ -159,7 +163,8 @@ The application uses SQLite databases stored in the `oc_data` directory, created
 - `oc_data/data.db` - Main application data (courses, users, progress)
 - `oc_data/logs.db` - Application logs
 
-The database is created relative to where the application is launched, so the `oc_data` directory will appear in your current working directory.
+The database is created relative to where the application is launched, so the `oc_data` directory will appear in your current working
+directory.
 
 ### Admin Password Reset
 
@@ -215,7 +220,8 @@ Off Course includes several CLI commands for administration:
 
 ### Course Structure
 
-Courses are organized as directories containing assets and attachments. The application automatically scans these directories to identify and organize content.
+Courses are organized as directories containing assets and attachments. The application automatically scans these directories to identify
+and organize content.
 
 #### Course Cards
 
@@ -223,23 +229,21 @@ Place an image named `card.xxx` at the root of your course directory (where `xxx
 
 #### Assets vs Attachments
 
-- **Assets**: Primary course materials (videos, HTML files, PDFs, text files)
+- **Assets**: Primary course materials (videos, PDFs, markdown files and text files)
 - **Attachments**: Supplementary materials linked to specific assets
 
 #### File Organization
 
 ```
 My Course/
-├── card.jpg                    # Course card image
-├── 01 Introduction.mp4         # Main asset
-├── 01 Notes.txt               # Attachment to '01 Introduction.mp4'
-├── Chapter 1/                 # Subdirectory (chapter/section)
-│   ├── 01 Overview.mp4         # Main asset for this chapter
-│   ├── 01 Overview Notes.txt   # Attachment
-│   └── 02 Example.html         # Another asset
+├── card.jpg                   # Course card image
+├── Chapter 1/                 # Module (chapter)
+│   ├── 01 Overview.mp4        # First asset
+│   ├── 01 Overview Notes.txt  # Attachment for first asset
+│   └── 02 Example.md          # Second asset
 └── Chapter 2/
-    ├── 01 Deep Dive.pdf       # Main asset
-    └── 01 Source Links.txt     # Attachment
+    ├── 01 Deep Dive.pdf       # First asset
+    └── 01 Source Links.txt    # Attachment for first asset
 ```
 
 #### Filename Structure
@@ -253,8 +257,8 @@ My Course/
 Examples:
 
 - `01 Introduction.mp4`
-- `02 Getting Started.html`
-- `03 Advanced Concepts.pdf`
+- `02 Advanced Concepts.pdf`
+- `3 Getting Started.md`
 
 **Attachments** are linked to assets by numerical prefix:
 
@@ -287,12 +291,12 @@ The assets will be rendered in the order of the sub-prefix on the same lesson pa
 When multiple assets share the same prefix (without sub-prefix), the system uses priority to determine the primary asset:
 
 1. **Video** (highest priority) - `.mp4`, `.avi`, `.mkv`, `.webm`, etc.
-2. **HTML** - `.html`, `.htm`
-3. **PDF** - `.pdf`
-4. **Markdown** - `.md`
-5. **Text** (lowest priority) - `.txt`
+2. **PDF** - `.pdf`
+3. **Markdown** - `.md`
+4. **Text** (lowest priority) - `.txt`
 
-Example: If you have both `01 Introduction.mp4` and `01 Introduction.html`, the video will be the primary asset and the HTML file will become an attachment.
+Example: If you have both `01 Introduction.mp4` and `01 Introduction.md`, the video will be the primary asset and the markdown file
+will become an attachment
 
 #### Supported Asset Types
 
@@ -303,9 +307,9 @@ Example: If you have both `01 Introduction.mp4` and `01 Introduction.html`, the 
 
 **Documents:**
 
-- `.html`, `.htm`
 - `.pdf`
-- `.md`, `.txt`
+- `.md`,
+- `.txt`
 
 ### Adding Courses via UI
 

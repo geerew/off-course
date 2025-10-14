@@ -1926,44 +1926,6 @@ func TestCourses_ServeAsset(t *testing.T) {
 		require.Equal(t, "video", string(body))
 	})
 
-	t.Run("200 (html)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
-
-		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
-
-		lesson := &models.Lesson{
-			CourseID: course.ID,
-			Title:    "lesson 1",
-			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Module:   "Module 1",
-		}
-		require.NoError(t, router.dao.CreateLesson(ctx, lesson))
-
-		asset := &models.Asset{
-			CourseID: course.ID,
-			LessonID: lesson.ID,
-			Title:    "asset 1",
-			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-			Module:   "Module 1",
-			Type:     *types.NewAsset("html"),
-			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
-			FileSize: 1024,
-			ModTime:  time.Now().Format(time.RFC3339Nano),
-			Hash:     security.RandomString(64),
-		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
-
-		require.Nil(t, router.config.AppFs.Fs.MkdirAll(filepath.Dir(asset.Path), os.ModePerm))
-		require.Nil(t, afero.WriteFile(router.config.AppFs.Fs, asset.Path, []byte("html data"), os.ModePerm))
-
-		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/lessons/"+lesson.ID+"/assets/"+asset.ID+"/serve", nil)
-		status, body, err := requestHelper(t, router, req)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusOK, status)
-		require.Equal(t, "html data", string(body))
-	})
-
 	t.Run("400 (invalid path)", func(t *testing.T) {
 		router, ctx := setup(t, "admin", types.UserRoleAdmin)
 

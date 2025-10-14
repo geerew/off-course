@@ -25,7 +25,6 @@ type Asset struct {
 
 const (
 	AssetVideo    AssetType = "video"
-	AssetHTML     AssetType = "html"
 	AssetPDF      AssetType = "pdf"
 	AssetMarkdown AssetType = "markdown"
 	AssetText     AssetType = "text"
@@ -51,8 +50,6 @@ func NewAsset(ext string) *Asset {
 		"webm",
 		"wav":
 		return &Asset{s: AssetVideo}
-	case "htm", "html":
-		return &Asset{s: AssetHTML}
 	case "pdf":
 		return &Asset{s: AssetPDF}
 	case "md":
@@ -76,20 +73,6 @@ func (a *Asset) SetVideo() {
 // IsVideo returns true is the asset is of type video
 func (a Asset) IsVideo() bool {
 	return a.s == AssetVideo
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// SetHTML sets the asset type to HTML
-func (a *Asset) SetHTML() {
-	a.s = AssetHTML
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// IsHTML returns true is the asset is of type HTML
-func (a Asset) IsHTML() bool {
-	return a.s == AssetHTML
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -183,8 +166,6 @@ func (a *Asset) Scan(value any) error {
 	switch vv {
 	case string(AssetVideo):
 		a.s = AssetVideo
-	case string(AssetHTML):
-		a.s = AssetHTML
 	case string(AssetPDF):
 		a.s = AssetPDF
 	case string(AssetMarkdown):
