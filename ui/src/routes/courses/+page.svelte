@@ -21,6 +21,7 @@
 	let paginationTotal = $state<number>();
 
 	let loadingMore = $state(false);
+	let hasMoreCourses = $state(true);
 
 	let loadPromise = $state(fetcher(false));
 
@@ -30,6 +31,28 @@
 	$effect(() => {
 		return () => scanMonitor.clearAll();
 	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Set up intersection observer for infinite scrolling
+	function setupIntersectionObserver(node: HTMLElement) {
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries[0].isIntersecting && hasMoreCourses && !loadingMore) {
+					loadMoreCourses();
+				}
+			},
+			{ threshold: 0.1 }
+		);
+
+		observer.observe(node);
+
+		return {
+			destroy() {
+				observer.disconnect();
+			}
+		};
+	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -48,6 +71,18 @@
 				: windowWidth >= +theme.screens.md.replace('rem', '')
 					? 10
 					: 8;
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Load more courses for infinite scrolling
+	async function loadMoreCourses(): Promise<void> {
+		if (loadingMore || !hasMoreCourses) return;
+
+		loadingMore = true;
+		paginationPage += 1;
+		await fetcher(true);
+		loadingMore = false;
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -77,6 +112,9 @@
 			} else {
 				courses = data.items;
 			}
+
+			// Update hasMoreCourses based on whether we've loaded all courses
+			hasMoreCourses = courses.length < paginationTotal;
 		} catch (error) {
 			throw error;
 		}
@@ -92,6 +130,7 @@
 					onApply={async () => {
 						filterApplied = true;
 						paginationPage = 1;
+						hasMoreCourses = true;
 						await fetcher(false);
 					}}
 				/>
@@ -202,25 +241,15 @@
 								{/each}
 							</div>
 
-							{#if paginationTotal && paginationTotal > courses.length}
-								<div class="flex w-full justify-center pt-5">
-									<Button
-										variant="default"
-										class="w-full px-4 text-base"
-										disabled={loadingMore}
-										onclick={async () => {
-											paginationPage += 1;
-											loadingMore = true;
-											await fetcher(true);
-											loadingMore = false;
-										}}
-									>
-										{#if loadingMore}
+							{#if hasMoreCourses}
+								<!-- Infinite scroll trigger -->
+								<div use:setupIntersectionObserver class="flex w-full justify-center pt-5">
+									{#if loadingMore}
+										<div class="flex items-center gap-2">
 											<Spinner class="bg-background-alt-4 size-4" />
-										{:else}
-											Load more
-										{/if}
-									</Button>
+											<span class="text-foreground-alt-3">Loading more courses...</span>
+										</div>
+									{/if}
 								</div>
 							{/if}
 						</div>
