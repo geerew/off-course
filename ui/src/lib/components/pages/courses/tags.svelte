@@ -36,6 +36,9 @@
 
 	let allTags = $state<string[]>([]);
 
+	// Disable the component when there are no tags available
+	let isDisabled = $derived(disabled || (allTags && allTags.length === 0));
+
 	let tagsToRender = $state<string[]>([]);
 
 	// Reference to the search input element
@@ -71,17 +74,20 @@
 {#snippet title()}
 	<div class="flex flex-row items-center justify-between px-1.5">
 		<span class="text-background-primary-alt-1 text-base font-semibold">Tags</span>
-		<Button
-			variant="ghost"
-			class="text-foreground-alt-3 hover:text-foreground-alt-2 p-0 text-sm hover:bg-transparent"
-			onclick={() => {
-				selected = [];
-				value = '';
-				onApply();
-			}}
-		>
-			clear
-		</Button>
+		{#if allTags && allTags.length > 0}
+			<Button
+				variant="ghost"
+				class="text-foreground-alt-3 hover:text-foreground-alt-2 p-0 text-sm hover:bg-transparent"
+				disabled={isDisabled}
+				onclick={() => {
+					selected = [];
+					value = '';
+					onApply();
+				}}
+			>
+				clear
+			</Button>
+		{/if}
 	</div>
 {/snippet}
 
@@ -90,7 +96,7 @@
 		<Button
 			variant="ghost"
 			class="text-foreground-alt-3 group-focus-within:text-foreground-alt-1 absolute top-1/2 left-2 -translate-y-1/2 transform cursor-text rounded-full p-0 hover:bg-transparent"
-			{disabled}
+			disabled={isDisabled}
 			onclick={() => {
 				if (!searchTagsEl) return;
 				searchTagsEl.focus();
@@ -104,7 +110,7 @@
 			bind:value={searchValue}
 			placeholder="Search tags..."
 			class="placeholder:text-foreground-alt-3 bg-background-alt-2 focus:bg-alt-3 h-8 border-b-2 ps-8 pe-8 text-sm placeholder:text-xs"
-			{disabled}
+			disabled={isDisabled}
 		/>
 
 		{#if searchValue}
@@ -140,9 +146,10 @@
 			<Dropdown.Trigger
 				class={cn(
 					'relative w-36 [&[data-state=open]>svg]:rotate-90 ',
-					value && 'border-b-background-primary-alt-1'
+					value && 'border-b-background-primary-alt-1',
+					isDisabled && 'cursor-not-allowed opacity-50'
 				)}
-				{disabled}
+				disabled={isDisabled}
 			>
 				<div class="flex items-center gap-1.5">
 					<TagIcon class="size-4 stroke-2" />
@@ -159,7 +166,7 @@
 					{#await loadPromise}
 						{@render awaitLoader()}
 					{:then _}
-						{#if allTags.length === 0}
+						{#if !allTags || allTags.length === 0}
 							<div class="text-foreground-alt-3 py-5 text-center text-sm">No tags</div>
 						{:else}
 							<!--  Search -->
@@ -197,8 +204,10 @@
 				class={cn(
 					'group data-[state=open]:border-b-foreground-alt-4 flex w-full flex-1 items-center justify-between border-b border-transparent px-2.5 py-5 font-medium transition-transform select-none hover:cursor-pointer',
 					value &&
-						'data-[state=open]:border-b-background-primary-alt-1 data-[state=closed]:border-b-background-primary-alt-1 data-[state=closed]:border-b-2'
+						'data-[state=open]:border-b-background-primary-alt-1 data-[state=closed]:border-b-background-primary-alt-1 data-[state=closed]:border-b-2',
+					isDisabled && 'cursor-not-allowed opacity-50'
 				)}
+				disabled={isDisabled}
 			>
 				<div class="flex items-center gap-1.5">
 					<TagIcon class="size-6 stroke-2" />
@@ -206,22 +215,25 @@
 				</div>
 
 				<div class="flex flex-row items-center gap-3">
-					<Button
-						variant="ghost"
-						class={cn(
-							'text-foreground-alt-3 hover:text-foreground-alt-2 h-auto p-0 text-sm hover:bg-transparent',
-							!value && 'invisible'
-						)}
-						onclick={(e: MouseEvent) => {
-							e.preventDefault();
-							e.stopPropagation();
-							selected = [];
-							value = '';
-							onApply();
-						}}
-					>
-						clear
-					</Button>
+					{#if allTags && allTags.length > 0}
+						<Button
+							variant="ghost"
+							class={cn(
+								'text-foreground-alt-3 hover:text-foreground-alt-2 h-auto p-0 text-sm hover:bg-transparent',
+								!value && 'invisible'
+							)}
+							disabled={isDisabled}
+							onclick={(e: MouseEvent) => {
+								e.preventDefault();
+								e.stopPropagation();
+								selected = [];
+								value = '';
+								onApply();
+							}}
+						>
+							clear
+						</Button>
+					{/if}
 
 					<RightChevronIcon
 						class="size-4.5 stroke-2 transition-transform duration-100 group-data-[state=open]:rotate-90"
@@ -236,7 +248,7 @@
 			{#await loadPromise}
 				{@render awaitLoader()}
 			{:then _}
-				{#if allTags.length === 0}
+				{#if !allTags || allTags.length === 0}
 					<div class="text-foreground-alt-3 py-5 text-center text-sm">No tags</div>
 				{:else}
 					<!--  Search -->
