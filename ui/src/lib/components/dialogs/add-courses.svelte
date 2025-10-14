@@ -176,12 +176,17 @@
 				)
 			);
 			successFn?.();
+
+			// Clear selected courses after successful addition
+			selectedCourses = {};
+
+			// Only close on success
+			open = false;
 		} catch (error) {
 			toast.error((error as APIError).message);
 		}
 
 		isPosting = false;
-		open = false;
 	}
 </script>
 
