@@ -21,6 +21,7 @@
 		WarningIcon
 	} from '$lib/components/icons';
 	import { Button, Dropdown, Tooltip } from '$lib/components/ui';
+	import AssetError from '$lib/components/ui/asset-error.svelte';
 	import Attachments from '$lib/components/ui/attachments.svelte';
 	import { VideoPlayer } from '$lib/components/ui/media';
 	import type { AssetModel, AssetProgressUpdateModel } from '$lib/models/asset-model';
@@ -42,6 +43,7 @@
 	let nextLesson = $state<LessonModel>();
 
 	const contentCache = new SvelteMap<string, string>();
+	const loadingErrors = new SvelteMap<string, string>();
 
 	let loadPromise = $state(fetcher());
 	let initDone = false;
@@ -133,15 +135,47 @@
 			return contentCache.get(asset.id)!;
 		}
 
-		const raw = await ServeCourseAsset(asset.courseId, asset.lessonId, asset.id);
-		if (!raw) return '';
+		try {
+			const raw = await ServeCourseAsset(asset.courseId, asset.lessonId, asset.id);
+			if (!raw) {
+				loadingErrors.set(asset.id, 'No content available');
+				return '';
+			}
 
-		const rendered = asset.type === 'text' ? raw : renderMarkdown(raw);
+			const rendered = asset.type === 'text' ? raw : renderMarkdown(raw);
 
-		// Update reactive state map
-		contentCache.set(asset.id, rendered);
+			// Clear any previous error and update reactive state map
+			loadingErrors.delete(asset.id);
+			contentCache.set(asset.id, rendered);
 
-		return rendered;
+			return rendered;
+		} catch (error) {
+			// Store the error message for display
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+			loadingErrors.set(asset.id, errorMessage);
+			throw error;
+		}
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Retry loading a failed asset
+	async function retryAsset(asset: AssetModel): Promise<void> {
+		if (!asset) return;
+
+		// Clear any existing error and cache
+		loadingErrors.delete(asset.id);
+		contentCache.delete(asset.id);
+
+		if (asset.type === 'markdown' || asset.type === 'text') {
+			try {
+				await loadAndRenderContent(asset);
+			} catch (error) {
+				// Error is already handled in loadAndRenderContent
+			}
+		}
+		// For video assets, clearing the error will cause the VideoPlayer to re-render
+		// and attempt to load the video again
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -581,26 +615,50 @@
 									<div class="typography">
 										{#if contentCache.has(asset.id)}
 											<div class="typography">{@html contentCache.get(asset.id)}</div>
+										{:else if loadingErrors.has(asset.id)}
+											<AssetError
+												assetType="markdown"
+												assetTitle={asset.subTitle || asset.title}
+												error={loadingErrors.get(asset.id)}
+												onRetry={() => retryAsset(asset)}
+											/>
 										{:else}
 											{#await loadAndRenderContent(asset)}
 												<div class="text-foreground-alt-3 text-sm">Loading…</div>
 											{:then html}
 												<div class="typography">{@html html}</div>
 											{:catch e}
-												<div class="text-foreground-error text-sm">Failed to load content</div>
+												<AssetError
+													assetType="markdown"
+													assetTitle={asset.subTitle || asset.title}
+													error={e.message}
+													onRetry={() => retryAsset(asset)}
+												/>
 											{/await}
 										{/if}
 									</div>
 								{:else if asset.type === 'text'}
 									{#if contentCache.has(asset.id)}
 										<div class="whitespace-pre-wrap">{contentCache.get(asset.id)}</div>
+									{:else if loadingErrors.has(asset.id)}
+										<AssetError
+											assetType="text"
+											assetTitle={asset.subTitle || asset.title}
+											error={loadingErrors.get(asset.id)}
+											onRetry={() => retryAsset(asset)}
+										/>
 									{:else}
 										{#await loadAndRenderContent(asset)}
 											<div class="text-foreground-alt-3 text-sm">Loading…</div>
 										{:then text}
 											<div class="whitespace-pre-wrap">{text}</div>
 										{:catch e}
-											<div class="text-foreground-error text-sm">Failed to load content</div>
+											<AssetError
+												assetType="text"
+												assetTitle={asset.subTitle || asset.title}
+												error={e.message}
+												onRetry={() => retryAsset(asset)}
+											/>
 										{/await}
 									{/if}
 								{:else}
