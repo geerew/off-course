@@ -14,6 +14,7 @@ import (
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/logger"
+	"github.com/geerew/off-course/utils/media"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
@@ -44,10 +45,18 @@ func setup(t *testing.T) (*CourseScan, context.Context, *[]*logger.Log) {
 	require.NoError(t, err)
 	require.NotNil(t, dbManager)
 
+	// Create a mock FFmpeg for testing
+	ffmpeg, err := media.NewFFmpeg()
+	if err != nil {
+		// If FFmpeg is not available, skip the test
+		t.Skip("FFmpeg not available; skipping test")
+	}
+
 	courseScan := New(&CourseScanConfig{
 		Db:     dbManager.DataDb,
 		AppFs:  appFs,
 		Logger: logger,
+		FFmpeg: ffmpeg,
 	})
 
 	// Create a user for the context

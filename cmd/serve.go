@@ -21,6 +21,7 @@ import (
 	"github.com/geerew/off-course/utils/auth"
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/logger"
+	"github.com/geerew/off-course/utils/media"
 	"github.com/geerew/off-course/utils/security"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -68,10 +69,18 @@ var serveCmd = &cobra.Command{
 		dbManager.DataDb.SetLogger(logger)
 		appFs.SetLogger(logger)
 
+		// Initialize FFmpeg
+		ffmpeg, err := media.NewFFmpeg()
+		if err != nil {
+			utils.Errf("Failed to initialize FFmpeg: %s", err)
+			os.Exit(1)
+		}
+
 		courseScan := coursescan.New(&coursescan.CourseScanConfig{
 			Db:     dbManager.DataDb,
 			AppFs:  appFs,
 			Logger: logger,
+			FFmpeg: ffmpeg,
 		})
 
 		// Start the course scan worker

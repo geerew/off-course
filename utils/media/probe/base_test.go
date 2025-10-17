@@ -1,4 +1,4 @@
-package media
+package probe
 
 import (
 	"os/exec"
@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geerew/off-course/utils"
+	"github.com/geerew/off-course/utils/media"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,7 +28,10 @@ func TestProbeVideo(t *testing.T) {
 	t.Run("valid video", func(t *testing.T) {
 		testVideo := filepath.Join("testdata", "sample.mp4")
 
-		mp := MediaProbe{}
+		ffmpeg, err := media.NewFFmpeg()
+		require.NoError(t, err)
+
+		mp := MediaProbe{FFmpeg: ffmpeg}
 		info, err := mp.ProbeVideo(testVideo)
 		require.NoError(t, err)
 		require.NotNil(t, info)
@@ -56,40 +59,14 @@ func TestProbeVideo(t *testing.T) {
 	})
 
 	t.Run("invalid video", func(t *testing.T) {
-		mp := MediaProbe{}
-		_, err := mp.ProbeVideo("testdata/does_not_exist.mp4")
+		ffmpeg, err := media.NewFFmpeg()
+		require.NoError(t, err)
+
+		mp := MediaProbe{FFmpeg: ffmpeg}
+		_, err = mp.ProbeVideo("testdata/does_not_exist.mp4")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "error running ffprobe")
 	})
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-func TestResolveFFProbePath(t *testing.T) {
-	t.Run("ffprobe valid", func(t *testing.T) {
-		ffprobeAvailable(t)
-
-		mp := MediaProbe{FFProbePath: ""}
-		path, err := mp.resolveFFProbePath()
-		require.NoError(t, err)
-		require.Equal(t, "ffprobe", path)
-
-		mp = MediaProbe{FFProbePath: "ffprobe"}
-		path, err = mp.resolveFFProbePath()
-		require.NoError(t, err)
-		require.NotEmpty(t, "ffprobe", path)
-	})
-
-	t.Run("ffprobe not found", func(t *testing.T) {
-		mp := MediaProbe{FFProbePath: "nonexistent"}
-		_, err := mp.resolveFFProbePath()
-		require.ErrorIs(t, err, utils.ErrFFProbeNotFound)
-	})
-
-	t.Run("ffprobe invalid path", func(t *testing.T) {
-		mp := MediaProbe{FFProbePath: "nonexistent/ffprobe"}
-		_, err := mp.resolveFFProbePath()
-		require.ErrorIs(t, err, utils.ErrInvalidFFProbePath)
-	})
-
-}

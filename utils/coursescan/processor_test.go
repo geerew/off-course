@@ -173,7 +173,7 @@ func TestScanner_Processor(t *testing.T) {
 			WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: course.ID}).
 			WithOrderBy(models.LESSON_TABLE_MODULE+" asc", models.LESSON_TABLE_PREFIX+" asc")
 
-		lessons := []*models.Lesson{}
+		var lessons []*models.Lesson
 
 		// Add file 1, file 2 (create op)
 		{
