@@ -1,16 +1,16 @@
-package media
+package probe
 
 import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/geerew/off-course/utils"
+	"github.com/geerew/off-course/utils/media"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -62,17 +62,18 @@ type AudioStream struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type MediaProbe struct {
-	FFProbePath string
+	FFmpeg *media.FFmpeg
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // ProbeVideo uses ffprobe to extract metadata from a video file
 func (mp MediaProbe) ProbeVideo(path string) (*MediaInfo, error) {
-	ffprobePath, err := mp.resolveFFProbePath()
-	if err != nil {
-		return nil, err
+	if mp.FFmpeg == nil {
+		return nil, utils.ErrFFProbeUnavailable
 	}
+
+	ffprobePath := mp.FFmpeg.GetFFProbePath()
 
 	entries := []string{
 		// format (container/file)
@@ -183,40 +184,6 @@ func (mp MediaProbe) ProbeVideo(path string) (*MediaInfo, error) {
 	}
 
 	return info, nil
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// resolveProbePath checks if the ffprobe path is valid
-func (mp MediaProbe) resolveFFProbePath() (string, error) {
-	// Default to system ffprobe and check if it's available
-	if mp.FFProbePath == "" || mp.FFProbePath == "ffprobe" {
-		if _, err := exec.LookPath("ffprobe"); err == nil {
-			return "ffprobe", nil
-		}
-
-		return "", utils.ErrFFProbeUnavailable
-	}
-
-	// If user provided a full path to ffprobe
-	if strings.HasSuffix(mp.FFProbePath, "ffprobe") || strings.HasSuffix(mp.FFProbePath, "ffprobe.exe") {
-		if _, err := os.Stat(mp.FFProbePath); err == nil {
-			return mp.FFProbePath, nil
-		}
-		return "", utils.ErrInvalidFFProbePath
-	}
-
-	// If user provided a directory, check for ffprobe inside
-	candidate := filepath.Join(mp.FFProbePath, "ffprobe")
-	if _, err := os.Stat(candidate); err == nil {
-		return candidate, nil
-	}
-	candidateExe := candidate + ".exe"
-	if _, err := os.Stat(candidateExe); err == nil {
-		return candidateExe, nil
-	}
-
-	return "", utils.ErrFFProbeNotFound
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -23,7 +23,7 @@ import (
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
-	"github.com/geerew/off-course/utils/media"
+	"github.com/geerew/off-course/utils/media/probe"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/spf13/afero"
 )
@@ -101,7 +101,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	attachmentOps := reconcileAttachments(scannedAttachments, existingAttachments)
 
 	// FFprobe only assets that need it
-	assetMetadataByPath := probeVideos(assetOps)
+	assetMetadataByPath := probeVideos(s, assetOps)
 
 	updatedCourse := course.CardPath != scanned.cardPath
 	if updatedCourse {
@@ -415,7 +415,7 @@ func flatAttachmentsAndAssets(lessons []*models.Lesson) ([]*models.Attachment, [
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // probeVideos probes videos assets that match the operations create, replace, or swap
-func probeVideos(ops []Op) map[string]*models.AssetMetadata {
+func probeVideos(s *CourseScan, ops []Op) map[string]*models.AssetMetadata {
 	var targets []*models.Asset
 	for _, op := range ops {
 		switch v := op.(type) {
@@ -438,7 +438,7 @@ func probeVideos(ops []Op) map[string]*models.AssetMetadata {
 	}
 
 	assetMetadataByPath := map[string]*models.AssetMetadata{}
-	mediaProbe := media.MediaProbe{}
+	mediaProbe := probe.MediaProbe{FFmpeg: s.ffmpeg}
 
 	for _, asset := range targets {
 		if info, err := mediaProbe.ProbeVideo(asset.Path); err == nil {

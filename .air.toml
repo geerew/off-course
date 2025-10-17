@@ -6,6 +6,6 @@ cmd = "go build -tags dev -o ./tmp/main ."
 full_bin = "OC_DEV=true OC_HTTP=0.0.0.0:9081 OC_ENABLE_SIGNUP=true ./tmp/main serve"
 
 delay = 1000
-exclude_dir = ["assets", "ui", "ui_old", "cmd"]
+exclude_dir = ["assets", "ui", "oc_data"]
 include_ext = ["go"]
 exclude_regex = ["_test\\.go"]

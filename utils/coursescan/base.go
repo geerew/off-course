@@ -10,6 +10,7 @@ import (
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/appfs"
+	"github.com/geerew/off-course/utils/media"
 	"github.com/geerew/off-course/utils/types"
 )
 
@@ -30,6 +31,7 @@ type CourseScan struct {
 	db        database.Database
 	dao       *dao.DAO
 	logger    *slog.Logger
+	ffmpeg    *media.FFmpeg
 	jobSignal chan struct{}
 }
 
@@ -40,6 +42,7 @@ type CourseScanConfig struct {
 	Db     database.Database
 	AppFs  *appfs.AppFs
 	Logger *slog.Logger
+	FFmpeg *media.FFmpeg
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -51,6 +54,7 @@ func New(config *CourseScanConfig) *CourseScan {
 		db:        config.Db,
 		dao:       dao.New(config.Db),
 		logger:    config.Logger,
+		ffmpeg:    config.FFmpeg,
 		jobSignal: make(chan struct{}, 1),
 	}
 }
