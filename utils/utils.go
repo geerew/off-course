@@ -371,9 +371,9 @@ func Errf(format string, a ...interface{}) {
 	log.New(date, "", log.LstdFlags).Print()
 
 	c := color.New(color.Bold, color.FgRed)
-	c.Printf(color.GreenString(strings.TrimSpace(date.String()) + " "))
+	fmt.Print(color.GreenString(strings.TrimSpace(date.String()) + " "))
 	c.Add(color.Reset)
-	c.Printf(format, a...)
+	fmt.Printf(format, a...)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -384,7 +384,7 @@ func Infof(format string, a ...interface{}) {
 	log.New(date, "", log.LstdFlags).Print()
 
 	c := color.New(color.Bold, color.FgGreen)
-	c.Printf(color.GreenString(strings.TrimSpace(date.String()) + " "))
+	fmt.Print(color.GreenString(strings.TrimSpace(date.String()) + " "))
 	c.Add(color.Reset)
-	c.Printf(format, a...)
+	fmt.Printf(format, a...)
 }

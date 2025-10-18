@@ -152,6 +152,20 @@ CREATE TABLE asset_media_audio (
   FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE
 );
 
+-- Asset keyframes stores the timestamps of video keyframes (I-frames) for HLS 
+-- transcoding. Keyframes represent points in the video where segments can be 
+-- cleanly split for adaptive streaming
+CREATE TABLE asset_keyframes (
+  id           TEXT PRIMARY KEY NOT NULL,
+  asset_id     TEXT NOT NULL UNIQUE,
+  keyframes    TEXT NOT NULL DEFAULT '[]',    -- JSON array of float64 timestamps in seconds
+  is_complete  BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at   TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f','NOW')),
+  updated_at   TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f','NOW')),
+  --
+  FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE
+);
+
 -- Scans holds the status of background scans for each course. As course is added or 
 -- updated, this table will be updated to reflect the current state of the scan
 CREATE TABLE scans (
@@ -247,3 +261,6 @@ CREATE INDEX idx_sessions_user    ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_assets_course_id ON assets(course_id);
 CREATE INDEX IF NOT EXISTS idx_assets_progress_asset_user ON assets_progress(asset_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_courses_progress_course_user ON courses_progress(course_id, user_id);
+
+-- Asset keyframes lookup by asset_id
+CREATE INDEX IF NOT EXISTS idx_asset_keyframes_asset_id ON asset_keyframes(asset_id);
