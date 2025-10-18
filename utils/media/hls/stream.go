@@ -115,11 +115,11 @@ func (ts *Stream) run(start int32) error {
 	var bufferSegments int32
 
 	if videoDuration <= 300 { // 5 minutes or less
-		bufferSegments = 8 // ~40 seconds ahead
+		bufferSegments = 15 // ~80 seconds ahead
 	} else if videoDuration <= 600 { // 10 minutes or less
-		bufferSegments = 12 // ~60 seconds ahead
+		bufferSegments = 20 // ~107 seconds ahead
 	} else { // Longer videos
-		bufferSegments = 15 // ~75 seconds ahead
+		bufferSegments = 25 // ~133 seconds ahead
 	}
 
 	end := min(start+bufferSegments, length)

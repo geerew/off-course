@@ -8,12 +8,8 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Tracker manages client activity and stream cleanup
+// Tracker manages stream cleanup (simplified - no client tracking)
 type Tracker struct {
-	// key: client_id
-	clients map[string]ClientInfo
-	// key: client_id
-	visitDate map[string]time.Time
 	// key: asset_id
 	lastUsage     map[string]time.Time
 	transcoder    *Transcoder
@@ -25,8 +21,6 @@ type Tracker struct {
 // NewTracker creates a new tracker
 func NewTracker(t *Transcoder) *Tracker {
 	ret := &Tracker{
-		clients:       make(map[string]ClientInfo),
-		visitDate:     make(map[string]time.Time),
 		lastUsage:     make(map[string]time.Time),
 		deletedStream: make(chan string),
 		transcoder:    t,
@@ -49,72 +43,26 @@ func Abs(x int32) int32 {
 
 // start begins the tracker's main loop
 func (t *Tracker) start() {
-	inactive_time := 1 * time.Hour
-	timer := time.After(inactive_time)
+	cleanup_interval := 30 * time.Minute // Check every 30 minutes
+	cleanup_timer := time.After(cleanup_interval)
+
 	for {
 		select {
 		case info, ok := <-t.transcoder.clientChan:
 			if !ok {
 				return
 			}
-
-			old, ok := t.clients[info.client]
-			// First fixup the info. Most routes ruturn partial infos
-			if ok && old.assetID == info.assetID {
-				if info.video == nil {
-					info.video = old.video
-				}
-				if info.audio == nil {
-					info.audio = old.audio
-				}
-				if info.vhead == -1 {
-					info.vhead = old.vhead
-				}
-				if info.ahead == -1 {
-					info.ahead = old.ahead
-				}
-			}
-
-			t.clients[info.client] = info
-			t.visitDate[info.client] = time.Now()
+			// Just update the last usage time, no client tracking
 			t.lastUsage[info.assetID] = time.Now()
 
-			// now that the new info is stored and fixed, kill old streams
-			if ok && old.assetID == info.assetID {
-				if old.audio != nil && (info.audio == nil || *info.audio != *old.audio) {
-					t.KillAudioIfDead(old.assetID, old.path, *old.audio)
-				}
-				if old.video != nil && (info.video == nil || *info.video != *old.video) {
-					t.KillVideoIfDead(old.assetID, old.path, *old.video)
-				}
-				if old.vhead != -1 && Abs(info.vhead-old.vhead) > 100 {
-					t.KillOrphanedHeads(old.assetID, old.video, nil)
-				}
-				if old.ahead != -1 && Abs(info.ahead-old.ahead) > 100 {
-					t.KillOrphanedHeads(old.assetID, nil, old.audio)
-				}
-			} else if ok {
-				t.KillStreamIfDead(old.assetID, old.path)
-			}
-
-		case <-timer:
-			timer = time.After(inactive_time)
-			// Purge old clients
-			for client, date := range t.visitDate {
-				if time.Since(date) < inactive_time {
-					continue
-				}
-
-				info := t.clients[client]
-				delete(t.clients, client)
-				delete(t.visitDate, client)
-
-				if !t.KillStreamIfDead(info.assetID, info.path) {
-					audio_cleanup := info.audio != nil && t.KillAudioIfDead(info.assetID, info.path, *info.audio)
-					video_cleanup := info.video != nil && t.KillVideoIfDead(info.assetID, info.path, *info.video)
-					if !audio_cleanup || !video_cleanup {
-						t.KillOrphanedHeads(info.assetID, info.video, info.audio)
-					}
+		case <-cleanup_timer:
+			cleanup_timer = time.After(cleanup_interval)
+			// Simple time-based cleanup - remove streams older than 2 hours
+			for assetID, lastUsed := range t.lastUsage {
+				if time.Since(lastUsed) > 2*time.Hour {
+					utils.Infof("HLS: Cleaning up old stream for asset %s (last used %v ago)\n", assetID, time.Since(lastUsed))
+					t.DestroyStreamIfOld(assetID)
+					delete(t.lastUsage, assetID)
 				}
 			}
 		case assetID := <-t.deletedStream:
@@ -125,14 +73,9 @@ func (t *Tracker) start() {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// KillStreamIfDead kills a stream if no clients are using it
+// KillStreamIfDead kills a stream (simplified - no client checking)
 func (t *Tracker) KillStreamIfDead(assetID string, path string) bool {
-	for _, stream := range t.clients {
-		if stream.assetID == assetID {
-			return false
-		}
-	}
-	utils.Infof("HLS: Nobody is watching %s. Killing it\n", path)
+	utils.Infof("HLS: Killing stream for %s\n", path)
 
 	stream, ok := t.transcoder.streams.Get(assetID)
 	if !ok {
@@ -162,14 +105,9 @@ func (t *Tracker) DestroyStreamIfOld(assetID string) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// KillAudioIfDead kills an audio stream if no clients are using it
+// KillAudioIfDead kills an audio stream (simplified - no client checking)
 func (t *Tracker) KillAudioIfDead(assetID string, path string, audio uint32) bool {
-	for _, stream := range t.clients {
-		if stream.assetID == assetID && stream.audio != nil && *stream.audio == audio {
-			return false
-		}
-	}
-	utils.Infof("HLS: Nobody is listening audio %d of %s. Killing it\n", audio, path)
+	utils.Infof("HLS: Killing audio stream %d for %s\n", audio, path)
 
 	stream, ok := t.transcoder.streams.Get(assetID)
 	if !ok {
@@ -185,14 +123,9 @@ func (t *Tracker) KillAudioIfDead(assetID string, path string, audio uint32) boo
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// KillVideoIfDead kills a video stream if no clients are using it
+// KillVideoIfDead kills a video stream (simplified - no client checking)
 func (t *Tracker) KillVideoIfDead(assetID string, path string, video VideoKey) bool {
-	for _, stream := range t.clients {
-		if stream.assetID == assetID && stream.video != nil && *stream.video == video {
-			return false
-		}
-	}
-	utils.Infof("HLS: Nobody is watching %s video %d quality %s. Killing it\n", path, video.idx, video.quality)
+	utils.Infof("HLS: Killing video stream %d quality %s for %s\n", video.idx, video.quality, path)
 
 	stream, ok := t.transcoder.streams.Get(assetID)
 	if !ok {
@@ -208,7 +141,7 @@ func (t *Tracker) KillVideoIfDead(assetID string, path string, video VideoKey) b
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// KillOrphanedHeads kills orphaned encoding heads
+// KillOrphanedHeads kills orphaned encoding heads (simplified)
 func (t *Tracker) KillOrphanedHeads(assetID string, video *VideoKey, audio *uint32) {
 	stream, ok := t.transcoder.streams.Get(assetID)
 	if !ok {
@@ -231,7 +164,7 @@ func (t *Tracker) KillOrphanedHeads(assetID string, video *VideoKey, audio *uint
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// killOrphanedeheads kills orphaned encoding heads for a stream
+// killOrphanedeheads kills orphaned encoding heads for a stream (simplified)
 func (t *Tracker) killOrphanedeheads(stream *Stream, is_video bool) {
 	stream.lock.Lock()
 	defer stream.lock.Unlock()
@@ -240,17 +173,9 @@ func (t *Tracker) killOrphanedeheads(stream *Stream, is_video bool) {
 		if head == DeletedHead {
 			continue
 		}
-
-		distance := int32(99999)
-		for _, info := range t.clients {
-			ihead := info.ahead
-			if is_video {
-				ihead = info.vhead
-			}
-			distance = min(Abs(ihead-head.segment), distance)
-		}
-		if distance > 20 {
-			utils.Infof("HLS: Killing orphaned head %s %d\n", stream.file.Info.Path, encoder_id)
+		// Simplified: just kill heads that are very far ahead (no client checking)
+		if head.segment > 100 { // Kill heads that are more than 100 segments ahead
+			utils.Infof("HLS: Killing orphaned head %s %d (segment %d)\n", stream.file.Info.Path, encoder_id, head.segment)
 			stream.KillHead(encoder_id)
 		}
 	}
