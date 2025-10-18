@@ -43,6 +43,8 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		return ErrNilScan
 	}
 
+	utils.Infof("CourseScan: Starting scan for course ID: %s\n", scan.CourseID)
+
 	scan.Status.SetProcessing()
 	if err := s.dao.UpdateScan(ctx, scan); err != nil {
 		return err
@@ -52,6 +54,8 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	if err != nil || course == nil {
 		return err
 	}
+
+	utils.Infof("CourseScan: Found course '%s' at path: %s\n", course.Title, course.Path)
 
 	// Clear the maintenance mode at the end of the scan
 	defer func() {
@@ -74,10 +78,13 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 
 	// Scan the course directory for files and populate assets and attachments. Also check if there is
 	// a course card
+	utils.Infof("CourseScan: Scanning course directory: %s\n", course.Path)
 	scanned, err := scanFiles(s, course.Path, course.ID)
 	if err != nil {
 		return err
 	}
+
+	utils.Infof("CourseScan: Found %d lessons, card path: %s\n", len(scanned.lessons), scanned.cardPath)
 
 	// List the assets that already exist in the database for this course
 
@@ -96,11 +103,15 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	}
 
 	// Reconcile what to do
+	utils.Infof("CourseScan: Reconciling changes - %d scanned assets, %d existing assets\n", len(scannedAssets), len(existingAssets))
 	groupOps := reconcileLessons(scanned.lessons, existingGroups)
 	assetOps := reconcileAssets(scannedAssets, existingAssets)
 	attachmentOps := reconcileAttachments(scannedAttachments, existingAttachments)
 
+	utils.Infof("CourseScan: Generated %d lesson ops, %d asset ops, %d attachment ops\n", len(groupOps), len(assetOps), len(attachmentOps))
+
 	// FFprobe only assets that need it
+	utils.Infof("CourseScan: Probing video assets for metadata and keyframes\n")
 	assetMetadataByPath := probeVideos(s, assetOps)
 
 	updatedCourse := course.CardPath != scanned.cardPath
@@ -108,11 +119,13 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		course.CardPath = scanned.cardPath
 	}
 
-	// Clean up extracted keyframes after processing
+	// Clean up extracted keyframes after processing and log completion
 	defer func() {
 		s.extractedKeyframes = make(map[string][]float64)
+		utils.Infof("CourseScan: Completed scan for course ID: %s\n", scan.CourseID)
 	}()
 
+	utils.Infof("CourseScan: Applying database changes in transaction\n")
 	return s.db.RunInTransaction(ctx, func(txCtx context.Context) error {
 		if updated, err := applyLessonCreateUpdateOps(txCtx, s, groupOps); err != nil {
 			return err
@@ -140,9 +153,11 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 
 		if updatedCourse {
 			course.InitialScan = true
+			utils.Infof("CourseScan: Updating course metadata\n")
 			return s.dao.UpdateCourse(txCtx, course)
 		}
 
+		utils.Infof("CourseScan: No course updates needed\n")
 		return nil
 	})
 }
@@ -442,6 +457,8 @@ func probeVideos(s *CourseScan, ops []Op) map[string]*models.AssetMetadata {
 		}
 	}
 
+	utils.Infof("CourseScan: Found %d video assets to probe\n", len(targets))
+
 	assetMetadataByPath := map[string]*models.AssetMetadata{}
 	mediaProbe := probe.MediaProbe{FFmpeg: s.ffmpeg}
 
@@ -476,6 +493,7 @@ func probeVideos(s *CourseScan, ops []Op) map[string]*models.AssetMetadata {
 				// Store keyframes in a separate structure for later processing
 				// We'll handle this in the asset processing phase
 				s.extractedKeyframes[asset.Path] = keyframes
+				utils.Infof("CourseScan: Extracted %d keyframes for video: %s\n", len(keyframes), asset.Path)
 			} else {
 				// Log keyframe extraction failure but don't fail the scan
 				// Using utils.Errf for non-critical errors that shouldn't stop processing
