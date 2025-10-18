@@ -14,7 +14,6 @@ import (
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/media"
-	"github.com/geerew/off-course/utils/media/hls"
 	"github.com/geerew/off-course/utils/pagination"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/spf13/afero"
@@ -27,10 +26,6 @@ var (
 	// Cache FFmpeg instance to avoid expensive re-initialization
 	cachedFFmpeg *media.FFmpeg
 	ffmpegOnce   sync.Once
-
-	// Cache hardware acceleration detection to avoid expensive FFmpeg calls
-	cachedHwAccel *hls.HwAccelConfig
-	hwAccelOnce   sync.Once
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -46,15 +41,6 @@ func getCachedFFmpeg(t *testing.T) *media.FFmpeg {
 		cachedFFmpeg = ffmpeg
 	})
 	return cachedFFmpeg
-}
-
-// getCachedHwAccel returns a cached hardware acceleration config, initializing it only once
-func getCachedHwAccel(t *testing.T) *hls.HwAccelConfig {
-	hwAccelOnce.Do(func() {
-		ffmpeg := getCachedFFmpeg(t)
-		cachedHwAccel = hls.DetectHardwareAcceleration(ffmpeg.GetFFmpegPath())
-	})
-	return cachedHwAccel
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

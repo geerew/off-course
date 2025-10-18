@@ -27,7 +27,7 @@
 	import type { AssetModel, AssetProgressUpdateModel } from '$lib/models/asset-model';
 	import type { CourseModel } from '$lib/models/course-model';
 	import type { LessonModel, ModulesModel } from '$lib/models/module-model';
-	import { cn, renderMarkdown } from '$lib/utils';
+	import { cn, renderMarkdown, toVideoMimeType } from '$lib/utils';
 	import { Dialog } from 'bits-ui';
 	import prettyMs from 'pretty-ms';
 	import { ElementSize } from 'runed';
@@ -561,10 +561,11 @@
 								{/if}
 
 								{#if asset.type === 'video'}
+									<!-- srcType={'application/vnd.apple.mpegurl' as any} -->
 									<VideoPlayer
 										playerId={`${selectedLesson.id}-${asset.id}`}
 										src={`/api/hls/${asset.id}/master.m3u8`}
-										srcType={'application/vnd.apple.mpegurl' as any}
+										srcType={toVideoMimeType(asset.metadata.video?.mimeType) || 'video/object'}
 										useHls={true}
 										startTime={asset.progress.position || 0}
 										onTimeChange={async (time: number) => {

@@ -103,11 +103,11 @@ func corsMiddleWare() fiber.Handler {
 // the creation of 1 admin user, which the /auth/bootstrap endpoint handles
 func bootstrapMiddleware(r *Router) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		path := c.Path()
+
 		// If not bootstrapped, force everything through /auth/bootstrap or
 		// /api/auth/bootstrap
 		if !r.IsBootstrapped() {
-			path := c.Path()
-
 			if r.isDevUIPath(path) || r.isProdUIPath(path) || r.isStaticPath(path) {
 				return c.Next()
 			}
@@ -132,7 +132,6 @@ func bootstrapMiddleware(r *Router) fiber.Handler {
 		}
 
 		// If bootstrapped and someone accesses bootstrap URL, redirect appropriately
-		path := c.Path()
 		if strings.HasPrefix(path, "/auth/bootstrap/") {
 			// Check if user is logged in
 			session, err := r.sessionManager.Get(c)
@@ -153,11 +152,12 @@ func bootstrapMiddleware(r *Router) fiber.Handler {
 // authMiddleware authenticates the request
 func authMiddleware(r *Router) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		path := c.Path()
+
 		if bootstrapping, _ := c.Locals("bootstrapping").(bool); bootstrapping {
 			return c.Next()
 		}
 
-		path := c.Path()
 		isLogout := strings.HasPrefix(path, "/api/auth/logout")
 		isAuthUI := strings.HasPrefix(path, "/auth/")
 
@@ -170,7 +170,9 @@ func authMiddleware(r *Router) fiber.Handler {
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
-		if session.Fresh() {
+		sessionFresh := session.Fresh()
+
+		if sessionFresh {
 			// Is API request
 			if strings.HasPrefix(path, "/api/") {
 				if strings.HasPrefix(path, "/api/auth/login") || (r.config.SignupEnabled && strings.HasPrefix(path, "/api/auth/register")) ||
