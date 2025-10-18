@@ -22,6 +22,7 @@ import (
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/media"
+	"github.com/geerew/off-course/utils/media/hls"
 	"github.com/geerew/off-course/utils/security"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -91,6 +92,8 @@ var serveCmd = &cobra.Command{
 			AppFs:  appFs,
 			Logger: logger,
 		})
+
+		hls.InitSettings(dataDir)
 
 		router := api.NewRouter(&api.RouterConfig{
 			DbManager:     dbManager,

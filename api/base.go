@@ -147,6 +147,7 @@ func (r *Router) initRoutes() {
 	r.initUserRoutes()
 	r.initLogRoutes()
 	r.initRecoveryRoutes()
+	r.initHlsRoutes()
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
