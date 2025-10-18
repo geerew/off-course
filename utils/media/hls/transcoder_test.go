@@ -162,13 +162,20 @@ func TestHwAccel(t *testing.T) {
 		config := &HwAccelConfig{
 			Type:      HwAccelNone,
 			Available: false,
+			EncodeFlags: []string{
+				"-c:v", "libx264",
+				"-preset", "fast",
+				"-sc_threshold", "0",
+				"-pix_fmt", "yuv420p",
+			},
 		}
 
 		assert.False(t, config.IsHardwareAccelerated())
 		assert.Equal(t, "none", config.String())
 
-		args := config.GetTranscodeArgs()
-		assert.Contains(t, args, "libx264")
+		// Test encode flags
+		assert.Contains(t, config.EncodeFlags, "-c:v")
+		assert.Contains(t, config.EncodeFlags, "libx264")
 	})
 
 	t.Run("hardware acceleration", func(t *testing.T) {
@@ -185,9 +192,11 @@ func TestHwAccel(t *testing.T) {
 		assert.True(t, config.IsHardwareAccelerated())
 		assert.Equal(t, "vaapi", config.String())
 
-		args := config.GetTranscodeArgs()
-		assert.Contains(t, args, "-hwaccel")
-		assert.Contains(t, args, "h264_vaapi")
+		// Test decode and encode flags
+		assert.Contains(t, config.DecodeFlags, "-hwaccel")
+		assert.Contains(t, config.DecodeFlags, "vaapi")
+		assert.Contains(t, config.EncodeFlags, "-c:v")
+		assert.Contains(t, config.EncodeFlags, "h264_vaapi")
 
 		// Test scaling filters
 		scaleFilter := config.GetScaleFilter(1920, 1080)

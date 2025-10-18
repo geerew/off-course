@@ -148,19 +148,31 @@ func (s *Stream) generateSegmentFile(ctx context.Context, segment *Segment) erro
 // buildFFmpegArgs builds the FFmpeg command arguments for segment generation
 func (s *Stream) buildFFmpegArgs(segment *Segment) []string {
 	args := []string{
-		"-i", s.FilePath,
+		"-nostats", "-hide_banner", "-loglevel", "warning",
+	}
+
+	// Add hardware acceleration decode flags BEFORE input file (like Kyoo)
+	if s.HwAccel != nil && s.HwAccel.IsHardwareAccelerated() {
+		args = append(args, s.HwAccel.DecodeFlags...)
+	}
+
+	// Add input file and timing
+	args = append(args,
 		"-ss", fmt.Sprintf("%.3f", segment.StartTime),
 		"-t", fmt.Sprintf("%.3f", segment.Duration),
 		"-avoid_negative_ts", "make_zero",
 		"-fflags", "+genpts",
-	}
+		"-i", s.FilePath,
+		"-start_at_zero",
+		"-copyts",
+		"-muxdelay", "0",
+	)
 
-	// Add hardware acceleration if available
+	// Add encoding flags AFTER input file
 	if s.HwAccel != nil && s.HwAccel.IsHardwareAccelerated() {
-		// Add decode flags first
-		args = append(args, s.HwAccel.DecodeFlags...)
-		// Add encode flags
 		args = append(args, s.HwAccel.EncodeFlags...)
+		// TODO: Add scale filter for hardware acceleration when needed
+		// For now, skip the scale filter to avoid the "No filters specified" error
 	} else {
 		// Software fallback with proper flags
 		args = append(args, "-c:v", "libx264", "-preset", "fast", "-crf", "23", "-sc_threshold", "0", "-pix_fmt", "yuv420p")

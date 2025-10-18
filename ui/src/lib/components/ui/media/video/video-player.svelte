@@ -25,6 +25,7 @@
 		onTimeChange: (time: number) => void;
 		onCompleted: (time: number) => void;
 		playerId?: string;
+		useHls?: boolean; // New prop to enable HLS streaming
 	};
 
 	let {
@@ -33,7 +34,8 @@
 		startTime,
 		onTimeChange,
 		onCompleted,
-		playerId
+		playerId,
+		useHls = false
 	}: Props = $props();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -212,7 +214,7 @@
 		autoplay={mediaPreferences.current.autoplay}
 		src={{
 			src: videoSrc,
-			type: srcType
+			type: useHls ? ('application/vnd.apple.mpegurl' as any) : srcType
 		}}
 		class="group/player relative aspect-video overflow-hidden rounded-md"
 	>

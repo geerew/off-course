@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 )
 
@@ -116,72 +115,9 @@ func (vs *VideoStream) getSegmentDuration(index int) float64 {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetTranscodeArgs returns FFmpeg arguments for transcoding
-func (vs *VideoStream) GetTranscodeArgs() []string {
-	args := []string{
-		"-i", vs.FilePath,
-		"-c:v", vs.getVideoCodec(),
-		"-b:v", strconv.Itoa(vs.Bitrate),
-		"-maxrate", strconv.Itoa(vs.Bitrate * 2),
-		"-bufsize", strconv.Itoa(vs.Bitrate * 4),
-		"-vf", vs.getVideoFilter(),
-		"-r", fmt.Sprintf("%.2f", vs.Framerate),
-		"-c:a", "aac",
-		"-b:a", "128k",
-		"-f", "mpegts",
-	}
-
-	// Add hardware acceleration if available
-	if vs.HwAccel != nil && vs.HwAccel.IsHardwareAccelerated() {
-		args = append(vs.HwAccel.DecodeFlags, args...)
-		args = append(args, vs.HwAccel.EncodeFlags...)
-	}
-
-	return args
-}
-
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// getVideoCodec returns the appropriate video codec
-func (vs *VideoStream) getVideoCodec() string {
-	if vs.HwAccel != nil && vs.HwAccel.IsHardwareAccelerated() {
-		switch vs.HwAccel.Type {
-		case HwAccelVAAPI:
-			return "h264_vaapi"
-		case HwAccelQSV:
-			return "h264_qsv"
-		case HwAccelNVENC:
-			return "h264_nvenc"
-		case HwAccelVTB:
-			return "h264_videotoolbox"
-		}
-	}
-	return "libx264"
-}
-
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// getVideoFilter returns the video filter string
-func (vs *VideoStream) getVideoFilter() string {
-	if vs.Quality.IsOriginal() {
-		// For original quality, use no-resize filter if available
-		if vs.HwAccel != nil && vs.HwAccel.IsHardwareAccelerated() {
-			noResizeFilter := vs.HwAccel.GetNoResizeFilter()
-			if noResizeFilter != "" {
-				return noResizeFilter
-			}
-		}
-		return "scale=iw:ih"
-	}
-
-	// Scale to target resolution using hardware acceleration if available
-	if vs.HwAccel != nil && vs.HwAccel.IsHardwareAccelerated() {
-		return vs.HwAccel.GetScaleFilter(vs.Width, vs.Height)
-	}
-
-	// Software fallback
-	return fmt.Sprintf("scale=%d:%d", vs.Width, vs.Height)
-}
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
