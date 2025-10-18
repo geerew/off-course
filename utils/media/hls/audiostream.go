@@ -1,6 +1,7 @@
 package hls
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/geerew/off-course/utils"
@@ -20,14 +21,26 @@ type AudioStream struct {
 func NewAudioStream(file *FileStream, idx uint32) (*AudioStream, error) {
 	utils.Infof("Creating a audio stream %d for %s\n", idx, file.Info.Path)
 
-	// Create keyframes for audio (every 4 seconds as per Kyoo)
-	// For now, we'll create a simple keyframe structure
-	// In the real implementation, this will come from the database
-	keyframes := NewKeyframeFromSlice([]float64{0.0, 4.0, 8.0, 12.0, 16.0, 20.0, 24.0, 28.0, 32.0, 36.0}, true)
-
 	ret := &AudioStream{
 		index: idx,
 	}
+
+	// Get keyframes from database (like original Kyoo)
+	assetKeyframes, err := file.transcoder.dao.GetAssetKeyframes(context.Background(), file.transcoder.assetID)
+	if err != nil {
+		utils.Errf("Failed to get keyframes: %v\n", err)
+		// Fallback to empty keyframes
+		keyframes := NewKeyframeFromSlice([]float64{}, false)
+		NewStream(file, keyframes, ret, &ret.Stream)
+		return ret, nil
+	}
+
+	// Convert database keyframes to HLS keyframes (same as video stream)
+	var keyframeTimes []float64
+	if assetKeyframes != nil && len(assetKeyframes.Keyframes) > 0 {
+		keyframeTimes = assetKeyframes.Keyframes
+	}
+	keyframes := NewKeyframeFromSlice(keyframeTimes, assetKeyframes.IsComplete)
 	NewStream(file, keyframes, ret, &ret.Stream)
 	return ret, nil
 }
