@@ -53,10 +53,14 @@ func createTestRouterWithDataDir(t *testing.T, dataDir string) *Router {
 	require.NoError(t, err)
 	require.NotNil(t, dbManager)
 
+	// Get cached FFmpeg instance
+	ffmpeg := getCachedFFmpeg(t)
+
 	courseScan := coursescan.New(&coursescan.CourseScanConfig{
 		Db:     dbManager.DataDb,
 		AppFs:  appFs,
 		Logger: logger,
+		FFmpeg: ffmpeg,
 	})
 
 	// Router config
@@ -64,9 +68,11 @@ func createTestRouterWithDataDir(t *testing.T, dataDir string) *Router {
 		DbManager:     dbManager,
 		AppFs:         appFs,
 		CourseScan:    courseScan,
+		FFmpeg:        ffmpeg,
 		Logger:        logger,
 		SignupEnabled: true,
 		DataDir:       dataDir,
+		Testing:       true, // Skip expensive operations in tests
 	}
 
 	// Create router without authentication middleware

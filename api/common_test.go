@@ -13,11 +13,49 @@ import (
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/logger"
+	"github.com/geerew/off-course/utils/media"
+	"github.com/geerew/off-course/utils/media/hls"
 	"github.com/geerew/off-course/utils/pagination"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 )
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+var (
+	// Cache FFmpeg instance to avoid expensive re-initialization
+	cachedFFmpeg *media.FFmpeg
+	ffmpegOnce   sync.Once
+
+	// Cache hardware acceleration detection to avoid expensive FFmpeg calls
+	cachedHwAccel *hls.HwAccelConfig
+	hwAccelOnce   sync.Once
+)
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// getCachedFFmpeg returns a cached FFmpeg instance, initializing it only once
+func getCachedFFmpeg(t *testing.T) *media.FFmpeg {
+	ffmpegOnce.Do(func() {
+		ffmpeg, err := media.NewFFmpeg()
+		if err != nil {
+			// Skip tests if FFmpeg is not available
+			t.Skip("FFmpeg not available for testing")
+		}
+		cachedFFmpeg = ffmpeg
+	})
+	return cachedFFmpeg
+}
+
+// getCachedHwAccel returns a cached hardware acceleration config, initializing it only once
+func getCachedHwAccel(t *testing.T) *hls.HwAccelConfig {
+	hwAccelOnce.Do(func() {
+		ffmpeg := getCachedFFmpeg(t)
+		cachedHwAccel = hls.DetectHardwareAcceleration(ffmpeg.GetFFmpegPath())
+	})
+	return cachedHwAccel
+}
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -44,10 +82,14 @@ func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Conte
 	require.NoError(t, err)
 	require.NotNil(t, dbManager)
 
+	// Get cached FFmpeg instance
+	ffmpeg := getCachedFFmpeg(t)
+
 	courseScan := coursescan.New(&coursescan.CourseScanConfig{
 		Db:     dbManager.DataDb,
 		AppFs:  appFs,
 		Logger: logger,
+		FFmpeg: ffmpeg,
 	})
 
 	// Router
@@ -55,8 +97,10 @@ func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Conte
 		DbManager:     dbManager,
 		AppFs:         appFs,
 		CourseScan:    courseScan,
+		FFmpeg:        ffmpeg,
 		Logger:        logger,
 		SignupEnabled: true,
+		Testing:       true, // Skip expensive operations in tests
 	}
 
 	router := devRouter(config, id, role)
