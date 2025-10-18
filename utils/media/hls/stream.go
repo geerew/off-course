@@ -346,29 +346,23 @@ func (ts *Stream) run(start int32) error {
 
 // GetIndex generates the HLS index playlist
 func (ts *Stream) GetIndex() (string, error) {
-	// playlist type is event since we can append to the list if Keyframe.IsDone is false.
-	// start time offset makes the stream start at 0s instead of ~3segments from the end (requires version 6 of hls)
+	// Use VOD playlist type since keyframes are always complete (extracted during course scan)
 	index := `#EXTM3U
 #EXT-X-VERSION:6
-#EXT-X-PLAYLIST-TYPE:EVENT
-#EXT-X-START:TIME-OFFSET=0
-#EXT-X-TARGETDURATION:4
+#EXT-X-TARGETDURATION:6
 #EXT-X-MEDIA-SEQUENCE:0
 #EXT-X-INDEPENDENT-SEGMENTS
 `
-	length, is_done := ts.keyframes.Length()
+	length, _ := ts.keyframes.Length() // Always complete since keyframes are extracted during course scan
 
 	for segment := int32(0); segment < length-1; segment++ {
 		index += fmt.Sprintf("#EXTINF:%.6f\n", ts.keyframes.Get(segment+1)-ts.keyframes.Get(segment))
 		index += fmt.Sprintf("segment-%d.ts\n", segment)
 	}
-	// do not forget to add the last segment between the last keyframe and the end of the file
-	// if the keyframes extraction is not done, do not bother to add it, it will be retrived on the next index retrival
-	if is_done {
-		index += fmt.Sprintf("#EXTINF:%.6f\n", float64(ts.file.Info.Duration)-ts.keyframes.Get(length-1))
-		index += fmt.Sprintf("segment-%d.ts\n", length-1)
-		index += `#EXT-X-ENDLIST`
-	}
+	// Always add the last segment and ENDLIST since keyframes are always complete
+	index += fmt.Sprintf("#EXTINF:%.6f\n", float64(ts.file.Info.Duration)-ts.keyframes.Get(length-1))
+	index += fmt.Sprintf("segment-%d.ts\n", length-1)
+	index += `#EXT-X-ENDLIST`
 	return index, nil
 }
 
