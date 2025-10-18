@@ -107,9 +107,22 @@ func toSegmentStr(segments []float64) string {
 
 // run starts transcoding from the given segment
 func (ts *Stream) run(start int32) error {
-	// Start the transcode up to the 100th segment (or less)
+	// Start the transcode with adaptive buffer based on video length
 	length, is_done := ts.keyframes.Length()
-	end := min(start+100, length)
+
+	// Calculate smart buffer size based on video duration
+	videoDuration := float64(ts.file.Info.Duration)
+	var bufferSegments int32
+
+	if videoDuration <= 300 { // 5 minutes or less
+		bufferSegments = 8 // ~40 seconds ahead
+	} else if videoDuration <= 600 { // 10 minutes or less
+		bufferSegments = 12 // ~60 seconds ahead
+	} else { // Longer videos
+		bufferSegments = 15 // ~75 seconds ahead
+	}
+
+	end := min(start+bufferSegments, length)
 	// if keyframes analysys is not finished, always have a 1-segment padding
 	// for the extra segment needed for precise split (look comment before -to flag)
 	if !is_done {
