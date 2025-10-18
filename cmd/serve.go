@@ -128,7 +128,7 @@ var serveCmd = &cobra.Command{
 		} else {
 			// Clean up any leftover bootstrap token files
 			auth.DeleteBootstrapToken(dataDir, appFs.Fs)
-			utils.Infof("✓ Application bootstrapped\n")
+			utils.Infof("Application bootstrapped\n")
 		}
 
 		var wg sync.WaitGroup

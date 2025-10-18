@@ -19,7 +19,7 @@ type AudioStream struct {
 
 // NewAudioStream creates a new audio stream
 func NewAudioStream(file *FileStream, idx uint32) (*AudioStream, error) {
-	utils.Infof("Creating a audio stream %d for %s\n", idx, file.Info.Path)
+	utils.Infof("HLS: Creating a audio stream %d for %s\n", idx, file.Info.Path)
 
 	ret := &AudioStream{
 		index: idx,
@@ -28,7 +28,7 @@ func NewAudioStream(file *FileStream, idx uint32) (*AudioStream, error) {
 	// Get keyframes from database (like original Kyoo)
 	assetKeyframes, err := file.transcoder.dao.GetAssetKeyframes(context.Background(), file.transcoder.assetID)
 	if err != nil {
-		utils.Errf("Failed to get keyframes: %v\n", err)
+		utils.Errf("HLS: Failed to get keyframes: %v\n", err)
 		// Fallback to empty keyframes
 		keyframes := NewKeyframeFromSlice([]float64{}, false)
 		NewStream(file, keyframes, ret, &ret.Stream)

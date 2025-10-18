@@ -14,7 +14,7 @@ func DetectHardwareAccel() HwAccelT {
 	if name == "disabled" {
 		name = GetEnvOr("GOTRANSCODER_HWACCEL", "disabled")
 	}
-	utils.Infof("Using hardware acceleration: %s\n", name)
+	utils.Infof("HLS: Using hardware acceleration: %s\n", name)
 
 	// superfast or ultrafast would produce a file extremely big so we prefer to ignore them. Fast is available on all hwaccel modes
 	// so we use that by default.
@@ -111,7 +111,7 @@ func DetectHardwareAccel() HwAccelT {
 			NoResizeFilter: "format=nv12|cuda,hwupload,scale_cuda=format=nv12",
 		}
 	default:
-		utils.Errf("No hardware accelerator named: %s\n", name)
+		utils.Errf("HLS: No hardware accelerator named: %s\n", name)
 		os.Exit(2)
 		panic("unreachable")
 	}

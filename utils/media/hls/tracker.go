@@ -132,7 +132,7 @@ func (t *Tracker) KillStreamIfDead(assetID string, path string) bool {
 			return false
 		}
 	}
-	utils.Infof("Nobody is watching %s. Killing it\n", path)
+	utils.Infof("HLS: Nobody is watching %s. Killing it\n", path)
 
 	stream, ok := t.transcoder.streams.Get(assetID)
 	if !ok {
@@ -169,7 +169,7 @@ func (t *Tracker) KillAudioIfDead(assetID string, path string, audio uint32) boo
 			return false
 		}
 	}
-	utils.Infof("Nobody is listening audio %d of %s. Killing it\n", audio, path)
+	utils.Infof("HLS: Nobody is listening audio %d of %s. Killing it\n", audio, path)
 
 	stream, ok := t.transcoder.streams.Get(assetID)
 	if !ok {
@@ -192,7 +192,7 @@ func (t *Tracker) KillVideoIfDead(assetID string, path string, video VideoKey) b
 			return false
 		}
 	}
-	utils.Infof("Nobody is watching %s video %d quality %s. Killing it\n", path, video.idx, video.quality)
+	utils.Infof("HLS: Nobody is watching %s video %d quality %s. Killing it\n", path, video.idx, video.quality)
 
 	stream, ok := t.transcoder.streams.Get(assetID)
 	if !ok {
@@ -250,7 +250,7 @@ func (t *Tracker) killOrphanedeheads(stream *Stream, is_video bool) {
 			distance = min(Abs(ihead-head.segment), distance)
 		}
 		if distance > 20 {
-			utils.Infof("Killing orphaned head %s %d\n", stream.file.Info.Path, encoder_id)
+			utils.Infof("HLS: Killing orphaned head %s %d\n", stream.file.Info.Path, encoder_id)
 			stream.KillHead(encoder_id)
 		}
 	}

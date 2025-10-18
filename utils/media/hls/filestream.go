@@ -87,7 +87,7 @@ func (t *Transcoder) newFileStream(ctx context.Context, path string, assetID str
 			WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assetID}).
 			WithAssetMetadata())
 		if err != nil {
-			utils.Errf("Failed to get asset metadata for %s: %v\n", assetID, err)
+			utils.Errf("HLS: Failed to get asset metadata for %s: %v\n", assetID, err)
 			ret.err = err
 			return
 		}
@@ -167,7 +167,7 @@ func (fs *FileStream) Kill() {
 
 // Destroy removes all transcoded files
 func (fs *FileStream) Destroy() {
-	utils.Infof("Removing all transcode cache files for %s\n", fs.Info.Path)
+	utils.Infof("HLS: Removing all transcode cache files for %s\n", fs.Info.Path)
 	fs.Kill()
 	_ = os.RemoveAll(fs.Out)
 }

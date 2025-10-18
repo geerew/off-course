@@ -21,7 +21,7 @@ type VideoStream struct {
 // NewVideoStream creates a new video stream
 func NewVideoStream(file *FileStream, idx uint32, quality Quality) (*VideoStream, error) {
 	utils.Infof(
-		"Creating a new video stream for %s (n %d) in quality %s\n",
+		"HLS: Creating a new video stream for %s (n %d) in quality %s\n",
 		file.Info.Path,
 		idx,
 		quality,
@@ -47,7 +47,7 @@ func NewVideoStream(file *FileStream, idx uint32, quality Quality) (*VideoStream
 	// Get keyframes from database
 	assetKeyframes, err := file.transcoder.dao.GetAssetKeyframes(context.Background(), file.transcoder.assetID)
 	if err != nil {
-		utils.Errf("Failed to get keyframes: %v\n", err)
+		utils.Errf("HLS: Failed to get keyframes: %v\n", err)
 		// Fallback to empty keyframes
 		keyframes := NewKeyframeFromSlice([]float64{}, false)
 		NewStream(file, keyframes, ret, &ret.Stream)

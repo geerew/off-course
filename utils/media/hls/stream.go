@@ -136,7 +136,7 @@ func (ts *Stream) run(start int32) error {
 	ts.lock.Unlock()
 
 	utils.Infof(
-		"Starting transcode %d for %s (from %d to %d out of %d segments)\n",
+		"HLS: Starting transcode %d for %s (from %d to %d out of %d segments)\n",
 		encoder_id,
 		ts.file.Info.Path,
 		start,
@@ -259,7 +259,7 @@ func (ts *Stream) run(start int32) error {
 	)
 
 	cmd := exec.Command("ffmpeg", args...)
-	utils.Infof("Running %s\n", strings.Join(cmd.Args, " "))
+	utils.Infof("HLS: Running %s\n", strings.Join(cmd.Args, " "))
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -292,11 +292,20 @@ func (ts *Stream) run(start int32) error {
 			}
 			ts.lock.Lock()
 			ts.heads[encoder_id].segment = segment
-			utils.Infof("Segment %d got ready (%d)\n", segment, encoder_id)
+
+			// Determine if this is audio or video stream
+			streamType := "unknown"
+			if ts.handle.getFlags()&AudioF != 0 {
+				streamType = "audio"
+			} else if ts.handle.getFlags()&VideoF != 0 {
+				streamType = "video"
+			}
+
+			utils.Infof("HLS: %s segment %d is ready (encoder %d)\n", streamType, segment, encoder_id)
 			if ts.isSegmentReady(segment) {
 				// the current segment is already marked at done so another process has already gone up to here.
 				cmd.Process.Signal(os.Interrupt)
-				utils.Infof("Killing ffmpeg because segment %d is already ready\n", segment)
+				utils.Infof("HLS: Stopping %s encoder %d because segment %d is already ready\n", streamType, encoder_id, segment)
 				should_stop = true
 			} else {
 				ts.segments[segment].encoder = encoder_id
@@ -306,7 +315,7 @@ func (ts *Stream) run(start int32) error {
 					should_stop = true
 				} else if ts.isSegmentReady(segment + 1) {
 					cmd.Process.Signal(os.Interrupt)
-					utils.Infof("Killing ffmpeg because next segment %d is ready\n", segment)
+					utils.Infof("HLS: Killing ffmpeg because next segment %d is ready\n", segment)
 					should_stop = true
 				}
 			}
@@ -319,18 +328,18 @@ func (ts *Stream) run(start int32) error {
 		}
 
 		if err := scanner.Err(); err != nil {
-			utils.Errf("Error reading stdout of ffmpeg: %v\n", err)
+			utils.Errf("HLS: Error reading stdout of ffmpeg: %v\n", err)
 		}
 	}()
 
 	go func() {
 		err := cmd.Wait()
 		if exiterr, ok := err.(*exec.ExitError); ok && exiterr.ExitCode() == 255 {
-			utils.Infof("ffmpeg %d was killed by us\n", encoder_id)
+			utils.Infof("HLS: ffmpeg %d was killed by us\n", encoder_id)
 		} else if err != nil {
-			utils.Errf("ffmpeg %d occured an error: %s: %s\n", encoder_id, err, stderr.String())
+			utils.Errf("HLS: ffmpeg %d occured an error: %s: %s\n", encoder_id, err, stderr.String())
 		} else {
-			utils.Infof("ffmpeg %d finished successfully\n", encoder_id)
+			utils.Infof("HLS: ffmpeg %d finished successfully\n", encoder_id)
 		}
 
 		ts.lock.Lock()
@@ -390,13 +399,13 @@ func (ts *Stream) GetSegment(segment int32) (string, error) {
 	if !ready {
 		// Only start a new encode if there is too big a distance between the current encoder and the segment.
 		if distance > 60 || !is_scheduled {
-			utils.Infof("Creating new head for %d since closest head is %fs aways\n", segment, distance)
+			utils.Infof("HLS: Creating new head for %d since closest head is %fs aways\n", segment, distance)
 			err := ts.run(segment)
 			if err != nil {
 				return "", err
 			}
 		} else {
-			utils.Infof("Waiting for segment %d since encoder head is %fs aways\n", segment, distance)
+			utils.Infof("HLS: Waiting for segment %d since encoder head is %fs aways\n", segment, distance)
 		}
 
 		select {
@@ -430,7 +439,7 @@ func (ts *Stream) prerareNextSegements(segment int32) {
 		if ts.getMinEncoderDistance(i) < 60+(5*float64(i-segment)) {
 			continue
 		}
-		utils.Infof("Creating new head for future segment (%d)\n", i)
+		utils.Infof("HLS: Creating new head for future segment (%d)\n", i)
 		go ts.run(i)
 		return
 	}
