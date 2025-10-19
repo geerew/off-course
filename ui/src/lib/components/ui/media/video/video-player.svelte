@@ -182,16 +182,13 @@
 		const provider = e.detail;
 
 		if (provider?.type === 'hls') {
-			console.log('providerchange');
 			const hlsProvider = provider as HLSProvider;
 			hlsProvider.library = () => import('hls.js');
 
 			hlsProvider.config = {
-				// startPosition: startTime,
-
-				autoStartLoad: false, // Let HLS.js handle loading automatically
-				startLevel: Number.POSITIVE_INFINITY, // Auto quality selection
-				abrEwmaDefaultEstimate: 35_000_000, // Bandwidth estimation
+				autoStartLoad: false,
+				startLevel: Number.POSITIVE_INFINITY,
+				abrEwmaDefaultEstimate: 35_000_000,
 				lowLatencyMode: false,
 
 				// Buffer configuration to limit segments
@@ -217,15 +214,29 @@
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	function handleHlsManifestLoaded(e: HLSManifestLoadedEvent) {
-		console.log('HLS: Manifest loaded');
-		console.log(e.detail);
-
 		if (!player || player.provider === null || player.provider.type !== 'hls') return;
 
-		console.log('HLS: Starting load');
-		console.log(startTime);
+		const hlsInstance = player.provider.instance;
+		if (!hlsInstance) return;
 
-		player.provider.instance?.startLoad(startTime);
+		// Wait for levels to be available before starting load
+		if (hlsInstance.levels && hlsInstance.levels.length > 0) {
+			// Set a valid level first (let HLS.js auto-select)
+			hlsInstance.currentLevel = -1; // Auto quality selection
+			hlsInstance.startLoad(startTime);
+		} else {
+			// If levels aren't ready yet, wait for them
+			const checkLevels = () => {
+				if (hlsInstance.levels && hlsInstance.levels.length > 0) {
+					hlsInstance.currentLevel = -1; // Auto quality selection
+					hlsInstance.startLoad(startTime);
+				} else {
+					// Retry after a short delay
+					setTimeout(checkLevels, 100);
+				}
+			};
+			checkLevels();
+		}
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
