@@ -9,7 +9,7 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// AudioStream represents an audio transcoding stream
+// AudioStream represents an audio transcoding stream.
 type AudioStream struct {
 	Stream
 	index uint32
@@ -17,9 +17,9 @@ type AudioStream struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// NewAudioStream creates a new audio stream
+// NewAudioStream creates a new audio stream for the given file and index.
 func NewAudioStream(file *FileStream, idx uint32) (*AudioStream, error) {
-	utils.Infof("HLS: Creating a audio stream %d for %s\n", idx, file.Info.Path)
+	utils.Infof("HLS: Creating an audio stream %d for %s\n", idx, file.Info.Path)
 
 	ret := &AudioStream{
 		index: idx,
@@ -47,21 +47,21 @@ func NewAudioStream(file *FileStream, idx uint32) (*AudioStream, error) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// getOutPath returns the output path pattern for segments
+// getOutPath returns the output path pattern for segments.
 func (as *AudioStream) getOutPath(encoderID int) string {
 	return fmt.Sprintf("%s/segment-a%d-%d-%%d.ts", as.file.Out, as.index, encoderID)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// getFlags returns the stream flags for audio
+// getFlags returns the stream flags for audio.
 func (as *AudioStream) getFlags() Flags {
 	return AudioF
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// getTranscodeArgs returns the FFmpeg arguments for audio transcoding
+// getTranscodeArgs returns the FFmpeg arguments for audio transcoding.
 func (as *AudioStream) getTranscodeArgs(segments string) []string {
 	return []string{
 		"-map", fmt.Sprintf("0:a:%d", as.index),

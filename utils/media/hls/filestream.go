@@ -16,7 +16,7 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// FileStream represents a file being transcoded
+// FileStream represents a file being transcoded into HLS streams.
 type FileStream struct {
 	transcoder *Transcoder
 	ready      sync.WaitGroup
@@ -31,7 +31,7 @@ type FileStream struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// MediaInfo represents media file information
+// MediaInfo represents media file information extracted for HLS.
 type MediaInfo struct {
 	Path     string
 	Duration float64
@@ -41,7 +41,7 @@ type MediaInfo struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Video represents video metadata
+// Video represents video metadata for a single video track.
 type Video struct {
 	Index     uint32
 	Title     *string
@@ -56,7 +56,7 @@ type Video struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Audio represents audio metadata
+// Audio represents audio metadata for a single audio track.
 type Audio struct {
 	Index     uint32
 	Title     *string
@@ -69,7 +69,7 @@ type Audio struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// newFileStream creates a new file stream
+// newFileStream creates a new file stream and fetches metadata from the database.
 func (t *Transcoder) newFileStream(ctx context.Context, path string, assetID string) *FileStream {
 	ret := &FileStream{
 		transcoder: t,
@@ -148,7 +148,7 @@ func (t *Transcoder) newFileStream(ctx context.Context, path string, assetID str
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Kill stops all streams
+// Kill stops all video and audio streams for this file.
 func (fs *FileStream) Kill() {
 	fs.videos.ForEach(func(_ VideoKey, s *VideoStream) {
 		s.Kill()
@@ -160,7 +160,7 @@ func (fs *FileStream) Kill() {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Destroy removes all transcoded files
+// Destroy removes all transcoded files from the cache directory.
 func (fs *FileStream) Destroy() {
 	utils.Infof("HLS: Removing all transcode cache files for %s\n", fs.Info.Path)
 	fs.Kill()
@@ -169,7 +169,7 @@ func (fs *FileStream) Destroy() {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetMaster generates the master playlist
+// GetMaster generates the master HLS playlist for the file.
 func (fs *FileStream) GetMaster(assetID string) string {
 	master := "#EXTM3U\n"
 
@@ -287,7 +287,7 @@ func (fs *FileStream) GetMaster(assetID string) string {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// getVideoStream gets or creates a video stream
+// getVideoStream returns a video stream for the given index and quality.
 func (fs *FileStream) getVideoStream(idx uint32, quality Quality) (*VideoStream, error) {
 	stream, _ := fs.videos.GetOrCreate(VideoKey{idx, quality}, func() *VideoStream {
 		ret, _ := NewVideoStream(fs, idx, quality)
@@ -299,7 +299,7 @@ func (fs *FileStream) getVideoStream(idx uint32, quality Quality) (*VideoStream,
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetVideoIndex gets the video index playlist
+// GetVideoIndex returns the video index playlist for a given variant.
 func (fs *FileStream) GetVideoIndex(idx uint32, quality Quality) (string, error) {
 	stream, err := fs.getVideoStream(idx, quality)
 	if err != nil {
@@ -310,7 +310,7 @@ func (fs *FileStream) GetVideoIndex(idx uint32, quality Quality) (string, error)
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetVideoSegment gets a video segment
+// GetVideoSegment returns a video segment path, transcoding if necessary.
 func (fs *FileStream) GetVideoSegment(idx uint32, quality Quality, segment int32) (string, error) {
 	stream, err := fs.getVideoStream(idx, quality)
 	if err != nil {
@@ -321,7 +321,7 @@ func (fs *FileStream) GetVideoSegment(idx uint32, quality Quality, segment int32
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// getAudioStream gets or creates an audio stream
+// getAudioStream returns an audio stream for the given audio index.
 func (fs *FileStream) getAudioStream(audio uint32) (*AudioStream, error) {
 	stream, _ := fs.audios.GetOrCreate(audio, func() *AudioStream {
 		ret, _ := NewAudioStream(fs, audio)
@@ -333,22 +333,22 @@ func (fs *FileStream) getAudioStream(audio uint32) (*AudioStream, error) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetAudioIndex gets the audio index playlist
+// GetAudioIndex returns the audio index playlist for the given audio index.
 func (fs *FileStream) GetAudioIndex(audio uint32) (string, error) {
 	stream, err := fs.getAudioStream(audio)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	return stream.GetIndex()
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetAudioSegment gets an audio segment
+// GetAudioSegment returns an audio segment path, transcoding if necessary.
 func (fs *FileStream) GetAudioSegment(audio uint32, segment int32) (string, error) {
 	stream, err := fs.getAudioStream(audio)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	return stream.GetSegment(segment)
 }

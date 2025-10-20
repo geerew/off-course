@@ -9,7 +9,7 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// VideoStream represents a video transcoding stream
+// VideoStream represents a video transcoding stream.
 type VideoStream struct {
 	Stream
 	video   *Video
@@ -18,10 +18,10 @@ type VideoStream struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// NewVideoStream creates a new video stream
+// NewVideoStream creates a new video stream for the given file, index and quality.
 func NewVideoStream(file *FileStream, idx uint32, quality Quality) (*VideoStream, error) {
 	utils.Infof(
-		"HLS: Creating a new video stream for %s (n %d) in quality %s\n",
+		"HLS: Creating a new video stream for %s (index %d) in quality %s\n",
 		file.Info.Path,
 		idx,
 		quality,
@@ -66,7 +66,7 @@ func NewVideoStream(file *FileStream, idx uint32, quality Quality) (*VideoStream
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// getFlags returns the stream flags for video
+// getFlags returns the stream flags for video.
 func (vs *VideoStream) getFlags() Flags {
 	if vs.quality == Original {
 		return VideoF | Transmux
@@ -76,14 +76,14 @@ func (vs *VideoStream) getFlags() Flags {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// getOutPath returns the output path pattern for segments
+// getOutPath returns the output path pattern for segments.
 func (vs *VideoStream) getOutPath(encoderID int) string {
 	return fmt.Sprintf("%s/segment-%s-%d-%%d.ts", vs.file.Out, vs.quality, encoderID)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// closestMultiple finds the closest multiple of x that is >= n
+// closestMultiple finds the closest multiple of x that is >= n.
 func closestMultiple(n int32, x int32) int32 {
 	if x > n {
 		return x
@@ -96,7 +96,7 @@ func closestMultiple(n int32, x int32) int32 {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// getTranscodeArgs returns the FFmpeg arguments for transcoding
+// getTranscodeArgs returns the FFmpeg arguments for transcoding.
 func (vs *VideoStream) getTranscodeArgs(segments string) []string {
 	args := []string{
 		"-map", fmt.Sprintf("0:V:%d", vs.video.Index),

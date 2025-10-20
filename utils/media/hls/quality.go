@@ -24,7 +24,7 @@ const (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Purposfully removing Original from this list (since it require special treatments anyways)
+// Purposefully removing Original from this list (since it requires special treatment anyway)
 var Qualities = []Quality{P240, P360, P480, P720, P1080, P1440, P4k, P8k}
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

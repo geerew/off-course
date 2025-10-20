@@ -35,8 +35,8 @@ func NewTracker(t *Transcoder) *Tracker {
 
 // start begins the tracker's main loop
 func (t *Tracker) start() {
-	cleanup_interval := 30 * time.Minute // Check every 30 minutes
-	cleanup_timer := time.After(cleanup_interval)
+	cleanupInterval := 30 * time.Minute // Check every 30 minutes
+	cleanupTimer := time.After(cleanupInterval)
 
 	for {
 		select {
@@ -47,8 +47,8 @@ func (t *Tracker) start() {
 			// Just update the last usage time, no client tracking
 			t.lastUsage[info.assetID] = time.Now()
 
-		case <-cleanup_timer:
-			cleanup_timer = time.After(cleanup_interval)
+		case <-cleanupTimer:
+			cleanupTimer = time.After(cleanupInterval)
 			// Simple time-based cleanup - remove streams older than 2 hours
 			for assetID, lastUsed := range t.lastUsage {
 				if time.Since(lastUsed) > 2*time.Hour {
@@ -143,13 +143,13 @@ func (t *Tracker) KillOrphanedHeads(assetID string, video *VideoKey, audio *uint
 	if video != nil {
 		vstream, vok := stream.videos.Get(*video)
 		if vok {
-			t.killOrphanedeheads(&vstream.Stream, true)
+			t.killOrphanedHeads(&vstream.Stream, true)
 		}
 	}
 	if audio != nil {
 		astream, aok := stream.audios.Get(*audio)
 		if aok {
-			t.killOrphanedeheads(&astream.Stream, false)
+			t.killOrphanedHeads(&astream.Stream, false)
 		}
 	}
 }
@@ -157,7 +157,7 @@ func (t *Tracker) KillOrphanedHeads(assetID string, video *VideoKey, audio *uint
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // killOrphanedeheads kills orphaned encoding heads for a stream (simplified)
-func (t *Tracker) killOrphanedeheads(stream *Stream, is_video bool) {
+func (t *Tracker) killOrphanedHeads(stream *Stream, isVideo bool) {
 	stream.lock.Lock()
 	defer stream.lock.Unlock()
 

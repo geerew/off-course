@@ -11,7 +11,7 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Transcoder manages all transcoding operations
+// Transcoder manages all HLS transcoding operations for a given asset.
 type Transcoder struct {
 	// All file streams currently running, index is asset_id
 	streams    utils.CMap[string, *FileStream]
@@ -23,7 +23,7 @@ type Transcoder struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// NewTranscoder creates a new transcoder
+// NewTranscoder creates a new Transcoder and prepares the cache directory.
 func NewTranscoder(dao *dao.DAO) (*Transcoder, error) {
 	out := Settings.CachePath
 	os.MkdirAll(out, 0o755)
@@ -49,7 +49,8 @@ func NewTranscoder(dao *dao.DAO) (*Transcoder, error) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// getFileStream gets or creates a file stream
+// getFileStream returns an existing `FileStream` for the asset or creates one.
+// Blocks until the `FileStream` is ready or returns an error.
 func (t *Transcoder) getFileStream(ctx context.Context, path string, assetID string) (*FileStream, error) {
 	ret, _ := t.streams.GetOrCreate(assetID, func() *FileStream {
 		t.assetID = assetID
@@ -65,7 +66,7 @@ func (t *Transcoder) getFileStream(ctx context.Context, path string, assetID str
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetMaster gets the master playlist for an asset
+// GetMaster returns the master HLS playlist for an asset.
 func (t *Transcoder) GetMaster(ctx context.Context, path string, client string, assetID string) (string, error) {
 	stream, err := t.getFileStream(ctx, path, assetID)
 	if err != nil {
@@ -85,7 +86,7 @@ func (t *Transcoder) GetMaster(ctx context.Context, path string, client string, 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetVideoIndex gets the video index playlist
+// GetVideoIndex returns the video variant index playlist for a specific quality.
 func (t *Transcoder) GetVideoIndex(
 	ctx context.Context,
 	path string,
@@ -112,7 +113,7 @@ func (t *Transcoder) GetVideoIndex(
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetAudioIndex gets the audio index playlist
+// GetAudioIndex returns the audio index playlist for the specified audio index.
 func (t *Transcoder) GetAudioIndex(
 	ctx context.Context,
 	path string,
@@ -137,7 +138,7 @@ func (t *Transcoder) GetAudioIndex(
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetVideoSegment gets a video segment
+// GetVideoSegment returns the path to a requested video segment, transcoding if necessary.
 func (t *Transcoder) GetVideoSegment(
 	ctx context.Context,
 	path string,
@@ -165,7 +166,7 @@ func (t *Transcoder) GetVideoSegment(
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetAudioSegment gets an audio segment
+// GetAudioSegment returns the path to a requested audio segment, transcoding if necessary.
 func (t *Transcoder) GetAudioSegment(
 	ctx context.Context,
 	path string,
