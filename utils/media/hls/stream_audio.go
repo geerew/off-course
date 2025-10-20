@@ -9,7 +9,7 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// AudioStream represents an audio transcoding stream.
+// AudioStream represents an audio transcoding stream
 type AudioStream struct {
 	Stream
 	index uint32
@@ -17,30 +17,31 @@ type AudioStream struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// NewAudioStream creates a new audio stream for the given file and index.
-func NewAudioStream(file *FileStream, idx uint32) (*AudioStream, error) {
-	utils.Infof("HLS: Creating an audio stream %d for %s\n", idx, file.Info.Path)
+// NewAudioStream creates a new audio stream for the given file and index
+func NewAudioStream(file *FileStream, audioIndex uint32) (*AudioStream, error) {
+	utils.Infof("HLS: Creating an audio stream %d for %s\n", audioIndex, file.Info.Path)
 
 	ret := &AudioStream{
-		index: idx,
+		index: audioIndex,
 	}
 
-	// Get keyframes from database (like original Kyoo)
+	// Get keyframes from database
 	assetKeyframes, err := file.transcoder.dao.GetAssetKeyframes(context.Background(), file.transcoder.assetID)
 	if err != nil {
 		utils.Errf("HLS: Failed to get keyframes: %v\n", err)
 		// Fallback to empty keyframes
-		keyframes := NewKeyframeFromSlice([]float64{}, false)
+		keyframes := NewKeyframeFromSlice([]float64{})
 		NewStream(file, keyframes, ret, &ret.Stream)
 		return ret, nil
 	}
 
-	// Convert database keyframes to HLS keyframes (same as video stream)
+	// Convert database keyframes to HLS keyframes
 	var keyframeTimes []float64
 	if assetKeyframes != nil && len(assetKeyframes.Keyframes) > 0 {
 		keyframeTimes = assetKeyframes.Keyframes
 	}
-	keyframes := NewKeyframeFromSlice(keyframeTimes, assetKeyframes.IsComplete)
+
+	keyframes := NewKeyframeFromSlice(keyframeTimes)
 	NewStream(file, keyframes, ret, &ret.Stream)
 	return ret, nil
 }

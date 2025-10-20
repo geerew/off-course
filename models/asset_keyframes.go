@@ -31,10 +31,11 @@ const (
 // AssetKeyframes defines keyframe data for an asset
 type AssetKeyframes struct {
 	Base
-	AssetID       string    `db:"asset_id"`    // Immutable
-	Keyframes     []float64 `db:"-"`           // Populated from JSON
-	KeyframesJSON string    `db:"keyframes"`   // Raw JSON in DB
-	IsComplete    bool      `db:"is_complete"` // Mutable
+	AssetID       string `db:"asset_id"`    // Immutable
+	KeyframesJSON string `db:"keyframes"`   // Raw JSON in DB
+	IsComplete    bool   `db:"is_complete"` // Mutable
+
+	Keyframes []float64 `db:"-"` // Populated from JSON
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -1,3 +1,5 @@
+// Package hls provides on-demand HLS transcoding and segmentation with
+// adaptive prefetching, hardware acceleration, and per-stream tracking
 package hls
 
 import (
@@ -18,16 +20,68 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// Head represents an encoding process
+type Head struct {
+	segment int32
+	end     int32
+	command *exec.Cmd
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// DeletedHead is a marker for a head that has been killed
+var DeletedHead = Head{
+	segment: -1,
+	end:     -1,
+	command: nil,
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Segment represents a single HLS segment
+type Segment struct {
+	channel chan struct{}
+	encoder int
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Flags represents stream type flags
+type Flags int32
+
+const (
+	AudioF   Flags = 1 << 0
+	VideoF   Flags = 1 << 1
+	Transmux Flags = 1 << 3
+)
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// VideoKey uniquely identifies a video stream by index and quality
+type VideoKey struct {
+	idx     uint32
+	quality Quality
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// StreamHandle represents a stream handle
+type StreamHandle interface {
+	getTranscodeArgs(segments string) []string
+	getOutPath(encoderID int) string
+	getFlags() Flags
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // Stream represents a transcoding stream with multiple encoding heads
 type Stream struct {
 	handle    StreamHandle
-	ready     sync.WaitGroup
 	file      *FileStream
 	keyframes *Keyframe
 	segments  []Segment
 	heads     []Head
-	// the lock used for the the heads
-	lock sync.RWMutex
+	lock      sync.RWMutex
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -39,33 +93,13 @@ func NewStream(file *FileStream, keyframes *Keyframe, handle StreamHandle, ret *
 	ret.keyframes = keyframes
 	ret.heads = make([]Head, 0)
 
-	ret.ready.Add(1)
-	go func() {
-		keyframes.info.ready.Wait()
-
-		length, isDone := keyframes.Length()
-		ret.segments = make([]Segment, length, max(length, 2000))
-		for seg := range ret.segments {
-			ret.segments[seg].channel = make(chan struct{})
-		}
-
-		if !isDone {
-			keyframes.AddListener(func(keyframes []float64) {
-				ret.lock.Lock()
-				defer ret.lock.Unlock()
-				old_length := len(ret.segments)
-				if cap(ret.segments) > len(keyframes) {
-					ret.segments = ret.segments[:len(keyframes)]
-				} else {
-					ret.segments = append(ret.segments, make([]Segment, len(keyframes)-old_length)...)
-				}
-				for seg := old_length; seg < len(keyframes); seg++ {
-					ret.segments[seg].channel = make(chan struct{})
-				}
-			})
-		}
-		ret.ready.Done()
-	}()
+	// Keyframes are always complete since they're extracted during course scanning
+	length := keyframes.Length()
+	ret.segments = make([]Segment, length, max(length, 2000))
+	for seg := range ret.segments {
+		ret.segments[seg].channel = make(chan struct{})
+	}
+	// No need for WaitGroup since keyframes are always complete
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -108,7 +142,7 @@ func toSegmentStr(segments []float64) string {
 // run starts transcoding from the given segment
 func (ts *Stream) run(start int32) error {
 	// Start the transcode with adaptive buffer based on video length
-	length, isDone := ts.keyframes.Length()
+	length := ts.keyframes.Length()
 
 	// Calculate smart buffer size based on video duration
 	videoDuration := float64(ts.file.Info.Duration)
@@ -123,11 +157,6 @@ func (ts *Stream) run(start int32) error {
 	}
 
 	end := min(start+bufferSegments, length)
-	// if keyframes analysys is not finished, always have a 1-segment padding
-	// for the extra segment needed for precise split (look comment before -to flag)
-	if !isDone {
-		end -= 2
-	}
 	// Stop at the first finished segment
 	ts.lock.Lock()
 	for i := start; i < end; i++ {
@@ -366,7 +395,7 @@ func (ts *Stream) run(start int32) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetIndex generates the HLS index playlist for the stream.
+// GetIndex generates the HLS index playlist for the stream
 func (ts *Stream) GetIndex() (string, error) {
 	// Use VOD playlist type since keyframes are always complete (extracted during course scan)
 	index := `#EXTM3U
@@ -375,7 +404,7 @@ func (ts *Stream) GetIndex() (string, error) {
 #EXT-X-MEDIA-SEQUENCE:0
 #EXT-X-INDEPENDENT-SEGMENTS
 `
-	length, _ := ts.keyframes.Length() // Always complete since keyframes are extracted during course scan
+	length := ts.keyframes.Length() // Always complete since keyframes are extracted during course scan
 
 	for segment := int32(0); segment < length-1; segment++ {
 		index += fmt.Sprintf("#EXTINF:%.6f\n", ts.keyframes.Get(segment+1)-ts.keyframes.Get(segment))
@@ -390,7 +419,7 @@ func (ts *Stream) GetIndex() (string, error) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetSegment retrieves a specific segment path, starting transcoding if needed.
+// GetSegment retrieves a specific segment path, starting transcoding if needed
 func (ts *Stream) GetSegment(segment int32) (string, error) {
 	ts.lock.RLock()
 	ready := ts.isSegmentReady(segment)
@@ -478,7 +507,7 @@ func (ts *Stream) getMinEncoderDistance(segment int32) float64 {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Kill stops all encoding processes associated with the stream.
+// Kill stops all encoding processes associated with the stream
 func (ts *Stream) Kill() {
 	ts.lock.Lock()
 	defer ts.lock.Unlock()
@@ -490,7 +519,7 @@ func (ts *Stream) Kill() {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// KillHead stops a specific encoding process.
+// KillHead stops a specific encoding process
 // Stream is assumed to be locked by the caller.
 func (ts *Stream) KillHead(encoder_id int) {
 	if ts.heads[encoder_id] == DeletedHead || ts.heads[encoder_id].command == nil {

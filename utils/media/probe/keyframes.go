@@ -22,7 +22,7 @@ const (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // ExtractKeyframes extracts keyframe timestamps from a video file using ffprobe
-// This is based on Kyoo's approach but adapted for our probe package
+// Uses packet inspection with keyframe flags to build a precise list
 func (mp MediaProbe) ExtractKeyframes(videoPath string, videoIdx int) ([]float64, error) {
 	if mp.FFmpeg == nil {
 		return nil, utils.ErrFFProbeUnavailable
@@ -31,7 +31,7 @@ func (mp MediaProbe) ExtractKeyframes(videoPath string, videoIdx int) ([]float64
 	ffprobePath := mp.FFmpeg.GetFFProbePath()
 
 	// Run ffprobe to get packet information with keyframe flags
-	// We use the same approach as Kyoo: get all packets and filter for keyframes
+	// Get all packets and filter for keyframes
 	cmd := exec.Command(
 		ffprobePath,
 		"-loglevel", "error",

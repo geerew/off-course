@@ -9,7 +9,7 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// VideoStream represents a video transcoding stream.
+// VideoStream represents a video transcoding stream
 type VideoStream struct {
 	Stream
 	video   *Video
@@ -18,25 +18,25 @@ type VideoStream struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// NewVideoStream creates a new video stream for the given file, index and quality.
-func NewVideoStream(file *FileStream, idx uint32, quality Quality) (*VideoStream, error) {
+// NewVideoStream creates a new video stream for the given file, index and quality
+func NewVideoStream(file *FileStream, videoIndex uint32, quality Quality) (*VideoStream, error) {
 	utils.Infof(
 		"HLS: Creating a new video stream for %s (index %d) in quality %s\n",
 		file.Info.Path,
-		idx,
+		videoIndex,
 		quality,
 	)
 
 	// Find the video metadata from the file's info
 	var video *Video
 	for _, v := range file.Info.Videos {
-		if v.Index == idx {
+		if v.Index == videoIndex {
 			video = &v
 			break
 		}
 	}
 	if video == nil {
-		return nil, fmt.Errorf("video stream %d not found", idx)
+		return nil, fmt.Errorf("video stream %d not found", videoIndex)
 	}
 
 	ret := &VideoStream{
@@ -49,7 +49,7 @@ func NewVideoStream(file *FileStream, idx uint32, quality Quality) (*VideoStream
 	if err != nil {
 		utils.Errf("HLS: Failed to get keyframes: %v\n", err)
 		// Fallback to empty keyframes
-		keyframes := NewKeyframeFromSlice([]float64{}, false)
+		keyframes := NewKeyframeFromSlice([]float64{})
 		NewStream(file, keyframes, ret, &ret.Stream)
 		return ret, nil
 	}
@@ -59,7 +59,7 @@ func NewVideoStream(file *FileStream, idx uint32, quality Quality) (*VideoStream
 	if assetKeyframes != nil && len(assetKeyframes.Keyframes) > 0 {
 		keyframeTimes = assetKeyframes.Keyframes
 	}
-	keyframes := NewKeyframeFromSlice(keyframeTimes, assetKeyframes.IsComplete)
+	keyframes := NewKeyframeFromSlice(keyframeTimes)
 	NewStream(file, keyframes, ret, &ret.Stream)
 	return ret, nil
 }
