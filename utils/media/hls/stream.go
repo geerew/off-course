@@ -78,7 +78,7 @@ type StreamHandle interface {
 type Stream struct {
 	handle    StreamHandle
 	file      *FileStream
-	keyframes *Keyframe
+	keyframes []float64
 	segments  []Segment
 	heads     []Head
 	lock      sync.RWMutex
@@ -87,14 +87,14 @@ type Stream struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // NewStream creates a new stream
-func NewStream(file *FileStream, keyframes *Keyframe, handle StreamHandle, ret *Stream) {
+func NewStream(file *FileStream, keyframes []float64, handle StreamHandle, ret *Stream) {
 	ret.handle = handle
 	ret.file = file
 	ret.keyframes = keyframes
 	ret.heads = make([]Head, 0)
 
 	// Keyframes are always complete since they're extracted during course scanning
-	length := keyframes.Length()
+	length := len(keyframes)
 	ret.segments = make([]Segment, length, max(length, 2000))
 	for seg := range ret.segments {
 		ret.segments[seg].channel = make(chan struct{})
@@ -142,7 +142,7 @@ func toSegmentStr(segments []float64) string {
 // run starts transcoding from the given segment
 func (ts *Stream) run(start int32) error {
 	// Start the transcode with adaptive buffer based on video length
-	length := ts.keyframes.Length()
+	length := len(ts.keyframes)
 
 	// Calculate smart buffer size based on video duration
 	videoDuration := float64(ts.file.Info.Duration)
@@ -156,7 +156,7 @@ func (ts *Stream) run(start int32) error {
 		bufferSegments = 25 // ~133 seconds ahead
 	}
 
-	end := min(start+bufferSegments, length)
+	end := min(start+bufferSegments, int32(length))
 	// Stop at the first finished segment
 	ts.lock.Lock()
 	for i := start; i < end; i++ {
@@ -198,7 +198,7 @@ func (ts *Stream) run(start int32) error {
 		// the previous segment is played another time. the -segment_times is way more precise so it does not do the same with this one
 		startSegment = start - 1
 		if ts.handle.getFlags()&AudioF != 0 {
-			startRef = ts.keyframes.Get(startSegment)
+			startRef = ts.keyframes[startSegment]
 		} else {
 			// the param for the -ss takes the keyframe before the specified time
 			// (if the specified time is a keyframe, it either takes that keyframe or the one before)
@@ -206,18 +206,18 @@ func (ts *Stream) run(start int32) error {
 
 			// this can't be used with audio since we need to have context before the start-time
 			// without this context, the cut loses a bit of audio (audio gap of ~100ms)
-			if startSegment+1 == length {
-				startRef = (ts.keyframes.Get(startSegment) + float64(ts.file.Info.Duration)) / 2
+			if startSegment+1 == int32(length) {
+				startRef = (ts.keyframes[startSegment] + float64(ts.file.Info.Duration)) / 2
 			} else {
-				startRef = (ts.keyframes.Get(startSegment) + ts.keyframes.Get(startSegment+1)) / 2
+				startRef = (ts.keyframes[startSegment] + ts.keyframes[startSegment+1]) / 2
 			}
 		}
 	}
 	endPadding := int32(1)
-	if end == length {
+	if end == int32(length) {
 		endPadding = 0
 	}
-	segments := ts.keyframes.Slice(startSegment+1, end+endPadding)
+	segments := ts.keyframes[startSegment+1 : end+endPadding]
 	if len(segments) == 0 {
 		// we can't leave that empty else ffmpeg errors out.
 		segments = []float64{9999999}
@@ -248,14 +248,14 @@ func (ts *Stream) run(start int32) error {
 		)
 	}
 	// do not include -to if we want the file to go to the end
-	if end+1 < length {
+	if end+1 < int32(length) {
 		// sometimes, the duration is shorter than expected (only during transcode it seems)
 		// always include more and use the -f segment to split the file where we want
-		end_ref := ts.keyframes.Get(end + 1)
+		end_ref := ts.keyframes[end+1]
 		// it seems that the -to is confused when -ss seek before the given time (because it searches for a keyframe)
 		// add back the time that would be lost otherwise
 		// this only happens when -to is before -i but having -to after -i gave a bug (not sure, don't remember)
-		end_ref += startRef - ts.keyframes.Get(startSegment)
+		end_ref += startRef - ts.keyframes[startSegment]
 		args = append(args,
 			"-to", fmt.Sprintf("%.6f", end_ref),
 		)
@@ -292,7 +292,7 @@ func (ts *Stream) run(start int32) error {
 			// segment_times want durations, not timestamps so we must subtract the -ss param
 			// since we give a greater value to -ss to prevent wrong seeks but -segment_times
 			// needs precise segments, we use the keyframe we want to seek to as a reference.
-			return seg - ts.keyframes.Get(startSegment)
+			return seg - ts.keyframes[startSegment]
 		})),
 		"-segment_list_type", "flat",
 		"-segment_list", "pipe:1",
@@ -404,14 +404,14 @@ func (ts *Stream) GetIndex() (string, error) {
 #EXT-X-MEDIA-SEQUENCE:0
 #EXT-X-INDEPENDENT-SEGMENTS
 `
-	length := ts.keyframes.Length() // Always complete since keyframes are extracted during course scan
+	length := len(ts.keyframes) // Always complete since keyframes are extracted during course scan
 
-	for segment := int32(0); segment < length-1; segment++ {
-		index += fmt.Sprintf("#EXTINF:%.6f\n", ts.keyframes.Get(segment+1)-ts.keyframes.Get(segment))
+	for segment := int32(0); segment < int32(length)-1; segment++ {
+		index += fmt.Sprintf("#EXTINF:%.6f\n", ts.keyframes[segment+1]-ts.keyframes[segment])
 		index += fmt.Sprintf("segment-%d.ts\n", segment)
 	}
 	// Always add the last segment and ENDLIST since keyframes are always complete
-	index += fmt.Sprintf("#EXTINF:%.6f\n", float64(ts.file.Info.Duration)-ts.keyframes.Get(length-1))
+	index += fmt.Sprintf("#EXTINF:%.6f\n", float64(ts.file.Info.Duration)-ts.keyframes[length-1])
 	index += fmt.Sprintf("segment-%d.ts\n", length-1)
 	index += `#EXT-X-ENDLIST`
 	return index, nil
@@ -491,13 +491,13 @@ func (ts *Stream) prepareNextSegments(segment int32) {
 
 // getMinEncoderDistance calculates the minimum distance to any active encoder
 func (ts *Stream) getMinEncoderDistance(segment int32) float64 {
-	time := ts.keyframes.Get(segment)
+	time := ts.keyframes[segment]
 	distances := utils.Map(ts.heads, func(head Head) float64 {
 		// ignore killed heads or heads after the current time
-		if head.segment < 0 || ts.keyframes.Get(head.segment) > time || segment >= head.end {
+		if head.segment < 0 || ts.keyframes[head.segment] > time || segment >= head.end {
 			return math.Inf(1)
 		}
-		return time - ts.keyframes.Get(head.segment)
+		return time - ts.keyframes[head.segment]
 	})
 	if len(distances) == 0 {
 		return math.Inf(1)

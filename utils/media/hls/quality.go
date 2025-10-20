@@ -49,7 +49,6 @@ func QualityFromString(str string) (Quality, error) {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // AverageBitrate returns the average bitrate for a quality level
-// I'm not entirely sure about the values for bitrates. Double checking would be nice.
 func (v Quality) AverageBitrate() uint32 {
 	switch v {
 	case P240:

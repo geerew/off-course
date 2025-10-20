@@ -10,7 +10,6 @@ import (
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // ClientInfo tracks what a client is watching
 type ClientInfo struct {
@@ -44,6 +43,8 @@ func NewTranscoder(dao *dao.DAO) (*Transcoder, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Clean up old cache directories
 	for _, d := range dir {
 		err = os.RemoveAll(filepath.Join(out, d.Name()))
 		if err != nil {
@@ -56,6 +57,7 @@ func NewTranscoder(dao *dao.DAO) (*Transcoder, error) {
 		clientChan: make(chan ClientInfo, 10),
 		dao:        dao,
 	}
+
 	ret.tracker = NewTracker(ret)
 	return ret, nil
 }
@@ -69,11 +71,14 @@ func (t *Transcoder) getFileStream(ctx context.Context, path string, assetID str
 		t.assetID = assetID
 		return t.newFileStream(ctx, path, assetID)
 	})
+
 	ret.ready.Wait()
+
 	if ret.err != nil {
 		t.streams.Remove(assetID)
 		return nil, ret.err
 	}
+
 	return ret, nil
 }
 
@@ -85,6 +90,7 @@ func (t *Transcoder) GetMaster(ctx context.Context, path string, client string, 
 	if err != nil {
 		return "", err
 	}
+
 	t.clientChan <- ClientInfo{
 		client:  client,
 		assetID: assetID,
@@ -94,6 +100,7 @@ func (t *Transcoder) GetMaster(ctx context.Context, path string, client string, 
 		vhead:   -1,
 		ahead:   -1,
 	}
+
 	return stream.GetMaster(assetID), nil
 }
 
@@ -126,31 +133,6 @@ func (t *Transcoder) GetVideoIndex(
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetAudioIndex returns the audio index playlist for the specified audio index
-func (t *Transcoder) GetAudioIndex(
-	ctx context.Context,
-	path string,
-	audio uint32,
-	client string,
-	assetID string,
-) (string, error) {
-	stream, err := t.getFileStream(ctx, path, assetID)
-	if err != nil {
-		return "", err
-	}
-	t.clientChan <- ClientInfo{
-		client:  client,
-		assetID: assetID,
-		path:    path,
-		audio:   &audio,
-		vhead:   -1,
-		ahead:   -1,
-	}
-	return stream.GetAudioIndex(audio)
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 // GetVideoSegment returns the path to a requested video segment, transcoding if necessary
 func (t *Transcoder) GetVideoSegment(
 	ctx context.Context,
@@ -175,6 +157,31 @@ func (t *Transcoder) GetVideoSegment(
 		ahead:   -1,
 	}
 	return stream.GetVideoSegment(video, quality, segment)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetAudioIndex returns the audio index playlist for the specified audio index
+func (t *Transcoder) GetAudioIndex(
+	ctx context.Context,
+	path string,
+	audio uint32,
+	client string,
+	assetID string,
+) (string, error) {
+	stream, err := t.getFileStream(ctx, path, assetID)
+	if err != nil {
+		return "", err
+	}
+	t.clientChan <- ClientInfo{
+		client:  client,
+		assetID: assetID,
+		path:    path,
+		audio:   &audio,
+		vhead:   -1,
+		ahead:   -1,
+	}
+	return stream.GetAudioIndex(audio)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

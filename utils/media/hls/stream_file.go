@@ -77,6 +77,7 @@ func (t *Transcoder) newFileStream(ctx context.Context, path string, assetID str
 	}
 
 	ret.ready.Add(1)
+
 	go func() {
 		defer ret.ready.Done()
 

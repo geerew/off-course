@@ -49,17 +49,16 @@ func NewVideoStream(file *FileStream, videoIndex uint32, quality Quality) (*Vide
 	if err != nil {
 		utils.Errf("HLS: Failed to get keyframes: %v\n", err)
 		// Fallback to empty keyframes
-		keyframes := NewKeyframeFromSlice([]float64{})
-		NewStream(file, keyframes, ret, &ret.Stream)
+		NewStream(file, []float64{}, ret, &ret.Stream)
 		return ret, nil
 	}
 
 	// Convert database keyframes to HLS keyframes
-	var keyframeTimes []float64
+	keyframes := []float64{}
 	if assetKeyframes != nil && len(assetKeyframes.Keyframes) > 0 {
-		keyframeTimes = assetKeyframes.Keyframes
+		keyframes = assetKeyframes.Keyframes
 	}
-	keyframes := NewKeyframeFromSlice(keyframeTimes)
+
 	NewStream(file, keyframes, ret, &ret.Stream)
 	return ret, nil
 }
