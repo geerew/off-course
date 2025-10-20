@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/geerew/off-course/dao"
+	"github.com/geerew/off-course/utils"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -13,7 +14,7 @@ import (
 // Transcoder manages all transcoding operations
 type Transcoder struct {
 	// All file streams currently running, index is asset_id
-	streams    CMap[string, *FileStream]
+	streams    utils.CMap[string, *FileStream]
 	clientChan chan ClientInfo
 	tracker    *Tracker
 	dao        *dao.DAO
@@ -38,7 +39,7 @@ func NewTranscoder(dao *dao.DAO) (*Transcoder, error) {
 	}
 
 	ret := &Transcoder{
-		streams:    NewCMap[string, *FileStream](),
+		streams:    utils.NewCMap[string, *FileStream](),
 		clientChan: make(chan ClientInfo, 10),
 		dao:        dao,
 	}

@@ -23,8 +23,8 @@ type FileStream struct {
 	err        error
 	Out        string
 	Info       *MediaInfo
-	videos     CMap[VideoKey, *VideoStream]
-	audios     CMap[uint32, *AudioStream]
+	videos     utils.CMap[VideoKey, *VideoStream]
+	audios     utils.CMap[uint32, *AudioStream]
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -74,8 +74,8 @@ func (t *Transcoder) newFileStream(ctx context.Context, path string, assetID str
 	ret := &FileStream{
 		transcoder: t,
 		Out:        filepath.Join(Settings.CachePath, assetID),
-		videos:     NewCMap[VideoKey, *VideoStream](),
-		audios:     NewCMap[uint32, *AudioStream](),
+		videos:     utils.NewCMap[VideoKey, *VideoStream](),
+		audios:     utils.NewCMap[uint32, *AudioStream](),
 	}
 
 	ret.ready.Add(1)
@@ -150,17 +150,12 @@ func (t *Transcoder) newFileStream(ctx context.Context, path string, assetID str
 
 // Kill stops all streams
 func (fs *FileStream) Kill() {
-	fs.videos.lock.Lock()
-	defer fs.videos.lock.Unlock()
-	fs.audios.lock.Lock()
-	defer fs.audios.lock.Unlock()
-
-	for _, s := range fs.videos.data {
+	fs.videos.ForEach(func(_ VideoKey, s *VideoStream) {
 		s.Kill()
-	}
-	for _, s := range fs.audios.data {
+	})
+	fs.audios.ForEach(func(_ uint32, s *AudioStream) {
 		s.Kill()
-	}
+	})
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
