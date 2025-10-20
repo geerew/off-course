@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/database"
@@ -19,7 +18,6 @@ import (
 // FileStream represents a file being transcoded into HLS streams
 type FileStream struct {
 	transcoder *Transcoder
-	ready      sync.WaitGroup
 	err        error
 	Out        string
 	Info       *MediaInfo
@@ -76,71 +74,65 @@ func (t *Transcoder) newFileStream(ctx context.Context, path string, assetID str
 		audios:     utils.NewCMap[uint32, *AudioStream](),
 	}
 
-	ret.ready.Add(1)
+	// Get asset metadata from database
+	asset, err := t.dao.GetAsset(ctx, database.NewOptions().
+		WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assetID}).
+		WithAssetMetadata())
+	if err != nil {
+		utils.Errf("HLS: Failed to get asset metadata for %s: %v\n", assetID, err)
+		ret.err = err
+		return ret
+	}
 
-	go func() {
-		defer ret.ready.Done()
+	// Convert database models to HLS models
+	var videos []Video
+	var audios []Audio
 
-		// Get asset metadata from database
-		asset, err := t.dao.GetAsset(ctx, database.NewOptions().
-			WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assetID}).
-			WithAssetMetadata())
-		if err != nil {
-			utils.Errf("HLS: Failed to get asset metadata for %s: %v\n", assetID, err)
-			ret.err = err
-			return
+	// Process video metadata
+	if asset.AssetMetadata != nil && asset.AssetMetadata.VideoMetadata != nil {
+		videoMeta := asset.AssetMetadata.VideoMetadata
+		video := Video{
+			Index:     0, // Default index
+			Title:     nil,
+			Language:  nil,
+			Codec:     videoMeta.VideoCodec,
+			MimeCodec: nil,
+			Width:     uint32(videoMeta.Width),
+			Height:    uint32(videoMeta.Height),
+			Bitrate:   uint32(videoMeta.OverallBPS),
+			IsDefault: true,
 		}
+		videos = append(videos, video)
+	}
 
-		// Convert database models to HLS models
-		var videos []Video
-		var audios []Audio
-
-		// Process video metadata
-		if asset.AssetMetadata != nil && asset.AssetMetadata.VideoMetadata != nil {
-			videoMeta := asset.AssetMetadata.VideoMetadata
-			video := Video{
-				Index:     0, // Default index
-				Title:     nil,
-				Language:  nil,
-				Codec:     videoMeta.VideoCodec,
-				MimeCodec: nil,
-				Width:     uint32(videoMeta.Width),
-				Height:    uint32(videoMeta.Height),
-				Bitrate:   uint32(videoMeta.OverallBPS),
-				IsDefault: true,
-			}
-			videos = append(videos, video)
+	// Process audio metadata
+	if asset.AssetMetadata != nil && asset.AssetMetadata.AudioMetadata != nil {
+		audioMeta := asset.AssetMetadata.AudioMetadata
+		audio := Audio{
+			Index:     0, // Default index
+			Title:     nil,
+			Language:  nil,
+			Codec:     audioMeta.Codec,
+			MimeCodec: nil,
+			Bitrate:   uint32(audioMeta.BitRate),
+			IsDefault: true,
 		}
+		audios = append(audios, audio)
+	}
 
-		// Process audio metadata
-		if asset.AssetMetadata != nil && asset.AssetMetadata.AudioMetadata != nil {
-			audioMeta := asset.AssetMetadata.AudioMetadata
-			audio := Audio{
-				Index:     0, // Default index
-				Title:     nil,
-				Language:  nil,
-				Codec:     audioMeta.Codec,
-				MimeCodec: nil,
-				Bitrate:   uint32(audioMeta.BitRate),
-				IsDefault: true,
-			}
-			audios = append(audios, audio)
-		}
+	// Create MediaInfo with real data
+	duration := 0.0
+	if asset.AssetMetadata != nil && asset.AssetMetadata.VideoMetadata != nil {
+		duration = float64(asset.AssetMetadata.VideoMetadata.DurationSec)
+	}
 
-		// Create MediaInfo with real data
-		duration := 0.0
-		if asset.AssetMetadata != nil && asset.AssetMetadata.VideoMetadata != nil {
-			duration = float64(asset.AssetMetadata.VideoMetadata.DurationSec)
-		}
-
-		info := &MediaInfo{
-			Path:     path,
-			Duration: duration,
-			Videos:   videos,
-			Audios:   audios,
-		}
-		ret.Info = info
-	}()
+	info := &MediaInfo{
+		Path:     path,
+		Duration: duration,
+		Videos:   videos,
+		Audios:   audios,
+	}
+	ret.Info = info
 
 	return ret
 }

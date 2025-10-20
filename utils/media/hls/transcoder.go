@@ -72,8 +72,6 @@ func (t *Transcoder) getFileStream(ctx context.Context, path string, assetID str
 		return t.newFileStream(ctx, path, assetID)
 	})
 
-	ret.ready.Wait()
-
 	if ret.err != nil {
 		t.streams.Remove(assetID)
 		return nil, ret.err
