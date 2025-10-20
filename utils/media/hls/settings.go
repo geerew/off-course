@@ -7,17 +7,6 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetEnvOr returns the environment variable value or a default
-func GetEnvOr(env string, def string) string {
-	out := os.Getenv(env)
-	if out == "" {
-		return def
-	}
-	return out
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 // SettingsT holds global HLS transcoding settings
 type SettingsT struct {
 	CachePath string

@@ -31,14 +31,6 @@ func NewTracker(t *Transcoder) *Tracker {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Abs returns the absolute value of x
-func Abs(x int32) int32 {
-	if x < 0 {
-		return -x
-	}
-	return x
-}
-
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // start begins the tracker's main loop

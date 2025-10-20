@@ -186,8 +186,15 @@
 			hlsProvider.library = () => import('hls.js');
 
 			hlsProvider.config = {
+				// We will manually start loading at the desired level/time.
 				autoStartLoad: false,
-				startLevel: Number.POSITIVE_INFINITY,
+
+				// Do not pick a start level automatically
+				startLevel: -1,
+
+				// Do not cap to player size (we want original even on smaller players)
+				capLevelToPlayerSize: false,
+
 				abrEwmaDefaultEstimate: 35_000_000,
 				lowLatencyMode: false,
 
@@ -219,24 +226,62 @@
 		const hlsInstance = player.provider.instance;
 		if (!hlsInstance) return;
 
-		// Wait for levels to be available before starting load
-		if (hlsInstance.levels && hlsInstance.levels.length > 0) {
-			// Set a valid level first (let HLS.js auto-select)
-			hlsInstance.currentLevel = -1; // Auto quality selection
-			hlsInstance.startLoad(startTime);
-		} else {
-			// If levels aren't ready yet, wait for them
-			const checkLevels = () => {
-				if (hlsInstance.levels && hlsInstance.levels.length > 0) {
-					hlsInstance.currentLevel = -1; // Auto quality selection
-					hlsInstance.startLoad(startTime);
-				} else {
-					// Retry after a short delay
-					setTimeout(checkLevels, 100);
+		// Helper to select the "original" variant if present; otherwise pick highest
+		const selectOriginalLevel = () => {
+			if (!hlsInstance.levels || hlsInstance.levels.length === 0) return -1;
+
+			let originalIndex = -1;
+			for (let i = 0; i < hlsInstance.levels.length; i++) {
+				const level = hlsInstance.levels[i] as any;
+				const urls = Array.isArray(level.url) ? level.url : [level.url];
+				if (urls.some((u: any) => typeof u === 'string' && u.includes('/original/'))) {
+					originalIndex = i;
+					break;
 				}
-			};
-			checkLevels();
-		}
+			}
+
+			if (originalIndex === -1) {
+				originalIndex = hlsInstance.levels.length - 1;
+			}
+
+			const selectedLevel = hlsInstance.levels[originalIndex] as any;
+
+			// Pin the level before starting load.
+			hlsInstance.loadLevel = originalIndex;
+			hlsInstance.currentLevel = originalIndex;
+			hlsInstance.nextLevel = originalIndex;
+
+			return originalIndex;
+		};
+
+		// Wait for levels to be available, then start loading from startTime at the chosen level.
+		const ensureLevelsThenStart = () => {
+			if (hlsInstance.levels && hlsInstance.levels.length > 0) {
+				const selected = selectOriginalLevel();
+
+				// Disable ABR by locking nextLevel to currentLevel and clearing autoLevel.
+				try {
+					const locked = selected;
+					// Make sure startup logic uses the selected level only.
+					hlsInstance.config.startLevel = locked;
+					hlsInstance.firstLevel = locked;
+					hlsInstance.nextLoadLevel = locked;
+					hlsInstance.autoLevelCapping = locked;
+					hlsInstance.nextLevel = locked;
+
+					// Some versions expose autoLevelEnabled or autoLevelEnabled setter via controller
+					if ('autoLevelEnabled' in hlsInstance) {
+						(hlsInstance as any).autoLevelEnabled = false;
+					}
+				} catch {}
+
+				hlsInstance.startLoad(startTime);
+			} else {
+				setTimeout(ensureLevelsThenStart, 100);
+			}
+		};
+
+		ensureLevelsThenStart();
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -285,7 +330,7 @@
 		autoplay={mediaPreferences.current.autoplay}
 		src={{
 			src: videoSrc,
-			type: useHls ? ('application/x.mpegurl' as any) : srcType
+			type: useHls ? ('application/vnd.apple.mpegurl' as any) : srcType
 		}}
 		class="group/player relative aspect-video overflow-hidden rounded-md"
 	>

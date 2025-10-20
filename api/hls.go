@@ -202,7 +202,7 @@ func (h *HLSHandler) GetVideoSegment(c *fiber.Ctx) error {
 	}
 
 	// Get video segment
-	utils.Infof("HLS: Requesting video segment from transcoder: path=%s, index=%d, quality=%s, segment=%d\n",
+	utils.Infof("API (hls): Requesting video segment from transcoder: path=%s, index=%d, quality=%s, segment=%d\n",
 		asset.Path, index, qualityStr, segment)
 
 	segmentPath, err := h.transcoder.GetVideoSegment(c.Context(), asset.Path, uint32(index), quality, int32(segment), clientID, assetID)
@@ -213,7 +213,7 @@ func (h *HLSHandler) GetVideoSegment(c *fiber.Ctx) error {
 		})
 	}
 
-	utils.Infof("HLS: Video segment ready: %s\n", segmentPath)
+	utils.Infof("API (hls): Video segment ready: %s\n", segmentPath)
 
 	// Serve the segment file
 	return c.SendFile(segmentPath)
@@ -301,7 +301,7 @@ func (h *HLSHandler) GetAudioSegment(c *fiber.Ctx) error {
 	}
 
 	// Get audio segment
-	utils.Infof("HLS: Requesting audio segment from transcoder: path=%s, index=%d, segment=%d\n",
+	utils.Infof("API (hls): Requesting audio segment from transcoder: path=%s, index=%d, segment=%d\n",
 		asset.Path, index, segment)
 
 	segmentPath, err := h.transcoder.GetAudioSegment(c.Context(), asset.Path, uint32(index), int32(segment), clientID, assetID)
@@ -312,7 +312,7 @@ func (h *HLSHandler) GetAudioSegment(c *fiber.Ctx) error {
 		})
 	}
 
-	utils.Infof("HLS: Audio segment ready: %s\n", segmentPath)
+	utils.Infof("API (hls): Audio segment ready: %s\n", segmentPath)
 
 	// Serve the segment file
 	return c.SendFile(segmentPath)

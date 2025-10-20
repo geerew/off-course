@@ -10,16 +10,16 @@ import (
 
 // DetectHardwareAccel detects and configures hardware acceleration
 func DetectHardwareAccel() HwAccelT {
-	name := GetEnvOr("GOCODER_HWACCEL", "disabled")
+	name := utils.GetEnvOr("GOCODER_HWACCEL", "disabled")
 	if name == "disabled" {
-		name = GetEnvOr("GOTRANSCODER_HWACCEL", "disabled")
+		name = utils.GetEnvOr("GOTRANSCODER_HWACCEL", "disabled")
 	}
 	utils.Infof("HLS: Using hardware acceleration: %s\n", name)
 
 	// superfast or ultrafast would produce a file extremely big so we prefer to ignore them. Fast is available on all hwaccel modes
 	// so we use that by default.
 	// vaapi does not have any presets so this flag is unused for vaapi hwaccel.
-	preset := GetEnvOr("GOCODER_PRESET", "fast")
+	preset := utils.GetEnvOr("GOCODER_PRESET", "fast")
 
 	switch name {
 	case "disabled", "cpu":
@@ -45,7 +45,7 @@ func DetectHardwareAccel() HwAccelT {
 			Name: name,
 			DecodeFlags: []string{
 				"-hwaccel", "vaapi",
-				"-hwaccel_device", GetEnvOr("GOCODER_VAAPI_RENDERER", "/dev/dri/renderD128"),
+				"-hwaccel_device", utils.GetEnvOr("GOCODER_VAAPI_RENDERER", "/dev/dri/renderD128"),
 				"-hwaccel_output_format", "vaapi",
 			},
 			EncodeFlags: []string{
@@ -80,7 +80,7 @@ func DetectHardwareAccel() HwAccelT {
 			Name: name,
 			DecodeFlags: []string{
 				"-hwaccel", "qsv",
-				"-qsv_device", GetEnvOr("GOCODER_QSV_RENDERER", "/dev/dri/renderD128"),
+				"-qsv_device", utils.GetEnvOr("GOCODER_QSV_RENDERER", "/dev/dri/renderD128"),
 				"-hwaccel_output_format", "qsv",
 			},
 			EncodeFlags: []string{
