@@ -77,7 +77,7 @@ type StreamHandle interface {
 // Stream represents a transcoding stream with multiple encoding heads
 type Stream struct {
 	handle    StreamHandle
-	file      *FileStream
+	wrapper   *StreamWrapper
 	keyframes []float64
 	segments  []Segment
 	heads     []Head
@@ -87,9 +87,9 @@ type Stream struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // NewStream creates a new stream
-func NewStream(file *FileStream, keyframes []float64, handle StreamHandle, ret *Stream) {
+func NewStream(wrapper *StreamWrapper, keyframes []float64, handle StreamHandle, ret *Stream) {
 	ret.handle = handle
-	ret.file = file
+	ret.wrapper = wrapper
 	ret.keyframes = keyframes
 	ret.heads = make([]Head, 0)
 
@@ -145,7 +145,7 @@ func (ts *Stream) run(start int32) error {
 	length := len(ts.keyframes)
 
 	// Calculate smart buffer size based on video duration
-	videoDuration := float64(ts.file.Info.Duration)
+	videoDuration := float64(ts.wrapper.Info.Duration)
 	var bufferSegments int32
 
 	if videoDuration <= 300 { // 5 minutes or less
@@ -180,7 +180,7 @@ func (ts *Stream) run(start int32) error {
 	utils.Infof(
 		"HLS: Starting transcode %d for %s (from %d to %d out of %d segments)\n",
 		encoderID,
-		ts.file.Info.Path,
+		ts.wrapper.Info.Path,
 		start,
 		end,
 		length,
@@ -207,7 +207,7 @@ func (ts *Stream) run(start int32) error {
 			// this can't be used with audio since we need to have context before the start-time
 			// without this context, the cut loses a bit of audio (audio gap of ~100ms)
 			if startSegment+1 == int32(length) {
-				startRef = (ts.keyframes[startSegment] + float64(ts.file.Info.Duration)) / 2
+				startRef = (ts.keyframes[startSegment] + float64(ts.wrapper.Info.Duration)) / 2
 			} else {
 				startRef = (ts.keyframes[startSegment] + ts.keyframes[startSegment+1]) / 2
 			}
@@ -266,7 +266,7 @@ func (ts *Stream) run(start int32) error {
 		// to play the file (they just switch back to the previous quality).
 		// since this is better than errorring or not supporting transmux at all, i'll keep it here for now.
 		"-fflags", "+genpts",
-		"-i", ts.file.Info.Path,
+		"-i", ts.wrapper.Info.Path,
 		// this makes behaviors consistent between soft and hardware decodes.
 		// this also means that after a -ss 50, the output video will start at 50s
 		"-start_at_zero",
@@ -411,7 +411,7 @@ func (ts *Stream) GetIndex() (string, error) {
 		index += fmt.Sprintf("segment-%d.ts\n", segment)
 	}
 	// Always add the last segment and ENDLIST since keyframes are always complete
-	index += fmt.Sprintf("#EXTINF:%.6f\n", float64(ts.file.Info.Duration)-ts.keyframes[length-1])
+	index += fmt.Sprintf("#EXTINF:%.6f\n", float64(ts.wrapper.Info.Duration)-ts.keyframes[length-1])
 	index += fmt.Sprintf("segment-%d.ts\n", length-1)
 	index += `#EXT-X-ENDLIST`
 	return index, nil

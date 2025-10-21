@@ -26,7 +26,7 @@ type ClientInfo struct {
 
 // Transcoder manages all HLS transcoding operations for a given asset
 type Transcoder struct {
-	streams    utils.CMap[string, *FileStream]
+	streams    utils.CMap[string, *StreamWrapper]
 	clientChan chan ClientInfo
 	tracker    *Tracker
 	dao        *dao.DAO
@@ -53,7 +53,7 @@ func NewTranscoder(dao *dao.DAO) (*Transcoder, error) {
 	}
 
 	ret := &Transcoder{
-		streams:    utils.NewCMap[string, *FileStream](),
+		streams:    utils.NewCMap[string, *StreamWrapper](),
 		clientChan: make(chan ClientInfo, 10),
 		dao:        dao,
 	}
@@ -64,27 +64,27 @@ func NewTranscoder(dao *dao.DAO) (*Transcoder, error) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// getFileStream returns an existing FileStream for the asset or creates one
-// Blocks until the FileStream is ready or returns an error
-func (t *Transcoder) getFileStream(ctx context.Context, path string, assetID string) (*FileStream, error) {
-	ret, _ := t.streams.GetOrCreate(assetID, func() *FileStream {
+// getStreamWrapper returns an existing StreamWrapper for the asset or creates one
+// Blocks until the StreamWrapper is ready or returns an error
+func (t *Transcoder) getStreamWrapper(ctx context.Context, path string, assetID string) (*StreamWrapper, error) {
+	sw, _ := t.streams.GetOrCreate(assetID, func() *StreamWrapper {
 		t.assetID = assetID
-		return t.newFileStream(ctx, path, assetID)
+		return t.newStreamWrapper(ctx, path, assetID)
 	})
 
-	if ret.err != nil {
+	if sw.err != nil {
 		t.streams.Remove(assetID)
-		return nil, ret.err
+		return nil, sw.err
 	}
 
-	return ret, nil
+	return sw, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // GetMaster returns the master HLS playlist for an asset
 func (t *Transcoder) GetMaster(ctx context.Context, path string, client string, assetID string) (string, error) {
-	stream, err := t.getFileStream(ctx, path, assetID)
+	sw, err := t.getStreamWrapper(ctx, path, assetID)
 	if err != nil {
 		return "", err
 	}
@@ -99,7 +99,7 @@ func (t *Transcoder) GetMaster(ctx context.Context, path string, client string, 
 		ahead:   -1,
 	}
 
-	return stream.GetMaster(assetID), nil
+	return sw.GetMaster(assetID), nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -113,7 +113,7 @@ func (t *Transcoder) GetVideoIndex(
 	client string,
 	assetID string,
 ) (string, error) {
-	stream, err := t.getFileStream(ctx, path, assetID)
+	sw, err := t.getStreamWrapper(ctx, path, assetID)
 	if err != nil {
 		return "", err
 	}
@@ -126,7 +126,7 @@ func (t *Transcoder) GetVideoIndex(
 		vhead:   -1,
 		ahead:   -1,
 	}
-	return stream.GetVideoIndex(video, quality)
+	return sw.GetVideoIndex(video, quality)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -141,7 +141,7 @@ func (t *Transcoder) GetVideoSegment(
 	client string,
 	assetID string,
 ) (string, error) {
-	stream, err := t.getFileStream(ctx, path, assetID)
+	sw, err := t.getStreamWrapper(ctx, path, assetID)
 	if err != nil {
 		return "", err
 	}
@@ -154,7 +154,7 @@ func (t *Transcoder) GetVideoSegment(
 		audio:   nil,
 		ahead:   -1,
 	}
-	return stream.GetVideoSegment(video, quality, segment)
+	return sw.GetVideoSegment(video, quality, segment)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -167,7 +167,7 @@ func (t *Transcoder) GetAudioIndex(
 	client string,
 	assetID string,
 ) (string, error) {
-	stream, err := t.getFileStream(ctx, path, assetID)
+	sw, err := t.getStreamWrapper(ctx, path, assetID)
 	if err != nil {
 		return "", err
 	}
@@ -179,7 +179,7 @@ func (t *Transcoder) GetAudioIndex(
 		vhead:   -1,
 		ahead:   -1,
 	}
-	return stream.GetAudioIndex(audio)
+	return sw.GetAudioIndex(audio)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -193,7 +193,7 @@ func (t *Transcoder) GetAudioSegment(
 	client string,
 	assetID string,
 ) (string, error) {
-	stream, err := t.getFileStream(ctx, path, assetID)
+	sw, err := t.getStreamWrapper(ctx, path, assetID)
 	if err != nil {
 		return "", err
 	}
@@ -205,5 +205,5 @@ func (t *Transcoder) GetAudioSegment(
 		ahead:   segment,
 		vhead:   -1,
 	}
-	return stream.GetAudioSegment(audio, segment)
+	return sw.GetAudioSegment(audio, segment)
 }

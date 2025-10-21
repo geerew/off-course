@@ -4,8 +4,8 @@ This package provides on-demand HLS transcoding and segmentation with adaptive p
 
 ### Architecture
 
-- **Transcoder**: Orchestrates HLS for an asset. Manages `FileStream` instances and client tracking.
-- **FileStream**: Represents a single input file. Holds discovered `MediaInfo`, and per-track streams.
+- **Transcoder**: Orchestrates HLS for an asset. Manages `StreamWrapper` instances and client tracking.
+- **StreamWrapper**: Represents a single input file. Holds discovered `MediaInfo`, and per-track streams.
 - **VideoStream / AudioStream**: Implement the `StreamHandle` to produce segments for either video variants or audio tracks.
 - **Stream**: Core engine shared by audio/video. Manages heads (parallel encoders) and segments.
 - **Tracker**: Observes client requests and updates heads accordingly.
@@ -15,14 +15,14 @@ This package provides on-demand HLS transcoding and segmentation with adaptive p
 ### Data flow
 
 1. API requests `GetMaster`/`GetIndex`/`GetSegment` on `Transcoder`.
-2. `Transcoder` creates/returns a `FileStream` for the asset.
-3. `FileStream` probes metadata (`MediaInfo`) from DB-provided metadata.
-4. For index/segment requests, `FileStream` provides a `VideoStream` or `AudioStream`.
+2. `Transcoder` creates/returns a `StreamWrapper` for the asset.
+3. `StreamWrapper` probes metadata (`MediaInfo`) from DB-provided metadata.
+4. For index/segment requests, `StreamWrapper` provides a `VideoStream` or `AudioStream`.
 5. `Stream` schedules transcoding heads, invokes ffmpeg with segment times derived from keyframes, writes `.ts` files, and returns paths.
 
 ### Files
 
-- `stream_file.go`: `FileStream`, `MediaInfo`, master playlist generation, audio/video stream accessors
+- `stream_wrapper.go`: `StreamWrapper`, `MediaInfo`, master playlist generation, audio/video stream accessors
 - `stream_video.go`: `VideoStream` specifics and ffmpeg args for video
 - `stream_audio.go`: `AudioStream` specifics and ffmpeg args for audio
 - `stream.go`: Shared `Stream` engine, segment scheduling, head management

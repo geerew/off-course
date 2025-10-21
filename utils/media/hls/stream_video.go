@@ -19,17 +19,17 @@ type VideoStream struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // NewVideoStream creates a new video stream for the given file, index and quality
-func NewVideoStream(file *FileStream, videoIndex uint32, quality Quality) (*VideoStream, error) {
+func NewVideoStream(wrapper *StreamWrapper, videoIndex uint32, quality Quality) (*VideoStream, error) {
 	utils.Infof(
 		"HLS: Creating a new video stream for %s (index %d) in quality %s\n",
-		file.Info.Path,
+		wrapper.Info.Path,
 		videoIndex,
 		quality,
 	)
 
 	// Find the video metadata from the file's info
 	var video *Video
-	for _, v := range file.Info.Videos {
+	for _, v := range wrapper.Info.Videos {
 		if v.Index == videoIndex {
 			video = &v
 			break
@@ -45,11 +45,11 @@ func NewVideoStream(file *FileStream, videoIndex uint32, quality Quality) (*Vide
 	}
 
 	// Get keyframes from database
-	assetKeyframes, err := file.transcoder.dao.GetAssetKeyframes(context.Background(), file.transcoder.assetID)
+	assetKeyframes, err := wrapper.transcoder.dao.GetAssetKeyframes(context.Background(), wrapper.transcoder.assetID)
 	if err != nil {
 		utils.Errf("HLS: Failed to get keyframes: %v\n", err)
 		// Fallback to empty keyframes
-		NewStream(file, []float64{}, ret, &ret.Stream)
+		NewStream(wrapper, []float64{}, ret, &ret.Stream)
 		return ret, nil
 	}
 
@@ -59,7 +59,7 @@ func NewVideoStream(file *FileStream, videoIndex uint32, quality Quality) (*Vide
 		keyframes = assetKeyframes.Keyframes
 	}
 
-	NewStream(file, keyframes, ret, &ret.Stream)
+	NewStream(wrapper, keyframes, ret, &ret.Stream)
 	return ret, nil
 }
 
@@ -77,7 +77,7 @@ func (vs *VideoStream) getFlags() Flags {
 
 // getOutPath returns the output path pattern for segments.
 func (vs *VideoStream) getOutPath(encoderID int) string {
-	return fmt.Sprintf("%s/segment-%s-%d-%%d.ts", vs.file.Out, vs.quality, encoderID)
+	return fmt.Sprintf("%s/segment-%s-%d-%%d.ts", vs.wrapper.Out, vs.quality, encoderID)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
