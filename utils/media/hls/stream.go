@@ -206,99 +206,104 @@ func (s *Stream) run(startSegment int32) error {
 		args = append(args, Settings.HwAccel.DecodeFlags...)
 	}
 
+	// Add -ss parameter when we are not at the beginning of the stream
 	if startRef != 0 {
+		// Required for video to force pre/post segment to work
 		if s.streamer.getFlags()&VideoF != 0 {
-			// Required for video to force pre/post segment to work
 			args = append(args, "-noaccurate_seek")
 		}
 
-		args = append(args,
-			"-ss", fmt.Sprintf("%.6f", startRef),
-		)
+		args = append(args, "-ss", fmt.Sprintf("%.6f", startRef))
 	}
 
-	// Add -to parameter if we don't want to go to the end
+	// Add -to parameter when we don't want to go to the end of the stream
 	if endRef > 0 {
-		args = append(args,
-			"-to", fmt.Sprintf("%.6f", endRef),
-		)
+		args = append(args, "-to", fmt.Sprintf("%.6f", endRef))
 	}
+
 	args = append(args,
-		// some avi files are missing pts, using this flag makes ffmpeg use dts as pts and prevents an error with
-		// -c:v copy. Only issue: pts is sometime wrong (+1fps than expected) and this leads to some clients refusing
-		// to play the file (they just switch back to the previous quality).
-		// since this is better than errorring or not supporting transmux at all, i'll keep it here for now.
+		// If timestamps (PTS) are missing or messy after the seek/streamcopy, generate new PTS so
+		// downstream muxers stay happy
 		"-fflags", "+genpts",
+		// Input file
 		"-i", s.streamWrapper.Info.Path,
-		// this makes behaviors consistent between soft and hardware decodes.
-		// this also means that after a -ss 50, the output video will start at 50s
+		// Ensure consistent behavior between software and hardware decoding
 		"-start_at_zero",
-		// for hls streams, -copyts is mandatory
+		// Preserve input timestamps
 		"-copyts",
-		// this makes output file start at 0s instead of a random delay + the -ss value
-		// this also cancel -start_at_zero weird delay.
-		// this is not always respected but generally it gives better resuls.
-		// even when this is not respected, it does not result in a bugged experience but this is something
-		// to keep in mind when debugging
+		// Do not buffer at the muxer, instead write the packets as soon as possible
 		"-muxdelay", "0",
 	)
+
+	// Add the transcoding arguments for the type of stream (audio or video)
 	args = append(args, s.streamer.getTranscodeArgs(toSegmentStr(segments))...)
+
 	args = append(args,
+		//Uuse the segment muxer
 		"-f", "segment",
-		// needed for rounding issues when forcing keyframes
-		// recommended value is 1/(2*frame_rate), which for a 24fps is ~0.021
-		// we take a little bit more than that to be extra safe but too much can be harmful
-		// when segments are short (can make the video repeat itself)
+		// Allow small timing variations for keyframe alignment
 		"-segment_time_delta", "0.05",
+		// Write each segment as a MPEG-TS file
 		"-segment_format", "mpegts",
-		"-segment_times", toSegmentStr(utils.Map(segments, func(seg float64) float64 {
-			// segment_times want durations, not timestamps so we must subtract the -ss param
-			// since we give a greater value to -ss to prevent wrong seeks but -segment_times
-			// needs precise segments, we use the keyframe we want to seek to as a reference.
-			return seg - s.keyframes[startSegment]
-		})),
+		// Explicit split times, relative to the seek point
+		"-segment_times", strings.Join(utils.Map(segments, func(seg float64) string {
+			return fmt.Sprintf("%.6f", seg-s.keyframes[startSegment])
+		}), ","),
+		// Wirte a flat list of segments
 		"-segment_list_type", "flat",
+		// Write the segment list to stdout, instead of to a file
 		"-segment_list", "pipe:1",
+		// The starting number of the segment to write to the output path
 		"-segment_start_number", fmt.Sprint(startSegment),
+		// The output path to write the segment to
 		outPath,
 	)
 
+	// Run the FFmpeg command
 	cmd := exec.Command("ffmpeg", args...)
 	utils.Infof("HLS: Running %s\n", strings.Join(cmd.Args, " "))
 
+	// Set the stdout pipe
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
 	}
+
+	// Set the stderr pipe
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
 
+	// Start the command
 	err = cmd.Start()
 	if err != nil {
 		return err
 	}
+
+	// Store the command in the heads slice
 	s.lock.Lock()
 	s.heads[encoderID].command = cmd
 	s.lock.Unlock()
 
+	// Monitor FFmpeg output to track segment completion
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		format := filepath.Base(outPath)
 		shouldStop := false
 
+		// Parse each line of FFmpeg output to get completed segment numbers
 		for scanner.Scan() {
 			var segment int32
 			_, _ = fmt.Sscanf(scanner.Text(), format, &segment)
 
+			// Skip segments before our start point (due to -f segment padding)
 			if segment < startSegment {
-				// This happens because we use -f segment for accurate cutting (since -ss is not)
-				// check the comment at the beginning of function for more info
 				continue
 			}
+
 			s.lock.Lock()
 			s.heads[encoderID].segment = segment
 
-			// Determine if this is audio or video stream
+			// Determine stream type for logging
 			streamType := "unknown"
 			if s.streamer.getFlags()&AudioF != 0 {
 				streamType = "audio"
@@ -307,49 +312,63 @@ func (s *Stream) run(startSegment int32) error {
 			}
 
 			utils.Infof("HLS: %s segment %d is ready (encoder %d)\n", streamType, segment, encoderID)
+
+			// Check if this segment is already completed by another encoder
 			if s.isSegmentReady(segment) {
-				// the current segment is already marked at done so another process has already gone up to here.
+				// Another encoder already completed this segment, stop this one
 				cmd.Process.Signal(os.Interrupt)
 				utils.Infof("HLS: Stopping %s encoder %d because segment %d is already ready\n", streamType, encoderID, segment)
 				shouldStop = true
 			} else {
+				// Mark this segment as completed by this encoder
 				s.segments[segment].encoder = encoderID
 				close(s.segments[segment].channel)
+
+				// Check if we should stop encoding
 				if segment == endSegment-1 {
-					// file finished, ffmpeg will finish soon on its own
+					// Reached the end of our target range
 					shouldStop = true
 				} else if s.isSegmentReady(segment + 1) {
+					// Next segment is already ready, stop to avoid duplicate work
 					cmd.Process.Signal(os.Interrupt)
 					utils.Infof("HLS: Killing ffmpeg because next segment %d is ready\n", segment)
 					shouldStop = true
 				}
 			}
+
 			s.lock.Unlock()
-			// we need this and not a return in the condition because we want to unlock
-			// the lock (and can't defer since this is a loop)
+
+			// Exit the monitoring loop if we should stop
 			if shouldStop {
 				return
 			}
 		}
 
+		// Handle any scanner errors
 		if err := scanner.Err(); err != nil {
 			utils.Errf("HLS: Error reading stdout of ffmpeg: %v\n", err)
 		}
 	}()
 
+	// Wait for FFmpeg process to complete and clean up the encoder
 	go func() {
 		err := cmd.Wait()
+
 		if exiterr, ok := err.(*exec.ExitError); ok && exiterr.ExitCode() == 255 {
+			// FFmpeg was interrupted by us (normal termination)
 			utils.Infof("HLS: ffmpeg %d was killed by us\n", encoderID)
 		} else if err != nil {
+			// FFmpeg encountered an error during execution
 			utils.Errf("HLS: ffmpeg %d occurred an error: %s: %s\n", encoderID, err, stderr.String())
 		} else {
+			// FFmpeg completed successfully
 			utils.Infof("HLS: ffmpeg %d finished successfully\n", encoderID)
 		}
 
 		s.lock.Lock()
 		defer s.lock.Unlock()
-		// we can't delete the head directly because it would invalidate the others encoderID
+
+		// Mark as deleted instead of removing to preserve encoder IDs for other heads
 		s.heads[encoderID] = DeletedHead
 	}()
 
@@ -528,6 +547,7 @@ func (s *Stream) KillHead(encoderID int) {
 	if s.heads[encoderID] == DeletedHead || s.heads[encoderID].command == nil {
 		return
 	}
+
 	s.heads[encoderID].command.Process.Signal(os.Interrupt)
 	s.heads[encoderID] = DeletedHead
 }

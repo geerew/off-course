@@ -55,7 +55,7 @@ func (as *AudioStream) getFlags() Flags {
 //
 // TODO: Support 5.1 audio streams
 // TODO: Support multi audio qualities
-func (as *AudioStream) getTranscodeArgs(segments string) []string {
+func (as *AudioStream) getTranscodeArgs(_ string) []string {
 	return []string{
 		"-map", fmt.Sprintf("0:a:%d", as.index),
 		"-c:a", "aac",

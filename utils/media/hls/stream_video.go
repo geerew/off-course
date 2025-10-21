@@ -80,10 +80,9 @@ func (vs *VideoStream) getTranscodeArgs(segments string) []string {
 		"-map", fmt.Sprintf("0:V:%d", vs.video.Index),
 	}
 
+	// In original mode, we don't need to transcode the video
 	if vs.quality == Original {
-		args = append(args,
-			"-c:v", "copy",
-		)
+		args = append(args, "-c:v", "copy")
 		return args
 	}
 
@@ -111,6 +110,7 @@ func (vs *VideoStream) getTranscodeArgs(segments string) []string {
 			}
 		}
 	}
+
 	args = append(args,
 		// Even less sure but bufsize are 5x the average bitrate since the average bitrate is only
 		// useful for hls segments
@@ -125,6 +125,7 @@ func (vs *VideoStream) getTranscodeArgs(segments string) []string {
 		// make ffmpeg globally less buggy
 		"-strict", "-2",
 	)
+
 	return args
 }
 
