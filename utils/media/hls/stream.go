@@ -100,11 +100,12 @@ func (s *Stream) initializeSegments() {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // isSegmentReady checks if a segment is ready (non-blocking)
-// Remember to lock before calling this.
+//
+// Always lock before calling this
 func (s *Stream) isSegmentReady(segment int32) bool {
 	select {
 	case <-s.segments[segment].channel:
-		// if the channel returned, it means it was closed
+		// If the channel returned, it means it was closed
 		return true
 	default:
 		return false
@@ -338,7 +339,6 @@ func (s *Stream) run(startSegment int32) error {
 
 			s.lock.Unlock()
 
-			// Exit the monitoring loop if we should stop
 			if shouldStop {
 				return
 			}
@@ -446,9 +446,11 @@ func (s *Stream) GetIndex() (string, error) {
 func (s *Stream) GetSegment(segment int32) (string, error) {
 	s.lock.RLock()
 	ready := s.isSegmentReady(segment)
-	// we want to calculate distance in the same lock else it can be funky
+
 	distance := 0.
 	isScheduled := false
+
+	// Determine the distance to the next encoder and if the segment is scheduled
 	if !ready {
 		distance = s.getMinEncoderDistance(segment)
 		for _, head := range s.heads {
@@ -458,6 +460,7 @@ func (s *Stream) GetSegment(segment int32) (string, error) {
 			}
 		}
 	}
+
 	readyChan := s.segments[segment].channel
 	s.lock.RUnlock()
 
@@ -479,6 +482,7 @@ func (s *Stream) GetSegment(segment int32) (string, error) {
 			return "", errors.New("could not retrieve the selected segment (timeout)")
 		}
 	}
+
 	s.prepareNextSegments(segment)
 	return fmt.Sprintf(s.streamer.getOutPath(s.segments[segment].encoder), segment), nil
 }
@@ -487,25 +491,27 @@ func (s *Stream) GetSegment(segment int32) (string, error) {
 
 // prepareNextSegments starts encoding future segments for video streams
 func (s *Stream) prepareNextSegments(segment int32) {
-	// Audio is way cheaper to create than video so we don't need to run them in advance
-	// Running it in advance might actually slow down the video encode since less compute
-	// power can be used so we simply disable that.
+	// Skip audio streams as they are cheap to encode on-demand
 	if s.streamer.getFlags()&VideoF == 0 {
 		return
 	}
+
 	s.lock.RLock()
 	defer s.lock.RUnlock()
+
 	for i := segment + 1; i <= min(segment+10, int32(len(s.segments)-1)); i++ {
 		if s.isSegmentReady(i) {
 			continue
 		}
-		// only start encode for segments not planned (getMinEncoderDistance returns Inf for them)
-		// or if they are 60s away (assume 5s per segment)
+
+		// Skip if too close to active encoder (60s buffer + 5s per segment)
 		if s.getMinEncoderDistance(i) < 60+(5*float64(i-segment)) {
 			continue
 		}
+
 		utils.Infof("HLS: Creating new head for future segment (%d)\n", i)
 		go s.run(i)
+
 		return
 	}
 }
@@ -515,16 +521,20 @@ func (s *Stream) prepareNextSegments(segment int32) {
 // getMinEncoderDistance calculates the minimum distance to any active encoder
 func (s *Stream) getMinEncoderDistance(segment int32) float64 {
 	time := s.keyframes[segment]
+
 	distances := utils.Map(s.heads, func(head Head) float64 {
-		// ignore killed heads or heads after the current time
+		// Ignore killed heads or heads after the current time
 		if head.segment < 0 || s.keyframes[head.segment] > time || segment >= head.end {
 			return math.Inf(1)
 		}
+
 		return time - s.keyframes[head.segment]
 	})
+
 	if len(distances) == 0 {
 		return math.Inf(1)
 	}
+
 	return slices.Min(distances)
 }
 
@@ -566,6 +576,7 @@ func getKeyframes(wrapper *StreamWrapper) []float64 {
 	if assetKeyframes != nil && len(assetKeyframes.Keyframes) > 0 {
 		return assetKeyframes.Keyframes
 	}
+
 	return []float64{}
 }
 

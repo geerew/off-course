@@ -82,7 +82,6 @@ func (t *Transcoder) GetMaster(ctx context.Context, path string, assetID string)
 	}
 
 	t.assetChan <- assetID
-
 	return sw.GetMaster(assetID), nil
 }
 
@@ -100,6 +99,7 @@ func (t *Transcoder) GetVideoIndex(
 	if err != nil {
 		return "", err
 	}
+
 	t.assetChan <- assetID
 	return sw.GetVideoIndex(video, quality)
 }
@@ -119,6 +119,7 @@ func (t *Transcoder) GetVideoSegment(
 	if err != nil {
 		return "", err
 	}
+
 	t.assetChan <- assetID
 	return sw.GetVideoSegment(video, quality, segment)
 }
@@ -136,6 +137,7 @@ func (t *Transcoder) GetAudioIndex(
 	if err != nil {
 		return "", err
 	}
+
 	t.assetChan <- assetID
 	return sw.GetAudioIndex(audio)
 }
@@ -154,6 +156,7 @@ func (t *Transcoder) GetAudioSegment(
 	if err != nil {
 		return "", err
 	}
+
 	t.assetChan <- assetID
 	return sw.GetAudioSegment(audio, segment)
 }
