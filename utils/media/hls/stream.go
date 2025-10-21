@@ -4,6 +4,7 @@ package hls
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"math"
@@ -66,11 +67,7 @@ type VideoKey struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // StreamHandle represents a stream handle
-type StreamHandle interface {
-	getTranscodeArgs(segments string) []string
-	getOutPath(encoderID int) string
-	getFlags() Flags
-}
+
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -86,11 +83,22 @@ type Stream struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// initializeSegments creates and initializes segments based on keyframes
+func (s *Stream) initializeSegments() {
+	length := len(s.keyframes)
+	s.segments = make([]Segment, length, max(length, 2000))
+	for seg := range s.segments {
+		s.segments[seg].channel = make(chan struct{})
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // isSegmentReady checks if a segment is ready (non-blocking)
 // Remember to lock before calling this.
-func (ts *Stream) isSegmentReady(segment int32) bool {
+func (s *Stream) isSegmentReady(segment int32) bool {
 	select {
-	case <-ts.segments[segment].channel:
+	case <-s.segments[segment].channel:
 		// if the channel returned, it means it was closed
 		return true
 	default:
@@ -101,8 +109,8 @@ func (ts *Stream) isSegmentReady(segment int32) bool {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // isSegmentTranscoding checks if a segment is currently being transcoded
-func (ts *Stream) isSegmentTranscoding(segment int32) bool {
-	for _, head := range ts.heads {
+func (s *Stream) isSegmentTranscoding(segment int32) bool {
+	for _, head := range s.heads {
 		if head.segment == segment {
 			return true
 		}
@@ -112,22 +120,13 @@ func (ts *Stream) isSegmentTranscoding(segment int32) bool {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// toSegmentStr converts keyframe timestamps to a comma-separated string
-func toSegmentStr(segments []float64) string {
-	return strings.Join(utils.Map(segments, func(seg float64) string {
-		return fmt.Sprintf("%.6f", seg)
-	}), ",")
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 // run starts transcoding from the given segment
-func (ts *Stream) run(start int32) error {
+func (s *Stream) run(start int32) error {
 	// Start the transcode with adaptive buffer based on video length
-	length := len(ts.keyframes)
+	length := len(s.keyframes)
 
 	// Calculate smart buffer size based on video duration
-	videoDuration := float64(ts.wrapper.Info.Duration)
+	videoDuration := float64(s.wrapper.Info.Duration)
 	var bufferSegments int32
 
 	if videoDuration <= 300 { // 5 minutes or less
@@ -140,9 +139,9 @@ func (ts *Stream) run(start int32) error {
 
 	end := min(start+bufferSegments, int32(length))
 	// Stop at the first finished segment
-	ts.lock.Lock()
+	s.lock.Lock()
 	for i := start; i < end; i++ {
-		if ts.isSegmentReady(i) || ts.isSegmentTranscoding(i) {
+		if s.isSegmentReady(i) || s.isSegmentTranscoding(i) {
 			end = i
 			break
 		}
@@ -152,17 +151,17 @@ func (ts *Stream) run(start int32) error {
 		// to call run() and the actual call.
 		// since most checks are done in a RLock() instead of a Lock() this can
 		// happens when two goroutines try to make the same segment ready
-		ts.lock.Unlock()
+		s.lock.Unlock()
 		return nil
 	}
-	encoderID := len(ts.heads)
-	ts.heads = append(ts.heads, Head{segment: start, end: end, command: nil})
-	ts.lock.Unlock()
+	encoderID := len(s.heads)
+	s.heads = append(s.heads, Head{segment: start, end: end, command: nil})
+	s.lock.Unlock()
 
 	utils.Infof(
 		"HLS: Starting transcode %d for %s (from %d to %d out of %d segments)\n",
 		encoderID,
-		ts.wrapper.Info.Path,
+		s.wrapper.Info.Path,
 		start,
 		end,
 		length,
@@ -179,8 +178,8 @@ func (ts *Stream) run(start int32) error {
 		//  - Video: if a segment is really short (between 20 and 100ms), the padding given in the else block below is not enough and
 		// the previous segment is played another time. the -segment_times is way more precise so it does not do the same with this one
 		startSegment = start - 1
-		if ts.handle.getFlags()&AudioF != 0 {
-			startRef = ts.keyframes[startSegment]
+		if s.handle.getFlags()&AudioF != 0 {
+			startRef = s.keyframes[startSegment]
 		} else {
 			// the param for the -ss takes the keyframe before the specified time
 			// (if the specified time is a keyframe, it either takes that keyframe or the one before)
@@ -189,9 +188,9 @@ func (ts *Stream) run(start int32) error {
 			// this can't be used with audio since we need to have context before the start-time
 			// without this context, the cut loses a bit of audio (audio gap of ~100ms)
 			if startSegment+1 == int32(length) {
-				startRef = (ts.keyframes[startSegment] + float64(ts.wrapper.Info.Duration)) / 2
+				startRef = (s.keyframes[startSegment] + float64(s.wrapper.Info.Duration)) / 2
 			} else {
-				startRef = (ts.keyframes[startSegment] + ts.keyframes[startSegment+1]) / 2
+				startRef = (s.keyframes[startSegment] + s.keyframes[startSegment+1]) / 2
 			}
 		}
 	}
@@ -199,13 +198,13 @@ func (ts *Stream) run(start int32) error {
 	if end == int32(length) {
 		endPadding = 0
 	}
-	segments := ts.keyframes[startSegment+1 : end+endPadding]
+	segments := s.keyframes[startSegment+1 : end+endPadding]
 	if len(segments) == 0 {
 		// we can't leave that empty else ffmpeg errors out.
 		segments = []float64{9999999}
 	}
 
-	outPath := ts.handle.getOutPath(encoderID)
+	outPath := s.handle.getOutPath(encoderID)
 	err := os.MkdirAll(filepath.Dir(outPath), 0o755)
 	if err != nil {
 		return err
@@ -215,12 +214,12 @@ func (ts *Stream) run(start int32) error {
 		"-nostats", "-hide_banner", "-loglevel", "warning",
 	}
 
-	if ts.handle.getFlags()&VideoF != 0 {
+	if s.handle.getFlags()&VideoF != 0 {
 		args = append(args, Settings.HwAccel.DecodeFlags...)
 	}
 
 	if startRef != 0 {
-		if ts.handle.getFlags()&VideoF != 0 {
+		if s.handle.getFlags()&VideoF != 0 {
 			// This is the default behavior in transmux mode and needed to force pre/post segment to work
 			// This must be disabled when processing only audio because it creates gaps in audio
 			args = append(args, "-noaccurate_seek")
@@ -233,11 +232,11 @@ func (ts *Stream) run(start int32) error {
 	if end+1 < int32(length) {
 		// sometimes, the duration is shorter than expected (only during transcode it seems)
 		// always include more and use the -f segment to split the file where we want
-		end_ref := ts.keyframes[end+1]
+		end_ref := s.keyframes[end+1]
 		// it seems that the -to is confused when -ss seek before the given time (because it searches for a keyframe)
 		// add back the time that would be lost otherwise
 		// this only happens when -to is before -i but having -to after -i gave a bug (not sure, don't remember)
-		end_ref += startRef - ts.keyframes[startSegment]
+		end_ref += startRef - s.keyframes[startSegment]
 		args = append(args,
 			"-to", fmt.Sprintf("%.6f", end_ref),
 		)
@@ -248,7 +247,7 @@ func (ts *Stream) run(start int32) error {
 		// to play the file (they just switch back to the previous quality).
 		// since this is better than errorring or not supporting transmux at all, i'll keep it here for now.
 		"-fflags", "+genpts",
-		"-i", ts.wrapper.Info.Path,
+		"-i", s.wrapper.Info.Path,
 		// this makes behaviors consistent between soft and hardware decodes.
 		// this also means that after a -ss 50, the output video will start at 50s
 		"-start_at_zero",
@@ -256,12 +255,12 @@ func (ts *Stream) run(start int32) error {
 		"-copyts",
 		// this makes output file start at 0s instead of a random delay + the -ss value
 		// this also cancel -start_at_zero weird delay.
-		// this is not always respected but generally it gives better results.
+		// this is not always respected but generally it gives better resuls.
 		// even when this is not respected, it does not result in a bugged experience but this is something
 		// to keep in mind when debugging
 		"-muxdelay", "0",
 	)
-	args = append(args, ts.handle.getTranscodeArgs(toSegmentStr(segments))...)
+	args = append(args, s.handle.getTranscodeArgs(toSegmentStr(segments))...)
 	args = append(args,
 		"-f", "segment",
 		// needed for rounding issues when forcing keyframes
@@ -274,7 +273,7 @@ func (ts *Stream) run(start int32) error {
 			// segment_times want durations, not timestamps so we must subtract the -ss param
 			// since we give a greater value to -ss to prevent wrong seeks but -segment_times
 			// needs precise segments, we use the keyframe we want to seek to as a reference.
-			return seg - ts.keyframes[startSegment]
+			return seg - s.keyframes[startSegment]
 		})),
 		"-segment_list_type", "flat",
 		"-segment_list", "pipe:1",
@@ -296,9 +295,9 @@ func (ts *Stream) run(start int32) error {
 	if err != nil {
 		return err
 	}
-	ts.lock.Lock()
-	ts.heads[encoderID].command = cmd
-	ts.lock.Unlock()
+	s.lock.Lock()
+	s.heads[encoderID].command = cmd
+	s.lock.Unlock()
 
 	go func() {
 		scanner := bufio.NewScanner(stdout)
@@ -314,36 +313,36 @@ func (ts *Stream) run(start int32) error {
 				// check the comment at the beginning of function for more info
 				continue
 			}
-			ts.lock.Lock()
-			ts.heads[encoderID].segment = segment
+			s.lock.Lock()
+			s.heads[encoderID].segment = segment
 
 			// Determine if this is audio or video stream
 			streamType := "unknown"
-			if ts.handle.getFlags()&AudioF != 0 {
+			if s.handle.getFlags()&AudioF != 0 {
 				streamType = "audio"
-			} else if ts.handle.getFlags()&VideoF != 0 {
+			} else if s.handle.getFlags()&VideoF != 0 {
 				streamType = "video"
 			}
 
 			utils.Infof("HLS: %s segment %d is ready (encoder %d)\n", streamType, segment, encoderID)
-			if ts.isSegmentReady(segment) {
+			if s.isSegmentReady(segment) {
 				// the current segment is already marked at done so another process has already gone up to here.
 				cmd.Process.Signal(os.Interrupt)
 				utils.Infof("HLS: Stopping %s encoder %d because segment %d is already ready\n", streamType, encoderID, segment)
 				shouldStop = true
 			} else {
-				ts.segments[segment].encoder = encoderID
-				close(ts.segments[segment].channel)
+				s.segments[segment].encoder = encoderID
+				close(s.segments[segment].channel)
 				if segment == end-1 {
 					// file finished, ffmpeg will finish soon on its own
 					shouldStop = true
-				} else if ts.isSegmentReady(segment + 1) {
+				} else if s.isSegmentReady(segment + 1) {
 					cmd.Process.Signal(os.Interrupt)
 					utils.Infof("HLS: Killing ffmpeg because next segment %d is ready\n", segment)
 					shouldStop = true
 				}
 			}
-			ts.lock.Unlock()
+			s.lock.Unlock()
 			// we need this and not a return in the condition because we want to unlock
 			// the lock (and can't defer since this is a loop)
 			if shouldStop {
@@ -366,10 +365,10 @@ func (ts *Stream) run(start int32) error {
 			utils.Infof("HLS: ffmpeg %d finished successfully\n", encoderID)
 		}
 
-		ts.lock.Lock()
-		defer ts.lock.Unlock()
+		s.lock.Lock()
+		defer s.lock.Unlock()
 		// we can't delete the head directly because it would invalidate the others encoderID
-		ts.heads[encoderID] = DeletedHead
+		s.heads[encoderID] = DeletedHead
 	}()
 
 	return nil
@@ -378,7 +377,7 @@ func (ts *Stream) run(start int32) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // GetIndex generates the HLS index playlist for the stream
-func (ts *Stream) GetIndex() (string, error) {
+func (s *Stream) GetIndex() (string, error) {
 	// Use VOD playlist type since keyframes are always complete (extracted during course scan)
 	index := `#EXTM3U
 #EXT-X-VERSION:6
@@ -386,14 +385,14 @@ func (ts *Stream) GetIndex() (string, error) {
 #EXT-X-MEDIA-SEQUENCE:0
 #EXT-X-INDEPENDENT-SEGMENTS
 `
-	length := len(ts.keyframes) // Always complete since keyframes are extracted during course scan
+	length := len(s.keyframes) // Always complete since keyframes are extracted during course scan
 
 	for segment := int32(0); segment < int32(length)-1; segment++ {
-		index += fmt.Sprintf("#EXTINF:%.6f\n", ts.keyframes[segment+1]-ts.keyframes[segment])
+		index += fmt.Sprintf("#EXTINF:%.6f\n", s.keyframes[segment+1]-s.keyframes[segment])
 		index += fmt.Sprintf("segment-%d.ts\n", segment)
 	}
 	// Always add the last segment and ENDLIST since keyframes are always complete
-	index += fmt.Sprintf("#EXTINF:%.6f\n", float64(ts.wrapper.Info.Duration)-ts.keyframes[length-1])
+	index += fmt.Sprintf("#EXTINF:%.6f\n", float64(s.wrapper.Info.Duration)-s.keyframes[length-1])
 	index += fmt.Sprintf("segment-%d.ts\n", length-1)
 	index += `#EXT-X-ENDLIST`
 	return index, nil
@@ -402,29 +401,29 @@ func (ts *Stream) GetIndex() (string, error) {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // GetSegment retrieves a specific segment path, starting transcoding if needed
-func (ts *Stream) GetSegment(segment int32) (string, error) {
-	ts.lock.RLock()
-	ready := ts.isSegmentReady(segment)
+func (s *Stream) GetSegment(segment int32) (string, error) {
+	s.lock.RLock()
+	ready := s.isSegmentReady(segment)
 	// we want to calculate distance in the same lock else it can be funky
 	distance := 0.
 	isScheduled := false
 	if !ready {
-		distance = ts.getMinEncoderDistance(segment)
-		for _, head := range ts.heads {
+		distance = s.getMinEncoderDistance(segment)
+		for _, head := range s.heads {
 			if head.segment <= segment && segment < head.end {
 				isScheduled = true
 				break
 			}
 		}
 	}
-	readyChan := ts.segments[segment].channel
-	ts.lock.RUnlock()
+	readyChan := s.segments[segment].channel
+	s.lock.RUnlock()
 
 	if !ready {
 		// Only start a new encode if there is too big a distance between the current encoder and the segment.
 		if distance > 60 || !isScheduled {
 			utils.Infof("HLS: Creating new head for %d since closest head is %fs away\n", segment, distance)
-			err := ts.run(segment)
+			err := s.run(segment)
 			if err != nil {
 				return "", err
 			}
@@ -438,33 +437,33 @@ func (ts *Stream) GetSegment(segment int32) (string, error) {
 			return "", errors.New("could not retrieve the selected segment (timeout)")
 		}
 	}
-	ts.prepareNextSegments(segment)
-	return fmt.Sprintf(ts.handle.getOutPath(ts.segments[segment].encoder), segment), nil
+	s.prepareNextSegments(segment)
+	return fmt.Sprintf(s.handle.getOutPath(s.segments[segment].encoder), segment), nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // prepareNextSegments starts encoding future segments for video streams
-func (ts *Stream) prepareNextSegments(segment int32) {
+func (s *Stream) prepareNextSegments(segment int32) {
 	// Audio is way cheaper to create than video so we don't need to run them in advance
 	// Running it in advance might actually slow down the video encode since less compute
 	// power can be used so we simply disable that.
-	if ts.handle.getFlags()&VideoF == 0 {
+	if s.handle.getFlags()&VideoF == 0 {
 		return
 	}
-	ts.lock.RLock()
-	defer ts.lock.RUnlock()
-	for i := segment + 1; i <= min(segment+10, int32(len(ts.segments)-1)); i++ {
-		if ts.isSegmentReady(i) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	for i := segment + 1; i <= min(segment+10, int32(len(s.segments)-1)); i++ {
+		if s.isSegmentReady(i) {
 			continue
 		}
 		// only start encode for segments not planned (getMinEncoderDistance returns Inf for them)
 		// or if they are 60s away (assume 5s per segment)
-		if ts.getMinEncoderDistance(i) < 60+(5*float64(i-segment)) {
+		if s.getMinEncoderDistance(i) < 60+(5*float64(i-segment)) {
 			continue
 		}
 		utils.Infof("HLS: Creating new head for future segment (%d)\n", i)
-		go ts.run(i)
+		go s.run(i)
 		return
 	}
 }
@@ -472,14 +471,14 @@ func (ts *Stream) prepareNextSegments(segment int32) {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // getMinEncoderDistance calculates the minimum distance to any active encoder
-func (ts *Stream) getMinEncoderDistance(segment int32) float64 {
-	time := ts.keyframes[segment]
-	distances := utils.Map(ts.heads, func(head Head) float64 {
+func (s *Stream) getMinEncoderDistance(segment int32) float64 {
+	time := s.keyframes[segment]
+	distances := utils.Map(s.heads, func(head Head) float64 {
 		// ignore killed heads or heads after the current time
-		if head.segment < 0 || ts.keyframes[head.segment] > time || segment >= head.end {
+		if head.segment < 0 || s.keyframes[head.segment] > time || segment >= head.end {
 			return math.Inf(1)
 		}
-		return time - ts.keyframes[head.segment]
+		return time - s.keyframes[head.segment]
 	})
 	if len(distances) == 0 {
 		return math.Inf(1)
@@ -490,12 +489,12 @@ func (ts *Stream) getMinEncoderDistance(segment int32) float64 {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Kill stops all encoding processes associated with the stream
-func (ts *Stream) Kill() {
-	ts.lock.Lock()
-	defer ts.lock.Unlock()
+func (s *Stream) Kill() {
+	s.lock.Lock()
+	defer s.lock.Unlock()
 
-	for id := range ts.heads {
-		ts.KillHead(id)
+	for id := range s.heads {
+		s.KillHead(id)
 	}
 }
 
@@ -503,10 +502,39 @@ func (ts *Stream) Kill() {
 
 // KillHead stops a specific encoding process
 // Stream is assumed to be locked by the caller.
-func (ts *Stream) KillHead(encoder_id int) {
-	if ts.heads[encoder_id] == DeletedHead || ts.heads[encoder_id].command == nil {
+func (s *Stream) KillHead(encoder_id int) {
+	if s.heads[encoder_id] == DeletedHead || s.heads[encoder_id].command == nil {
 		return
 	}
-	ts.heads[encoder_id].command.Process.Signal(os.Interrupt)
-	ts.heads[encoder_id] = DeletedHead
+	s.heads[encoder_id].command.Process.Signal(os.Interrupt)
+	s.heads[encoder_id] = DeletedHeadtype StreamHandle interface {
+	getTranscodeArgs(segments string) []string
+	getOutPath(encoderID int) string
+	getFlags() Flags
+}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// getKeyframes retrieves keyframes from the database, falling back to empty slice on error
+func getKeyframes(wrapper *StreamWrapper) []float64 {
+	assetKeyframes, err := wrapper.transcoder.dao.GetAssetKeyframes(context.Background(), wrapper.transcoder.assetID)
+	if err != nil {
+		utils.Errf("HLS: Failed to get keyframes: %v\n", err)
+		return []float64{}
+	}
+
+	if assetKeyframes != nil && len(assetKeyframes.Keyframes) > 0 {
+		return assetKeyframes.Keyframes
+	}
+	return []float64{}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// toSegmentStr converts keyframe timestamps to a comma-separated string
+func toSegmentStr(segments []float64) string {
+	return strings.Join(utils.Map(segments, func(seg float64) string {
+		return fmt.Sprintf("%.6f", seg)
+	}), ",")
 }

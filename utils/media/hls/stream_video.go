@@ -1,7 +1,6 @@
 package hls
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/geerew/off-course/utils"
@@ -35,6 +34,7 @@ func NewVideoStream(wrapper *StreamWrapper, videoIndex uint32, quality Quality) 
 			break
 		}
 	}
+
 	if video == nil {
 		return nil, fmt.Errorf("video stream %d not found", videoIndex)
 	}
@@ -48,32 +48,15 @@ func NewVideoStream(wrapper *StreamWrapper, videoIndex uint32, quality Quality) 
 		video:   video,
 	}
 	videoStream.handle = videoStream
-
-	// Get keyframes from database
-	assetKeyframes, err := wrapper.transcoder.dao.GetAssetKeyframes(context.Background(), wrapper.transcoder.assetID)
-	if err != nil {
-		utils.Errf("HLS: Failed to get keyframes: %v\n", err)
-		videoStream.keyframes = []float64{}
-	} else {
-		keyframes := []float64{}
-		if assetKeyframes != nil && len(assetKeyframes.Keyframes) > 0 {
-			keyframes = assetKeyframes.Keyframes
-		}
-		videoStream.keyframes = keyframes
-	}
-
-	length := len(videoStream.keyframes)
-	videoStream.segments = make([]Segment, length, max(length, 2000))
-	for seg := range videoStream.segments {
-		videoStream.segments[seg].channel = make(chan struct{})
-	}
+	videoStream.keyframes = getKeyframes(wrapper)
+	videoStream.initializeSegments()
 
 	return videoStream, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// getFlags returns the stream flags for video.
+// getFlags returns the stream flags for video
 func (vs *VideoStream) getFlags() Flags {
 	if vs.quality == Original {
 		return VideoF | Transmux
@@ -83,14 +66,14 @@ func (vs *VideoStream) getFlags() Flags {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// getOutPath returns the output path pattern for segments.
+// getOutPath returns the output path pattern for segments
 func (vs *VideoStream) getOutPath(encoderID int) string {
 	return fmt.Sprintf("%s/segment-%s-%d-%%d.ts", vs.wrapper.Out, vs.quality, encoderID)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// getTranscodeArgs returns the FFmpeg arguments for transcoding.
+// getTranscodeArgs returns the FFmpeg arguments for transcoding
 func (vs *VideoStream) getTranscodeArgs(segments string) []string {
 	args := []string{
 		"-map", fmt.Sprintf("0:V:%d", vs.video.Index),
@@ -108,7 +91,7 @@ func (vs *VideoStream) getTranscodeArgs(segments string) []string {
 	quality := vs.quality
 	if vs.quality != NoResize {
 		width := int32(float64(vs.quality.Height()) / float64(vs.video.Height) * float64(vs.video.Width))
-		// force a width that is a multiple of two else some apps behave badly.
+		// force a width that is a multiple of two else some apps behave badly
 		width = closestMultiple(width, 2)
 		args = append(args,
 			"-vf", fmt.Sprintf(Settings.HwAccel.ScaleFilter, width, vs.quality.Height()),
@@ -119,7 +102,7 @@ func (vs *VideoStream) getTranscodeArgs(segments string) []string {
 			args = append(args, "-vf", Settings.HwAccel.NoResizeFilter)
 		}
 
-		// NoResize doesn't have bitrate info, fallback to a know quality higher or equal.
+		// NoResize doesn't have bitrate info, fallback to a know quality higher or equal
 		for _, q := range Qualities {
 			if q.Height() >= vs.video.Height {
 				quality = q
@@ -129,13 +112,13 @@ func (vs *VideoStream) getTranscodeArgs(segments string) []string {
 	}
 	args = append(args,
 		// Even less sure but bufsize are 5x the average bitrate since the average bitrate is only
-		// useful for hls segments.
+		// useful for hls segments
 		"-bufsize", fmt.Sprint(quality.MaxBitrate()*5),
 		"-b:v", fmt.Sprint(quality.AverageBitrate()),
 		"-maxrate", fmt.Sprint(quality.MaxBitrate()),
 		// Force segments to be split exactly on keyframes (only works when transcoding)
 		// forced-idr is needed to force keyframes to be an idr-frame (by default it can be any i frames)
-		// without this option, some hardware encoders uses others i-frames and the -f segment can't cut at them.
+		// without this option, some hardware encoders uses others i-frames and the -f segment can't cut at them
 		"-forced-idr", "1",
 		"-force_key_frames", segments,
 		// make ffmpeg globally less buggy
@@ -146,7 +129,7 @@ func (vs *VideoStream) getTranscodeArgs(segments string) []string {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// closestMultiple finds the closest multiple of x that is >= n.
+// closestMultiple finds the closest multiple of x that is >= n
 func closestMultiple(n int32, x int32) int32 {
 	if x > n {
 		return x

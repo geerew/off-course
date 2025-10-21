@@ -1,7 +1,6 @@
 package hls
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/geerew/off-course/utils"
@@ -29,25 +28,8 @@ func NewAudioStream(wrapper *StreamWrapper, audioIndex uint32) (*AudioStream, er
 		index: audioIndex,
 	}
 	audioStream.handle = audioStream
-
-	// Get keyframes from database
-	assetKeyframes, err := wrapper.transcoder.dao.GetAssetKeyframes(context.Background(), wrapper.transcoder.assetID)
-	if err != nil {
-		utils.Errf("HLS: Failed to get keyframes: %v\n", err)
-		audioStream.keyframes = []float64{}
-	} else {
-		keyframes := []float64{}
-		if assetKeyframes != nil && len(assetKeyframes.Keyframes) > 0 {
-			keyframes = assetKeyframes.Keyframes
-		}
-		audioStream.keyframes = keyframes
-	}
-
-	length := len(audioStream.keyframes)
-	audioStream.segments = make([]Segment, length, max(length, 2000))
-	for seg := range audioStream.segments {
-		audioStream.segments[seg].channel = make(chan struct{})
-	}
+	audioStream.keyframes = getKeyframes(wrapper)
+	audioStream.initializeSegments()
 
 	return audioStream, nil
 }
