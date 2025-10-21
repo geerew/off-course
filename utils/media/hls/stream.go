@@ -417,25 +417,26 @@ func (s *Stream) calculateSeekReferences(startSegment, endSegment, length int32)
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetIndex generates the HLS index playlist for the stream
+// GetIndex generates the HLS index playlist for the stream (video or audio)
 func (s *Stream) GetIndex() (string, error) {
-	// Use VOD playlist type since keyframes are always complete (extracted during course scan)
 	index := `#EXTM3U
 #EXT-X-VERSION:6
 #EXT-X-TARGETDURATION:6
 #EXT-X-MEDIA-SEQUENCE:0
 #EXT-X-INDEPENDENT-SEGMENTS
 `
-	length := len(s.keyframes) // Always complete since keyframes are extracted during course scan
+	length := len(s.keyframes)
 
 	for segment := int32(0); segment < int32(length)-1; segment++ {
 		index += fmt.Sprintf("#EXTINF:%.6f\n", s.keyframes[segment+1]-s.keyframes[segment])
 		index += fmt.Sprintf("segment-%d.ts\n", segment)
 	}
-	// Always add the last segment and ENDLIST since keyframes are always complete
+
 	index += fmt.Sprintf("#EXTINF:%.6f\n", float64(s.streamWrapper.Info.Duration)-s.keyframes[length-1])
 	index += fmt.Sprintf("segment-%d.ts\n", length-1)
+
 	index += `#EXT-X-ENDLIST`
+
 	return index, nil
 }
 

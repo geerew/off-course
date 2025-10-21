@@ -85,14 +85,8 @@ func (h *HLSHandler) GetMaster(c *fiber.Ctx) error {
 		})
 	}
 
-	// Get client ID from header
-	clientID := c.Get("X-CLIENT-ID")
-	if clientID == "" {
-		clientID = c.IP() // Fallback to IP address
-	}
-
 	// Get master playlist
-	master, err := h.transcoder.GetMaster(c.Context(), asset.Path, clientID, assetID)
+	master, err := h.transcoder.GetMaster(c.Context(), asset.Path, assetID)
 	if err != nil {
 		utils.Errf("Failed to get master playlist for asset %s: %v\n", assetID, err)
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
@@ -136,14 +130,8 @@ func (h *HLSHandler) GetVideoIndex(c *fiber.Ctx) error {
 		})
 	}
 
-	// Get client ID
-	clientID := c.Get("X-CLIENT-ID")
-	if clientID == "" {
-		clientID = c.IP()
-	}
-
 	// Get video index
-	indexPlaylist, err := h.transcoder.GetVideoIndex(c.Context(), asset.Path, uint32(index), quality, clientID, assetID)
+	indexPlaylist, err := h.transcoder.GetVideoIndex(c.Context(), asset.Path, uint32(index), quality, assetID)
 	if err != nil {
 		utils.Errf("Failed to get video index for asset %s: %v\n", assetID, err)
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
@@ -195,17 +183,11 @@ func (h *HLSHandler) GetVideoSegment(c *fiber.Ctx) error {
 		})
 	}
 
-	// Get client ID
-	clientID := c.Get("X-CLIENT-ID")
-	if clientID == "" {
-		clientID = c.IP()
-	}
-
 	// Get video segment
 	utils.Infof("API (hls): Requesting video segment from transcoder: path=%s, index=%d, quality=%s, segment=%d\n",
 		asset.Path, index, qualityStr, segment)
 
-	segmentPath, err := h.transcoder.GetVideoSegment(c.Context(), asset.Path, uint32(index), quality, int32(segment), clientID, assetID)
+	segmentPath, err := h.transcoder.GetVideoSegment(c.Context(), asset.Path, uint32(index), quality, int32(segment), assetID)
 	if err != nil {
 		utils.Errf("Failed to get video segment for asset %s: %v\n", assetID, err)
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
@@ -243,14 +225,8 @@ func (h *HLSHandler) GetAudioIndex(c *fiber.Ctx) error {
 		})
 	}
 
-	// Get client ID
-	clientID := c.Get("X-CLIENT-ID")
-	if clientID == "" {
-		clientID = c.IP()
-	}
-
 	// Get audio index
-	indexPlaylist, err := h.transcoder.GetAudioIndex(c.Context(), asset.Path, uint32(index), clientID, assetID)
+	indexPlaylist, err := h.transcoder.GetAudioIndex(c.Context(), asset.Path, uint32(index), assetID)
 	if err != nil {
 		utils.Errf("Failed to get audio index for asset %s: %v\n", assetID, err)
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
@@ -294,17 +270,11 @@ func (h *HLSHandler) GetAudioSegment(c *fiber.Ctx) error {
 		})
 	}
 
-	// Get client ID
-	clientID := c.Get("X-CLIENT-ID")
-	if clientID == "" {
-		clientID = c.IP()
-	}
-
 	// Get audio segment
 	utils.Infof("API (hls): Requesting audio segment from transcoder: path=%s, index=%d, segment=%d\n",
 		asset.Path, index, segment)
 
-	segmentPath, err := h.transcoder.GetAudioSegment(c.Context(), asset.Path, uint32(index), int32(segment), clientID, assetID)
+	segmentPath, err := h.transcoder.GetAudioSegment(c.Context(), asset.Path, uint32(index), int32(segment), assetID)
 	if err != nil {
 		utils.Errf("Failed to get audio segment for asset %s: %v\n", assetID, err)
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{

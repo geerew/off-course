@@ -161,10 +161,11 @@ func (sw *StreamWrapper) Destroy() {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // GetMaster generates the master HLS playlist for the file
+//
+// TODO Support multiples audio qualities (and original)
 func (sw *StreamWrapper) GetMaster(assetID string) string {
 	master := "#EXTM3U\n"
 
-	// TODO: support multiples audio qualities (and original)
 	for _, audio := range sw.Info.Audios {
 		master += "#EXT-X-MEDIA:TYPE=AUDIO,"
 		master += "GROUP-ID=\"audio\","
@@ -184,6 +185,7 @@ func (sw *StreamWrapper) GetMaster(assetID string) string {
 		master += "CHANNELS=\"2\","
 		master += fmt.Sprintf("URI=\"audio/%d/index.m3u8\"\n", audio.Index)
 	}
+
 	master += "\n"
 
 	// codec is the prefix + the level, the level is not part of the codec we want to compare for the same_codec check bellow
@@ -284,6 +286,7 @@ func (sw *StreamWrapper) getVideoStream(idx uint32, quality Quality) (*VideoStre
 		ret, _ := NewVideoStream(sw, idx, quality)
 		return ret
 	})
+
 	return stream, nil
 }
 
@@ -295,6 +298,7 @@ func (sw *StreamWrapper) GetVideoIndex(idx uint32, quality Quality) (string, err
 	if err != nil {
 		return "", err
 	}
+
 	return stream.GetIndex()
 }
 
@@ -306,6 +310,7 @@ func (sw *StreamWrapper) GetVideoSegment(idx uint32, quality Quality, segment in
 	if err != nil {
 		return "", err
 	}
+
 	return stream.GetSegment(segment)
 }
 
@@ -317,6 +322,7 @@ func (sw *StreamWrapper) getAudioStream(audio uint32) (*AudioStream, error) {
 		ret, _ := NewAudioStream(sw, audio)
 		return ret
 	})
+
 	return stream, nil
 }
 
@@ -328,6 +334,7 @@ func (sw *StreamWrapper) GetAudioIndex(audio uint32) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return stream.GetIndex()
 }
 
@@ -339,5 +346,6 @@ func (sw *StreamWrapper) GetAudioSegment(audio uint32, segment int32) (string, e
 	if err != nil {
 		return "", err
 	}
+
 	return stream.GetSegment(segment)
 }

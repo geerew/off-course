@@ -37,12 +37,12 @@ func (t *Tracker) start() {
 
 	for {
 		select {
-		case info, ok := <-t.transcoder.clientChan:
+		case assetID, ok := <-t.transcoder.assetChan:
 			if !ok {
 				return
 			}
 
-			t.lastUsage[info.assetID] = time.Now()
+			t.lastUsage[assetID] = time.Now()
 
 		case <-cleanupTimer:
 			cleanupTimer = time.After(cleanupInterval)
