@@ -18,17 +18,17 @@ type VideoStream struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // NewVideoStream creates a new video stream for the given file, index and quality
-func NewVideoStream(wrapper *StreamWrapper, videoIndex uint32, quality Quality) (*VideoStream, error) {
+func NewVideoStream(sw *StreamWrapper, videoIndex uint32, quality Quality) (*VideoStream, error) {
 	utils.Infof(
 		"HLS: Creating a new video stream for %s (index %d) in quality %s\n",
-		wrapper.Info.Path,
+		sw.Info.Path,
 		videoIndex,
 		quality,
 	)
 
 	// Find the video metadata from the file's info
 	var video *Video
-	for _, v := range wrapper.Info.Videos {
+	for _, v := range sw.Info.Videos {
 		if v.Index == videoIndex {
 			video = &v
 			break
@@ -41,14 +41,15 @@ func NewVideoStream(wrapper *StreamWrapper, videoIndex uint32, quality Quality) 
 
 	videoStream := &VideoStream{
 		Stream: Stream{
-			wrapper: wrapper,
-			heads:   make([]Head, 0),
+			streamWrapper: sw,
+			heads:         make([]Head, 0),
 		},
 		quality: quality,
 		video:   video,
 	}
-	videoStream.handle = videoStream
-	videoStream.keyframes = getKeyframes(wrapper)
+
+	videoStream.streamer = videoStream
+	videoStream.keyframes = getKeyframes(sw)
 	videoStream.initializeSegments()
 
 	return videoStream, nil
@@ -68,7 +69,7 @@ func (vs *VideoStream) getFlags() Flags {
 
 // getOutPath returns the output path pattern for segments
 func (vs *VideoStream) getOutPath(encoderID int) string {
-	return fmt.Sprintf("%s/segment-%s-%d-%%d.ts", vs.wrapper.Out, vs.quality, encoderID)
+	return fmt.Sprintf("%s/segment-%s-%d-%%d.ts", vs.streamWrapper.Out, vs.quality, encoderID)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

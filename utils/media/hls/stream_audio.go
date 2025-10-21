@@ -17,18 +17,19 @@ type AudioStream struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // NewAudioStream creates a new audio stream for the given file and index
-func NewAudioStream(wrapper *StreamWrapper, audioIndex uint32) (*AudioStream, error) {
-	utils.Infof("HLS: Creating an audio stream %d for %s\n", audioIndex, wrapper.Info.Path)
+func NewAudioStream(sw *StreamWrapper, audioIndex uint32) (*AudioStream, error) {
+	utils.Infof("HLS: Creating an audio stream %d for %s\n", audioIndex, sw.Info.Path)
 
 	audioStream := &AudioStream{
 		Stream: Stream{
-			wrapper: wrapper,
-			heads:   make([]Head, 0),
+			streamWrapper: sw,
+			heads:         make([]Head, 0),
 		},
 		index: audioIndex,
 	}
-	audioStream.handle = audioStream
-	audioStream.keyframes = getKeyframes(wrapper)
+
+	audioStream.streamer = audioStream
+	audioStream.keyframes = getKeyframes(sw)
 	audioStream.initializeSegments()
 
 	return audioStream, nil
@@ -38,7 +39,7 @@ func NewAudioStream(wrapper *StreamWrapper, audioIndex uint32) (*AudioStream, er
 
 // getOutPath returns the output path pattern for segments
 func (as *AudioStream) getOutPath(encoderID int) string {
-	return fmt.Sprintf("%s/segment-a%d-%d-%%d.ts", as.wrapper.Out, as.index, encoderID)
+	return fmt.Sprintf("%s/segment-a%d-%d-%%d.ts", as.streamWrapper.Out, as.index, encoderID)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

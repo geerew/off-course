@@ -66,19 +66,24 @@ type VideoKey struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// StreamHandle represents a stream handle
-
+// Streamer represents a stream interface for transcoding operations
+type Streamer interface {
+	getTranscodeArgs(segments string) []string
+	getOutPath(encoderID int) string
+	getFlags() Flags
+}
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Stream represents a transcoding stream with multiple encoding heads
+// Stream represents a transcoding a single stream (audio or video) with multiple
+// encoding heads
 type Stream struct {
-	handle    StreamHandle
-	wrapper   *StreamWrapper
-	keyframes []float64
-	segments  []Segment
-	heads     []Head
-	lock      sync.RWMutex
+	streamer      Streamer
+	streamWrapper *StreamWrapper
+	keyframes     []float64
+	segments      []Segment
+	heads         []Head
+	lock          sync.RWMutex
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -121,124 +126,101 @@ func (s *Stream) isSegmentTranscoding(segment int32) bool {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // run starts transcoding from the given segment
-func (s *Stream) run(start int32) error {
+func (s *Stream) run(startSegment int32) error {
 	// Start the transcode with adaptive buffer based on video length
 	length := len(s.keyframes)
 
 	// Calculate smart buffer size based on video duration
-	videoDuration := float64(s.wrapper.Info.Duration)
+	videoDuration := float64(s.streamWrapper.Info.Duration)
 	var bufferSegments int32
 
-	if videoDuration <= 300 { // 5 minutes or less
-		bufferSegments = 15 // ~80 seconds ahead
-	} else if videoDuration <= 600 { // 10 minutes or less
-		bufferSegments = 20 // ~107 seconds ahead
-	} else { // Longer videos
-		bufferSegments = 25 // ~133 seconds ahead
+	if videoDuration <= 300 {
+		bufferSegments = 15
+	} else if videoDuration <= 600 {
+		bufferSegments = 20
+	} else {
+		bufferSegments = 25
 	}
 
-	end := min(start+bufferSegments, int32(length))
-	// Stop at the first finished segment
+	endSegment := min(startSegment+bufferSegments, int32(length))
+
 	s.lock.Lock()
-	for i := start; i < end; i++ {
+
+	// Stop at the first finished segment
+	for i := startSegment; i < endSegment; i++ {
 		if s.isSegmentReady(i) || s.isSegmentTranscoding(i) {
-			end = i
+			endSegment = i
 			break
 		}
 	}
-	if start >= end {
-		// this can happens if the start segment was finished between the check
-		// to call run() and the actual call.
-		// since most checks are done in a RLock() instead of a Lock() this can
-		// happens when two goroutines try to make the same segment ready
+
+	// A startSegment can be equal to or greater than the endSegment if the start
+	// finished between checks
+	if startSegment >= endSegment {
 		s.lock.Unlock()
 		return nil
 	}
+
 	encoderID := len(s.heads)
-	s.heads = append(s.heads, Head{segment: start, end: end, command: nil})
+	s.heads = append(s.heads, Head{segment: startSegment, end: endSegment, command: nil})
 	s.lock.Unlock()
 
 	utils.Infof(
 		"HLS: Starting transcode %d for %s (from %d to %d out of %d segments)\n",
 		encoderID,
-		s.wrapper.Info.Path,
-		start,
-		end,
+		s.streamWrapper.Info.Path,
+		startSegment,
+		endSegment,
 		length,
 	)
 
-	// Include both the start and end delimiter because -ss and -to are not accurate
-	// Having an extra segment allows us to cut precisely the segments we want with the
-	// -f segment that cuts the beginning and the end at the keyframe as requested
-	startRef := float64(0)
-	startSegment := start
-	if start != 0 {
-		// we always take on segment before the current one, for different reasons for audio/video:
-		//  - Audio: we need context before the starting point, without that ffmpeg doesn't know what to do and leaves ~100ms of silence
-		//  - Video: if a segment is really short (between 20 and 100ms), the padding given in the else block below is not enough and
-		// the previous segment is played another time. the -segment_times is way more precise so it does not do the same with this one
-		startSegment = start - 1
-		if s.handle.getFlags()&AudioF != 0 {
-			startRef = s.keyframes[startSegment]
-		} else {
-			// the param for the -ss takes the keyframe before the specified time
-			// (if the specified time is a keyframe, it either takes that keyframe or the one before)
-			// to prevent this weird behavior, we specify a bit after the keyframe that interest us
+	// Calculate FFmpeg seek references for precise segment cutting
+	startRef, endRef := s.calculateSeekReferences(startSegment, endSegment, int32(length))
 
-			// this can't be used with audio since we need to have context before the start-time
-			// without this context, the cut loses a bit of audio (audio gap of ~100ms)
-			if startSegment+1 == int32(length) {
-				startRef = (s.keyframes[startSegment] + float64(s.wrapper.Info.Duration)) / 2
-			} else {
-				startRef = (s.keyframes[startSegment] + s.keyframes[startSegment+1]) / 2
-			}
-		}
-	}
 	endPadding := int32(1)
-	if end == int32(length) {
+	if endSegment == int32(length) {
 		endPadding = 0
 	}
-	segments := s.keyframes[startSegment+1 : end+endPadding]
+
+	// Calculate the segments to transcode
+	segments := s.keyframes[startSegment+1 : endSegment+endPadding]
 	if len(segments) == 0 {
-		// we can't leave that empty else ffmpeg errors out.
+		// ffmpeg errors out if the segments are empty
 		segments = []float64{9999999}
 	}
 
-	outPath := s.handle.getOutPath(encoderID)
+	// Create the output directory (if it doesn't exist)
+	outPath := s.streamer.getOutPath(encoderID)
 	err := os.MkdirAll(filepath.Dir(outPath), 0o755)
 	if err != nil {
 		return err
 	}
 
+	// Build the FFmpeg arguments
 	args := []string{
 		"-nostats", "-hide_banner", "-loglevel", "warning",
 	}
 
-	if s.handle.getFlags()&VideoF != 0 {
+	// Add the hardware acceleration flags if the stream is a video
+	if s.streamer.getFlags()&VideoF != 0 {
 		args = append(args, Settings.HwAccel.DecodeFlags...)
 	}
 
 	if startRef != 0 {
-		if s.handle.getFlags()&VideoF != 0 {
-			// This is the default behavior in transmux mode and needed to force pre/post segment to work
-			// This must be disabled when processing only audio because it creates gaps in audio
+		if s.streamer.getFlags()&VideoF != 0 {
+			// Required for video to force pre/post segment to work
 			args = append(args, "-noaccurate_seek")
 		}
+
 		args = append(args,
 			"-ss", fmt.Sprintf("%.6f", startRef),
 		)
 	}
-	// do not include -to if we want the file to go to the end
-	if end+1 < int32(length) {
-		// sometimes, the duration is shorter than expected (only during transcode it seems)
-		// always include more and use the -f segment to split the file where we want
-		end_ref := s.keyframes[end+1]
-		// it seems that the -to is confused when -ss seek before the given time (because it searches for a keyframe)
-		// add back the time that would be lost otherwise
-		// this only happens when -to is before -i but having -to after -i gave a bug (not sure, don't remember)
-		end_ref += startRef - s.keyframes[startSegment]
+
+	// Add -to parameter if we don't want to go to the end
+	if endRef > 0 {
 		args = append(args,
-			"-to", fmt.Sprintf("%.6f", end_ref),
+			"-to", fmt.Sprintf("%.6f", endRef),
 		)
 	}
 	args = append(args,
@@ -247,7 +229,7 @@ func (s *Stream) run(start int32) error {
 		// to play the file (they just switch back to the previous quality).
 		// since this is better than errorring or not supporting transmux at all, i'll keep it here for now.
 		"-fflags", "+genpts",
-		"-i", s.wrapper.Info.Path,
+		"-i", s.streamWrapper.Info.Path,
 		// this makes behaviors consistent between soft and hardware decodes.
 		// this also means that after a -ss 50, the output video will start at 50s
 		"-start_at_zero",
@@ -260,7 +242,7 @@ func (s *Stream) run(start int32) error {
 		// to keep in mind when debugging
 		"-muxdelay", "0",
 	)
-	args = append(args, s.handle.getTranscodeArgs(toSegmentStr(segments))...)
+	args = append(args, s.streamer.getTranscodeArgs(toSegmentStr(segments))...)
 	args = append(args,
 		"-f", "segment",
 		// needed for rounding issues when forcing keyframes
@@ -308,7 +290,7 @@ func (s *Stream) run(start int32) error {
 			var segment int32
 			_, _ = fmt.Sscanf(scanner.Text(), format, &segment)
 
-			if segment < start {
+			if segment < startSegment {
 				// This happens because we use -f segment for accurate cutting (since -ss is not)
 				// check the comment at the beginning of function for more info
 				continue
@@ -318,9 +300,9 @@ func (s *Stream) run(start int32) error {
 
 			// Determine if this is audio or video stream
 			streamType := "unknown"
-			if s.handle.getFlags()&AudioF != 0 {
+			if s.streamer.getFlags()&AudioF != 0 {
 				streamType = "audio"
-			} else if s.handle.getFlags()&VideoF != 0 {
+			} else if s.streamer.getFlags()&VideoF != 0 {
 				streamType = "video"
 			}
 
@@ -333,7 +315,7 @@ func (s *Stream) run(start int32) error {
 			} else {
 				s.segments[segment].encoder = encoderID
 				close(s.segments[segment].channel)
-				if segment == end-1 {
+				if segment == endSegment-1 {
 					// file finished, ffmpeg will finish soon on its own
 					shouldStop = true
 				} else if s.isSegmentReady(segment + 1) {
@@ -376,6 +358,46 @@ func (s *Stream) run(start int32) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// calculateSeekReferences calculates the start and end seek references for FFmpeg
+func (s *Stream) calculateSeekReferences(startSegment, endSegment, length int32) (float64, float64) {
+	startRef := float64(0)
+	endRef := float64(0)
+
+	// Calculate start reference
+	if startSegment != 0 {
+		actualStartSegment := startSegment - 1
+
+		if s.streamer.getFlags()&AudioF != 0 {
+			// For audio, FFmpeg needs context before the starting point, without that it doesn't know what
+			// to do and leaves ~100ms of silence
+			startRef = s.keyframes[actualStartSegment]
+		} else {
+			// For video: FFmpeg's -ss parameter seeks to the keyframe before the specified time. To get
+			// precise seeking, we specify a point slightly after the target keyframe
+			if actualStartSegment+1 == int32(length) {
+				startRef = (s.keyframes[actualStartSegment] + float64(s.streamWrapper.Info.Duration)) / 2
+			} else {
+				startRef = (s.keyframes[actualStartSegment] + s.keyframes[actualStartSegment+1]) / 2
+			}
+		}
+	}
+
+	// Calculate end reference
+	if endSegment+1 < int32(length) {
+		// Include extra padding and use -f segment for precise cutting
+		endRef = s.keyframes[endSegment+1]
+
+		// Adjust for seek offset when startRef is used
+		if startRef > 0 {
+			endRef += startRef - s.keyframes[startSegment-1]
+		}
+	}
+
+	return startRef, endRef
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // GetIndex generates the HLS index playlist for the stream
 func (s *Stream) GetIndex() (string, error) {
 	// Use VOD playlist type since keyframes are always complete (extracted during course scan)
@@ -392,7 +414,7 @@ func (s *Stream) GetIndex() (string, error) {
 		index += fmt.Sprintf("segment-%d.ts\n", segment)
 	}
 	// Always add the last segment and ENDLIST since keyframes are always complete
-	index += fmt.Sprintf("#EXTINF:%.6f\n", float64(s.wrapper.Info.Duration)-s.keyframes[length-1])
+	index += fmt.Sprintf("#EXTINF:%.6f\n", float64(s.streamWrapper.Info.Duration)-s.keyframes[length-1])
 	index += fmt.Sprintf("segment-%d.ts\n", length-1)
 	index += `#EXT-X-ENDLIST`
 	return index, nil
@@ -438,7 +460,7 @@ func (s *Stream) GetSegment(segment int32) (string, error) {
 		}
 	}
 	s.prepareNextSegments(segment)
-	return fmt.Sprintf(s.handle.getOutPath(s.segments[segment].encoder), segment), nil
+	return fmt.Sprintf(s.streamer.getOutPath(s.segments[segment].encoder), segment), nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -448,7 +470,7 @@ func (s *Stream) prepareNextSegments(segment int32) {
 	// Audio is way cheaper to create than video so we don't need to run them in advance
 	// Running it in advance might actually slow down the video encode since less compute
 	// power can be used so we simply disable that.
-	if s.handle.getFlags()&VideoF == 0 {
+	if s.streamer.getFlags()&VideoF == 0 {
 		return
 	}
 	s.lock.RLock()
@@ -502,16 +524,12 @@ func (s *Stream) Kill() {
 
 // KillHead stops a specific encoding process
 // Stream is assumed to be locked by the caller.
-func (s *Stream) KillHead(encoder_id int) {
-	if s.heads[encoder_id] == DeletedHead || s.heads[encoder_id].command == nil {
+func (s *Stream) KillHead(encoderID int) {
+	if s.heads[encoderID] == DeletedHead || s.heads[encoderID].command == nil {
 		return
 	}
-	s.heads[encoder_id].command.Process.Signal(os.Interrupt)
-	s.heads[encoder_id] = DeletedHeadtype StreamHandle interface {
-	getTranscodeArgs(segments string) []string
-	getOutPath(encoderID int) string
-	getFlags() Flags
-}
+	s.heads[encoderID].command.Process.Signal(os.Interrupt)
+	s.heads[encoderID] = DeletedHead
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
