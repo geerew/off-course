@@ -10,9 +10,8 @@ import (
 
 // Tracker manages stream cleanup
 type Tracker struct {
-	lastUsage     map[string]time.Time
-	transcoder    *Transcoder
-	deletedStream chan string
+	lastUsage  map[string]time.Time
+	transcoder *Transcoder
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -20,9 +19,8 @@ type Tracker struct {
 // NewTracker creates a new tracker
 func NewTracker(t *Transcoder) *Tracker {
 	ret := &Tracker{
-		lastUsage:     make(map[string]time.Time),
-		deletedStream: make(chan string),
-		transcoder:    t,
+		lastUsage:  make(map[string]time.Time),
+		transcoder: t,
 	}
 	go ret.start()
 	return ret
@@ -42,9 +40,11 @@ func (t *Tracker) start() {
 				return
 			}
 
+			// Update when an asset was last viewed
 			t.lastUsage[assetID] = time.Now()
 
 		case <-cleanupTimer:
+			// Cleanup assets that haven't been viewed in 2 hours
 			cleanupTimer = time.After(cleanupInterval)
 
 			for assetID, lastUsed := range t.lastUsage {
@@ -54,8 +54,6 @@ func (t *Tracker) start() {
 					delete(t.lastUsage, assetID)
 				}
 			}
-		case assetID := <-t.deletedStream:
-			t.DestroyStreamIfOld(assetID)
 		}
 	}
 }
