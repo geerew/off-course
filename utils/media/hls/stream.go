@@ -86,24 +86,6 @@ type Stream struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// NewStream creates a new stream
-func NewStream(wrapper *StreamWrapper, keyframes []float64, handle StreamHandle, ret *Stream) {
-	ret.handle = handle
-	ret.wrapper = wrapper
-	ret.keyframes = keyframes
-	ret.heads = make([]Head, 0)
-
-	// Keyframes are always complete since they're extracted during course scanning
-	length := len(keyframes)
-	ret.segments = make([]Segment, length, max(length, 2000))
-	for seg := range ret.segments {
-		ret.segments[seg].channel = make(chan struct{})
-	}
-	// No need for WaitGroup since keyframes are always complete
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 // isSegmentReady checks if a segment is ready (non-blocking)
 // Remember to lock before calling this.
 func (ts *Stream) isSegmentReady(segment int32) bool {

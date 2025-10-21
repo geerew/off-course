@@ -39,28 +39,36 @@ func NewVideoStream(wrapper *StreamWrapper, videoIndex uint32, quality Quality) 
 		return nil, fmt.Errorf("video stream %d not found", videoIndex)
 	}
 
-	ret := &VideoStream{
+	videoStream := &VideoStream{
+		Stream: Stream{
+			wrapper: wrapper,
+			heads:   make([]Head, 0),
+		},
 		quality: quality,
 		video:   video,
 	}
+	videoStream.handle = videoStream
 
 	// Get keyframes from database
 	assetKeyframes, err := wrapper.transcoder.dao.GetAssetKeyframes(context.Background(), wrapper.transcoder.assetID)
 	if err != nil {
 		utils.Errf("HLS: Failed to get keyframes: %v\n", err)
-		// Fallback to empty keyframes
-		NewStream(wrapper, []float64{}, ret, &ret.Stream)
-		return ret, nil
+		videoStream.keyframes = []float64{}
+	} else {
+		keyframes := []float64{}
+		if assetKeyframes != nil && len(assetKeyframes.Keyframes) > 0 {
+			keyframes = assetKeyframes.Keyframes
+		}
+		videoStream.keyframes = keyframes
 	}
 
-	// Convert database keyframes to HLS keyframes
-	keyframes := []float64{}
-	if assetKeyframes != nil && len(assetKeyframes.Keyframes) > 0 {
-		keyframes = assetKeyframes.Keyframes
+	length := len(videoStream.keyframes)
+	videoStream.segments = make([]Segment, length, max(length, 2000))
+	for seg := range videoStream.segments {
+		videoStream.segments[seg].channel = make(chan struct{})
 	}
 
-	NewStream(wrapper, keyframes, ret, &ret.Stream)
-	return ret, nil
+	return videoStream, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -78,19 +86,6 @@ func (vs *VideoStream) getFlags() Flags {
 // getOutPath returns the output path pattern for segments.
 func (vs *VideoStream) getOutPath(encoderID int) string {
 	return fmt.Sprintf("%s/segment-%s-%d-%%d.ts", vs.wrapper.Out, vs.quality, encoderID)
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// closestMultiple finds the closest multiple of x that is >= n.
-func closestMultiple(n int32, x int32) int32 {
-	if x > n {
-		return x
-	}
-
-	n = n + x/2
-	n = n - (n % x)
-	return n
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -147,4 +142,17 @@ func (vs *VideoStream) getTranscodeArgs(segments string) []string {
 		"-strict", "-2",
 	)
 	return args
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// closestMultiple finds the closest multiple of x that is >= n.
+func closestMultiple(n int32, x int32) int32 {
+	if x > n {
+		return x
+	}
+
+	n = n + x/2
+	n = n - (n % x)
+	return n
 }

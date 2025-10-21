@@ -21,24 +21,35 @@ type AudioStream struct {
 func NewAudioStream(wrapper *StreamWrapper, audioIndex uint32) (*AudioStream, error) {
 	utils.Infof("HLS: Creating an audio stream %d for %s\n", audioIndex, wrapper.Info.Path)
 
-	ret := &AudioStream{index: audioIndex}
+	audioStream := &AudioStream{
+		Stream: Stream{
+			wrapper: wrapper,
+			heads:   make([]Head, 0),
+		},
+		index: audioIndex,
+	}
+	audioStream.handle = audioStream
 
 	// Get keyframes from database
 	assetKeyframes, err := wrapper.transcoder.dao.GetAssetKeyframes(context.Background(), wrapper.transcoder.assetID)
 	if err != nil {
 		utils.Errf("HLS: Failed to get keyframes: %v\n", err)
-
-		NewStream(wrapper, []float64{}, ret, &ret.Stream)
-		return ret, nil
+		audioStream.keyframes = []float64{}
+	} else {
+		keyframes := []float64{}
+		if assetKeyframes != nil && len(assetKeyframes.Keyframes) > 0 {
+			keyframes = assetKeyframes.Keyframes
+		}
+		audioStream.keyframes = keyframes
 	}
 
-	keyframes := []float64{}
-	if assetKeyframes != nil && len(assetKeyframes.Keyframes) > 0 {
-		keyframes = assetKeyframes.Keyframes
+	length := len(audioStream.keyframes)
+	audioStream.segments = make([]Segment, length, max(length, 2000))
+	for seg := range audioStream.segments {
+		audioStream.segments[seg].channel = make(chan struct{})
 	}
 
-	NewStream(wrapper, keyframes, ret, &ret.Stream)
-	return ret, nil
+	return audioStream, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -58,13 +69,14 @@ func (as *AudioStream) getFlags() Flags {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // getTranscodeArgs returns the FFmpeg arguments for audio transcoding
+//
+// TODO: Support 5.1 audio streams
+// TODO: Support multi audio qualities
 func (as *AudioStream) getTranscodeArgs(segments string) []string {
 	return []string{
 		"-map", fmt.Sprintf("0:a:%d", as.index),
 		"-c:a", "aac",
-		// TODO: Support 5.1 audio streams
 		"-ac", "2",
-		// TODO: Support multi audio qualities
 		"-b:a", "128k",
 	}
 }
