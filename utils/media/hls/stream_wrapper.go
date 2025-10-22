@@ -207,17 +207,13 @@ func (sw *StreamWrapper) GetMaster(assetID string) string {
 	if def_video != nil {
 		var qualities []Quality
 		for _, q := range Qualities {
-			if q.Height() < def_video.Height {
+			if q.Height() <= def_video.Height {
 				qualities = append(qualities, q)
 			}
 		}
 		transcode_count := len(qualities)
 
-		// NoResize is the same idea as Original but we change the codec.
-		// This is only needed when the original's codec is different from what we would transcode it to.
-		if def_video.MimeCodec == nil || !strings.HasPrefix(*def_video.MimeCodec, transcode_prefix) {
-			qualities = append(qualities, NoResize)
-		}
+		// Add original quality (no transcoding)
 		qualities = append(qualities, Original)
 
 		for _, quality := range qualities {

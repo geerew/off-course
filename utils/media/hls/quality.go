@@ -16,8 +16,6 @@ const (
 	P720     Quality = "720p"
 	P1080    Quality = "1080p"
 	P1440    Quality = "1440p"
-	P4k      Quality = "4k"
-	P8k      Quality = "8k"
 	NoResize Quality = "transcode"
 	Original Quality = "original"
 )
@@ -25,7 +23,7 @@ const (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Purposefully removing Original from this list (since it requires special treatment anyway)
-var Qualities = []Quality{P240, P360, P480, P720, P1080, P1440, P4k, P8k}
+var Qualities = []Quality{P240, P360, P480, P720, P1080, P1440}
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -63,10 +61,6 @@ func (v Quality) AverageBitrate() uint32 {
 		return 4_800_000
 	case P1440:
 		return 9_600_000
-	case P4k:
-		return 16_000_000
-	case P8k:
-		return 28_000_000
 	case Original:
 		panic("Original quality must be handled specially")
 	}
@@ -90,10 +84,6 @@ func (v Quality) MaxBitrate() uint32 {
 		return 8_000_000
 	case P1440:
 		return 12_000_000
-	case P4k:
-		return 28_000_000
-	case P8k:
-		return 40_000_000
 	case Original:
 		panic("Original quality must be handled specially")
 	}
@@ -117,10 +107,6 @@ func (q Quality) Height() uint32 {
 		return 1080
 	case P1440:
 		return 1440
-	case P4k:
-		return 2160
-	case P8k:
-		return 4320
 	case Original:
 		panic("Original quality must be handled specially")
 	}
@@ -136,5 +122,6 @@ func GetQualityForVideo(height uint32, bitrate uint32) Quality {
 			return quality
 		}
 	}
+
 	return P240
 }
