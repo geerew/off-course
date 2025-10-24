@@ -9,7 +9,7 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func TestQualityFromString(t *testing.T) {
+func TestQuality_FromString(t *testing.T) {
 	t.Run("valid qualities", func(t *testing.T) {
 		testCases := []struct {
 			input    string
@@ -50,7 +50,7 @@ func TestQualityFromString(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func TestQualityHeight(t *testing.T) {
+func TestQuality_Height(t *testing.T) {
 	testCases := []struct {
 		quality  Quality
 		expected uint32
@@ -85,7 +85,7 @@ func TestQualityHeight(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func TestQualityAverageBitrate(t *testing.T) {
+func TestQuality_AverageBitrate(t *testing.T) {
 	testCases := []struct {
 		quality  Quality
 		expected uint32
@@ -120,7 +120,7 @@ func TestQualityAverageBitrate(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func TestQualityMaxBitrate(t *testing.T) {
+func TestQuality_MaxBitrate(t *testing.T) {
 	testCases := []struct {
 		quality  Quality
 		expected uint32
@@ -155,7 +155,7 @@ func TestQualityMaxBitrate(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func TestGetQualityForVideo(t *testing.T) {
+func TestGetQuality_ForVideo(t *testing.T) {
 	t.Run("height-based selection", func(t *testing.T) {
 		testCases := []struct {
 			height   uint32
@@ -207,7 +207,7 @@ func TestGetQualityForVideo(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func TestQualitySelectionLogic(t *testing.T) {
+func TestQuality_SelectionLogic(t *testing.T) {
 	t.Run("qualities up to video height", func(t *testing.T) {
 		testCases := []struct {
 			videoHeight uint32
@@ -240,7 +240,7 @@ func TestQualitySelectionLogic(t *testing.T) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func TestQualityConstants(t *testing.T) {
+func TestQuality_Constants(t *testing.T) {
 	t.Run("qualities slice contains all standard qualities", func(t *testing.T) {
 		expected := []Quality{P240, P360, P480, P720, P1080, P1440}
 		require.Equal(t, expected, Qualities)
