@@ -13,6 +13,8 @@ import (
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/logger"
+	"github.com/geerew/off-course/utils/media"
+	"github.com/geerew/off-course/utils/media/hls"
 	"github.com/geerew/off-course/utils/pagination"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/spf13/afero"
@@ -21,6 +23,30 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+var (
+	// Cache FFmpeg instance
+	cachedFFmpeg *media.FFmpeg
+	ffmpegOnce   sync.Once
+)
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// getCachedFFmpeg returns a cached FFmpeg instance
+func getCachedFFmpeg(t *testing.T) *media.FFmpeg {
+	ffmpegOnce.Do(func() {
+		ffmpeg, err := media.NewFFmpeg()
+		if err != nil {
+			// Skip if FFmpeg unavailable
+			t.Skip("FFmpeg not available for testing")
+		}
+		cachedFFmpeg = ffmpeg
+	})
+	return cachedFFmpeg
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// setup creates a test router
 func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Context) {
 	t.Helper()
 
@@ -44,10 +70,17 @@ func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Conte
 	require.NoError(t, err)
 	require.NotNil(t, dbManager)
 
+	// Get FFmpeg instance
+	ffmpeg := getCachedFFmpeg(t)
+
+	// Initialize HLS settings
+	hls.InitSettings("./oc_data", appFs)
+
 	courseScan := coursescan.New(&coursescan.CourseScanConfig{
 		Db:     dbManager.DataDb,
 		AppFs:  appFs,
 		Logger: logger,
+		FFmpeg: ffmpeg,
 	})
 
 	// Router
@@ -55,13 +88,15 @@ func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Conte
 		DbManager:     dbManager,
 		AppFs:         appFs,
 		CourseScan:    courseScan,
+		FFmpeg:        ffmpeg,
 		Logger:        logger,
 		SignupEnabled: true,
+		Testing:       true,
 	}
 
 	router := devRouter(config, id, role)
 
-	// create the user
+	// Create user
 	user := models.User{
 		Base: models.Base{
 			ID: id,
@@ -73,7 +108,7 @@ func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Conte
 	}
 	require.NoError(t, router.dao.CreateUser(context.Background(), &user))
 
-	// Initialize bootstrap status after creating user
+	// Initialize bootstrap
 	router.InitBootstrap()
 
 	ctx := context.Background()

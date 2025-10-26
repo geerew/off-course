@@ -28,6 +28,7 @@ export { default as MediaPauseIcon } from './media-pause.svelte';
 export { default as MediaPlayIcon } from './media-play.svelte';
 export { default as MediaRestartIcon } from './media-restart.svelte';
 export { default as MediaSettingPlaybackIcon } from './media-setting-playback.svelte';
+export { default as MediaSettingQualityIcon } from './media-setting-quality.svelte';
 export { default as MediaSettingsIcon } from './media-settings.svelte';
 export { default as MediaVolumeHighIcon } from './media-volume-high.svelte';
 export { default as MediaVolumeLowIcon } from './media-volume-low.svelte';

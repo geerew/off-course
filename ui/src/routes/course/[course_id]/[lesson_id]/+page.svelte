@@ -561,10 +561,12 @@
 								{/if}
 
 								{#if asset.type === 'video'}
+									<!-- srcType={'application/vnd.apple.mpegurl' as any} -->
 									<VideoPlayer
 										playerId={`${selectedLesson.id}-${asset.id}`}
-										src={`/api/courses/${course.id}/lessons/${selectedLesson.id}/assets/${asset.id}/serve`}
+										src={`/api/hls/${asset.id}/master.m3u8`}
 										srcType={toVideoMimeType(asset.metadata.video?.mimeType) || 'video/object'}
+										useHls={true}
 										startTime={asset.progress.position || 0}
 										onTimeChange={async (time: number) => {
 											if (!selectedLesson) return;

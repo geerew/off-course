@@ -1,7 +1,12 @@
 <script lang="ts">
+	import { GetHLSQualities } from '$lib/api/hls-api';
 	import { mediaPreferences } from '$lib/preferences.svelte';
 	import type {
+		HLSLevelSwitchedEvent,
+		HLSManifestLoadedEvent,
+		HLSProvider,
 		MediaDurationChangeEvent,
+		MediaProviderChangeEvent,
 		MediaRateChangeEvent,
 		MediaSourceChangeEvent,
 		MediaTimeUpdateEvent,
@@ -25,6 +30,7 @@
 		onTimeChange: (time: number) => void;
 		onCompleted: (time: number) => void;
 		playerId?: string;
+		useHls?: boolean; // New prop to enable HLS streaming
 	};
 
 	let {
@@ -33,17 +39,18 @@
 		startTime,
 		onTimeChange,
 		onCompleted,
-		playerId
+		playerId,
+		useHls = false
 	}: Props = $props();
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let player: MediaPlayerElement;
 	let duration = -1;
-	let currentTime = -1;
 	let lastLoggedSecond = -1;
 	let completeDispatched = false;
 	let uniqueId: string;
+	let hlsQualities = $state<string[]>([]);
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -174,6 +181,44 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	function handleProviderChange(e: MediaProviderChangeEvent) {
+		const provider = e.detail;
+
+		if (provider?.type === 'hls') {
+			const hlsProvider = provider as HLSProvider;
+			hlsProvider.library = () => import('hls.js');
+
+			hlsProvider.config = {
+				autoStartLoad: true,
+
+				// Do not cap to player size (we want original even on smaller players)
+				capLevelToPlayerSize: false,
+
+				abrEwmaDefaultEstimate: 35_000_000,
+				lowLatencyMode: false,
+
+				// Buffer configuration to limit segments
+				maxBufferLength: 30, // Buffer up to 30 seconds ahead
+				maxMaxBufferLength: 60, // Do not exceed 60 seconds of buffer
+				maxBufferSize: 30 * 1024 * 1024, // Limit buffer size to 30 MB
+				liveSyncDurationCount: 3, // For live streams, sync to 3 segments
+				liveMaxLatencyDurationCount: 5, // Max latency of 5 segments
+
+				// Fragment loading policy
+				fragLoadPolicy: {
+					default: {
+						maxTimeToFirstByteMs: Number.POSITIVE_INFINITY,
+						maxLoadTimeMs: 60_000,
+						timeoutRetry: { maxNumRetry: 5, retryDelayMs: 100, maxRetryDelayMs: 0 },
+						errorRetry: { maxNumRetry: 5, retryDelayMs: 0, maxRetryDelayMs: 100 }
+					}
+				}
+			};
+		}
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	$effect(() => {
 		if (!player) return;
 
@@ -185,6 +230,7 @@
 		player.addEventListener('volume-change', volumeChange);
 		player.addEventListener('play', handlePlay);
 		player.addEventListener('pause', handlePause);
+		player.addEventListener('provider-change', handleProviderChange);
 
 		return () => {
 			player.removeEventListener('source-change', sourceChange);
@@ -195,6 +241,7 @@
 			player.removeEventListener('volume-change', volumeChange);
 			player.removeEventListener('play', handlePlay);
 			player.removeEventListener('pause', handlePause);
+			player.removeEventListener('provider-change', handleProviderChange);
 
 			// Unregister from state manager when component is destroyed
 			if (uniqueId) {
@@ -204,7 +251,6 @@
 	});
 </script>
 
-<!-- TODO Handle src.type instead of hardcoding -->
 <div class="transform-gpu backface-hidden">
 	<media-player
 		bind:this={player}
@@ -212,7 +258,7 @@
 		autoplay={mediaPreferences.current.autoplay}
 		src={{
 			src: videoSrc,
-			type: srcType
+			type: useHls ? ('application/vnd.apple.mpegurl' as any) : srcType
 		}}
 		class="group/player relative aspect-video overflow-hidden rounded-md"
 	>

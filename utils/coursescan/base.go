@@ -27,12 +27,13 @@ type CourseScanProcessorFn func(context.Context, *CourseScan, *models.Scan) erro
 
 // CourseScan scans a course and finds assets and attachments
 type CourseScan struct {
-	appFs     *appfs.AppFs
-	db        database.Database
-	dao       *dao.DAO
-	logger    *slog.Logger
-	ffmpeg    *media.FFmpeg
-	jobSignal chan struct{}
+	appFs              *appfs.AppFs
+	db                 database.Database
+	dao                *dao.DAO
+	logger             *slog.Logger
+	ffmpeg             *media.FFmpeg
+	jobSignal          chan struct{}
+	extractedKeyframes map[string][]float64 // path -> keyframes
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -50,12 +51,13 @@ type CourseScanConfig struct {
 // New creates a new CourseScan
 func New(config *CourseScanConfig) *CourseScan {
 	return &CourseScan{
-		appFs:     config.AppFs,
-		db:        config.Db,
-		dao:       dao.New(config.Db),
-		logger:    config.Logger,
-		ffmpeg:    config.FFmpeg,
-		jobSignal: make(chan struct{}, 1),
+		appFs:              config.AppFs,
+		db:                 config.Db,
+		dao:                dao.New(config.Db),
+		logger:             config.Logger,
+		ffmpeg:             config.FFmpeg,
+		jobSignal:          make(chan struct{}, 1),
+		extractedKeyframes: make(map[string][]float64),
 	}
 }
 

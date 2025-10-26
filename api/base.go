@@ -16,6 +16,7 @@ import (
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/coursescan"
+	"github.com/geerew/off-course/utils/media"
 	"github.com/geerew/off-course/utils/session"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
@@ -43,10 +44,12 @@ type RouterConfig struct {
 	Logger        *slog.Logger
 	AppFs         *appfs.AppFs
 	CourseScan    *coursescan.CourseScan
+	FFmpeg        *media.FFmpeg
 	HttpAddr      string
 	IsProduction  bool
 	SignupEnabled bool
 	DataDir       string
+	Testing       bool // Skip expensive operations in tests
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -144,6 +147,7 @@ func (r *Router) initRoutes() {
 	r.initUserRoutes()
 	r.initLogRoutes()
 	r.initRecoveryRoutes()
+	r.initHlsRoutes()
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

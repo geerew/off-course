@@ -22,6 +22,7 @@ import (
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/media"
+	"github.com/geerew/off-course/utils/media/hls"
 	"github.com/geerew/off-course/utils/security"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -92,11 +93,14 @@ var serveCmd = &cobra.Command{
 			Logger: logger,
 		})
 
+		hls.InitSettings(dataDir, appFs)
+
 		router := api.NewRouter(&api.RouterConfig{
 			DbManager:     dbManager,
 			Logger:        logger,
 			AppFs:         appFs,
 			CourseScan:    courseScan,
+			FFmpeg:        ffmpeg,
 			HttpAddr:      httpAddr,
 			IsProduction:  !isDev,
 			SignupEnabled: enableSignup,
@@ -124,7 +128,7 @@ var serveCmd = &cobra.Command{
 		} else {
 			// Clean up any leftover bootstrap token files
 			auth.DeleteBootstrapToken(dataDir, appFs.Fs)
-			utils.Infof("✓ Application bootstrapped\n")
+			utils.Infof("Application bootstrapped\n")
 		}
 
 		var wg sync.WaitGroup
