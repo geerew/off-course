@@ -93,7 +93,7 @@ var serveCmd = &cobra.Command{
 			Logger: logger,
 		})
 
-		hls.InitSettings(dataDir)
+		hls.InitSettings(dataDir, appFs)
 
 		router := api.NewRouter(&api.RouterConfig{
 			DbManager:     dbManager,

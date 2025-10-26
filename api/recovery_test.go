@@ -25,7 +25,7 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// createTestRouter creates a simple router for testing without authentication middleware
+// createTestRouter creates a test router
 func createTestRouter(t *testing.T) *Router {
 	return createTestRouterWithDataDir(t, "./oc_data")
 }
@@ -53,7 +53,7 @@ func createTestRouterWithDataDir(t *testing.T, dataDir string) *Router {
 	require.NoError(t, err)
 	require.NotNil(t, dbManager)
 
-	// Get cached FFmpeg instance
+	// Get FFmpeg instance
 	ffmpeg := getCachedFFmpeg(t)
 
 	courseScan := coursescan.New(&coursescan.CourseScanConfig{
@@ -72,10 +72,10 @@ func createTestRouterWithDataDir(t *testing.T, dataDir string) *Router {
 		Logger:        logger,
 		SignupEnabled: true,
 		DataDir:       dataDir,
-		Testing:       true, // Skip expensive operations in tests
+		Testing:       true,
 	}
 
-	// Create router without authentication middleware
+	// Create router
 	router := &Router{
 		config: config,
 		dao:    dao.New(config.DbManager.DataDb),

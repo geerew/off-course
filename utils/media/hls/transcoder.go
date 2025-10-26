@@ -2,7 +2,6 @@ package hls
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 
 	"github.com/geerew/off-course/dao"
@@ -27,16 +26,22 @@ type Transcoder struct {
 // NewTranscoder creates a new Transcoder and prepares the cache directory
 func NewTranscoder(dao *dao.DAO) (*Transcoder, error) {
 	out := Settings.CachePath
-	os.MkdirAll(out, 0o755)
+	Settings.AppFs.Fs.MkdirAll(out, 0o755)
 
-	dir, err := os.ReadDir(out)
+	f, err := Settings.AppFs.Fs.Open(out)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	dir, err := f.Readdirnames(-1)
 	if err != nil {
 		return nil, err
 	}
 
-	// Clean up cache
+	// Clean cache
 	for _, d := range dir {
-		err = os.RemoveAll(filepath.Join(out, d.Name()))
+		err = Settings.AppFs.Fs.RemoveAll(filepath.Join(out, d))
 		if err != nil {
 			return nil, err
 		}
@@ -84,8 +89,6 @@ func (t *Transcoder) GetMasterPlaylistMulti(ctx context.Context, path string, as
 	t.assetChan <- assetID
 	return sw.GetMasterPlaylistMulti(assetID), nil
 }
-
-
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

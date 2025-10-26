@@ -3,7 +3,6 @@ package hls
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -155,7 +154,7 @@ func (sw *StreamWrapper) Kill() {
 func (sw *StreamWrapper) Destroy() {
 	utils.Infof("HLS: Removing all transcode cache files for %s\n", sw.Info.Path)
 	sw.Kill()
-	_ = os.RemoveAll(sw.Out)
+	_ = Settings.AppFs.Fs.RemoveAll(sw.Out)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

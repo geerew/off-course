@@ -190,9 +190,9 @@ func (s *Stream) run(startSegment int32) error {
 		segments = []float64{9999999}
 	}
 
-	// Create the output directory (if it doesn't exist)
+	// Create output directory
 	outPath := s.streamer.getOutPath(encoderID)
-	err := os.MkdirAll(filepath.Dir(outPath), 0o755)
+	err := Settings.AppFs.Fs.MkdirAll(filepath.Dir(outPath), 0o755)
 	if err != nil {
 		return err
 	}
