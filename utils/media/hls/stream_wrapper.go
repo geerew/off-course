@@ -166,6 +166,7 @@ func (sw *StreamWrapper) Destroy() {
 func (sw *StreamWrapper) GetMaster(assetID string) string {
 	master := "#EXTM3U\n"
 
+	// Add audio media groups
 	for _, audio := range sw.Info.Audios {
 		master += "#EXT-X-MEDIA:TYPE=AUDIO,"
 		master += "GROUP-ID=\"audio\","
@@ -205,54 +206,23 @@ func (sw *StreamWrapper) GetMaster(assetID string) string {
 	}
 
 	if def_video != nil {
-		var qualities []Quality
-		for _, q := range Qualities {
-			if q.Height() <= def_video.Height {
-				qualities = append(qualities, q)
-			}
-		}
-		transcode_count := len(qualities)
-
-		// Add original quality (no transcoding)
-		qualities = append(qualities, Original)
-
-		for _, quality := range qualities {
-			for _, video := range sw.Info.Videos {
-				master += "#EXT-X-MEDIA:TYPE=VIDEO,"
-				master += fmt.Sprintf("GROUP-ID=\"%s\",", quality)
-				if video.Language != nil {
-					master += fmt.Sprintf("LANGUAGE=\"%s\",", *video.Language)
-				}
-				if video.Title != nil {
-					master += fmt.Sprintf("NAME=\"%s\",", *video.Title)
-				} else if video.Language != nil {
-					master += fmt.Sprintf("NAME=\"%s\",", *video.Language)
-				} else {
-					master += fmt.Sprintf("NAME=\"Video %d\",", video.Index)
-				}
-				if video == *def_video {
-					master += "DEFAULT=YES\n"
-				} else {
-					master += fmt.Sprintf("URI=\"%d/%s/index.m3u8\"\n", video.Index, quality)
-				}
-			}
-		}
-		master += "\n"
-
+		qualities := sw.GetQualities()
 		aspectRatio := float32(def_video.Width) / float32(def_video.Height)
-		for i, quality := range qualities {
-			if i >= transcode_count {
-				// original & noresize streams
+
+		// Generate stream variants for each quality
+		for _, quality := range qualities {
+			if quality == Original {
+				// original quality stream
 				bitrate := float64(def_video.Bitrate)
 				master += "#EXT-X-STREAM-INF:"
 				// For original quality, use the video's actual bitrate
 				master += fmt.Sprintf("AVERAGE-BANDWIDTH=%d,", int(bitrate*0.8))
 				master += fmt.Sprintf("BANDWIDTH=%d,", int(bitrate))
 				master += fmt.Sprintf("RESOLUTION=%dx%d,", def_video.Width, def_video.Height)
-				if quality != Original {
-					master += fmt.Sprintf("CODECS=\"%s\",", strings.Join([]string{transcode_codec, audio_codec}, ","))
-				} else if def_video.MimeCodec != nil {
+				if def_video.MimeCodec != nil {
 					master += fmt.Sprintf("CODECS=\"%s\",", strings.Join([]string{*def_video.MimeCodec, audio_codec}, ","))
+				} else {
+					master += fmt.Sprintf("CODECS=\"%s\",", strings.Join([]string{transcode_codec, audio_codec}, ","))
 				}
 				master += "AUDIO=\"audio\","
 				master += "CLOSED-CAPTIONS=NONE\n"
@@ -260,6 +230,7 @@ func (sw *StreamWrapper) GetMaster(assetID string) string {
 				continue
 			}
 
+			// transcoded quality streams
 			master += "#EXT-X-STREAM-INF:"
 			master += fmt.Sprintf("AVERAGE-BANDWIDTH=%d,", quality.AverageBitrate())
 			master += fmt.Sprintf("BANDWIDTH=%d,", quality.MaxBitrate())
@@ -366,14 +337,16 @@ func (sw *StreamWrapper) GetQualities() []Quality {
 	}
 
 	var qualities []Quality
-	for _, q := range Qualities {
+
+	qualities = append(qualities, Original)
+	
+	// Add qualities from highest to lowest
+	for i := len(Qualities) - 1; i >= 0; i-- {
+		q := Qualities[i]
 		if q.Height() <= def_video.Height {
 			qualities = append(qualities, q)
 		}
 	}
-
-	// Add original quality (no transcoding)
-	qualities = append(qualities, Original)
 
 	return qualities
 }
