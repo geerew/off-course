@@ -9,13 +9,11 @@
 	import { Button, Drawer, Popover } from '$lib/components/ui';
 	import Switch from '$lib/components/ui/switch.svelte';
 	import { mediaPreferences } from '$lib/preferences.svelte';
-	import { Slider } from 'bits-ui';
+	import { Separator, Slider } from 'bits-ui';
 	import { tick } from 'svelte';
 	import { cubicOut } from 'svelte/easing';
 	import { fly } from 'svelte/transition';
 	import { MediaRemoteControl } from 'vidstack';
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let open = $state(false);
 
@@ -133,7 +131,7 @@
 
 {#snippet contents()}
 	<div
-		class="inline-grid w-fit max-w-[90vw] min-w-0"
+		class="inline-grid w-fit min-w-0 max-w-[90vw]"
 		bind:this={innerEl}
 		bind:clientWidth={panelW}
 		bind:clientHeight={panelH}
@@ -150,22 +148,24 @@
 				style="will-change: transform, opacity"
 			>
 				{#if panel === 'home'}
-					<Button
-						variant="ghost"
-						class="hover:bg-background-alt-2 w-50 justify-between"
-						onclick={() => {
-							slideDir = 1;
-							panel = 'playback';
-						}}
-					>
-						<div class="flex items-center gap-2.5">
-							<MediaSettingPlayback class="size-4 stroke-[1.5]" />
-							<span>Playback</span>
-						</div>
+					<div class="flex flex-col px-1 py-2">
+						<Button
+							variant="ghost"
+							class="hover:bg-background-alt-2 w-50 justify-between"
+							onclick={() => {
+								slideDir = 1;
+								panel = 'playback';
+							}}
+						>
+							<div class="flex items-center gap-2.5">
+								<MediaSettingPlayback class="size-4 stroke-[1.5]" />
+								<span>Playback</span>
+							</div>
 
-						<RightChevronIcon class="text-foreground/50 size-3" />
-					</Button>
-				{:else}
+							<RightChevronIcon class="text-foreground/50 size-3" />
+						</Button>
+					</div>
+				{:else if panel === 'playback'}
 					<Button
 						variant="ghost"
 						class="hover:bg-background-alt-2 w-60 justify-start gap-4"
@@ -219,7 +219,7 @@
 								<LeftChevronIcon class="size-4 text-white/70" />
 								<Slider.Root
 									type="single"
-									class="group relative flex w-full touch-none items-center py-3 select-none hover:cursor-pointer"
+									class="group relative flex w-full touch-none select-none items-center py-3 hover:cursor-pointer"
 									bind:value={mediaPreferences.current.playbackRate}
 									min={0.25}
 									max={2}
@@ -244,7 +244,7 @@
 										{#each thumbItems as { index } (index)}
 											<Slider.Thumb
 												{index}
-												class="bg-foreground-alt-1 z-10 block size-[15px] cursor-pointer rounded-full shadow-sm transition-colors focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:outline-hidden"
+												class="bg-foreground-alt-1 focus-visible:outline-hidden z-10 block size-[15px] cursor-pointer rounded-full shadow-sm transition-colors focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2"
 											/>
 										{/each}
 									{/snippet}
@@ -281,7 +281,7 @@
 			</Popover.Trigger>
 
 			<Popover.Content
-				class="z-50 w-auto origin-bottom-right overflow-hidden border-none drop-shadow-md drop-shadow-black/70"
+				class="drop-shadow-black/70 z-50 w-auto origin-bottom-right overflow-hidden border-none drop-shadow-md"
 				side="top"
 				align="end"
 				sideOffset={8}

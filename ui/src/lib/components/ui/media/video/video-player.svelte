@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { GetHLSQualities } from '$lib/api/hls-api';
 	import { mediaPreferences } from '$lib/preferences.svelte';
 	import type {
+		HLSLevelSwitchedEvent,
 		HLSManifestLoadedEvent,
 		HLSProvider,
 		MediaDurationChangeEvent,
@@ -48,6 +50,7 @@
 	let lastLoggedSecond = -1;
 	let completeDispatched = false;
 	let uniqueId: string;
+	let hlsQualities = $state<string[]>([]);
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -186,11 +189,7 @@
 			hlsProvider.library = () => import('hls.js');
 
 			hlsProvider.config = {
-				// We will manually start loading at the desired level/time.
-				autoStartLoad: false,
-
-				// Do not pick a start level automatically
-				startLevel: -1,
+				autoStartLoad: true,
 
 				// Do not cap to player size (we want original even on smaller players)
 				capLevelToPlayerSize: false,
@@ -220,72 +219,6 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	function handleHlsManifestLoaded(e: HLSManifestLoadedEvent) {
-		if (!player || player.provider === null || player.provider.type !== 'hls') return;
-
-		const hlsInstance = player.provider.instance;
-		if (!hlsInstance) return;
-
-		// Helper to select the "original" variant if present; otherwise pick highest
-		const selectOriginalLevel = () => {
-			if (!hlsInstance.levels || hlsInstance.levels.length === 0) return -1;
-
-			let originalIndex = -1;
-			for (let i = 0; i < hlsInstance.levels.length; i++) {
-				const level = hlsInstance.levels[i] as any;
-				const urls = Array.isArray(level.url) ? level.url : [level.url];
-				if (urls.some((u: any) => typeof u === 'string' && u.includes('/original/'))) {
-					originalIndex = i;
-					break;
-				}
-			}
-
-			if (originalIndex === -1) {
-				originalIndex = hlsInstance.levels.length - 1;
-			}
-
-			const selectedLevel = hlsInstance.levels[originalIndex] as any;
-
-			// Pin the level before starting load.
-			hlsInstance.loadLevel = originalIndex;
-			hlsInstance.currentLevel = originalIndex;
-			hlsInstance.nextLevel = originalIndex;
-
-			return originalIndex;
-		};
-
-		// Wait for levels to be available, then start loading from startTime at the chosen level.
-		const ensureLevelsThenStart = () => {
-			if (hlsInstance.levels && hlsInstance.levels.length > 0) {
-				const selected = selectOriginalLevel();
-
-				// Disable ABR by locking nextLevel to currentLevel and clearing autoLevel.
-				try {
-					const locked = selected;
-					// Make sure startup logic uses the selected level only.
-					hlsInstance.config.startLevel = locked;
-					hlsInstance.firstLevel = locked;
-					hlsInstance.nextLoadLevel = locked;
-					hlsInstance.autoLevelCapping = locked;
-					hlsInstance.nextLevel = locked;
-
-					// Some versions expose autoLevelEnabled or autoLevelEnabled setter via controller
-					if ('autoLevelEnabled' in hlsInstance) {
-						(hlsInstance as any).autoLevelEnabled = false;
-					}
-				} catch {}
-
-				hlsInstance.startLoad(startTime);
-			} else {
-				setTimeout(ensureLevelsThenStart, 100);
-			}
-		};
-
-		ensureLevelsThenStart();
-	}
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 	$effect(() => {
 		if (!player) return;
 
@@ -297,10 +230,7 @@
 		player.addEventListener('volume-change', volumeChange);
 		player.addEventListener('play', handlePlay);
 		player.addEventListener('pause', handlePause);
-
-		// hls
 		player.addEventListener('provider-change', handleProviderChange);
-		player.addEventListener('hls-manifest-loaded', handleHlsManifestLoaded);
 
 		return () => {
 			player.removeEventListener('source-change', sourceChange);
@@ -312,7 +242,6 @@
 			player.removeEventListener('play', handlePlay);
 			player.removeEventListener('pause', handlePause);
 			player.removeEventListener('provider-change', handleProviderChange);
-			player.removeEventListener('hls-manifest-loaded', handleHlsManifestLoaded);
 
 			// Unregister from state manager when component is destroyed
 			if (uniqueId) {
@@ -322,8 +251,7 @@
 	});
 </script>
 
-<!-- TODO Handle src.type instead of hardcoding -->
-<div class="transform-gpu backface-hidden">
+<div class="backface-hidden transform-gpu">
 	<media-player
 		bind:this={player}
 		playsInline

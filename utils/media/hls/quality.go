@@ -125,3 +125,61 @@ func GetQualityForVideo(height uint32, bitrate uint32) Quality {
 
 	return P240
 }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetQualitiesHighestToLowest returns qualities ordered from highest to lowest (excluding original)
+func GetQualitiesHighestToLowest(qualities []Quality) []Quality {
+	// Filter out Original and return only transcoded qualities
+	var transcodedQualities []Quality
+	for _, quality := range qualities {
+		if quality != Original {
+			transcodedQualities = append(transcodedQualities, quality)
+		}
+	}
+
+	return transcodedQualities
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetQualitiesLowestToHighest returns qualities ordered from lowest to highest (excluding original)
+func GetQualitiesLowestToHighest(qualities []Quality) []Quality {
+	highestToLowest := GetQualitiesHighestToLowest(qualities)
+
+	// Reverse the slice
+	var lowestToHighest []Quality
+	for i := len(highestToLowest) - 1; i >= 0; i-- {
+		lowestToHighest = append(lowestToHighest, highestToLowest[i])
+	}
+
+	return lowestToHighest
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetHighestTranscodedQuality returns the highest available transcoded quality (not original)
+func GetHighestTranscodedQuality(qualities []Quality) Quality {
+	transcodedQualities := GetQualitiesHighestToLowest(qualities)
+
+	if len(transcodedQualities) > 0 {
+		return transcodedQualities[0] // First element is highest
+	}
+
+	// Fallback to 720p if no transcoded qualities found
+	return P720
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetLowestTranscodedQuality returns the lowest available transcoded quality (not original)
+func GetLowestTranscodedQuality(qualities []Quality) Quality {
+	transcodedQualities := GetQualitiesLowestToHighest(qualities)
+
+	if len(transcodedQualities) > 0 {
+		return transcodedQualities[0] // First element is lowest
+	}
+
+	// Fallback to 240p if no transcoded qualities found
+	return P240
+}

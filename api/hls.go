@@ -11,6 +11,7 @@ import (
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/media/hls"
 	"github.com/gofiber/fiber/v2"
+	"github.com/houseme/mobiledetect/ua"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -59,7 +60,7 @@ func (r *Router) initHlsRoutes() {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetMaster returns the master playlist
+// GetMaster returns the master playlist (single stream based on device type)
 func (h *HLSHandler) GetMaster(c *fiber.Ctx) error {
 	assetID := c.Params("asset_id")
 	if assetID == "" {
@@ -87,8 +88,10 @@ func (h *HLSHandler) GetMaster(c *fiber.Ctx) error {
 		})
 	}
 
-	// Get master playlist
-	master, err := h.transcoder.GetMaster(c.Context(), asset.Path, assetID)
+	ua := ua.New(c.Get("User-Agent"))
+
+	// Get simple master playlist (single stream based on device type)
+	master, err := h.transcoder.GetMasterPlaylistSingle(c.Context(), asset.Path, assetID, ua.Mobile())
 	if err != nil {
 		utils.Errf("Failed to get master playlist for asset %s: %v\n", assetID, err)
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{

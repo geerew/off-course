@@ -6,6 +6,7 @@ require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/fatih/color v1.18.0
 	github.com/gofiber/fiber/v2 v2.52.9
+	github.com/houseme/mobiledetect v1.2.1
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/pressly/goose/v3 v3.25.0

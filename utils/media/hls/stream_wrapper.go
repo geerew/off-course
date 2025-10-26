@@ -160,10 +160,10 @@ func (sw *StreamWrapper) Destroy() {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetMaster generates the master HLS playlist for the file
+// GetMasterPlaylistMulti generates the HLS master playlist with multiple quality options
 //
 // TODO Support multiples audio qualities (and original)
-func (sw *StreamWrapper) GetMaster(assetID string) string {
+func (sw *StreamWrapper) GetMasterPlaylistMulti(assetID string) string {
 	master := "#EXTM3U\n"
 
 	// Add audio media groups
@@ -241,6 +241,95 @@ func (sw *StreamWrapper) GetMaster(assetID string) string {
 			master += fmt.Sprintf("/api/hls/%s/video/%d/%s/index.m3u8\n", assetID, def_video.Index, quality)
 		}
 	}
+
+	return master
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetMasterPlaylistSingle returns a simplified master playlist with only one stream
+// - Mobile/tablet: Returns the highest available transcoded quality
+// - Desktop: Returns the original quality
+func (sw *StreamWrapper) GetMasterPlaylistSingle(assetID string, isMobile bool) string {
+	master := "#EXTM3U\n"
+
+	// Add audio media groups
+	for _, audio := range sw.Info.Audios {
+		master += "#EXT-X-MEDIA:TYPE=AUDIO,"
+		master += "GROUP-ID=\"audio\","
+		if audio.Language != nil {
+			master += fmt.Sprintf("LANGUAGE=\"%s\",", *audio.Language)
+		}
+		if audio.Title != nil {
+			master += fmt.Sprintf("NAME=\"%s\",", *audio.Title)
+		} else if audio.Language != nil {
+			master += fmt.Sprintf("NAME=\"%s\",", *audio.Language)
+		} else {
+			master += fmt.Sprintf("NAME=\"Audio %d\",", audio.Index)
+		}
+		if audio.IsDefault {
+			master += "DEFAULT=YES,"
+		}
+		master += "CHANNELS=\"2\","
+		master += fmt.Sprintf("URI=\"audio/%d/index.m3u8\"\n", audio.Index)
+	}
+
+	master += "\n"
+
+	var def_video *Video
+	for _, video := range sw.Info.Videos {
+		if video.IsDefault {
+			def_video = &video
+			break
+		}
+	}
+	if def_video == nil && len(sw.Info.Videos) > 0 {
+		def_video = &sw.Info.Videos[0]
+	}
+
+	if def_video == nil {
+		return master
+	}
+
+	audio_codec := "mp4a.40.2"
+	transcode_codec := "avc1.42E01E"
+
+	var selectedQuality Quality
+	var selectedBitrate float64
+	var selectedResolution string
+
+	if isMobile {
+		// For mobile, select the highest transcoded quality (not original)
+		qualities := sw.GetQualities()
+		selectedQuality = GetHighestTranscodedQuality(qualities)
+		selectedBitrate = float64(selectedQuality.MaxBitrate())
+		selectedResolution = fmt.Sprintf("%dx%d", int(float32(def_video.Width)*float32(selectedQuality.Height())/float32(def_video.Height)+0.5), selectedQuality.Height())
+	} else {
+		// For desktop, select original quality
+		selectedQuality = Original
+		selectedBitrate = float64(def_video.Bitrate)
+		selectedResolution = fmt.Sprintf("%dx%d", def_video.Width, def_video.Height)
+	}
+
+	// Generate the single stream entry
+	master += "#EXT-X-STREAM-INF:"
+	master += fmt.Sprintf("AVERAGE-BANDWIDTH=%d,", int(selectedBitrate*0.8))
+	master += fmt.Sprintf("BANDWIDTH=%d,", int(selectedBitrate))
+	master += fmt.Sprintf("RESOLUTION=%s,", selectedResolution)
+
+	if selectedQuality == Original {
+		if def_video.MimeCodec != nil {
+			master += fmt.Sprintf("CODECS=\"%s\",", strings.Join([]string{*def_video.MimeCodec, audio_codec}, ","))
+		} else {
+			master += fmt.Sprintf("CODECS=\"%s\",", strings.Join([]string{transcode_codec, audio_codec}, ","))
+		}
+	} else {
+		master += fmt.Sprintf("CODECS=\"%s\",", strings.Join([]string{transcode_codec, audio_codec}, ","))
+	}
+
+	master += "AUDIO=\"audio\","
+	master += "CLOSED-CAPTIONS=NONE\n"
+	master += fmt.Sprintf("/api/hls/%s/video/%d/%s/index.m3u8\n", assetID, def_video.Index, selectedQuality)
 
 	return master
 }
@@ -339,7 +428,7 @@ func (sw *StreamWrapper) GetQualities() []Quality {
 	var qualities []Quality
 
 	qualities = append(qualities, Original)
-	
+
 	// Add qualities from highest to lowest
 	for i := len(Qualities) - 1; i >= 0; i-- {
 		q := Qualities[i]

@@ -74,15 +74,30 @@ func (t *Transcoder) getStreamWrapper(ctx context.Context, path string, assetID 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetMaster returns the master HLS playlist for an asset
-func (t *Transcoder) GetMaster(ctx context.Context, path string, assetID string) (string, error) {
+// GetMasterPlaylistMulti returns the master HLS playlist with multiple quality options
+func (t *Transcoder) GetMasterPlaylistMulti(ctx context.Context, path string, assetID string) (string, error) {
 	sw, err := t.getStreamWrapper(ctx, path, assetID)
 	if err != nil {
 		return "", err
 	}
 
 	t.assetChan <- assetID
-	return sw.GetMaster(assetID), nil
+	return sw.GetMasterPlaylistMulti(assetID), nil
+}
+
+
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetMasterPlaylistSingle returns a master playlist with only one stream
+func (t *Transcoder) GetMasterPlaylistSingle(ctx context.Context, path string, assetID string, isMobile bool) (string, error) {
+	sw, err := t.getStreamWrapper(ctx, path, assetID)
+	if err != nil {
+		return "", err
+	}
+
+	t.assetChan <- assetID
+	return sw.GetMasterPlaylistSingle(assetID, isMobile), nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
