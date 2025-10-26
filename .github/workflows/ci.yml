@@ -50,11 +50,23 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
+          echo "FFmpeg version:"
           ffmpeg -version
+          echo "FFprobe version:"
           ffprobe -version
       - name: Verify Dependencies
         run: |
+          echo "Checking FFmpeg installation:"
           which ffmpeg
+          echo "Checking FFprobe installation:"
           which ffprobe
+      - name: Check Go Environment
+        run: |
+          go version
+          go env
+      - name: Verify Test Data
+        run: |
+          ls -la utils/media/probe/testdata/
+          file utils/media/probe/testdata/sample.mp4
       - name: Go Test
         run: go test -tags dev -v ./...
