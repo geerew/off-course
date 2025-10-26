@@ -45,5 +45,16 @@ jobs:
       - uses: actions/setup-go@v5.0.1
         with:
           go-version: 1.22.4
+          cache: true
+      - name: Install FFmpeg and FFprobe
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          ffmpeg -version
+          ffprobe -version
+      - name: Verify Dependencies
+        run: |
+          which ffmpeg
+          which ffprobe
       - name: Go Test
-        run: go test -v ./...
+        run: go test -tags dev -v ./...
