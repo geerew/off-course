@@ -31,17 +31,17 @@ audit:
 ## test: run all tests
 .PHONY: test
 test:
-	go test -v ./...
+	go test -tags dev -v ./...
 
 ## race_test: run all tests with race detector
 .PHONY: race_test
 race_test:
-	go test -v -race -buildvcs ./...
+	go test -v -tags dev -race -buildvcs ./...
 
 ## test/cover: run all tests and display coverage
 .PHONY: test/cover
 test/cover:
-	go test -v -race -buildvcs -coverprofile=/tmp/coverage.out ./...
+	go test -v -tags dev -race -buildvcs -coverprofile=/tmp/coverage.out ./...
 	go tool cover -html=/tmp/coverage.out
 
 # ==================================================================================== #
