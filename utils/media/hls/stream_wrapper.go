@@ -345,3 +345,35 @@ func (sw *StreamWrapper) GetAudioSegment(audio uint32, segment int32) (string, e
 
 	return stream.GetSegment(segment)
 }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetQualities returns the available qualities for the video
+func (sw *StreamWrapper) GetQualities() []Quality {
+	var def_video *Video
+	for _, video := range sw.Info.Videos {
+		if video.IsDefault {
+			def_video = &video
+			break
+		}
+	}
+	if def_video == nil && len(sw.Info.Videos) > 0 {
+		def_video = &sw.Info.Videos[0]
+	}
+
+	if def_video == nil {
+		return []Quality{}
+	}
+
+	var qualities []Quality
+	for _, q := range Qualities {
+		if q.Height() <= def_video.Height {
+			qualities = append(qualities, q)
+		}
+	}
+
+	// Add original quality (no transcoding)
+	qualities = append(qualities, Original)
+
+	return qualities
+}

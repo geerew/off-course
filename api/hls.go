@@ -38,8 +38,7 @@ func (r *Router) initHlsRoutes() {
 	// Initialize transcoder with DAO
 	transcoder, err := hls.NewTranscoder(r.dao)
 	if err != nil {
-		utils.Errf("Failed to create HLS transcoder: %v\n", err)
-		// Continue without transcoder - will be initialized per-request
+		panic("Failed to create HLS transcoder: " + err.Error())
 	}
 	hlsHandler := NewHLSHandler(r.dao, transcoder)
 
@@ -53,6 +52,9 @@ func (r *Router) initHlsRoutes() {
 	// Audio streams
 	r.api.Get("/hls/:asset_id/audio/:index/index.m3u8", hlsHandler.GetAudioIndex)
 	r.api.Get("/hls/:asset_id/audio/:index/segment-:num.ts", hlsHandler.GetAudioSegment)
+
+	// Qualities endpoint
+	r.api.Get("/hls/:asset_id/qualities", hlsHandler.GetQualities)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -286,4 +288,54 @@ func (h *HLSHandler) GetAudioSegment(c *fiber.Ctx) error {
 
 	// Serve the segment file
 	return c.SendFile(segmentPath)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetQualities returns the available qualities for a video
+func (h *HLSHandler) GetQualities(c *fiber.Ctx) error {
+	assetID := c.Params("asset_id")
+	if assetID == "" {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"error": "asset_id is required",
+		})
+	}
+
+	// Get asset with metadata
+	asset, err := h.dao.GetAsset(c.Context(), database.NewOptions().
+		WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assetID}).
+		WithAssetMetadata())
+	if err != nil {
+		utils.Errf("Failed to get asset %s: %v\n", assetID, err)
+		return c.Status(http.StatusNotFound).JSON(fiber.Map{
+			"error": "Asset not found",
+		})
+	}
+
+	// Check if transcoder is available
+	if h.transcoder == nil {
+		utils.Errf("Transcoder not initialized\n")
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Transcoder not available",
+		})
+	}
+
+	// Get available qualities
+	qualities, err := h.transcoder.GetQualities(c.Context(), asset.Path, assetID)
+	if err != nil {
+		utils.Errf("Failed to get qualities for asset %s: %v\n", assetID, err)
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to get available qualities",
+		})
+	}
+
+	// Convert qualities to strings for JSON response
+	qualityStrings := make([]string, len(qualities))
+	for i, quality := range qualities {
+		qualityStrings[i] = string(quality)
+	}
+
+	return c.JSON(fiber.Map{
+		"qualities": qualityStrings,
+	})
 }

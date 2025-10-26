@@ -160,3 +160,15 @@ func (t *Transcoder) GetAudioSegment(
 	t.assetChan <- assetID
 	return sw.GetAudioSegment(audio, segment)
 }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetQualities returns the available qualities for a video
+func (t *Transcoder) GetQualities(ctx context.Context, path string, assetID string) ([]Quality, error) {
+	sw, err := t.getStreamWrapper(ctx, path, assetID)
+	if err != nil {
+		return nil, err
+	}
+
+	return sw.GetQualities(), nil
+}
