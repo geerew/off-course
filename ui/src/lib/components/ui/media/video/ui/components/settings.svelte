@@ -131,7 +131,7 @@
 
 {#snippet contents()}
 	<div
-		class="inline-grid w-fit min-w-0 max-w-[90vw]"
+		class="inline-grid w-fit max-w-[90vw] min-w-0"
 		bind:this={innerEl}
 		bind:clientWidth={panelW}
 		bind:clientHeight={panelH}
@@ -219,7 +219,7 @@
 								<LeftChevronIcon class="size-4 text-white/70" />
 								<Slider.Root
 									type="single"
-									class="group relative flex w-full touch-none select-none items-center py-3 hover:cursor-pointer"
+									class="group relative flex w-full touch-none items-center py-3 select-none hover:cursor-pointer"
 									bind:value={mediaPreferences.current.playbackRate}
 									min={0.25}
 									max={2}
@@ -244,7 +244,7 @@
 										{#each thumbItems as { index } (index)}
 											<Slider.Thumb
 												{index}
-												class="bg-foreground-alt-1 focus-visible:outline-hidden z-10 block size-[15px] cursor-pointer rounded-full shadow-sm transition-colors focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2"
+												class="bg-foreground-alt-1 z-10 block size-[15px] cursor-pointer rounded-full shadow-sm transition-colors focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:outline-hidden"
 											/>
 										{/each}
 									{/snippet}
@@ -281,7 +281,7 @@
 			</Popover.Trigger>
 
 			<Popover.Content
-				class="drop-shadow-black/70 z-50 w-auto origin-bottom-right overflow-hidden border-none drop-shadow-md"
+				class="z-50 w-auto origin-bottom-right overflow-hidden border-none drop-shadow-md drop-shadow-black/70"
 				side="top"
 				align="end"
 				sideOffset={8}

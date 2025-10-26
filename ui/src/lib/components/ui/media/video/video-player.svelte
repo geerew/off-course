@@ -251,7 +251,7 @@
 	});
 </script>
 
-<div class="backface-hidden transform-gpu">
+<div class="transform-gpu backface-hidden">
 	<media-player
 		bind:this={player}
 		playsInline
