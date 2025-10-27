@@ -38,7 +38,9 @@ FROM alpine:latest
 
 RUN apk add --no-cache \
     ca-certificates \
-    ffmpeg
+    ffmpeg \
+    libva-utils \
+    mesa-va-gallium
 
 COPY  --from=backend /src/offcourse /usr/local/bin/offcourse
 
