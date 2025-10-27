@@ -54,3 +54,39 @@ There are several environment variables that can be set
 
 - OC_DEV - Whether to run in development mode. Defaults to `false`
 - OC_ENABLE_SIGNUP - Whether to enable signup. Defaults to `false`
+
+### Hardware Acceleration
+
+OffCourse supports hardware-accelerated video transcoding for improved performance. The following environment variables control hardware acceleration:
+
+- OC_HWACCEL - Hardware acceleration type. Options: `disabled` (default), `cpu`, `vaapi`, `qsv`, `intel`, `nvidia`
+- OC_PRESET - FFmpeg encoding preset. Defaults to `fast`. Options: `ultrafast`, `superfast`, `veryfast`, `faster`, `fast`, `medium`, `slow`, `slower`, `veryslow`
+- OC_VAAPI_RENDERER - VAAPI render device path. Defaults to `/dev/dri/renderD128`
+
+#### Hardware Acceleration Types
+
+- **disabled/cpu**: Software-only transcoding using CPU
+- **vaapi**: Intel/AMD GPU acceleration via VAAPI (Linux)
+- **qsv/intel**: Intel Quick Sync Video acceleration
+- **nvidia**: NVIDIA GPU acceleration via CUDA/NVENC
+
+#### Device Mounting
+
+For hardware acceleration to work, you may need to mount GPU devices:
+
+```yaml
+services:
+  offcourse:
+    container_name: OffCourse
+    image: geerew/offcourse:x
+    environment:
+      - OC_HWACCEL=nvidia
+      - OC_ENABLE_SIGNUP=true
+    restart: unless-stopped
+    volumes:
+      - /path/to/data:/offcourse
+      - /path/to/courses:/courses
+      - /dev/dri:/dev/dri  # For Intel/AMD GPU (VAAPI)
+    ports:
+      - 9081:80
+```
