@@ -34,6 +34,7 @@ organizing them into structured lessons with progress tracking capabilities.
 - Node.js >= 22.12.0
 - pnpm >= 8
 - Go >= 1.20
+- FFmpeg and FFProbe (for video processing and HLS transcoding)
 
 **For Docker:**
 
@@ -348,20 +349,13 @@ We welcome contributions! Here's how you can help:
 - Run the full audit: `make audit`
 - Format code: `make tidy`
 
-### Areas for Contribution
+**Note**: When running tests outside of `make test`, use `-tags dev`. This bypasses the need for the ui to be built
 
-- **Frontend**: UI/UX improvements, new features, accessibility
-- **Backend**: API enhancements, performance optimizations
-- **Course Processing**: Enhanced file type support, better scanning algorithms
-- **Documentation**: Improved guides, examples, API documentation
-- **Testing**: Additional test coverage, integration tests
+```bash
+# Run all tests with dev tag
+go test -tags dev ./...
 
-### Reporting Issues
+# Run specific package tests
+go test -tags dev ./api/...
+```
 
-- Use GitHub Issues for bug reports and feature requests
-- Include steps to reproduce for bugs
-- Provide system information (OS, Go version, etc.)
-
-## License
-
-[Add your license information here]
