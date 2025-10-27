@@ -1,7 +1,7 @@
 package hls
 
 import (
-	"os"
+	"fmt"
 
 	"github.com/geerew/off-course/utils"
 )
@@ -72,7 +72,7 @@ func DetectHardwareAccel() HwAccelT {
 			Name: name,
 			DecodeFlags: []string{
 				"-hwaccel", "qsv",
-				"-qsv_device", utils.GetEnvOr("GOCODER_QSV_RENDERER", "/dev/dri/renderD128"),
+				"-qsv_device", utils.GetEnvOr("OC_QSV_RENDERER", "/dev/dri/renderD128"),
 				"-hwaccel_output_format", "qsv",
 			},
 			EncodeFlags: []string{
@@ -98,8 +98,6 @@ func DetectHardwareAccel() HwAccelT {
 			NoResizeFilter: "format=nv12|cuda,hwupload,scale_cuda=format=nv12",
 		}
 	default:
-		utils.Errf("HLS: No hardware accelerator named: %s\n", name)
-		os.Exit(2)
-		panic("unreachable")
+		panic(fmt.Sprintf("HLS: No hardware accelerator named: %s\n", name))
 	}
 }
