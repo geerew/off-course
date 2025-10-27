@@ -1,6 +1,6 @@
 ## HLS package
 
-This package provides on-demand HLS transcoding and segmentation with adaptive prefetching, hardware acceleration, and per-stream tracking
+This package provides on-demand HLS transcoding and segmentation with adaptive prefetching and hardware acceleration.
 
 ### Architecture
 

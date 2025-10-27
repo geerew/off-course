@@ -30,7 +30,8 @@ services:
     restart: unless-stopped
     volumes:
       - /path/to/data:/offcourse # Path to persist the application data
-      - /path/to/courses:/courses # Path to additional directories containing courses
+      - /path/to/courses1:/courses1 # Path to directory containing courses
+      - /path/to/courses2:/courses2 # Path to directory containing courses
     ports:
       - 9081:80
 ```
@@ -86,7 +87,7 @@ services:
     volumes:
       - /path/to/data:/offcourse
       - /path/to/courses:/courses
-      - /dev/dri:/dev/dri  # For Intel/AMD GPU (VAAPI)
+      - /dev/dri:/dev/dri # For Intel/AMD GPU (VAAPI)
     ports:
       - 9081:80
 ```
