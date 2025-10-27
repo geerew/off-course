@@ -45,7 +45,8 @@ You can see the available versions [here](https://hub.docker.com/r/geerew/offcou
 A minimum of two volumes are required
 
 - `xxx:/offcourse` - A persistent location on the host machine to store application data
-- `xxx:/courses` - An optional location on the host machine where courses exist. `/courses` is an optional mount inside the container, however this can be called anything
+- `xxx:/courses` - An optional location on the host machine where courses exist. `/courses` is an optional mount inside the
+  container, however this can be called anything
 
 Additional volumes can be mounted as needed
 
@@ -58,16 +59,20 @@ There are several environment variables that can be set
 
 ### Hardware Acceleration
 
-OffCourse supports hardware-accelerated video transcoding for improved performance. The following environment variables control hardware acceleration:
+Off Course supports hardware-accelerated video transcoding for improved performance.
 
-- OC_HWACCEL - Hardware acceleration type. Options: `disabled` (default), `cpu`, `vaapi`, `qsv`, `intel`, `nvidia`
-- OC_PRESET - FFmpeg encoding preset. Defaults to `fast`. Options: `ultrafast`, `superfast`, `veryfast`, `faster`, `fast`, `medium`, `slow`, `slower`, `veryslow`
+The following environment variables control hardware acceleration
+
+- OC_HWACCEL - Hardware acceleration type. Options: `disabled`, `cpu`, `vaapi`, `qsv`, `intel`, `nvidia`
+- OC_PRESET - FFmpeg encoding preset. Defaults to `fast`. Options: `ultrafast`, `superfast`, `veryfast`, `faster`, `fast`,
+  `medium`, `slow`, `slower`, `veryslow`
 - OC_VAAPI_RENDERER - VAAPI render device path. Defaults to `/dev/dri/renderD128`
+- OC_QSV_RENDERER - QSV render device path. Defaults to `/dev/dri/renderD128`
 
 #### Hardware Acceleration Types
 
-- **disabled/cpu**: Software-only transcoding using CPU
-- **vaapi**: Intel/AMD GPU acceleration via VAAPI (Linux)
+- **disabled/cpu**: Software-only transcoding using CPU (default)
+- **vaapi**: AMD GPU acceleration via VAAPI
 - **qsv/intel**: Intel Quick Sync Video acceleration
 - **nvidia**: NVIDIA GPU acceleration via CUDA/NVENC
 
@@ -78,16 +83,49 @@ For hardware acceleration to work, you may need to mount GPU devices:
 ```yaml
 services:
   offcourse:
-    container_name: OffCourse
+    container_name: offcourse
     image: geerew/offcourse:x
     environment:
-      - OC_HWACCEL=nvidia
       - OC_ENABLE_SIGNUP=true
+      - OC_HWACCEL=vaapi
     restart: unless-stopped
     volumes:
       - /path/to/data:/offcourse
       - /path/to/courses:/courses
-      - /dev/dri:/dev/dri # For Intel/AMD GPU (VAAPI)
+      - /dev/dri:/dev/dri
     ports:
       - 9081:80
+```
+
+## Bootstrapping
+
+When Off Course is first launched in Docker, it needs to be bootstrapped with an initial administrator account
+
+### Process
+
+1. When the application starts, it checks if any admin users exist in the database
+
+2. When no admin users are found, a secure bootstrap URL is displayed in the console
+
+   ```shell
+   ⚠️  Bootstrap required: http://127.0.0.1:9081/auth/bootstrap/[unique-token]
+   Token expires in 5 minutes
+   ```
+
+3. Visit the bootstrap URL to create your administrator account
+
+### Accessing Console Output
+
+The console output will be displayed in the container logs. To access it:
+
+**Docker Logs** (Primary method)
+
+```bash
+docker logs offcourse
+```
+
+**Docker Compose Logs**
+
+```bash
+docker-compose logs offcourse
 ```

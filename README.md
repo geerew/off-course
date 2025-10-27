@@ -219,6 +219,23 @@ The `admin` command allows you to reset the password of a user
 ./offcourse admin reset-password <username>
 ```
 
+## Bootstrapping
+
+When first launched, Off Course needs to be bootstrapped with an initial administrator account
+
+### Process
+
+1. When the application starts, it checks if any admin users exist in the database
+
+2. When no admin users are found, a secure bootstrap URL is displayed in the console
+
+   ```shell
+   ⚠️  Bootstrap required: http://127.0.0.1:9081/auth/bootstrap/[unique-token]
+   Token expires in 5 minutes
+   ```
+
+3. Visit the bootstrap URL to create your administrator account
+
 ## Adding Courses
 
 ### Overview
