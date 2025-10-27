@@ -78,7 +78,9 @@ The following environment variables control hardware acceleration
 
 #### Device Mounting
 
-For hardware acceleration to work, you may need to mount GPU devices:
+For hardware acceleration to work, you may need to mount GPU devices
+
+For example, to use VAAPI with AMD GPUs, you can mount the render device: `/dev/dri/renderD128`
 
 ```yaml
 services:
@@ -86,15 +88,15 @@ services:
     container_name: offcourse
     image: geerew/offcourse:x
     environment:
-      - OC_ENABLE_SIGNUP=true
       - OC_HWACCEL=vaapi
     restart: unless-stopped
     volumes:
       - /path/to/data:/offcourse
       - /path/to/courses:/courses
-      - /dev/dri:/dev/dri
     ports:
       - 9081:80
+    devices:
+      - /dev/dri/renderD128:/dev/dri/renderD128
 ```
 
 ## Bootstrapping
