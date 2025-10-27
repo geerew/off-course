@@ -1,12 +1,12 @@
 # # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 
 version: 2
-project_name: off-course
+project_name: offcourse
 
 release:
   github:
     owner: geerew
-    name: off-course
+    name: offcourse
 
 builds:
   - id: offcourse
