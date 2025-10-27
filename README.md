@@ -201,7 +201,7 @@ Off Course includes several CLI commands
 The `serve` command runs the application
 
 ```bash
-./off-course serve [options]
+./offcourse serve [options]
 ```
 
 #### Options
@@ -216,7 +216,7 @@ The `serve` command runs the application
 The `admin` command allows you to reset the password of a user
 
 ```bash
-./off-course admin reset-password <username>
+./offcourse admin reset-password <username>
 ```
 
 ## Adding Courses
