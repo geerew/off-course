@@ -15,13 +15,17 @@ import (
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/logger"
-	"github.com/geerew/off-course/utils/media"
 	"github.com/geerew/off-course/utils/media/hls"
 	"github.com/geerew/off-course/utils/session"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
 	fibersession "github.com/gofiber/fiber/v2/middleware/session"
 )
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// MiddlewareFactory defines a function that creates middleware with access to the router
+type MiddlewareFactory func(r *Router) fiber.Handler
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -45,13 +49,14 @@ type RouterConfig struct {
 	Logger        *logger.Logger
 	AppFs         *appfs.AppFs
 	CourseScan    *coursescan.CourseScan
-	FFmpeg        *media.FFmpeg
 	Transcoder    *hls.Transcoder
 	HttpAddr      string
 	IsProduction  bool
 	SignupEnabled bool
 	DataDir       string
-	Testing       bool // Skip expensive operations in tests
+
+	// Optional custom middleware stack; if empty, defaults are applied
+	Middleware []MiddlewareFactory
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -71,31 +76,14 @@ func NewRouter(config *RouterConfig) *Router {
 		DisableStartupMessage: true,
 	})
 
-	r.initMiddleware()
-	r.initRoutes()
-
-	return r
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// devRouter creates a new router for use in development. The main difference is the lack of
-// middleware and the use of a predefined user id and role
-func devRouter(config *RouterConfig, id string, role types.UserRole) *Router {
-	r := &Router{
-		config: config,
-		dao:    dao.New(config.DbManager.DataDb),
-		logDao: dao.New(config.DbManager.LogsDb),
-		logger: config.Logger,
+	if len(config.Middleware) == 0 {
+		r.initMiddleware()
+	} else {
+		for _, f := range config.Middleware {
+			r.App.Use(f(r))
+		}
 	}
 
-	r.createSessionStore()
-
-	r.App = fiber.New(fiber.Config{
-		DisableStartupMessage: true,
-	})
-
-	r.App.Use(devAuthMiddleware(id, role))
 	r.initRoutes()
 
 	return r
@@ -124,6 +112,7 @@ func (r *Router) Serve() error {
 // initMiddleware initializes the middleware
 func (r *Router) initMiddleware() {
 	// Middleware
+	r.App.Use(requestLoggingMiddleware(r.logger))
 	r.App.Use(corsMiddleWare())
 	r.App.Use(bootstrapMiddleware(r))
 	r.App.Use(authMiddleware(r))

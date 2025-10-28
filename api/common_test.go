@@ -18,6 +18,7 @@ import (
 	"github.com/geerew/off-course/utils/media/hls"
 	"github.com/geerew/off-course/utils/pagination"
 	"github.com/geerew/off-course/utils/types"
+	"github.com/gofiber/fiber/v2"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 )
@@ -25,14 +26,14 @@ import (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 var (
-	// Cache FFmpeg instance
+	// Cache FFmpeg instance for course scanning
 	cachedFFmpeg *media.FFmpeg
 	ffmpegOnce   sync.Once
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// getCachedFFmpeg returns a cached FFmpeg instance
+// getCachedFFmpeg returns a cached FFmpeg instance for course scanning
 func getCachedFFmpeg(t *testing.T) *media.FFmpeg {
 	ffmpegOnce.Do(func() {
 		ffmpeg, err := media.NewFFmpeg()
@@ -93,13 +94,16 @@ func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Conte
 		DbManager:     dbManager,
 		AppFs:         appFs,
 		CourseScan:    courseScan,
-		FFmpeg:        ffmpeg,
 		Logger:        testLogger.WithAPI(),
 		SignupEnabled: true,
-		Testing:       true,
+
+		// Use dev auth via middleware factory
+		Middleware: []MiddlewareFactory{
+			func(r *Router) fiber.Handler { return devAuthMiddleware(id, role) },
+		},
 	}
 
-	router := devRouter(config, id, role)
+	router := NewRouter(config)
 
 	// Create user
 	user := models.User{

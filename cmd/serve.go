@@ -108,7 +108,6 @@ var serveCmd = &cobra.Command{
 			Logger:        appLogger.WithAPI(),
 			AppFs:         appFs,
 			CourseScan:    courseScan,
-			FFmpeg:        ffmpeg,
 			HttpAddr:      httpAddr,
 			IsProduction:  !isDev,
 			SignupEnabled: enableSignup,

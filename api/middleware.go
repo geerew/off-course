@@ -8,7 +8,9 @@ package api
 
 import (
 	"strings"
+	"time"
 
+	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -24,6 +26,29 @@ func corsMiddleWare() fiber.Handler {
 		AllowOrigins: "*",
 		AllowMethods: "GET, POST, PUT, DELETE, HEAD, PATCH",
 	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// requestLoggingMiddleware creates a request logging middleware
+func requestLoggingMiddleware(logger *logger.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		start := time.Now()
+
+		err := c.Next()
+
+		duration := time.Since(start)
+
+		logger.Debug().
+			Str("method", c.Method()).
+			Str("path", c.Path()).
+			Int("status", c.Response().StatusCode()).
+			Dur("duration", duration).
+			Str("ip", c.IP()).
+			Msg("Request processed")
+
+		return err
+	}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

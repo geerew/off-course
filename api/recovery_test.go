@@ -67,11 +67,9 @@ func createTestRouterWithDataDir(t *testing.T, dataDir string) *Router {
 		DbManager:     dbManager,
 		AppFs:         appFs,
 		CourseScan:    courseScan,
-		FFmpeg:        ffmpeg,
 		Logger:        testLogger.WithAPI(),
 		SignupEnabled: true,
 		DataDir:       dataDir,
-		Testing:       true,
 	}
 
 	// Create router
