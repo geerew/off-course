@@ -1,19 +1,19 @@
 package api
 
 import (
-	"log/slog"
 	"path/filepath"
 
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/appfs"
+	"github.com/geerew/off-course/utils/logger"
 	"github.com/gofiber/fiber/v2"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type fsAPI struct {
-	logger *slog.Logger
+	logger *logger.Logger
 	appFs  *appfs.AppFs
 	dao    *dao.DAO
 }

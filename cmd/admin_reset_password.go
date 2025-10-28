@@ -95,7 +95,7 @@ var adminResetPasswordCmd = &cobra.Command{
 // verifyAdminUser checks if the user exists and is an admin
 func verifyAdminUser(username, dataDir string) error {
 	ctx := context.Background()
-	appFs := appfs.New(afero.NewOsFs(), nil)
+	appFs := appfs.New(afero.NewOsFs())
 
 	dbManager, err := database.NewSQLiteManager(&database.DatabaseManagerConfig{
 		DataDir: dataDir,

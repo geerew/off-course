@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/geerew/off-course/utils"
+	"github.com/geerew/off-course/utils/logger"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -20,10 +21,10 @@ type HwAccelT struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // DetectHardwareAccel detects and configures hardware acceleration
-func DetectHardwareAccel() HwAccelT {
+func DetectHardwareAccel(logger *logger.Logger) HwAccelT {
 	name := utils.GetEnvOr("OC_HWACCEL", "disabled")
 
-	utils.Infof("HLS: Using hardware acceleration: %s\n", name)
+	logger.Info().Str("hwaccel", name).Msg("Using hardware acceleration")
 
 	// superfast/ultrafast create extremely big files, so we prefer to ignore them. Fast
 	// is available on all modes so we use that by default (except for vaapi, which does not

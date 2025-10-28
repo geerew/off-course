@@ -2,20 +2,19 @@ package api
 
 import (
 	"context"
-	"log/slog"
+	"fmt"
 	"net"
 	"time"
 
 	"sync/atomic"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/fatih/color"
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
-	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/coursescan"
+	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/media"
 	"github.com/geerew/off-course/utils/session"
 	"github.com/geerew/off-course/utils/types"
@@ -34,6 +33,7 @@ type Router struct {
 	logDao         *dao.DAO
 	bootstrapped   int32
 	sessionManager *session.SessionManager
+	logger         *logger.Logger
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -41,7 +41,7 @@ type Router struct {
 // RouterConfig defines the configuration for the router
 type RouterConfig struct {
 	DbManager     *database.DatabaseManager
-	Logger        *slog.Logger
+	Logger        *logger.Logger
 	AppFs         *appfs.AppFs
 	CourseScan    *coursescan.CourseScan
 	FFmpeg        *media.FFmpeg
@@ -60,6 +60,7 @@ func NewRouter(config *RouterConfig) *Router {
 		config: config,
 		dao:    dao.New(config.DbManager.DataDb),
 		logDao: dao.New(config.DbManager.LogsDb),
+		logger: config.Logger,
 	}
 
 	r.createSessionStore()
@@ -83,6 +84,7 @@ func devRouter(config *RouterConfig, id string, role types.UserRole) *Router {
 		config: config,
 		dao:    dao.New(config.DbManager.DataDb),
 		logDao: dao.New(config.DbManager.LogsDb),
+		logger: config.Logger,
 	}
 
 	r.createSessionStore()
@@ -108,10 +110,7 @@ func (r *Router) Serve() error {
 		return err
 	}
 
-	utils.Infof(
-		"%s %s",
-		"Server started at", color.CyanString("http://%s\n", r.config.HttpAddr),
-	)
+	r.logger.Info().Str("url", fmt.Sprintf("http://%s", r.config.HttpAddr)).Msg("Server started")
 
 	return r.App.Listener(ln)
 }
@@ -123,11 +122,9 @@ func (r *Router) Serve() error {
 // initMiddleware initializes the middleware
 func (r *Router) initMiddleware() {
 	// Middleware
-	r.App.Use(loggerMiddleware(r.config))
 	r.App.Use(corsMiddleWare())
 	r.App.Use(bootstrapMiddleware(r))
 	r.App.Use(authMiddleware(r))
-
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -173,7 +170,7 @@ func (r *Router) InitBootstrap() {
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ROLE: types.UserRoleAdmin})
 	count, err := r.dao.CountUsers(context.Background(), dbOpts)
 	if err != nil {
-		utils.Errf("Failed to count users: %s\n", err.Error())
+		r.logger.Error().Err(err).Msg("Failed to count users")
 	}
 
 	if count != 0 {

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/geerew/off-course/utils"
+	"github.com/geerew/off-course/utils/logger"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -84,6 +85,7 @@ type Stream struct {
 	segments      []Segment
 	heads         []Head
 	lock          sync.RWMutex
+	logger        *logger.Logger
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -166,14 +168,13 @@ func (s *Stream) run(startSegment int32) error {
 	s.heads = append(s.heads, Head{segment: startSegment, end: endSegment, command: nil})
 	s.lock.Unlock()
 
-	utils.Infof(
-		"HLS: Starting transcode %d for %s (from %d to %d out of %d segments)\n",
-		encoderID,
-		s.streamWrapper.Info.Path,
-		startSegment,
-		endSegment,
-		length,
-	)
+	s.logger.Debug().
+		Int("encoder_id", encoderID).
+		Str("path", s.streamWrapper.Info.Path).
+		Int32("start_segment", startSegment).
+		Int32("end_segment", endSegment).
+		Int("total_segments", length).
+		Msg("Starting transcode")
 
 	// Calculate FFmpeg seek references for precise segment cutting
 	startRef, endRef := s.calculateSeekReferences(startSegment, endSegment, int32(length))
@@ -262,7 +263,7 @@ func (s *Stream) run(startSegment int32) error {
 
 	// Run the FFmpeg command
 	cmd := exec.Command("ffmpeg", args...)
-	utils.Infof("HLS: Running %s\n", strings.Join(cmd.Args, " "))
+	s.logger.Debug().Str("command", strings.Join(cmd.Args, " ")).Msg("Running FFmpeg")
 
 	// Set the stdout pipe
 	stdout, err := cmd.StdoutPipe()
@@ -312,13 +313,21 @@ func (s *Stream) run(startSegment int32) error {
 				streamType = "video"
 			}
 
-			utils.Infof("HLS: %s segment %d is ready (encoder %d)\n", streamType, segment, encoderID)
+			s.logger.Debug().
+				Str("stream_type", streamType).
+				Int32("segment", segment).
+				Int("encoder_id", encoderID).
+				Msg("Segment is ready")
 
 			// Check if this segment is already completed by another encoder
 			if s.isSegmentReady(segment) {
 				// Another encoder already completed this segment, stop this one
 				cmd.Process.Signal(os.Interrupt)
-				utils.Infof("HLS: Stopping %s encoder %d because segment %d is already ready\n", streamType, encoderID, segment)
+				s.logger.Debug().
+					Str("stream_type", streamType).
+					Int("encoder_id", encoderID).
+					Int32("segment", segment).
+					Msg("Stopping encoder because segment is already ready")
 				shouldStop = true
 			} else {
 				// Mark this segment as completed by this encoder
@@ -332,7 +341,7 @@ func (s *Stream) run(startSegment int32) error {
 				} else if s.isSegmentReady(segment + 1) {
 					// Next segment is already ready, stop to avoid duplicate work
 					cmd.Process.Signal(os.Interrupt)
-					utils.Infof("HLS: Killing ffmpeg because next segment %d is ready\n", segment)
+					s.logger.Debug().Int32("segment", segment).Msg("Killing ffmpeg because next segment is ready")
 					shouldStop = true
 				}
 			}
@@ -346,7 +355,7 @@ func (s *Stream) run(startSegment int32) error {
 
 		// Handle any scanner errors
 		if err := scanner.Err(); err != nil {
-			utils.Errf("HLS: Error reading stdout of ffmpeg: %v\n", err)
+			s.logger.Error().Err(err).Msg("Error reading stdout of ffmpeg")
 		}
 	}()
 
@@ -356,13 +365,17 @@ func (s *Stream) run(startSegment int32) error {
 
 		if exiterr, ok := err.(*exec.ExitError); ok && exiterr.ExitCode() == 255 {
 			// FFmpeg was interrupted by us (normal termination)
-			utils.Infof("HLS: ffmpeg %d was killed by us\n", encoderID)
+			s.logger.Debug().Int("encoder_id", encoderID).Msg("ffmpeg was killed by us")
 		} else if err != nil {
 			// FFmpeg encountered an error during execution
-			utils.Errf("HLS: ffmpeg %d occurred an error: %s: %s\n", encoderID, err, stderr.String())
+			s.logger.Error().
+				Err(err).
+				Int("encoder_id", encoderID).
+				Str("stderr", stderr.String()).
+				Msg("ffmpeg occurred an error")
 		} else {
 			// FFmpeg completed successfully
-			utils.Infof("HLS: ffmpeg %d finished successfully\n", encoderID)
+			s.logger.Debug().Int("encoder_id", encoderID).Msg("ffmpeg finished successfully")
 		}
 
 		s.lock.Lock()
@@ -467,13 +480,19 @@ func (s *Stream) GetSegment(segment int32) (string, error) {
 	if !ready {
 		// Only start a new encode if there is too big a distance between the current encoder and the segment.
 		if distance > 60 || !isScheduled {
-			utils.Infof("HLS: Creating new head for %d since closest head is %fs away\n", segment, distance)
+			s.logger.Info().
+				Int32("segment", segment).
+				Float64("distance", distance).
+				Msg("Creating new head since closest head is far away")
 			err := s.run(segment)
 			if err != nil {
 				return "", err
 			}
 		} else {
-			utils.Infof("HLS: Waiting for segment %d since encoder head is %fs away\n", segment, distance)
+			s.logger.Info().
+				Int32("segment", segment).
+				Float64("distance", distance).
+				Msg("Waiting for segment since encoder head is close")
 		}
 
 		select {
@@ -509,7 +528,7 @@ func (s *Stream) prepareNextSegments(segment int32) {
 			continue
 		}
 
-		utils.Infof("HLS: Creating new head for future segment (%d)\n", i)
+		s.logger.Info().Int32("segment", i).Msg("Creating new head for future segment")
 		go s.run(i)
 
 		return
@@ -569,7 +588,7 @@ func (s *Stream) KillHead(encoderID int) {
 func getKeyframes(wrapper *StreamWrapper) []float64 {
 	assetKeyframes, err := wrapper.transcoder.dao.GetAssetKeyframes(context.Background(), wrapper.transcoder.assetID)
 	if err != nil {
-		utils.Errf("HLS: Failed to get keyframes: %v\n", err)
+		Settings.Logger.Error().Err(err).Msg("Failed to get keyframes")
 		return []float64{}
 	}
 

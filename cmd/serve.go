@@ -3,27 +3,22 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"strings"
 	"sync"
 	"syscall"
 
-	"github.com/fatih/color"
 	"github.com/geerew/off-course/api"
 	"github.com/geerew/off-course/cron"
-	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
-	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/auth"
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/media"
 	"github.com/geerew/off-course/utils/media/hls"
-	"github.com/geerew/off-course/utils/security"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -42,62 +37,64 @@ var serveCmd = &cobra.Command{
 		dataDir := viper.GetString("data-dir")
 		enableSignup := viper.GetBool("enable-signup")
 
-		appFs := appfs.New(afero.NewOsFs(), nil)
+		// Logger
+		appLogger := logger.New(&logger.Config{
+			Level:         logger.LevelInfo,
+			ConsoleOutput: true,
+		})
 
+		if appLogger == nil {
+			panic("Failed to initialize logger")
+		}
+
+		mainLogger := appLogger.WithMain()
+
+		// AppFS (filesystem)
+		appFs := appfs.New(afero.NewOsFs())
+
+		// FFmpeg
+		ffmpeg, err := media.NewFFmpeg()
+		if err != nil {
+			mainLogger.Error().Err(err).Msg("Failed to initialize FFmpeg")
+			os.Exit(1)
+		}
+
+		// Database manager
 		dbManager, err := database.NewSQLiteManager(&database.DatabaseManagerConfig{
 			DataDir: dataDir,
 			AppFs:   appFs,
 		})
 
 		if err != nil {
-			fmt.Printf("ERR - Failed to create database manager: %s", err)
+			mainLogger.Error().Err(err).Msg("Failed to create database manager")
 			os.Exit(1)
 		}
 
-		logger, loggerDone, err := logger.InitLogger(&logger.BatchOptions{
-			BatchSize:   200,
-			BeforeAddFn: loggerBeforeAddFn(),
-			WriteFn:     loggerWriteFn(dbManager.LogsDb),
-		})
-
-		if err != nil {
-			utils.Errf("Failed to initialize logger: %s", err)
-			os.Exit(1)
-		}
-		defer close(loggerDone)
-
-		// Set DB loggers
-		dbManager.DataDb.SetLogger(logger)
-		appFs.SetLogger(logger)
-
-		// Initialize FFmpeg
-		ffmpeg, err := media.NewFFmpeg()
-		if err != nil {
-			utils.Errf("Failed to initialize FFmpeg: %s", err)
-			os.Exit(1)
-		}
-
+		// Course scanner
 		courseScan := coursescan.New(&coursescan.CourseScanConfig{
 			Db:     dbManager.DataDb,
 			AppFs:  appFs,
-			Logger: logger,
+			Logger: appLogger.WithCourseScan(),
 			FFmpeg: ffmpeg,
 		})
 
 		// Start the course scan worker
 		go courseScan.Worker(ctx, coursescan.Processor, nil)
 
-		cron.InitCron(&cron.CronConfig{
+		// Start cron
+		cron.StartCron(&cron.CronConfig{
 			Db:     dbManager.DataDb,
 			AppFs:  appFs,
-			Logger: logger,
+			Logger: appLogger.WithCron(),
 		})
 
-		hls.InitSettings(dataDir, appFs)
+		// HLS
+		hls.InitSettings(dataDir, appFs, appLogger.WithHLS())
 
+		// Router
 		router := api.NewRouter(&api.RouterConfig{
 			DbManager:     dbManager,
-			Logger:        logger,
+			Logger:        appLogger.WithAPI(),
 			AppFs:         appFs,
 			CourseScan:    courseScan,
 			FFmpeg:        ffmpeg,
@@ -110,25 +107,20 @@ var serveCmd = &cobra.Command{
 		// Check bootstrap status and generate token if needed
 		router.InitBootstrap()
 		if !router.IsBootstrapped() {
-			// Generate bootstrap token
 			bootstrapToken, err := auth.GenerateBootstrapToken(dataDir, appFs.Fs)
 			if err != nil {
-				utils.Errf("Failed to generate bootstrap token: %s", err)
+				mainLogger.Error().Err(err).Msg("Failed to generate bootstrap token")
 				os.Exit(1)
 			}
 
-			// Print bootstrap URL to console
 			bootstrapURL := fmt.Sprintf("http://%s/auth/bootstrap/%s", httpAddr, bootstrapToken.Token)
-			utils.Infof(
-				"%s %s\n",
-				"⚠️  Bootstrap required:",
-				color.CyanString(bootstrapURL),
-			)
-			utils.Infof("Token expires in 5 minutes\n")
+			mainLogger.Info().
+				Str("bootstrap_url", bootstrapURL).
+				Str("expires_in", "5 minutes").
+				Msg("Bootstrap required")
 		} else {
-			// Clean up any leftover bootstrap token files
 			auth.DeleteBootstrapToken(dataDir, appFs.Fs)
-			utils.Infof("Application bootstrapped\n")
+			mainLogger.Info().Msg("Application bootstrapped")
 		}
 
 		var wg sync.WaitGroup
@@ -146,19 +138,19 @@ var serveCmd = &cobra.Command{
 		go func() {
 			defer wg.Done()
 			if err := router.Serve(); err != nil {
-				utils.Errf("Failed to start router:: %s", err)
+				mainLogger.Error().Err(err).Msg("Failed to start router")
 				os.Exit(1)
 			}
 		}()
 
 		wg.Wait()
 
-		utils.Infof("Shutting down...")
+		mainLogger.Info().Msg("Shutting down...")
 
 		// Delete all scans
 		_, err = dbManager.DataDb.Exec("DELETE FROM " + models.SCAN_TABLE)
 		if err != nil {
-			utils.Errf("Failed to delete scans: %s", err)
+			mainLogger.Error().Err(err).Msg("Failed to delete scans")
 		}
 	},
 }
@@ -182,60 +174,4 @@ func init() {
 	_ = viper.BindPFlag("http", serveCmd.Flags().Lookup("http"))
 	_ = viper.BindPFlag("data-dir", serveCmd.Flags().Lookup("data-dir"))
 	_ = viper.BindPFlag("enable-signup", serveCmd.Flags().Lookup("enable-signup"))
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// loggerBeforeAddFunc is a logger.BeforeAddFn
-func loggerBeforeAddFn() logger.BeforeAddFn {
-	return func(ctx context.Context, log *logger.Log) bool {
-		// Skip calls to the logs API
-		if strings.HasPrefix(log.Message, "GET /api/logs") {
-			return false
-		}
-
-		// This should never happen as the logsDb should be nil, but in the event it is not, skip
-		// logging log writes as it will cause an infinite loop
-		if strings.HasPrefix(log.Message, "INSERT INTO "+models.LOG_TABLE) ||
-			strings.HasPrefix(log.Message, "SELECT "+models.LOG_TABLE) ||
-			strings.HasPrefix(log.Message, "UPDATE "+models.LOG_TABLE) ||
-			strings.HasPrefix(log.Message, "DELETE FROM "+models.LOG_TABLE) {
-			return false
-		}
-
-		return true
-	}
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// loggerWriteFn returns a logger.WriteFn that writes logs to the database
-func loggerWriteFn(db database.Database) logger.WriteFn {
-	return func(ctx context.Context, logs []*logger.Log) error {
-		logDao := dao.New(db)
-
-		// Write accumulated logs
-		db.RunInTransaction(ctx, func(txCtx context.Context) error {
-			model := &models.Log{}
-
-			for _, l := range logs {
-				model.ID = security.PseudorandomString(10)
-				model.Level = int(l.Level)
-				model.Message = l.Message
-				model.Data = l.Data
-				model.CreatedAt = l.Time
-				model.UpdatedAt = model.CreatedAt
-
-				// Write the log
-				err := logDao.CreateLog(txCtx, model)
-				if err != nil {
-					log.Println("Failed to write log", model, err)
-				}
-			}
-
-			return nil
-		})
-
-		return nil
-	}
 }

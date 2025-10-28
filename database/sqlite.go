@@ -265,16 +265,6 @@ func (c *compositeDb) DB() *sqlx.DB {
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// SetLogger sets the logger for both read and write databases
-//
-// It implements the Database interface
-func (c *compositeDb) SetLogger(l *slog.Logger) {
-	c.read.SetLogger(l)
-	c.write.SetLogger(l)
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // sqliteTx - Transaction wrapper
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -525,15 +515,6 @@ func (db *sqliteDb) RunInTransaction(ctx context.Context, fn func(context.Contex
 	}()
 
 	return fn(txCtx)
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// SetLogger sets the logger for the database
-//
-// It implements the Database interface
-func (db *sqliteDb) SetLogger(l *slog.Logger) {
-	db.config.Logger = l
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -2,8 +2,6 @@ package hls
 
 import (
 	"time"
-
-	"github.com/geerew/off-course/utils"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -49,7 +47,10 @@ func (t *Tracker) start() {
 
 			for assetID, lastUsed := range t.lastUsage {
 				if time.Since(lastUsed) > 2*time.Hour {
-					utils.Infof("HLS: Cleaning up old stream for asset %s (last used %v ago)\n", assetID, time.Since(lastUsed))
+					Settings.Logger.Debug().
+						Str("asset_id", assetID).
+						Dur("last_used_ago", time.Since(lastUsed)).
+						Msg("Cleaning up old stream")
 					t.DestroyStreamIfOld(assetID)
 					delete(t.lastUsage, assetID)
 				}

@@ -36,14 +36,13 @@ func createTestRouter(t *testing.T) *Router {
 func createTestRouterWithDataDir(t *testing.T, dataDir string) *Router {
 	t.Helper()
 
-	// Logger
-	logger, _, err := logger.InitLogger(&logger.BatchOptions{
-		BatchSize: 1,
-		WriteFn:   logger.NilWriteFn(),
+	// Create a test logger
+	testLogger := logger.New(&logger.Config{
+		Level:         logger.LevelInfo,
+		ConsoleOutput: false, // Disable console output for tests
 	})
-	require.NoError(t, err, "Failed to initialize logger")
 
-	appFs := appfs.New(afero.NewMemMapFs(), logger)
+	appFs := appfs.New(afero.NewMemMapFs())
 
 	dbManager, err := database.NewSQLiteManager(&database.DatabaseManagerConfig{
 		DataDir: dataDir,
@@ -59,7 +58,7 @@ func createTestRouterWithDataDir(t *testing.T, dataDir string) *Router {
 	courseScan := coursescan.New(&coursescan.CourseScanConfig{
 		Db:     dbManager.DataDb,
 		AppFs:  appFs,
-		Logger: logger,
+		Logger: testLogger.WithCourseScan(),
 		FFmpeg: ffmpeg,
 	})
 
@@ -69,7 +68,7 @@ func createTestRouterWithDataDir(t *testing.T, dataDir string) *Router {
 		AppFs:         appFs,
 		CourseScan:    courseScan,
 		FFmpeg:        ffmpeg,
-		Logger:        logger,
+		Logger:        testLogger.WithAPI(),
 		SignupEnabled: true,
 		DataDir:       dataDir,
 		Testing:       true,
@@ -80,6 +79,7 @@ func createTestRouterWithDataDir(t *testing.T, dataDir string) *Router {
 		config: config,
 		dao:    dao.New(config.DbManager.DataDb),
 		logDao: dao.New(config.DbManager.LogsDb),
+		logger: config.Logger,
 	}
 
 	router.createSessionStore()

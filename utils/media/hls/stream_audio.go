@@ -2,8 +2,6 @@ package hls
 
 import (
 	"fmt"
-
-	"github.com/geerew/off-course/utils"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -18,12 +16,16 @@ type AudioStream struct {
 
 // NewAudioStream creates a new audio stream for the given file and index
 func NewAudioStream(sw *StreamWrapper, audioIndex uint32) (*AudioStream, error) {
-	utils.Infof("HLS: Creating an audio stream %d for %s\n", audioIndex, sw.Info.Path)
+	Settings.Logger.Debug().
+		Uint32("audio_index", audioIndex).
+		Str("path", sw.Info.Path).
+		Msg("Creating an audio stream")
 
 	audioStream := &AudioStream{
 		Stream: Stream{
 			streamWrapper: sw,
 			heads:         make([]Head, 0),
+			logger:        Settings.Logger,
 		},
 		index: audioIndex,
 	}

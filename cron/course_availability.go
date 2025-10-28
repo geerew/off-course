@@ -2,13 +2,13 @@ package cron
 
 import (
 	"context"
-	"log/slog"
 	"os"
 
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/appfs"
+	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/pagination"
 	"github.com/geerew/off-course/utils/types"
 )
@@ -17,14 +17,14 @@ type courseAvailability struct {
 	db        database.Database
 	dao       *dao.DAO
 	appFs     *appfs.AppFs
-	logger    *slog.Logger
+	logger    *logger.Logger
 	batchSize int
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (ca *courseAvailability) run() error {
-	ca.logger.Debug("Updating course availability", slog.String("type", "cron"))
+	ca.logger.Debug().Str("type", "cron").Msg("Updating course availability")
 	perPage := 100
 	page := 1
 	totalPages := 1
@@ -45,13 +45,7 @@ func (ca *courseAvailability) run() error {
 		// Fetch a batch of courses
 		courses, err := ca.dao.ListCourses(ctx, dbOpts)
 		if err != nil {
-			attrs := []any{
-				loggerType,
-				slog.String("error", err.Error()),
-			}
-
-			ca.logger.Error("Failed to fetch courses", attrs...)
-
+			ca.logger.Error().Err(err).Msg("Failed to fetch courses")
 			return err
 		}
 
@@ -71,14 +65,11 @@ func (ca *courseAvailability) run() error {
 					}
 				} else {
 					// Failed to check the availability of the course
-					attrs := []any{
-						loggerType,
-						slog.String("course", course.Title),
-						slog.String("path", course.Path),
-						slog.String("error", err.Error()),
-					}
-
-					ca.logger.Error("Failed to stat course", attrs...)
+					ca.logger.Error().
+						Err(err).
+						Str("course", course.Title).
+						Str("path", course.Path).
+						Msg("Failed to stat course")
 
 					return err
 				}
@@ -123,11 +114,6 @@ func (ca *courseAvailability) writeAll(ctx context.Context, courses []*models.Co
 	})
 
 	if err != nil {
-		attrs := []any{
-			loggerType,
-			slog.String("error", err.Error()),
-		}
-
-		ca.logger.Error("Failed to update course availability", attrs...)
+		ca.logger.Error().Err(err).Msg("Failed to update course availability")
 	}
 }

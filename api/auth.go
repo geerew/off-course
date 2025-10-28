@@ -117,7 +117,7 @@ func (api authAPI) bootstrap(c *fiber.Ctx) error {
 	// Validate bootstrap token
 	_, err := auth.ValidateBootstrapToken(token, api.r.config.DataDir, api.r.config.AppFs.Fs)
 	if err != nil {
-		api.r.config.Logger.Error("Invalid bootstrap token", "error", err)
+		api.r.logger.Error().Err(err).Msg("Invalid bootstrap token")
 		return errorResponse(c, fiber.StatusUnauthorized, "Invalid or expired bootstrap token", nil)
 	}
 

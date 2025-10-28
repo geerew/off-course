@@ -1,98 +1,217 @@
 package logger
 
 import (
-	"context"
-	"fmt"
-	"log/slog"
-	"sync"
-	"time"
+	"io"
+	"os"
 
-	"github.com/geerew/off-course/utils/types"
+	"github.com/rs/zerolog"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-type Log struct {
-	Time    types.DateTime
-	Message string
-	Level   slog.Level
-	Data    types.JsonMap
+// LogLevel represents the log level
+type LogLevel int
+
+const (
+	LevelDebug LogLevel = -1
+	LevelInfo  LogLevel = 0
+	LevelError LogLevel = 1
+)
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Config holds the logger configuration
+type Config struct {
+	// Level sets the minimum log level (Debug, Info, Error)
+	Level LogLevel
+
+	// ConsoleOutput enables pretty console output
+	ConsoleOutput bool
+
+	// DbWriter is an optional writer for database logging
+	DbWriter io.Writer
+
+	// AdditionalWriters for any custom outputs
+	AdditionalWriters []io.Writer
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// InitLogger initializes a logger with a batch handler
-//
-// During testing, the batchSize should be set to 1 to ensure that logs are written immediately
-func InitLogger(options *BatchOptions) (*slog.Logger, chan bool, error) {
-	duration := 3 * time.Second
-	ticker := time.NewTicker(duration)
-	done := make(chan bool)
-
-	handler := NewBatchHandler(BatchOptions{
-		Level:       slog.LevelDebug,
-		BatchSize:   options.BatchSize,
-		BeforeAddFn: options.BeforeAddFn,
-		WriteFn:     options.WriteFn,
-	})
-
-	go func() {
-		ctx := context.Background()
-
-		for {
-			select {
-			case <-done:
-				handler.WriteAll(ctx)
-				return
-			case <-ticker.C:
-				handler.WriteAll(ctx)
-			}
-		}
-	}()
-
-	logger := slog.New(handler)
-
-	return logger, done, nil
+// Logger wraps zerolog.Logger with component support
+type Logger struct {
+	zlog      zerolog.Logger
+	component string
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// BasicWriteFn is a WriteFn that writes logs to stdout
-func BasicWriteFn() WriteFn {
-	return func(ctx context.Context, logs []*Log) error {
-		for _, l := range logs {
-			fmt.Println(l.Level, l.Message, l.Data)
+// New creates a new Logger with the specified configuration
+func New(config *Config) *Logger {
+	if config == nil {
+		config = &Config{
+			Level:         LevelInfo,
+			ConsoleOutput: true,
 		}
-		return nil
+	}
+
+	// Collect all writers
+	writers := []io.Writer{}
+
+	// Add console output if enabled
+	if config.ConsoleOutput {
+		consoleWriter := zerolog.ConsoleWriter{
+			Out:        os.Stdout,
+			TimeFormat: "2006-01-02 15:04:05",
+			NoColor:    false,
+		}
+		writers = append(writers, consoleWriter)
+	}
+
+	// Add database writer if provided
+	if config.DbWriter != nil {
+		writers = append(writers, config.DbWriter)
+	}
+
+	// Add any additional writers
+	writers = append(writers, config.AdditionalWriters...)
+
+	// Create multi-writer
+	var output io.Writer
+	if len(writers) == 0 {
+		output = io.Discard
+	} else if len(writers) == 1 {
+		output = writers[0]
+	} else {
+		output = zerolog.MultiLevelWriter(writers...)
+	}
+
+	// Create zerolog logger
+	zlog := zerolog.New(output).With().Timestamp().Logger()
+
+	// Set log level
+	switch config.Level {
+	case LevelDebug:
+		zlog = zlog.Level(zerolog.DebugLevel)
+	case LevelInfo:
+		zlog = zlog.Level(zerolog.InfoLevel)
+	case LevelError:
+		zlog = zlog.Level(zerolog.ErrorLevel)
+	default:
+		zlog = zlog.Level(zerolog.InfoLevel)
+	}
+
+	return &Logger{
+		zlog: zlog,
 	}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// NilWriteFn is a WriteFn that does nothing
-func NilWriteFn() WriteFn {
-	return func(ctx context.Context, logs []*Log) error {
-		return nil
+// Component-specific logger creators for type safety
+
+// WithMain creates a logger for the main application component
+func (l *Logger) WithMain() *Logger {
+	return l.withComponent("main")
+}
+
+// WithAPI creates a logger for the API component
+func (l *Logger) WithAPI() *Logger {
+	return l.withComponent("api")
+}
+
+// WithHLS creates a logger for the HLS transcoding component
+func (l *Logger) WithHLS() *Logger {
+	return l.withComponent("hls")
+}
+
+// WithCourseScan creates a logger for the course scanning component
+func (l *Logger) WithCourseScan() *Logger {
+	return l.withComponent("coursescan")
+}
+
+// WithCron creates a logger for the cron jobs component
+func (l *Logger) WithCron() *Logger {
+	return l.withComponent("cron")
+}
+
+// WithAppFS creates a logger for the app filesystem component
+func (l *Logger) WithAppFS() *Logger {
+	return l.withComponent("appfs")
+}
+
+// WithDB creates a logger for the database component
+func (l *Logger) WithDB() *Logger {
+	return l.withComponent("db")
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// withComponent creates a new Logger with the specified component (internal use)
+func (l *Logger) withComponent(component string) *Logger {
+	return &Logger{
+		zlog:      l.zlog.With().Str("component", component).Logger(),
+		component: component,
 	}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// TestWriteFn is a WriteFn that writes logs to a slice. For use in tests
-//
-// Example:
-//
-//	var logs []*logger.Log
-//	var logsMux sync.Mutex
-//	logger, _, err := logger.InitLogger(&logger.BatchOptions{
-//		BatchSize: 1,
-//		WriteFn:   logger.TestWriteFn(&logs, &logsMux),
-//	})
-func TestWriteFn(logs *[]*Log, mux *sync.Mutex) WriteFn {
-	return func(ctx context.Context, newLogs []*Log) error {
-		mux.Lock()
-		defer mux.Unlock()
-		*logs = append(*logs, newLogs...)
-		return nil
+// Debug returns a debug level event
+func (l *Logger) Debug() *zerolog.Event {
+	return l.zlog.Debug()
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Info returns an info level event
+func (l *Logger) Info() *zerolog.Event {
+	return l.zlog.Info()
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Error returns an error level event
+func (l *Logger) Error() *zerolog.Event {
+	return l.zlog.Error()
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Warn returns a warn level event (for compatibility, maps to Info in our 3-level system)
+func (l *Logger) Warn() *zerolog.Event {
+	return l.zlog.Warn()
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetZerolog returns the underlying zerolog.Logger for advanced usage
+func (l *Logger) GetZerolog() zerolog.Logger {
+	return l.zlog
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Component returns the current component name
+func (l *Logger) Component() string {
+	return l.component
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// NilLogger creates a logger that discards all output (useful for tests)
+func NilLogger() *Logger {
+	zlog := zerolog.New(io.Discard)
+	return &Logger{
+		zlog: zlog,
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// TestLogger creates a logger that writes to the provided writer (useful for tests)
+func TestLogger(writer io.Writer) *Logger {
+	zlog := zerolog.New(writer).With().Timestamp().Logger()
+	return &Logger{
+		zlog: zlog,
 	}
 }

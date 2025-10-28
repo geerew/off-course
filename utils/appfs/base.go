@@ -3,23 +3,15 @@ package appfs
 import (
 	"fmt"
 	"io/fs"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/geerew/off-course/utils"
-	"github.com/geerew/off-course/utils/types"
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/spf13/afero"
-)
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-var (
-	loggerType = slog.Any("type", types.LogTypeFileSystem)
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -28,17 +20,15 @@ var (
 // eases testing, as we can dynamically injection to pass a real fs or
 // an in-mem fs
 type AppFs struct {
-	Fs     afero.Fs
-	logger *slog.Logger
+	Fs afero.Fs
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // New create a new filesystem
-func New(fs afero.Fs, logger *slog.Logger) *AppFs {
+func New(fs afero.Fs) *AppFs {
 	return &AppFs{
-		Fs:     fs,
-		logger: logger,
+		Fs: fs,
 	}
 }
 
@@ -49,13 +39,6 @@ func New(fs afero.Fs, logger *slog.Logger) *AppFs {
 type PathContents struct {
 	Files       []fs.FileInfo
 	Directories []fs.FileInfo
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// SetLogger sets the logger for the filesystem
-func (appFs *AppFs) SetLogger(l *slog.Logger) {
-	appFs.logger = l
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -127,12 +110,7 @@ func (appFs AppFs) AvailableDrives() ([]string, error) {
 	// Lookup system
 	kernel, err := host.KernelVersion()
 	if err != nil {
-		appFs.logger.Error(
-			"Failed to lookup kernel version",
-			slog.String("error", err.Error()),
-			loggerType,
-		)
-		return nil, fmt.Errorf("failed to lookup system information")
+		return nil, fmt.Errorf("failed to lookup system information: %w", err)
 	}
 
 	// WSL
@@ -151,25 +129,13 @@ func (appFs AppFs) AvailableDrives() ([]string, error) {
 func (appFs AppFs) PathItems(path string) ([]string, error) {
 	f, err := appFs.Fs.Open(path)
 	if err != nil {
-		appFs.logger.Error(
-			"Unable to open path",
-			slog.String("error", err.Error()),
-			slog.String("path", path),
-			loggerType,
-		)
-		return nil, fmt.Errorf("unable to open path")
+		return nil, fmt.Errorf("unable to open path %s: %w", path, err)
 	}
 
 	// List the items at the path
 	items, err := f.Readdirnames(-1)
 	if err != nil {
-		appFs.logger.Error(
-			"Unable to read path",
-			slog.String("error", err.Error()),
-			slog.String("path", path),
-			loggerType,
-		)
-		return nil, fmt.Errorf("unable to read path")
+		return nil, fmt.Errorf("unable to read path %s: %w", path, err)
 	}
 
 	return items, nil
@@ -225,12 +191,7 @@ func (appFs AppFs) nonWslDrives() ([]string, error) {
 
 	partitions, err := disk.Partitions(false)
 	if err != nil {
-		appFs.logger.Error(
-			"Failed to list drives",
-			slog.String("error", err.Error()),
-			loggerType,
-		)
-		return nil, fmt.Errorf("failed to list drives")
+		return nil, fmt.Errorf("failed to list drives: %w", err)
 	}
 
 	for _, partition := range partitions {

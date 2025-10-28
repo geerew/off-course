@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/geerew/off-course/utils/appfs"
-	"github.com/geerew/off-course/utils/logger"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 )
@@ -16,15 +15,8 @@ import (
 func setupSqliteDB(t *testing.T) *DatabaseManager {
 	t.Helper()
 
-	// Logger
-	logger, _, err := logger.InitLogger(&logger.BatchOptions{
-		BatchSize: 1,
-		WriteFn:   logger.NilWriteFn(),
-	})
-	require.NoError(t, err, "Failed to initialize logger")
-
 	// Filesystem
-	appFs := appfs.New(afero.NewMemMapFs(), logger)
+	appFs := appfs.New(afero.NewMemMapFs())
 
 	// DB
 	dbManager, err := NewSQLiteManager(&DatabaseManagerConfig{
@@ -47,13 +39,8 @@ func setupSqliteDB(t *testing.T) *DatabaseManager {
 
 func TestSqliteDb_Bootstrap(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		logger, _, err := logger.InitLogger(&logger.BatchOptions{
-			BatchSize: 1,
-			WriteFn:   logger.NilWriteFn(),
-		})
-		require.NoError(t, err)
 
-		appFs := appfs.New(afero.NewMemMapFs(), logger)
+		appFs := appfs.New(afero.NewMemMapFs())
 
 		db, err := newSqliteDb(&databaseConfig{
 			DataDir:    "./oc_data",
@@ -69,13 +56,7 @@ func TestSqliteDb_Bootstrap(t *testing.T) {
 	})
 
 	t.Run("error creating data.db", func(t *testing.T) {
-		logger, _, err := logger.InitLogger(&logger.BatchOptions{
-			BatchSize: 1,
-			WriteFn:   logger.NilWriteFn(),
-		})
-		require.NoError(t, err)
-
-		appFs := appfs.New(afero.NewReadOnlyFs(afero.NewMemMapFs()), logger)
+		appFs := appfs.New(afero.NewReadOnlyFs(afero.NewMemMapFs()))
 
 		db, err := newSqliteDb(&databaseConfig{
 			DataDir:    "./oc_data",
@@ -91,13 +72,7 @@ func TestSqliteDb_Bootstrap(t *testing.T) {
 	})
 
 	t.Run("invalid migration", func(t *testing.T) {
-		logger, _, err := logger.InitLogger(&logger.BatchOptions{
-			BatchSize: 1,
-			WriteFn:   logger.NilWriteFn(),
-		})
-		require.NoError(t, err)
-
-		appFs := appfs.New(afero.NewMemMapFs(), logger)
+		appFs := appfs.New(afero.NewMemMapFs())
 
 		db, err := newSqliteDb(&databaseConfig{
 			DataDir:    "./oc_data",
