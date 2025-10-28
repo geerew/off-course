@@ -24,7 +24,7 @@ import (
 
 func TestUsers_GetUsers(t *testing.T) {
 	t.Run("200 (empty)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		// Remove the admin user
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: "admin"})
@@ -40,7 +40,7 @@ func TestUsers_GetUsers(t *testing.T) {
 	})
 
 	t.Run("200 (found)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		// Remove the admin user
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: "admin"})
@@ -66,7 +66,7 @@ func TestUsers_GetUsers(t *testing.T) {
 	})
 
 	t.Run("200 (sort)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		// Remove the admin user
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: "admin"})
@@ -109,7 +109,7 @@ func TestUsers_GetUsers(t *testing.T) {
 	})
 
 	t.Run("200 (pagination)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		// Remove the admin user
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: "admin"})
@@ -162,7 +162,7 @@ func TestUsers_GetUsers(t *testing.T) {
 	})
 
 	t.Run("200 (filter)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		// Remove the admin user
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: "admin"})
@@ -234,7 +234,7 @@ func TestUsers_GetUsers(t *testing.T) {
 	})
 
 	t.Run("403 (not admin)", func(t *testing.T) {
-		router, _ := setup(t, "user", types.UserRoleUser)
+		router, _ := setupUser(t)
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/", nil))
 		require.NoError(t, err)
@@ -243,7 +243,7 @@ func TestUsers_GetUsers(t *testing.T) {
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		// Drop the users table
 		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.USER_TABLE)
@@ -260,7 +260,7 @@ func TestUsers_GetUsers(t *testing.T) {
 
 func TestUsers_CreateUser(t *testing.T) {
 	t.Run("201 (created)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/users/", strings.NewReader(`{"username": "testuser", "password": "1234"}`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -271,7 +271,7 @@ func TestUsers_CreateUser(t *testing.T) {
 	})
 
 	t.Run("400 (bind error)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/users/", strings.NewReader(`{`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -283,7 +283,7 @@ func TestUsers_CreateUser(t *testing.T) {
 	})
 
 	t.Run("400 (invalid data)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		// Missing username
 		req := httptest.NewRequest(http.MethodPost, "/api/users/", strings.NewReader(`{"username": ""}`))
@@ -305,7 +305,7 @@ func TestUsers_CreateUser(t *testing.T) {
 	})
 
 	t.Run("400 (existing user)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/users/", strings.NewReader(`{"username": "testuser", "password": "1234" }`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -321,7 +321,7 @@ func TestUsers_CreateUser(t *testing.T) {
 	})
 
 	t.Run("403 (not admin)", func(t *testing.T) {
-		router, _ := setup(t, "user", types.UserRoleUser)
+		router, _ := setupUser(t)
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodPost, "/api/users/", nil))
 		require.NoError(t, err)
@@ -330,7 +330,7 @@ func TestUsers_CreateUser(t *testing.T) {
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.USER_TABLE)
 		require.NoError(t, err)
@@ -349,7 +349,7 @@ func TestUsers_CreateUser(t *testing.T) {
 
 func TestUsers_UpdateUser(t *testing.T) {
 	t.Run("200 (found)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		user := &models.User{
 			Username:     "test",
@@ -401,7 +401,7 @@ func TestUsers_UpdateUser(t *testing.T) {
 	})
 
 	t.Run("400 (invalid data)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		req := httptest.NewRequest(http.MethodPut, "/api/users/invalid", strings.NewReader(`invalid`))
 		req.Header.Set("Content-Type", "application/json")
@@ -413,7 +413,7 @@ func TestUsers_UpdateUser(t *testing.T) {
 	})
 
 	t.Run("400 (nothing to update)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		req := httptest.NewRequest(http.MethodPut, "/api/users/invalid", strings.NewReader(`{"invalid": "invalid"}`))
 		req.Header.Set("Content-Type", "application/json")
@@ -425,7 +425,7 @@ func TestUsers_UpdateUser(t *testing.T) {
 	})
 
 	t.Run("404 (user not found)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		req := httptest.NewRequest(http.MethodPut, "/api/users/invalid", strings.NewReader(`{"displayName": "Admin"}`))
 		req.Header.Set("Content-Type", "application/json")
@@ -437,7 +437,7 @@ func TestUsers_UpdateUser(t *testing.T) {
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.USER_TABLE)
 		require.NoError(t, err)
@@ -456,7 +456,7 @@ func TestUsers_UpdateUser(t *testing.T) {
 
 func TestUsers_DeleteUser(t *testing.T) {
 	t.Run("204 (deleted)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		users := []*models.User{}
 		for i := range 5 {
@@ -481,7 +481,7 @@ func TestUsers_DeleteUser(t *testing.T) {
 	})
 
 	t.Run("204 (not found)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/users/invalid", nil))
 		require.NoError(t, err)
@@ -489,7 +489,7 @@ func TestUsers_DeleteUser(t *testing.T) {
 	})
 
 	t.Run("403 (not admin)", func(t *testing.T) {
-		router, _ := setup(t, "user", types.UserRoleUser)
+		router, _ := setupUser(t)
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/users/test", nil))
 		require.NoError(t, err)
@@ -498,7 +498,7 @@ func TestUsers_DeleteUser(t *testing.T) {
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.USER_TABLE)
 		require.NoError(t, err)

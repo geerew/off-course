@@ -48,6 +48,29 @@ func getCachedFFmpeg(t *testing.T) *media.FFmpeg {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// setupAdmin creates a test router with an admin user
+func setupAdmin(t *testing.T) (*Router, context.Context) {
+	return setup(t, "admin", types.UserRoleAdmin)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// setupUser creates a test router with a regular user
+func setupUser(t *testing.T) (*Router, context.Context) {
+	return setup(t, "user", types.UserRoleUser)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// setupNoAuth creates a test router without authentication
+//
+// Note: role doesn't matter when no auth
+func setupNoAuth(t *testing.T) (*Router, context.Context) {
+	return setup(t, "", types.UserRoleUser)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // setup creates a test router
 func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Context) {
 	t.Helper()
@@ -96,42 +119,57 @@ func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Conte
 		CourseScan:    courseScan,
 		Logger:        testLogger.WithAPI(),
 		SignupEnabled: true,
+	}
 
-		// Use dev auth via middleware factory
-		Middleware: []MiddlewareFactory{
+	// Configure middleware based on whether we have auth
+	if id != "" {
+		// Use dev auth for normal tests
+		config.Middleware = []MiddlewareFactory{
 			func(r *Router) fiber.Handler { return devAuthMiddleware(id, role) },
-		},
+		}
+	} else {
+		// Use CORS-only for recovery tests
+		config.Middleware = []MiddlewareFactory{
+			func(r *Router) fiber.Handler { return corsMiddleWare() },
+		}
 	}
 
 	router := NewRouter(config)
 
-	// Create user
-	user := models.User{
-		Base: models.Base{
-			ID: id,
-		},
-		Username:     id,
-		Role:         role,
-		PasswordHash: "password",
-		DisplayName:  "Test User",
+	// Create user only if we have auth
+	if id != "" {
+		user := models.User{
+			Base: models.Base{
+				ID: id,
+			},
+			Username:     id,
+			Role:         role,
+			PasswordHash: "password",
+			DisplayName:  "Test User",
+		}
+		require.NoError(t, router.dao.CreateUser(context.Background(), &user))
 	}
-	require.NoError(t, router.dao.CreateUser(context.Background(), &user))
 
 	// Initialize bootstrap
 	router.InitBootstrap()
 
 	ctx := context.Background()
-	principal := types.Principal{
-		UserID: id,
-		Role:   role,
+
+	// Add principal to context only if we have auth
+	if id != "" {
+		principal := types.Principal{
+			UserID: id,
+			Role:   role,
+		}
+		ctx = context.WithValue(ctx, types.PrincipalContextKey, principal)
 	}
-	ctx = context.WithValue(ctx, types.PrincipalContextKey, principal)
 
 	return router, ctx
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// requestHelper sends a request to the router and returns the status code and body
 func requestHelper(t *testing.T, router *Router, req *http.Request) (int, []byte, error) {
 	t.Helper()
 
@@ -146,6 +184,7 @@ func requestHelper(t *testing.T, router *Router, req *http.Request) (int, []byte
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// unmarshalHelper unmarshals a body into a pagination result and a slice of items
 func unmarshalHelper[T any](t *testing.T, body []byte) (pagination.PaginationResult, []T) {
 	t.Helper()
 

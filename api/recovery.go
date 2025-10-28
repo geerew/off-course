@@ -7,6 +7,7 @@ import (
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
+	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/auth"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/types"
@@ -19,6 +20,7 @@ type recoveryAPI struct {
 	dao     *dao.DAO
 	logger  *logger.Logger
 	dataDir string
+	appFs   *appfs.AppFs
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -36,6 +38,7 @@ func (r *Router) initRecoveryRoutes() {
 		dao:     r.dao,
 		logger:  r.config.Logger,
 		dataDir: r.config.DataDir,
+		appFs:   r.config.AppFs,
 	}
 
 	// Recovery endpoint - no authentication required (validates via token file)
@@ -56,7 +59,7 @@ func (api recoveryAPI) resetPassword(c *fiber.Ctx) error {
 	}
 
 	// Validate recovery token
-	recoveryToken, err := auth.ValidateRecoveryToken(req.Token, api.dataDir)
+	recoveryToken, err := auth.ValidateRecoveryToken(api.appFs, req.Token, api.dataDir)
 	if err != nil {
 		api.logger.Error().Err(err).Msg("Invalid recovery token")
 		return errorResponse(c, fiber.StatusUnauthorized, "Invalid or expired recovery token", nil)
@@ -98,7 +101,7 @@ func (api recoveryAPI) resetPassword(c *fiber.Ctx) error {
 		Msg("Admin password reset via recovery token")
 
 	// Delete the recovery token file
-	if err := auth.DeleteRecoveryToken(api.dataDir); err != nil {
+	if err := auth.DeleteRecoveryToken(api.appFs, api.dataDir); err != nil {
 		api.logger.Error().Err(err).Msg("Failed to delete recovery token file")
 		// Don't fail the request, just log the error
 	}

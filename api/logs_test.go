@@ -19,7 +19,7 @@ import (
 
 func TestLogs_GetLogs(t *testing.T) {
 	t.Run("200 (empty)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/logs/", nil))
 		require.NoError(t, err)
@@ -31,7 +31,7 @@ func TestLogs_GetLogs(t *testing.T) {
 	})
 
 	t.Run("200 (found)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		for i := range 5 {
 			log := &models.Log{
@@ -53,7 +53,7 @@ func TestLogs_GetLogs(t *testing.T) {
 	})
 
 	t.Run("200 (filter)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		require.NoError(t, router.logDao.CreateLog(ctx, &models.Log{Data: map[string]any{"type": types.LogTypeRequest.String()}, Level: -4, Message: "log 1"}))
 		time.Sleep(1 * time.Millisecond)
@@ -115,7 +115,7 @@ func TestLogs_GetLogs(t *testing.T) {
 	})
 
 	t.Run("200 (pagination)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		for i := range 17 {
 			require.Nil(t, router.logDao.CreateLog(ctx, &models.Log{Data: map[string]any{}, Level: 0, Message: fmt.Sprintf("log %d", i+1)}))
@@ -155,7 +155,7 @@ func TestLogs_GetLogs(t *testing.T) {
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		// Drop the courses table
 		_, err := router.config.DbManager.LogsDb.Exec("DROP TABLE IF EXISTS " + models.LOG_TABLE)
@@ -170,7 +170,7 @@ func TestLogs_GetLogs(t *testing.T) {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func TestLogs_GetLogTypes(t *testing.T) {
-	router, _ := setup(t, "admin", types.UserRoleAdmin)
+	router, _ := setupAdmin(t)
 
 	status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/logs/types", nil))
 	require.NoError(t, err)
