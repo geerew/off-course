@@ -185,6 +185,46 @@ func (appFs AppFs) recursivelyReadDir(path string, maxDepth, currDepth int) ([]s
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// RemoveAllContents removes all files and directories within the specified path
+//
+// The directory itself is not removed, only its contents. If the path doesn't exist or is not
+// a directory, an error is returned
+func (appFs AppFs) RemoveAllContents(path string) error {
+	path = utils.NormalizeWindowsDrive(path)
+
+	// Check if the path exists and is a directory
+	fileInfo, err := appFs.Fs.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return &fs.PathError{Op: "removeall", Path: path, Err: fs.ErrNotExist}
+		}
+		return fmt.Errorf("unable to stat path %s: %w", path, err)
+	}
+
+	if !fileInfo.IsDir() {
+		return fmt.Errorf("path %s is not a directory", path)
+	}
+
+	// Get all items in the directory
+	items, err := appFs.PathItems(path)
+	if err != nil {
+		return fmt.Errorf("unable to read directory %s: %w", path, err)
+	}
+
+	// Remove each item
+	for _, item := range items {
+		fullPath := filepath.Join(path, item)
+
+		if err := appFs.Fs.RemoveAll(fullPath); err != nil {
+			return fmt.Errorf("unable to remove %s: %w", fullPath, err)
+		}
+	}
+
+	return nil
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // nonWslDrives builds a list of available drives for non-wsl systems via `gopsutil`
 func (appFs AppFs) nonWslDrives() ([]string, error) {
 	var drives []string

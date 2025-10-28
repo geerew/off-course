@@ -49,11 +49,6 @@ func (s *SqliteStorage) Get(key string) ([]byte, error) {
 		return nil, err
 	}
 
-	if session == nil {
-		return nil, nil
-	}
-
-	// If the expiration time has already passed, then return nil
 	if session == nil || (session.Expires != 0 && session.Expires <= time.Now().Unix()) {
 		return nil, nil
 	}

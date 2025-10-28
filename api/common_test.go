@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/appfs"
@@ -71,7 +72,14 @@ func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Conte
 	ffmpeg := getCachedFFmpeg(t)
 
 	// Initialize HLS settings
-	hls.InitSettings("./oc_data", appFs, testLogger.WithHLS())
+	transcoder, err := hls.NewTranscoder(&hls.TranscoderConfig{
+		CachePath: "./oc_data",
+		AppFs:     appFs,
+		Logger:    testLogger.WithHLS(),
+		Dao:       dao.New(dbManager.DataDb),
+	})
+	require.NoError(t, err)
+	require.NotNil(t, transcoder)
 
 	courseScan := coursescan.New(&coursescan.CourseScanConfig{
 		Db:     dbManager.DataDb,

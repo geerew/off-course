@@ -11,6 +11,7 @@ import (
 
 	"github.com/geerew/off-course/api"
 	"github.com/geerew/off-course/cron"
+	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/appfs"
@@ -89,7 +90,17 @@ var serveCmd = &cobra.Command{
 		})
 
 		// HLS
-		hls.InitSettings(dataDir, appFs, appLogger.WithHLS())
+		transcoder, err := hls.NewTranscoder(&hls.TranscoderConfig{
+			CachePath: dataDir,
+			AppFs:     appFs,
+			Logger:    appLogger.WithHLS(),
+			Dao:       dao.New(dbManager.DataDb),
+		})
+
+		if err != nil {
+			mainLogger.Error().Err(err).Msg("Failed to create HLS transcoder")
+			os.Exit(1)
+		}
 
 		// Router
 		router := api.NewRouter(&api.RouterConfig{
@@ -102,6 +113,7 @@ var serveCmd = &cobra.Command{
 			IsProduction:  !isDev,
 			SignupEnabled: enableSignup,
 			DataDir:       dataDir,
+			Transcoder:    transcoder,
 		})
 
 		// Check bootstrap status and generate token if needed

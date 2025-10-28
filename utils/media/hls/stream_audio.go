@@ -15,23 +15,22 @@ type AudioStream struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // NewAudioStream creates a new audio stream for the given file and index
-func NewAudioStream(sw *StreamWrapper, audioIndex uint32) (*AudioStream, error) {
-	Settings.Logger.Debug().
+func NewAudioStream(streamWrapper *StreamWrapper, audioIndex uint32) (*AudioStream, error) {
+	streamWrapper.config.Logger.Debug().
 		Uint32("audio_index", audioIndex).
-		Str("path", sw.Info.Path).
+		Str("path", streamWrapper.Info.Path).
 		Msg("Creating an audio stream")
 
 	audioStream := &AudioStream{
 		Stream: Stream{
-			streamWrapper: sw,
+			streamWrapper: streamWrapper,
 			heads:         make([]Head, 0),
-			logger:        Settings.Logger,
 		},
 		index: audioIndex,
 	}
 
 	audioStream.streamer = audioStream
-	audioStream.keyframes = getKeyframes(sw)
+	audioStream.keyframes = getKeyframes(streamWrapper)
 	audioStream.initializeSegments()
 
 	return audioStream, nil

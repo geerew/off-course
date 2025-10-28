@@ -16,6 +16,7 @@ import (
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/media"
+	"github.com/geerew/off-course/utils/media/hls"
 	"github.com/geerew/off-course/utils/session"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
@@ -45,6 +46,7 @@ type RouterConfig struct {
 	AppFs         *appfs.AppFs
 	CourseScan    *coursescan.CourseScan
 	FFmpeg        *media.FFmpeg
+	Transcoder    *hls.Transcoder
 	HttpAddr      string
 	IsProduction  bool
 	SignupEnabled bool
