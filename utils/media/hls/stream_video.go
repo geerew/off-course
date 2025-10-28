@@ -2,8 +2,6 @@ package hls
 
 import (
 	"fmt"
-
-	"github.com/geerew/off-course/utils"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -19,12 +17,11 @@ type VideoStream struct {
 
 // NewVideoStream creates a new video stream for the given file, index and quality
 func NewVideoStream(sw *StreamWrapper, videoIndex uint32, quality Quality) (*VideoStream, error) {
-	utils.Infof(
-		"HLS: Creating a new video stream for %s (index %d) in quality %s\n",
-		sw.Info.Path,
-		videoIndex,
-		quality,
-	)
+	Settings.Logger.Debug().
+		Str("path", sw.Info.Path).
+		Uint32("video_index", videoIndex).
+		Str("quality", string(quality)).
+		Msg("Creating a new video stream")
 
 	// Find the video metadata from the file's info
 	var video *Video
@@ -43,6 +40,7 @@ func NewVideoStream(sw *StreamWrapper, videoIndex uint32, quality Quality) (*Vid
 		Stream: Stream{
 			streamWrapper: sw,
 			heads:         make([]Head, 0),
+			logger:        Settings.Logger,
 		},
 		quality: quality,
 		video:   video,

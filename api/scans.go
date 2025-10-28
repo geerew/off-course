@@ -1,8 +1,6 @@
 package api
 
 import (
-	"log/slog"
-
 	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
@@ -10,6 +8,7 @@ import (
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/coursescan"
+	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
 )
@@ -17,7 +16,7 @@ import (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type scansAPI struct {
-	logger     *slog.Logger
+	logger     *logger.Logger
 	appFs      *appfs.AppFs
 	dao        *dao.DAO
 	courseScan *coursescan.CourseScan

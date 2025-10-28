@@ -57,7 +57,6 @@ type Database interface {
 	Querier
 	DB() *sqlx.DB
 	RunInTransaction(context.Context, func(context.Context) error) error
-	SetLogger(*slog.Logger)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

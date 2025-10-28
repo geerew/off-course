@@ -3,13 +3,9 @@ package utils
 import (
 	"encoding/base64"
 	"fmt"
-	"log"
 	"net/url"
 	"os"
 	"runtime"
-	"strings"
-
-	"github.com/fatih/color"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -90,30 +86,4 @@ func Map[T, V any](ts []T, fn func(T) V) []V {
 		result[i] = fn(t)
 	}
 	return result
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// ErrF is a function that prints an error message with a timestamp in red color
-func Errf(format string, a ...interface{}) {
-	date := new(strings.Builder)
-	log.New(date, "", log.LstdFlags).Print()
-
-	c := color.New(color.Bold, color.FgRed)
-	fmt.Print(color.GreenString(strings.TrimSpace(date.String()) + " "))
-	c.Add(color.Reset)
-	fmt.Printf(format, a...)
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// InfoF is a function that prints an info message with a timestamp in green color
-func Infof(format string, a ...interface{}) {
-	date := new(strings.Builder)
-	log.New(date, "", log.LstdFlags).Print()
-
-	c := color.New(color.Bold, color.FgGreen)
-	fmt.Print(color.GreenString(strings.TrimSpace(date.String()) + " "))
-	c.Add(color.Reset)
-	fmt.Printf(format, a...)
 }

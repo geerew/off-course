@@ -6,6 +6,7 @@ import (
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/utils/appfs"
+	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/robfig/cron/v3"
 )
@@ -20,13 +21,13 @@ var loggerType = slog.Any("type", types.LogTypeCron)
 type CronConfig struct {
 	Db     database.Database
 	AppFs  *appfs.AppFs
-	Logger *slog.Logger
+	Logger *logger.Logger
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// InitCron initializes the cron jobs
-func InitCron(config *CronConfig) {
+// StartCron initializes the cron jobs
+func StartCron(config *CronConfig) {
 	c := cron.New()
 
 	// Course availability
@@ -38,7 +39,9 @@ func InitCron(config *CronConfig) {
 		batchSize: 200,
 	}
 
+	// When cron is started, run the course availability job immediately
 	go func() { ca.run() }()
+
 	c.AddFunc("@every 5m", func() { ca.run() })
 
 	c.Start()

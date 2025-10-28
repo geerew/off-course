@@ -17,7 +17,7 @@ func setup(tb testing.TB) (database.Database, context.Context) {
 
 	dbManager, err := database.NewSQLiteManager(&database.DatabaseManagerConfig{
 		DataDir: "./oc_data",
-		AppFs:   appfs.New(afero.NewMemMapFs(), nil),
+		AppFs:   appfs.New(afero.NewMemMapFs()),
 		Testing: true,
 	})
 

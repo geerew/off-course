@@ -2,13 +2,11 @@ package dao
 
 import (
 	"context"
-	"sync"
 	"testing"
 
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/appfs"
-	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
@@ -19,19 +17,10 @@ import (
 func setup(tb testing.TB) (*DAO, context.Context) {
 	tb.Helper()
 
-	// Logger
-	var logs []*logger.Log
-	var logsMux sync.Mutex
-	logger, _, err := logger.InitLogger(&logger.BatchOptions{
-		BatchSize: 1,
-		WriteFn:   logger.TestWriteFn(&logs, &logsMux),
-	})
-	require.NoError(tb, err, "Failed to initialize logger")
-
 	// DB
 	dbManager, err := database.NewSQLiteManager(&database.DatabaseManagerConfig{
 		DataDir: "./oc_data",
-		AppFs:   appfs.New(afero.NewMemMapFs(), logger),
+		AppFs:   appfs.New(afero.NewMemMapFs()),
 		Testing: true,
 	})
 

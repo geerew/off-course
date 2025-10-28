@@ -9,7 +9,6 @@ import (
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/appfs"
-	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/pagination"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/spf13/afero"
@@ -524,13 +523,7 @@ func TestDAO_UpsertAssetKeyframes(t *testing.T) {
 
 // setupTestDAO creates a test DAO with in-memory database
 func setupTestDAO(t *testing.T) (*DAO, func()) {
-	logger, _, err := logger.InitLogger(&logger.BatchOptions{
-		BatchSize: 1,
-		WriteFn:   logger.NilWriteFn(),
-	})
-	require.NoError(t, err)
-
-	appFs := appfs.New(afero.NewMemMapFs(), logger)
+	appFs := appfs.New(afero.NewMemMapFs())
 
 	dbManager, err := database.NewSQLiteManager(&database.DatabaseManagerConfig{
 		DataDir: "./oc_data",

@@ -50,16 +50,13 @@ func getCachedFFmpeg(t *testing.T) *media.FFmpeg {
 func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Context) {
 	t.Helper()
 
-	// Logger
-	var logs []*logger.Log
-	var logsMux sync.Mutex
-	logger, _, err := logger.InitLogger(&logger.BatchOptions{
-		BatchSize: 1,
-		WriteFn:   logger.TestWriteFn(&logs, &logsMux),
+	// Create a test logger
+	testLogger := logger.New(&logger.Config{
+		Level:         logger.LevelInfo,
+		ConsoleOutput: false, // Disable console output for tests
 	})
-	require.NoError(t, err, "Failed to initialize logger")
 
-	appFs := appfs.New(afero.NewMemMapFs(), logger)
+	appFs := appfs.New(afero.NewMemMapFs())
 
 	dbManager, err := database.NewSQLiteManager(&database.DatabaseManagerConfig{
 		DataDir: "./oc_data",
@@ -74,12 +71,12 @@ func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Conte
 	ffmpeg := getCachedFFmpeg(t)
 
 	// Initialize HLS settings
-	hls.InitSettings("./oc_data", appFs)
+	hls.InitSettings("./oc_data", appFs, testLogger.WithHLS())
 
 	courseScan := coursescan.New(&coursescan.CourseScanConfig{
 		Db:     dbManager.DataDb,
 		AppFs:  appFs,
-		Logger: logger,
+		Logger: testLogger.WithCourseScan(),
 		FFmpeg: ffmpeg,
 	})
 
@@ -89,7 +86,7 @@ func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Conte
 		AppFs:         appFs,
 		CourseScan:    courseScan,
 		FFmpeg:        ffmpeg,
-		Logger:        logger,
+		Logger:        testLogger.WithAPI(),
 		SignupEnabled: true,
 		Testing:       true,
 	}

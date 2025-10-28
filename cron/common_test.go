@@ -2,8 +2,6 @@ package cron
 
 import (
 	"context"
-	"log/slog"
-	"sync"
 	"testing"
 
 	"github.com/geerew/off-course/dao"
@@ -18,19 +16,16 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func setup(t *testing.T) (database.Database, *appfs.AppFs, context.Context, *slog.Logger, *[]*logger.Log) {
+func setup(t *testing.T) (database.Database, *appfs.AppFs, context.Context, *logger.Logger) {
 	t.Helper()
 
-	// Logger
-	var logs []*logger.Log
-	var logsMux sync.Mutex
-	logger, _, err := logger.InitLogger(&logger.BatchOptions{
-		BatchSize: 1,
-		WriteFn:   logger.TestWriteFn(&logs, &logsMux),
+	// Create a test logger
+	testLogger := logger.New(&logger.Config{
+		Level:         logger.LevelInfo,
+		ConsoleOutput: false, // Disable console output for tests
 	})
-	require.NoError(t, err, "Failed to initialize logger")
 
-	appFs := appfs.New(afero.NewMemMapFs(), logger)
+	appFs := appfs.New(afero.NewMemMapFs())
 
 	dbManager, err := database.NewSQLiteManager(&database.DatabaseManagerConfig{
 		DataDir: "./oc_data",
@@ -59,5 +54,5 @@ func setup(t *testing.T) (database.Database, *appfs.AppFs, context.Context, *slo
 
 	ctx := context.WithValue(context.Background(), types.PrincipalContextKey, principal)
 
-	return dbManager.DataDb, appFs, ctx, logger, &logs
+	return dbManager.DataDb, appFs, ctx, testLogger
 }

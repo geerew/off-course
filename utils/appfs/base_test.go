@@ -3,42 +3,19 @@ package appfs
 import (
 	"errors"
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 
-	"github.com/geerew/off-course/utils/logger"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func setup(t *testing.T) (*AppFs, *[]*logger.Log) {
-	t.Helper()
-
-	// Logger
-	var logs []*logger.Log
-	var logsMux sync.Mutex
-	logger, _, err := logger.InitLogger(&logger.BatchOptions{
-		BatchSize: 1,
-		WriteFn:   logger.TestWriteFn(&logs, &logsMux),
-	})
-	require.NoError(t, err, "Failed to initialize logger")
-
-	// Filesystem
-	appFs := New(afero.NewMemMapFs(), logger)
-
-	return appFs, &logs
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 func Test_Open(t *testing.T) {
 	t.Run("file does not exist", func(t *testing.T) {
-		appFs, _ := setup(t)
+		appFs := New(afero.NewMemMapFs())
 
 		res, err := appFs.Open("'")
 
@@ -48,7 +25,7 @@ func Test_Open(t *testing.T) {
 	})
 
 	t.Run("file exists", func(t *testing.T) {
-		appFs, _ := setup(t)
+		appFs := New(afero.NewMemMapFs())
 
 		appFs.Fs.Create("/a")
 
@@ -62,32 +39,26 @@ func Test_Open(t *testing.T) {
 
 func Test_ReadDir(t *testing.T) {
 	t.Run("open error", func(t *testing.T) {
-		appFs, logs := setup(t)
+		appFs := New(afero.NewMemMapFs())
 
 		res, err := appFs.ReadDir("'", false)
 
 		require.Nil(t, res)
-		require.EqualError(t, err, "unable to open path")
-		require.Len(t, *logs, 1)
-		require.Equal(t, "Unable to open path", (*logs)[0].Message)
-		require.Equal(t, slog.LevelError, (*logs)[0].Level)
+		require.EqualError(t, err, "unable to open path ': open ': file does not exist")
 	})
 
 	t.Run("read path error", func(t *testing.T) {
-		appFs, logs := setup(t)
+		appFs := New(afero.NewMemMapFs())
 
 		appFs.Fs.Create("/test")
 		res, err := appFs.ReadDir("/test", false)
 
 		require.Nil(t, res)
-		require.EqualError(t, err, "unable to read path")
-		require.Len(t, *logs, 1)
-		require.Equal(t, "Unable to read path", (*logs)[0].Message)
-		require.Equal(t, slog.LevelError, (*logs)[0].Level)
+		require.EqualError(t, err, "unable to read path /test: readdir /test: not a dir")
 	})
 
 	t.Run("success", func(t *testing.T) {
-		appFs, _ := setup(t)
+		appFs := New(afero.NewMemMapFs())
 
 		appFs.Fs.Create("/a")
 		appFs.Fs.Create("/b")
@@ -105,32 +76,26 @@ func Test_ReadDir(t *testing.T) {
 
 func Test_ReadDirFlat(t *testing.T) {
 	t.Run("open error", func(t *testing.T) {
-		appFs, logs := setup(t)
+		appFs := New(afero.NewMemMapFs())
 
 		res, err := appFs.ReadDirFlat("'", 1)
 
 		require.Nil(t, res)
-		require.EqualError(t, err, "unable to open path")
-		require.Len(t, *logs, 1)
-		require.Equal(t, "Unable to open path", (*logs)[0].Message)
-		require.Equal(t, slog.LevelError, (*logs)[0].Level)
+		require.EqualError(t, err, "unable to open path ': open ': file does not exist")
 	})
 
 	t.Run("read path error", func(t *testing.T) {
-		appFs, logs := setup(t)
+		appFs := New(afero.NewMemMapFs())
 
 		appFs.Fs.Create("/test")
 		res, err := appFs.ReadDirFlat("/test", 1)
 
 		require.Nil(t, res)
-		require.EqualError(t, err, "unable to read path")
-		require.Len(t, *logs, 1)
-		require.Equal(t, "Unable to read path", (*logs)[0].Message)
-		require.Equal(t, slog.LevelError, (*logs)[0].Level)
+		require.EqualError(t, err, "unable to read path /test: readdir /test: not a dir")
 	})
 
 	t.Run("success", func(t *testing.T) {
-		appFs, _ := setup(t)
+		appFs := New(afero.NewMemMapFs())
 
 		// Top files/dirs
 		appFs.Fs.Mkdir("/1", 0755)
@@ -179,7 +144,7 @@ func Test_ReadDirFlat(t *testing.T) {
 
 func Test_NonWslDrives(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		appFs, _ := setup(t)
+		appFs := New(afero.NewMemMapFs())
 
 		// Create WSL directory structure
 		paths := []string{}
@@ -203,7 +168,7 @@ func Test_NonWslDrives(t *testing.T) {
 
 func Test_WslDrives(t *testing.T) {
 	t.Run("error", func(t *testing.T) {
-		appFs, logs := setup(t)
+		appFs := New(afero.NewMemMapFs())
 
 		paths := []string{}
 		for _, p := range paths {
@@ -214,14 +179,11 @@ func Test_WslDrives(t *testing.T) {
 		drives, err := appFs.wslDrives()
 
 		require.Nil(t, drives)
-		require.EqualError(t, err, "unable to open path")
-		require.Len(t, *logs, 1)
-		require.Equal(t, "Unable to open path", (*logs)[0].Message)
-		require.Equal(t, slog.LevelError, (*logs)[0].Level)
+		require.EqualError(t, err, "unable to open path /mnt: open /mnt: file does not exist")
 	})
 
 	t.Run("success", func(t *testing.T) {
-		appFs, _ := setup(t)
+		appFs := New(afero.NewMemMapFs())
 
 		// Create WSL directory structure
 		paths := []string{"/mnt/c", "/mnt/d", "/mnt/wsl", "/mnt/wslg"}

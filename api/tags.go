@@ -1,7 +1,6 @@
 package api
 
 import (
-	"log/slog"
 	"net/url"
 	"slices"
 	"strings"
@@ -10,6 +9,7 @@ import (
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
+	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/queryparser"
 	"github.com/gofiber/fiber/v2"
 )
@@ -17,7 +17,7 @@ import (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type tagsAPI struct {
-	logger *slog.Logger
+	logger *logger.Logger
 	dao    *dao.DAO
 }
 

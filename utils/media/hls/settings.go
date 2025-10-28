@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 
 	"github.com/geerew/off-course/utils/appfs"
+	"github.com/geerew/off-course/utils/logger"
 	"github.com/spf13/afero"
 )
 
@@ -14,6 +15,7 @@ type SettingsT struct {
 	CachePath string
 	HwAccel   HwAccelT
 	AppFs     *appfs.AppFs
+	Logger    *logger.Logger
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -23,8 +25,8 @@ var Settings SettingsT
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// InitSettings initializes the HLS settings with the given data directory and appfs
-func InitSettings(dataDir string, appFs *appfs.AppFs) {
+// InitSettings initializes the HLS settings with the given data directory, appfs, and logger
+func InitSettings(dataDir string, appFs *appfs.AppFs, logger *logger.Logger) {
 	// Use relative paths for in-memory filesystems
 	var cachePath string
 	if _, ok := appFs.Fs.(*afero.MemMapFs); ok {
@@ -41,8 +43,9 @@ func InitSettings(dataDir string, appFs *appfs.AppFs) {
 
 	Settings = SettingsT{
 		CachePath: cachePath,
-		HwAccel:   DetectHardwareAccel(),
+		HwAccel:   DetectHardwareAccel(logger),
 		AppFs:     appFs,
+		Logger:    logger,
 	}
 
 	appFs.Fs.MkdirAll(Settings.CachePath, 0o755)

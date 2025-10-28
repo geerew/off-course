@@ -10,7 +10,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -43,7 +42,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		return ErrNilScan
 	}
 
-	utils.Infof("CourseScan: Starting scan for course ID: %s\n", scan.CourseID)
+	s.logger.Info().Str("course_id", scan.CourseID).Msg("Starting scan for course")
 
 	scan.Status.SetProcessing()
 	if err := s.dao.UpdateScan(ctx, scan); err != nil {
@@ -55,14 +54,17 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		return err
 	}
 
-	utils.Infof("CourseScan: Found course '%s' at path: %s\n", course.Title, course.Path)
+	s.logger.Info().
+		Str("course_title", course.Title).
+		Str("course_path", course.Path).
+		Msg("Found course")
 
 	// Clear the maintenance mode at the end of the scan
 	defer func() {
 		if err := clearCourseMaintenance(ctx, s, course); err != nil {
-			s.logger.Error("Failed to clear course from maintenance mode", loggerType,
-				slog.String("path", course.Path),
-			)
+			s.logger.Error().
+				Str("path", course.Path).
+				Msg("Failed to clear course from maintenance mode")
 		}
 	}()
 
@@ -78,13 +80,16 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 
 	// Scan the course directory for files and populate assets and attachments. Also check if there is
 	// a course card
-	utils.Infof("CourseScan: Scanning course directory: %s\n", course.Path)
+	s.logger.Info().Str("course_path", course.Path).Msg("Scanning course directory")
 	scanned, err := scanFiles(s, course.Path, course.ID)
 	if err != nil {
 		return err
 	}
 
-	utils.Infof("CourseScan: Found %d lessons, card path: %s\n", len(scanned.lessons), scanned.cardPath)
+	s.logger.Info().
+		Int("lessons_count", len(scanned.lessons)).
+		Str("card_path", scanned.cardPath).
+		Msg("Found lessons")
 
 	// List the assets that already exist in the database for this course
 
@@ -103,15 +108,22 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	}
 
 	// Reconcile what to do
-	utils.Infof("CourseScan: Reconciling changes - %d scanned assets, %d existing assets\n", len(scannedAssets), len(existingAssets))
+	s.logger.Info().
+		Int("scanned_assets", len(scannedAssets)).
+		Int("existing_assets", len(existingAssets)).
+		Msg("Reconciling changes")
 	groupOps := reconcileLessons(scanned.lessons, existingGroups)
 	assetOps := reconcileAssets(scannedAssets, existingAssets)
 	attachmentOps := reconcileAttachments(scannedAttachments, existingAttachments)
 
-	utils.Infof("CourseScan: Generated %d lesson ops, %d asset ops, %d attachment ops\n", len(groupOps), len(assetOps), len(attachmentOps))
+	s.logger.Info().
+		Int("lesson_ops", len(groupOps)).
+		Int("asset_ops", len(assetOps)).
+		Int("attachment_ops", len(attachmentOps)).
+		Msg("Generated operations")
 
 	// FFprobe only assets that need it
-	utils.Infof("CourseScan: Probing video assets for metadata and keyframes\n")
+	s.logger.Info().Msg("Probing video assets for metadata and keyframes")
 	assetMetadataByPath := probeVideos(s, assetOps)
 
 	updatedCourse := course.CardPath != scanned.cardPath
@@ -122,10 +134,10 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	// Clean up extracted keyframes after processing and log completion
 	defer func() {
 		s.extractedKeyframes = make(map[string][]float64)
-		utils.Infof("CourseScan: Completed scan for course ID: %s\n", scan.CourseID)
+		s.logger.Info().Str("course_id", scan.CourseID).Msg("Completed scan for course")
 	}()
 
-	utils.Infof("CourseScan: Applying database changes in transaction\n")
+	s.logger.Info().Msg("Applying database changes in transaction")
 	return s.db.RunInTransaction(ctx, func(txCtx context.Context) error {
 		if updated, err := applyLessonCreateUpdateOps(txCtx, s, groupOps); err != nil {
 			return err
@@ -153,11 +165,11 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 
 		if updatedCourse {
 			course.InitialScan = true
-			utils.Infof("CourseScan: Updating course metadata\n")
+			s.logger.Info().Msg("Updating course metadata")
 			return s.dao.UpdateCourse(txCtx, course)
 		}
 
-		utils.Infof("CourseScan: No course updates needed\n")
+		s.logger.Info().Msg("No course updates needed")
 		return nil
 	})
 }
@@ -173,10 +185,9 @@ func fetchCourse(ctx context.Context, s *CourseScan, courseID string) (*models.C
 	}
 
 	if course == nil {
-		s.logger.Debug("Ignoring scan job as the course no longer exists",
-			loggerType,
-			slog.String("course_id", courseID),
-		)
+		s.logger.Debug().
+			Str("course_id", courseID).
+			Msg("Ignoring scan job as the course no longer exists")
 		return nil, nil
 	}
 
@@ -190,7 +201,9 @@ func fetchCourse(ctx context.Context, s *CourseScan, courseID string) (*models.C
 func checkAndSetCourseAvailability(ctx context.Context, s *CourseScan, course *models.Course) (bool, error) {
 	_, err := s.appFs.Fs.Stat(course.Path)
 	if os.IsNotExist(err) {
-		s.logger.Debug("Skipping unavailable course", loggerType, slog.String("path", course.Path))
+		s.logger.Debug().
+			Str("path", course.Path).
+			Msg("Skipping unavailable course")
 
 		if course.Available {
 			course.Available = false
@@ -225,7 +238,9 @@ func enableCourseMaintenance(ctx context.Context, s *CourseScan, course *models.
 		return err
 	}
 
-	s.logger.Debug("Set course to maintenance mode", loggerType, slog.String("path", course.Path))
+	s.logger.Debug().
+		Str("path", course.Path).
+		Msg("Set course to maintenance mode")
 	return nil
 }
 
@@ -242,7 +257,9 @@ func clearCourseMaintenance(ctx context.Context, s *CourseScan, course *models.C
 		return err
 	}
 
-	s.logger.Debug("Cleared course from maintenance mode", loggerType, slog.String("path", course.Path))
+	s.logger.Debug().
+		Str("path", course.Path).
+		Msg("Cleared course from maintenance mode")
 	return nil
 }
 
@@ -436,6 +453,7 @@ func flatAttachmentsAndAssets(lessons []*models.Lesson) ([]*models.Attachment, [
 
 // probeVideos probes videos assets that match the operations create, replace, or swap
 func probeVideos(s *CourseScan, ops []Op) map[string]*models.AssetMetadata {
+
 	var targets []*models.Asset
 	for _, op := range ops {
 		switch v := op.(type) {
@@ -457,7 +475,7 @@ func probeVideos(s *CourseScan, ops []Op) map[string]*models.AssetMetadata {
 		}
 	}
 
-	utils.Infof("CourseScan: Found %d video assets to probe\n", len(targets))
+	s.logger.Info().Int("video_assets_count", len(targets)).Msg("Found video assets to probe")
 
 	assetMetadataByPath := map[string]*models.AssetMetadata{}
 	mediaProbe := probe.MediaProbe{FFmpeg: s.ffmpeg}
@@ -493,15 +511,23 @@ func probeVideos(s *CourseScan, ops []Op) map[string]*models.AssetMetadata {
 				// Store keyframes in a separate structure for later processing
 				// We'll handle this in the asset processing phase
 				s.extractedKeyframes[asset.Path] = keyframes
-				utils.Infof("CourseScan: Extracted %d keyframes for video: %s\n", len(keyframes), asset.Path)
+				s.logger.Info().
+					Int("keyframes_count", len(keyframes)).
+					Str("video_path", asset.Path).
+					Msg("Extracted keyframes for video")
 			} else {
 				// Log keyframe extraction failure but don't fail the scan
-				// Using utils.Errf for non-critical errors that shouldn't stop processing
-				utils.Errf("Failed to extract keyframes for video: %s - %v\n", asset.Path, err)
+				s.logger.Error().
+					Err(err).
+					Str("video_path", asset.Path).
+					Msg("Failed to extract keyframes for video")
 			}
 		} else {
 			// Log video probe failure but don't fail the scan
-			utils.Errf("Failed to probe video file: %s - %v\n", asset.Path, err)
+			s.logger.Error().
+				Err(err).
+				Str("video_path", asset.Path).
+				Msg("Failed to probe video file")
 		}
 	}
 
@@ -653,7 +679,11 @@ func applyAssetOps(
 
 						if err := s.dao.CreateAssetKeyframes(ctx, assetKeyframes); err != nil {
 							// Log error but don't fail the scan
-							utils.Errf("Failed to store keyframes for asset %s (%s): %v\n", v.New.ID, v.New.Path, err)
+							s.logger.Error().
+								Err(err).
+								Str("asset_id", v.New.ID).
+								Str("asset_path", v.New.Path).
+								Msg("Failed to store keyframes for asset")
 						}
 					}
 

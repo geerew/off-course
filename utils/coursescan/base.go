@@ -2,7 +2,6 @@ package coursescan
 
 import (
 	"context"
-	"log/slog"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/dao"
@@ -10,12 +9,9 @@ import (
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/appfs"
+	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/media"
 	"github.com/geerew/off-course/utils/types"
-)
-
-var (
-	loggerType = slog.Any("type", types.LogTypeCourseScan)
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -30,7 +26,7 @@ type CourseScan struct {
 	appFs              *appfs.AppFs
 	db                 database.Database
 	dao                *dao.DAO
-	logger             *slog.Logger
+	logger             *logger.Logger
 	ffmpeg             *media.FFmpeg
 	jobSignal          chan struct{}
 	extractedKeyframes map[string][]float64 // path -> keyframes
@@ -42,7 +38,7 @@ type CourseScan struct {
 type CourseScanConfig struct {
 	Db     database.Database
 	AppFs  *appfs.AppFs
-	Logger *slog.Logger
+	Logger *logger.Logger
 	FFmpeg *media.FFmpeg
 }
 
@@ -91,12 +87,10 @@ func (s *CourseScan) Add(ctx context.Context, courseId string) (*models.Scan, er
 		}
 	} else {
 		// Scan job already exists
-		s.logger.Debug(
-			"Scan job already exists",
-			loggerType,
-			slog.String("job", scan.ID),
-			slog.String("path", course.Path),
-		)
+		s.logger.Debug().
+			Str("job", scan.ID).
+			Str("path", course.Path).
+			Msg("Scan job already exists")
 
 		return scan, nil
 	}
@@ -107,11 +101,9 @@ func (s *CourseScan) Add(ctx context.Context, courseId string) (*models.Scan, er
 	default:
 	}
 
-	s.logger.Info(
-		"Added scan job",
-		loggerType,
-		slog.String("path", course.Path),
-	)
+	s.logger.Info().
+		Str("path", course.Path).
+		Msg("Added scan job")
 
 	return scan, nil
 }
@@ -122,7 +114,7 @@ func (s *CourseScan) Add(ctx context.Context, courseId string) (*models.Scan, er
 //
 // TODO find a way to stop processing when the job is deleted
 func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessorFn, processingDone chan bool) {
-	s.logger.Debug("Started course scanner worker", loggerType)
+	s.logger.Debug().Msg("Started course scanner worker")
 
 	// Create an admin principal context for the course scan worker
 	principal := types.Principal{
@@ -138,47 +130,39 @@ func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessor
 		for {
 			nextScan, err := s.dao.NextWaitingScan(ctx)
 			if err != nil {
-				s.logger.Error(
-					"Failed to look up the next scan job",
-					loggerType,
-					slog.String("error", err.Error()),
-				)
+				s.logger.Error().
+					Err(err).
+					Msg("Failed to look up the next scan job")
 
 				break
 			}
 
 			// Nothing more to process
 			if nextScan == nil {
-				s.logger.Debug("Finished processing all scan jobs", loggerType)
+				s.logger.Debug().Msg("Finished processing all scan jobs")
 				break
 			}
 
-			s.logger.Info(
-				"Processing scan job",
-				loggerType,
-				slog.String("job", nextScan.ID),
-				slog.String("path", nextScan.CoursePath),
-			)
+			s.logger.Info().
+				Str("job", nextScan.ID).
+				Str("path", nextScan.CoursePath).
+				Msg("Processing scan job")
 
 			err = processorFn(ctx, s, nextScan)
 			if err != nil {
-				s.logger.Error(
-					"Failed to process scan job",
-					loggerType,
-					slog.String("error", err.Error()),
-					slog.String("path", nextScan.CoursePath),
-				)
+				s.logger.Error().
+					Err(err).
+					Str("path", nextScan.CoursePath).
+					Msg("Failed to process scan job")
 			}
 
 			// Cleanup
 			dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_ID: nextScan.ID})
 			if err := s.dao.DeleteScans(ctx, dbOpts); err != nil {
-				s.logger.Error(
-					"Failed to delete scan job",
-					loggerType,
-					slog.String("error", err.Error()),
-					slog.String("job", nextScan.ID),
-				)
+				s.logger.Error().
+					Err(err).
+					Str("job", nextScan.ID).
+					Msg("Failed to delete scan job")
 
 				break
 			}
