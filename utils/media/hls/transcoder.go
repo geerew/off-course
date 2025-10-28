@@ -2,58 +2,74 @@ package hls
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/dao"
+	"github.com/geerew/off-course/database"
+	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
+	"github.com/geerew/off-course/utils/appfs"
+	"github.com/geerew/off-course/utils/logger"
+	"github.com/spf13/afero"
 )
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Transcoder manages all HLS transcoding operations for a given asset
 type Transcoder struct {
+	config    *TranscoderConfig
 	streams   utils.CMap[string, *StreamWrapper]
 	assetChan chan string
 	tracker   *Tracker
-	dao       *dao.DAO
-	assetID   string
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// TranscoderConfig defines the configuration for a Transcoder
+type TranscoderConfig struct {
+	CachePath string
+	HwAccel   HwAccelT
+	AppFs     *appfs.AppFs
+	Logger    *logger.Logger
+	Dao       *dao.DAO
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // NewTranscoder creates a new Transcoder and prepares the cache directory
-func NewTranscoder(dao *dao.DAO) (*Transcoder, error) {
-	out := Settings.CachePath
-	Settings.AppFs.Fs.MkdirAll(out, 0o755)
-
-	f, err := Settings.AppFs.Fs.Open(out)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	dir, err := f.Readdirnames(-1)
-	if err != nil {
-		return nil, err
-	}
-
-	// Clean cache
-	for _, d := range dir {
-		err = Settings.AppFs.Fs.RemoveAll(filepath.Join(out, d))
+func NewTranscoder(config *TranscoderConfig) (*Transcoder, error) {
+	// Use relative paths for in-memory filesystems
+	var cachePath string
+	if _, ok := config.AppFs.Fs.(*afero.MemMapFs); ok {
+		// In-memory filesystem
+		cachePath = filepath.Join(config.CachePath, "hls")
+	} else {
+		// Real filesystem
+		absDataDir, err := filepath.Abs(config.CachePath)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get absolute path for cache path: %w", err)
 		}
+
+		cachePath = filepath.Join(absDataDir, "hls")
+	}
+
+	config.AppFs.Fs.MkdirAll(cachePath, 0o755)
+
+	// Empty the cache directory
+	err := config.AppFs.RemoveAllContents(cachePath)
+	if err != nil {
+		return nil, err
 	}
 
 	transcoder := &Transcoder{
+		config:    config,
 		streams:   utils.NewCMap[string, *StreamWrapper](),
 		assetChan: make(chan string, 10),
-		dao:       dao,
 	}
 
-	// Start the tracker
+	// Start tracker
 	transcoder.tracker = NewTracker(transcoder)
 
 	return transcoder, nil
@@ -61,46 +77,121 @@ func NewTranscoder(dao *dao.DAO) (*Transcoder, error) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// newStreamWrapper creates a new StreamWrapper and fetches metadata from the database
+func (t *Transcoder) newStreamWrapper(ctx context.Context, path string, assetID string) *StreamWrapper {
+	streamWrapper := &StreamWrapper{
+		config:  t.config,
+		Out:     filepath.Join(t.config.CachePath, assetID),
+		videos:  utils.NewCMap[VideoKey, *VideoStream](),
+		audios:  utils.NewCMap[uint32, *AudioStream](),
+		assetID: assetID,
+	}
+
+	// Get asset with metadata from database
+	asset, err := t.config.Dao.GetAsset(ctx, database.NewOptions().
+		WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assetID}).
+		WithAssetMetadata())
+	if err != nil {
+		t.config.Logger.Error().Err(err).Str("asset_id", assetID).Msg("Failed to get asset metadata")
+		streamWrapper.err = err
+		return streamWrapper
+	}
+
+	// Convert database models to HLS models
+	var videos []Video
+	var audios []Audio
+
+	// Video metadata
+	if asset.AssetMetadata != nil && asset.AssetMetadata.VideoMetadata != nil {
+		videoMeta := asset.AssetMetadata.VideoMetadata
+		video := Video{
+			Index:     0,
+			Title:     nil,
+			Language:  nil,
+			Codec:     videoMeta.VideoCodec,
+			MimeCodec: nil,
+			Width:     uint32(videoMeta.Width),
+			Height:    uint32(videoMeta.Height),
+			Bitrate:   uint32(videoMeta.OverallBPS),
+			IsDefault: true,
+		}
+		videos = append(videos, video)
+	}
+
+	// Audio metadata
+	if asset.AssetMetadata != nil && asset.AssetMetadata.AudioMetadata != nil {
+		audioMeta := asset.AssetMetadata.AudioMetadata
+		audio := Audio{
+			Index:     0,
+			Title:     nil,
+			Language:  nil,
+			Codec:     audioMeta.Codec,
+			MimeCodec: nil,
+			Bitrate:   uint32(audioMeta.BitRate),
+			IsDefault: true,
+		}
+		audios = append(audios, audio)
+	}
+
+	// Duration
+	duration := 0.0
+	if asset.AssetMetadata != nil && asset.AssetMetadata.VideoMetadata != nil {
+		duration = float64(asset.AssetMetadata.VideoMetadata.DurationSec)
+	}
+
+	info := &MediaInfo{
+		Path:     path,
+		Duration: duration,
+		Videos:   videos,
+		Audios:   audios,
+	}
+	streamWrapper.Info = info
+
+	return streamWrapper
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // getStreamWrapper returns an existing StreamWrapper for the asset or creates one
-// Blocks until the StreamWrapper is ready or returns an error
+//
+// It blocks until the StreamWrapper is ready or returns an error
 func (t *Transcoder) getStreamWrapper(ctx context.Context, path string, assetID string) (*StreamWrapper, error) {
-	sw, _ := t.streams.GetOrCreate(assetID, func() *StreamWrapper {
-		t.assetID = assetID
+	streamWrapper, _ := t.streams.GetOrCreate(assetID, func() *StreamWrapper {
 		return t.newStreamWrapper(ctx, path, assetID)
 	})
 
-	if sw.err != nil {
+	if streamWrapper.err != nil {
 		t.streams.Remove(assetID)
-		return nil, sw.err
+		return nil, streamWrapper.err
 	}
 
-	return sw, nil
+	return streamWrapper, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // GetMasterPlaylistMulti returns the master HLS playlist with multiple quality options
 func (t *Transcoder) GetMasterPlaylistMulti(ctx context.Context, path string, assetID string) (string, error) {
-	sw, err := t.getStreamWrapper(ctx, path, assetID)
+	streamWrapper, err := t.getStreamWrapper(ctx, path, assetID)
 	if err != nil {
 		return "", err
 	}
 
 	t.assetChan <- assetID
-	return sw.GetMasterPlaylistMulti(assetID), nil
+	return streamWrapper.GetMasterPlaylistMulti(assetID), nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // GetMasterPlaylistSingle returns a master playlist with only one stream
 func (t *Transcoder) GetMasterPlaylistSingle(ctx context.Context, path string, assetID string, isMobile bool) (string, error) {
-	sw, err := t.getStreamWrapper(ctx, path, assetID)
+	streamWrapper, err := t.getStreamWrapper(ctx, path, assetID)
 	if err != nil {
 		return "", err
 	}
 
 	t.assetChan <- assetID
-	return sw.GetMasterPlaylistSingle(assetID, isMobile), nil
+	return streamWrapper.GetMasterPlaylistSingle(assetID, isMobile), nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -113,13 +204,13 @@ func (t *Transcoder) GetVideoIndex(
 	quality Quality,
 	assetID string,
 ) (string, error) {
-	sw, err := t.getStreamWrapper(ctx, path, assetID)
+	streamWrapper, err := t.getStreamWrapper(ctx, path, assetID)
 	if err != nil {
 		return "", err
 	}
 
 	t.assetChan <- assetID
-	return sw.GetVideoIndex(video, quality)
+	return streamWrapper.GetVideoIndex(video, quality)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -133,13 +224,13 @@ func (t *Transcoder) GetVideoSegment(
 	segment int32,
 	assetID string,
 ) (string, error) {
-	sw, err := t.getStreamWrapper(ctx, path, assetID)
+	streamWrapper, err := t.getStreamWrapper(ctx, path, assetID)
 	if err != nil {
 		return "", err
 	}
 
 	t.assetChan <- assetID
-	return sw.GetVideoSegment(video, quality, segment)
+	return streamWrapper.GetVideoSegment(video, quality, segment)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -151,13 +242,13 @@ func (t *Transcoder) GetAudioIndex(
 	audio uint32,
 	assetID string,
 ) (string, error) {
-	sw, err := t.getStreamWrapper(ctx, path, assetID)
+	streamWrapper, err := t.getStreamWrapper(ctx, path, assetID)
 	if err != nil {
 		return "", err
 	}
 
 	t.assetChan <- assetID
-	return sw.GetAudioIndex(audio)
+	return streamWrapper.GetAudioIndex(audio)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -170,23 +261,23 @@ func (t *Transcoder) GetAudioSegment(
 	segment int32,
 	assetID string,
 ) (string, error) {
-	sw, err := t.getStreamWrapper(ctx, path, assetID)
+	streamWrapper, err := t.getStreamWrapper(ctx, path, assetID)
 	if err != nil {
 		return "", err
 	}
 
 	t.assetChan <- assetID
-	return sw.GetAudioSegment(audio, segment)
+	return streamWrapper.GetAudioSegment(audio, segment)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // GetQualities returns the available qualities for a video
 func (t *Transcoder) GetQualities(ctx context.Context, path string, assetID string) ([]Quality, error) {
-	sw, err := t.getStreamWrapper(ctx, path, assetID)
+	streamWrapper, err := t.getStreamWrapper(ctx, path, assetID)
 	if err != nil {
 		return nil, err
 	}
 
-	return sw.GetQualities(), nil
+	return streamWrapper.GetQualities(), nil
 }

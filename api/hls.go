@@ -38,12 +38,7 @@ func NewHLSHandler(dao *dao.DAO, transcoder *hls.Transcoder, logger *logger.Logg
 
 // RegisterHLSRoutes registers HLS routes
 func (r *Router) initHlsRoutes() {
-	// Initialize transcoder with DAO
-	transcoder, err := hls.NewTranscoder(r.dao)
-	if err != nil {
-		panic("Failed to create HLS transcoder: " + err.Error())
-	}
-	hlsHandler := NewHLSHandler(r.dao, transcoder, r.logger.WithHLS())
+	hlsHandler := NewHLSHandler(r.dao, r.config.Transcoder, r.logger.WithHLS())
 
 	// Master playlist
 	r.api.Get("/hls/:asset_id/master.m3u8", hlsHandler.GetMaster)

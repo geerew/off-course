@@ -47,7 +47,7 @@ func (t *Tracker) start() {
 
 			for assetID, lastUsed := range t.lastUsage {
 				if time.Since(lastUsed) > 2*time.Hour {
-					Settings.Logger.Debug().
+					t.transcoder.config.Logger.Debug().
 						Str("asset_id", assetID).
 						Dur("last_used_ago", time.Since(lastUsed)).
 						Msg("Cleaning up old stream")

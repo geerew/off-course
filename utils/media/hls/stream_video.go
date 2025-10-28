@@ -16,16 +16,16 @@ type VideoStream struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // NewVideoStream creates a new video stream for the given file, index and quality
-func NewVideoStream(sw *StreamWrapper, videoIndex uint32, quality Quality) (*VideoStream, error) {
-	Settings.Logger.Debug().
-		Str("path", sw.Info.Path).
+func NewVideoStream(streamWrapper *StreamWrapper, videoIndex uint32, quality Quality) (*VideoStream, error) {
+	streamWrapper.config.Logger.Debug().
+		Str("path", streamWrapper.Info.Path).
 		Uint32("video_index", videoIndex).
 		Str("quality", string(quality)).
 		Msg("Creating a new video stream")
 
 	// Find the video metadata from the file's info
 	var video *Video
-	for _, v := range sw.Info.Videos {
+	for _, v := range streamWrapper.Info.Videos {
 		if v.Index == videoIndex {
 			video = &v
 			break
@@ -38,16 +38,15 @@ func NewVideoStream(sw *StreamWrapper, videoIndex uint32, quality Quality) (*Vid
 
 	videoStream := &VideoStream{
 		Stream: Stream{
-			streamWrapper: sw,
+			streamWrapper: streamWrapper,
 			heads:         make([]Head, 0),
-			logger:        Settings.Logger,
 		},
 		quality: quality,
 		video:   video,
 	}
 
 	videoStream.streamer = videoStream
-	videoStream.keyframes = getKeyframes(sw)
+	videoStream.keyframes = getKeyframes(streamWrapper)
 	videoStream.initializeSegments()
 
 	return videoStream, nil
@@ -84,7 +83,7 @@ func (vs *VideoStream) getTranscodeArgs(segments string) []string {
 		return args
 	}
 
-	args = append(args, Settings.HwAccel.EncodeFlags...)
+	args = append(args, vs.streamWrapper.config.HwAccel.EncodeFlags...)
 
 	quality := vs.quality
 	if vs.quality != NoResize {
@@ -92,12 +91,12 @@ func (vs *VideoStream) getTranscodeArgs(segments string) []string {
 		// force a width that is a multiple of two else some apps behave badly
 		width = closestMultiple(width, 2)
 		args = append(args,
-			"-vf", fmt.Sprintf(Settings.HwAccel.ScaleFilter, width, vs.quality.Height()),
+			"-vf", fmt.Sprintf(vs.streamWrapper.config.HwAccel.ScaleFilter, width, vs.quality.Height()),
 		)
 	} else {
 		// Only add video filter if NoResizeFilter is defined (not empty)
-		if Settings.HwAccel.NoResizeFilter != "" {
-			args = append(args, "-vf", Settings.HwAccel.NoResizeFilter)
+		if vs.streamWrapper.config.HwAccel.NoResizeFilter != "" {
+			args = append(args, "-vf", vs.streamWrapper.config.HwAccel.NoResizeFilter)
 		}
 
 		// NoResize doesn't have bitrate info, fallback to a know quality higher or equal

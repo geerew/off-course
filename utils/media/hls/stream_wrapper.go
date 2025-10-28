@@ -1,14 +1,9 @@
 package hls
 
 import (
-	"context"
 	"fmt"
-	"path/filepath"
 	"strings"
 
-	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
-	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 )
 
@@ -16,12 +11,13 @@ import (
 
 // StreamWrapper represents a file being transcoded into HLS streams
 type StreamWrapper struct {
-	transcoder *Transcoder
-	err        error
-	Out        string
-	Info       *MediaInfo
-	videos     utils.CMap[VideoKey, *VideoStream]
-	audios     utils.CMap[uint32, *AudioStream]
+	config  *TranscoderConfig
+	assetID string
+	err     error
+	Out     string
+	Info    *MediaInfo
+	videos  utils.CMap[VideoKey, *VideoStream]
+	audios  utils.CMap[uint32, *AudioStream]
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -64,80 +60,6 @@ type Audio struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// newStreamWrapper creates a new file stream and fetches metadata from the database
-func (t *Transcoder) newStreamWrapper(ctx context.Context, path string, assetID string) *StreamWrapper {
-	sw := &StreamWrapper{
-		transcoder: t,
-		Out:        filepath.Join(Settings.CachePath, assetID),
-		videos:     utils.NewCMap[VideoKey, *VideoStream](),
-		audios:     utils.NewCMap[uint32, *AudioStream](),
-	}
-
-	// Get asset metadata from database
-	asset, err := t.dao.GetAsset(ctx, database.NewOptions().
-		WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assetID}).
-		WithAssetMetadata())
-	if err != nil {
-		Settings.Logger.Error().Err(err).Str("asset_id", assetID).Msg("Failed to get asset metadata")
-		sw.err = err
-		return sw
-	}
-
-	// Convert database models to HLS models
-	var videos []Video
-	var audios []Audio
-
-	// Process video metadata
-	if asset.AssetMetadata != nil && asset.AssetMetadata.VideoMetadata != nil {
-		videoMeta := asset.AssetMetadata.VideoMetadata
-		video := Video{
-			Index:     0, // Default index
-			Title:     nil,
-			Language:  nil,
-			Codec:     videoMeta.VideoCodec,
-			MimeCodec: nil,
-			Width:     uint32(videoMeta.Width),
-			Height:    uint32(videoMeta.Height),
-			Bitrate:   uint32(videoMeta.OverallBPS),
-			IsDefault: true,
-		}
-		videos = append(videos, video)
-	}
-
-	// Process audio metadata
-	if asset.AssetMetadata != nil && asset.AssetMetadata.AudioMetadata != nil {
-		audioMeta := asset.AssetMetadata.AudioMetadata
-		audio := Audio{
-			Index:     0, // Default index
-			Title:     nil,
-			Language:  nil,
-			Codec:     audioMeta.Codec,
-			MimeCodec: nil,
-			Bitrate:   uint32(audioMeta.BitRate),
-			IsDefault: true,
-		}
-		audios = append(audios, audio)
-	}
-
-	// Create MediaInfo with real data
-	duration := 0.0
-	if asset.AssetMetadata != nil && asset.AssetMetadata.VideoMetadata != nil {
-		duration = float64(asset.AssetMetadata.VideoMetadata.DurationSec)
-	}
-
-	info := &MediaInfo{
-		Path:     path,
-		Duration: duration,
-		Videos:   videos,
-		Audios:   audios,
-	}
-	sw.Info = info
-
-	return sw
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 // Kill stops all video and audio streams for this file
 func (sw *StreamWrapper) Kill() {
 	sw.videos.ForEach(func(_ VideoKey, s *VideoStream) {
@@ -152,9 +74,9 @@ func (sw *StreamWrapper) Kill() {
 
 // Destroy removes all transcoded files from the cache directory
 func (sw *StreamWrapper) Destroy() {
-	Settings.Logger.Debug().Str("path", sw.Info.Path).Msg("Removing all transcode cache files")
+	sw.config.Logger.Debug().Str("path", sw.Info.Path).Msg("Removing all transcode cache files")
 	sw.Kill()
-	_ = Settings.AppFs.Fs.RemoveAll(sw.Out)
+	_ = sw.config.AppFs.Fs.RemoveAll(sw.Out)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
