@@ -35,7 +35,7 @@ func StartCron(config *CronConfig) {
 		db:        config.Db,
 		dao:       dao.New(config.Db),
 		appFs:     config.AppFs,
-		logger:    config.Logger,
+		logger:    config.Logger.WithCron(),
 		batchSize: 200,
 	}
 

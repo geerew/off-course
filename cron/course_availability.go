@@ -24,10 +24,20 @@ type courseAvailability struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (ca *courseAvailability) run() error {
-	ca.logger.Debug().Str("type", "cron").Msg("Updating course availability")
 	perPage := 100
 	page := 1
 	totalPages := 1
+
+	// Stats
+	totalScanned := 0
+	madeAvailable := 0
+	madeUnavailable := 0
+	updatedCount := 0
+
+	ca.logger.Info().
+		Int("per_page", perPage).
+		Int("batch_size", ca.batchSize).
+		Msg("cron: updating course availability started")
 
 	coursesBatch := make([]*models.Course, 0, ca.batchSize)
 
@@ -45,9 +55,10 @@ func (ca *courseAvailability) run() error {
 		// Fetch a batch of courses
 		courses, err := ca.dao.ListCourses(ctx, dbOpts)
 		if err != nil {
-			ca.logger.Error().Err(err).Msg("Failed to fetch courses")
+			ca.logger.Error().Err(err).Int("page", page).Msg("cron: failed to fetch courses")
 			return err
 		}
+		totalScanned += len(courses)
 
 		// Update total pages after the first fetch
 		if page == 1 {
@@ -61,6 +72,7 @@ func (ca *courseAvailability) run() error {
 					if course.Available {
 						// The course is currently marked as available but is now unavailable
 						course.Available = false
+						madeUnavailable++
 						coursesBatch = append(coursesBatch, course)
 					}
 				} else {
@@ -69,19 +81,24 @@ func (ca *courseAvailability) run() error {
 						Err(err).
 						Str("course", course.Title).
 						Str("path", course.Path).
-						Msg("Failed to stat course")
-
+						Msg("cron: failed to stat course")
 					return err
 				}
 			} else if !course.Available {
 				// The course is currently marked as unavailable but is now available
 				course.Available = true
+				madeAvailable++
 				coursesBatch = append(coursesBatch, course)
 			}
 
 			// Update the courses if we hit the batch size
 			if len(coursesBatch) == ca.batchSize {
-				ca.writeAll(ctx, coursesBatch)
+				if err := ca.writeAll(ctx, coursesBatch); err != nil {
+					ca.logger.Error().Err(err).Int("batch_len", len(coursesBatch)).Msg("cron: failed to write availability batch")
+					return err
+				}
+				updatedCount += len(coursesBatch)
+				ca.logger.Debug().Int("updated", len(coursesBatch)).Msg("cron: availability batch written")
 				coursesBatch = coursesBatch[:0]
 			}
 		}
@@ -91,29 +108,36 @@ func (ca *courseAvailability) run() error {
 
 	// Update any remaining courses
 	if len(coursesBatch) > 0 {
-		ca.writeAll(ctx, coursesBatch)
+		if err := ca.writeAll(ctx, coursesBatch); err != nil {
+			ca.logger.Error().Err(err).Int("batch_len", len(coursesBatch)).Msg("cron: failed to write final availability batch")
+			return err
+		}
+		updatedCount += len(coursesBatch)
+		ca.logger.Debug().Int("updated", len(coursesBatch)).Msg("cron: final availability batch written")
 	}
+
+	ca.logger.Info().
+		Int("scanned", totalScanned).
+		Int("updated", updatedCount).
+		Int("made_available", madeAvailable).
+		Int("made_unavailable", madeUnavailable).
+		Msg("cron: updating course availability completed")
 
 	return nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func (ca *courseAvailability) writeAll(ctx context.Context, courses []*models.Course) {
+func (ca *courseAvailability) writeAll(ctx context.Context, courses []*models.Course) error {
 	// Update the courses in a transaction
 	err := ca.db.RunInTransaction(ctx, func(txCtx context.Context) error {
 		for _, course := range courses {
-			err := ca.dao.UpdateCourse(txCtx, course)
-			if err != nil {
+			if err := ca.dao.UpdateCourse(txCtx, course); err != nil {
 				return err
 			}
-
 		}
-
 		return nil
 	})
 
-	if err != nil {
-		ca.logger.Error().Err(err).Msg("Failed to update course availability")
-	}
+	return err
 }
