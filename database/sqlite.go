@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -280,7 +279,7 @@ type sqliteTx struct {
 //
 // TODO Remove this method in favor of ExecContext
 func (tx *sqliteTx) Exec(query string, args ...any) (sql.Result, error) {
-	tx.db.log(query, args...)
+
 	return tx.tx.Exec(query, args...)
 }
 
@@ -290,7 +289,7 @@ func (tx *sqliteTx) Exec(query string, args ...any) (sql.Result, error) {
 //
 // It implements the Querier interface
 func (tx *sqliteTx) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
-	tx.db.log(query, args...)
+
 	return tx.tx.ExecContext(ctx, query, args...)
 }
 
@@ -300,7 +299,7 @@ func (tx *sqliteTx) ExecContext(ctx context.Context, query string, args ...any) 
 //
 // TODO Remove this method in favor of QueryContext
 func (tx *sqliteTx) Query(query string, args ...any) (*sql.Rows, error) {
-	tx.db.log(query, args...)
+
 	return tx.tx.Query(query, args...)
 }
 
@@ -310,7 +309,7 @@ func (tx *sqliteTx) Query(query string, args ...any) (*sql.Rows, error) {
 //
 // It implements the Querier interface
 func (tx *sqliteTx) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
-	tx.db.log(query, args...)
+
 	return tx.tx.QueryContext(ctx, query, args...)
 }
 
@@ -320,7 +319,7 @@ func (tx *sqliteTx) QueryContext(ctx context.Context, query string, args ...any)
 //
 // TODO Remove this method in favor of QueryRowContext
 func (tx *sqliteTx) QueryRow(query string, args ...any) *sql.Row {
-	tx.db.log(query, args...)
+
 	return tx.tx.QueryRow(query, args...)
 }
 
@@ -330,7 +329,7 @@ func (tx *sqliteTx) QueryRow(query string, args ...any) *sql.Row {
 //
 // It implements the Querier interface
 func (tx *sqliteTx) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
-	tx.db.log(query, args...)
+
 	return tx.tx.QueryRowContext(ctx, query, args...)
 }
 
@@ -340,7 +339,7 @@ func (tx *sqliteTx) QueryRowContext(ctx context.Context, query string, args ...a
 //
 // It implements the Querier interface
 func (tx *sqliteTx) GetContext(ctx context.Context, dest any, query string, args ...any) error {
-	tx.db.log(query, args...)
+
 	return tx.tx.GetContext(ctx, dest, query, args...)
 }
 
@@ -350,7 +349,7 @@ func (tx *sqliteTx) GetContext(ctx context.Context, dest any, query string, args
 //
 // It implements the Querier interface
 func (tx *sqliteTx) SelectContext(ctx context.Context, dest any, query string, args ...any) error {
-	tx.db.log(query, args...)
+
 	return tx.tx.SelectContext(ctx, dest, query, args...)
 }
 
@@ -400,7 +399,7 @@ func (db *sqliteDb) DB() *sqlx.DB {
 //
 // TODO Remove this method in favor of QueryContext
 func (db *sqliteDb) Query(query string, args ...any) (*sql.Rows, error) {
-	db.log(query, args...)
+
 	return db.sqlx.Query(query, args...)
 }
 
@@ -410,7 +409,7 @@ func (db *sqliteDb) Query(query string, args ...any) (*sql.Rows, error) {
 //
 // It implements the Database interface
 func (db *sqliteDb) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
-	db.log(query, args...)
+
 	return db.sqlx.QueryContext(ctx, query, args...)
 }
 
@@ -420,7 +419,7 @@ func (db *sqliteDb) QueryContext(ctx context.Context, query string, args ...any)
 //
 // It implements the Database interface
 func (db *sqliteDb) QueryRow(query string, args ...any) *sql.Row {
-	db.log(query, args...)
+
 	return db.sqlx.QueryRow(query, args...)
 }
 
@@ -432,7 +431,7 @@ func (db *sqliteDb) QueryRow(query string, args ...any) *sql.Row {
 //
 // TODO Remove this method in favor of QueryRowContext
 func (db *sqliteDb) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
-	db.log(query, args...)
+
 	return db.sqlx.QueryRowContext(ctx, query, args...)
 }
 
@@ -442,7 +441,7 @@ func (db *sqliteDb) QueryRowContext(ctx context.Context, query string, args ...a
 //
 // It implements the Database interface
 func (db *sqliteDb) Exec(query string, args ...any) (sql.Result, error) {
-	db.log(query, args...)
+
 	return db.sqlx.Exec(query, args...)
 }
 
@@ -454,7 +453,7 @@ func (db *sqliteDb) Exec(query string, args ...any) (sql.Result, error) {
 //
 // TODO Remove this method in favor of ExecContext
 func (db *sqliteDb) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
-	db.log(query, args...)
+
 	return db.sqlx.ExecContext(ctx, query, args...)
 }
 
@@ -464,7 +463,7 @@ func (db *sqliteDb) ExecContext(ctx context.Context, query string, args ...any) 
 //
 // It implements the Querier interface
 func (db *sqliteDb) GetContext(ctx context.Context, dest any, query string, args ...any) error {
-	db.log(query, args...)
+
 	return db.sqlx.GetContext(ctx, dest, query, args...)
 }
 
@@ -474,7 +473,7 @@ func (db *sqliteDb) GetContext(ctx context.Context, dest any, query string, args
 //
 // It implements the Querier interface
 func (db *sqliteDb) SelectContext(ctx context.Context, dest any, query string, args ...any) error {
-	db.log(query, args...)
+
 	return db.sqlx.SelectContext(ctx, dest, query, args...)
 }
 
@@ -583,22 +582,7 @@ func (db *sqliteDb) migrate() error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// log logs the query and arguments to the logger
-func (db *sqliteDb) log(query string, args ...any) {
-	if db.config.Logger != nil {
-		attrs := make([]any, 0, len(args))
-		attrs = append(attrs, loggerType)
-
-		for i, arg := range args {
-			attrs = append(attrs, slog.Any(fmt.Sprintf("arg %d", i+1), arg))
-		}
-
-		db.config.Logger.Debug(
-			query,
-			attrs...,
-		)
-	}
-}
+// logging disabled in database layer (intentionally left blank)
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
