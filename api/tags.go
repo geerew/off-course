@@ -26,7 +26,7 @@ type tagsAPI struct {
 // initTagRoutes initializes the tag routes
 func (r *Router) initTagRoutes() {
 	tagsAPI := tagsAPI{
-		logger: r.config.Logger,
+		logger: r.logger.WithAPI(),
 		dao:    r.dao,
 	}
 
@@ -151,7 +151,6 @@ func (api *tagsAPI) createTag(c *fiber.Ctx) error {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return errorResponse(c, fiber.StatusBadRequest, "Tag already exists", err)
 		}
-
 		return errorResponse(c, fiber.StatusInternalServerError, "Error creating tag", err)
 	}
 
@@ -165,6 +164,7 @@ func (api *tagsAPI) updateTag(c *fiber.Ctx) error {
 
 	tagReq := &tagRequest{}
 	if err := c.BodyParser(tagReq); err != nil {
+		api.logger.Warn().Err(err).Str("tag_id", id).Msg("tags: invalid update tag payload")
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
 	}
 
@@ -176,6 +176,7 @@ func (api *tagsAPI) updateTag(c *fiber.Ctx) error {
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: id})
 	tag, err := api.dao.GetTag(ctx, dbOpts)
 	if err != nil {
+		api.logger.Error().Err(err).Str("tag_id", id).Msg("tags: failed to get tag for update")
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tag", err)
 	}
 
@@ -189,7 +190,6 @@ func (api *tagsAPI) updateTag(c *fiber.Ctx) error {
 		if strings.HasPrefix(err.Error(), "UNIQUE constraint failed") {
 			return errorResponse(c, fiber.StatusBadRequest, "Tag already exists", err)
 		}
-
 		return errorResponse(c, fiber.StatusInternalServerError, "Error updating tag", err)
 	}
 
@@ -210,7 +210,6 @@ func (api *tagsAPI) deleteTag(c *fiber.Ctx) error {
 	if err = api.dao.DeleteTags(ctx, dbOpts); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting tag", err)
 	}
-
 	return c.Status(fiber.StatusNoContent).Send(nil)
 }
 

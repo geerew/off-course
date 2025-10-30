@@ -38,7 +38,7 @@ type coursesAPI struct {
 // initCourseRoutes initializes the course routes
 func (r *Router) initCourseRoutes() {
 	coursesAPI := coursesAPI{
-		logger:     r.config.Logger,
+		logger:     r.logger.WithAPI(),
 		appFs:      r.config.AppFs,
 		courseScan: r.config.CourseScan,
 		dao:        r.dao,
@@ -199,7 +199,6 @@ func (api coursesAPI) createCourse(c *fiber.Ctx) error {
 		if strings.HasPrefix(err.Error(), "UNIQUE constraint failed") {
 			return errorResponse(c, fiber.StatusBadRequest, "A course with this path already exists", err)
 		}
-
 		return errorResponse(c, fiber.StatusInternalServerError, "Error creating course", err)
 	}
 
@@ -225,7 +224,6 @@ func (api coursesAPI) deleteCourse(c *fiber.Ctx) error {
 	if err := api.dao.DeleteCourses(ctx, dbOpts); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting course", err)
 	}
-
 	return c.Status(fiber.StatusNoContent).Send(nil)
 }
 
@@ -596,7 +594,6 @@ func (api coursesAPI) updateAssetProgress(c *fiber.Ctx) error {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Asset not found", nil)
 		}
-
 		return errorResponse(c, fiber.StatusInternalServerError, "Error updating asset", err)
 	}
 

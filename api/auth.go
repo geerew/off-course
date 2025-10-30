@@ -61,19 +61,16 @@ func (api authAPI) signupStatus(c *fiber.Ctx) error {
 
 func (api authAPI) register(c *fiber.Ctx) error {
 	if api.r.IsBootstrapped() && !api.r.config.SignupEnabled {
-		api.logger.Warn().Msg("Registration attempt when signup is disabled")
 		return errorResponse(c, fiber.StatusForbidden, "Sign-up is disabled", nil)
 	}
 
 	registerReq := &registerRequest{}
 
 	if err := c.BodyParser(registerReq); err != nil {
-		api.logger.Error().Err(err).Msg("Failed to parse registration request")
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
 	}
 
 	if registerReq.Username == "" || registerReq.Password == "" {
-		api.logger.Warn().Str("username", registerReq.Username).Msg("Registration attempt with empty username or password")
 		return errorResponse(c, fiber.StatusBadRequest, "Username and/or password cannot be empty", nil)
 	}
 
@@ -86,30 +83,23 @@ func (api authAPI) register(c *fiber.Ctx) error {
 	// The first user will always be an admin
 	if !api.r.IsBootstrapped() {
 		user.Role = types.UserRoleAdmin
-		api.logger.Info().Str("username", registerReq.Username).Msg("Creating first admin user during bootstrap")
 	} else {
 		user.Role = types.UserRoleUser
-		api.logger.Info().Str("username", registerReq.Username).Msg("User registration attempt")
 	}
 
 	err := api.dao.CreateUser(c.UserContext(), user)
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "UNIQUE constraint failed") {
-			api.logger.Warn().Str("username", registerReq.Username).Msg("Registration attempt with existing username")
 			return errorResponse(c, fiber.StatusBadRequest, "Username already exists", nil)
 		}
 
-		api.logger.Error().Err(err).Str("username", registerReq.Username).Msg("Failed to create user")
 		return errorResponse(c, fiber.StatusInternalServerError, "Error creating user", err)
 	}
 
 	err = api.sessionManager.SetSession(c, user.ID, user.Role)
 	if err != nil {
-		api.logger.Error().Err(err).Str("user_id", user.ID).Msg("Failed to set session after registration")
 		return errorResponse(c, fiber.StatusInternalServerError, "Error setting session", err)
 	}
-
-	api.logger.Info().Str("user_id", user.ID).Str("username", registerReq.Username).Str("role", string(user.Role)).Msg("User registered successfully")
 	return c.SendStatus(fiber.StatusCreated)
 }
 
@@ -129,7 +119,6 @@ func (api authAPI) bootstrap(c *fiber.Ctx) error {
 	// Validate bootstrap token
 	_, err := auth.ValidateBootstrapToken(token, api.r.config.DataDir, api.r.config.AppFs.Fs)
 	if err != nil {
-		api.r.logger.Error().Err(err).Msg("Invalid bootstrap token")
 		return errorResponse(c, fiber.StatusUnauthorized, "Invalid or expired bootstrap token", nil)
 	}
 
@@ -149,34 +138,27 @@ func (api authAPI) login(c *fiber.Ctx) error {
 	loginReq := &loginRequest{}
 
 	if err := c.BodyParser(loginReq); err != nil {
-		api.logger.Error().Err(err).Msg("Failed to parse login request")
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
 	}
 
 	if loginReq.Username == "" || loginReq.Password == "" {
-		api.logger.Warn().Str("username", loginReq.Username).Msg("Login attempt with empty username or password")
 		return errorResponse(c, fiber.StatusBadRequest, "Username and/or password cannot be empty", nil)
 	}
 
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: loginReq.Username})
 	user, err := api.dao.GetUser(c.UserContext(), dbOpts)
 	if err != nil || user == nil {
-		api.logger.Warn().Str("username", loginReq.Username).Msg("Login attempt with non-existent username")
 		return errorResponse(c, fiber.StatusUnauthorized, "Invalid username and/or password", nil)
 	}
 
 	if !auth.ComparePassword(user.PasswordHash, loginReq.Password) {
-		api.logger.Warn().Str("username", loginReq.Username).Str("user_id", user.ID).Msg("Login attempt with invalid password")
 		return errorResponse(c, fiber.StatusUnauthorized, "Invalid username and/or password", nil)
 	}
 
 	err = api.sessionManager.SetSession(c, user.ID, user.Role)
 	if err != nil {
-		api.logger.Error().Err(err).Str("user_id", user.ID).Str("username", loginReq.Username).Msg("Failed to set session after login")
 		return errorResponse(c, fiber.StatusInternalServerError, "Error setting session", err)
 	}
-
-	api.logger.Info().Str("user_id", user.ID).Str("username", loginReq.Username).Str("role", string(user.Role)).Msg("User logged in successfully")
 	return c.SendStatus(fiber.StatusOK)
 }
 
@@ -185,11 +167,8 @@ func (api authAPI) login(c *fiber.Ctx) error {
 func (api authAPI) logout(c *fiber.Ctx) error {
 	err := api.sessionManager.DeleteSession(c)
 	if err != nil {
-		api.logger.Error().Err(err).Msg("Failed to delete session during logout")
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting session", err)
 	}
-
-	api.logger.Info().Msg("User logged out successfully")
 	return c.SendStatus(fiber.StatusNoContent)
 }
 

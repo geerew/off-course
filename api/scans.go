@@ -27,7 +27,7 @@ type scansAPI struct {
 // initScanRoutes initializes the scan routes
 func (r *Router) initScanRoutes() {
 	scansAPI := scansAPI{
-		logger:     r.config.Logger,
+		logger:     r.logger.WithAPI(),
 		appFs:      r.config.AppFs,
 		courseScan: r.config.CourseScan,
 		dao:        r.dao,
@@ -116,7 +116,6 @@ func (api *scansAPI) createScan(c *fiber.Ctx) error {
 		if err == utils.ErrCourseNotFound {
 			return errorResponse(c, fiber.StatusBadRequest, "Invalid course ID", nil)
 		}
-
 		return errorResponse(c, fiber.StatusInternalServerError, "Error creating scan job", err)
 	}
 
@@ -137,6 +136,5 @@ func (api scansAPI) deleteScan(c *fiber.Ctx) error {
 	if err := api.dao.DeleteScans(ctx, dbOpts); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting scan", err)
 	}
-
 	return c.Status(fiber.StatusNoContent).Send(nil)
 }

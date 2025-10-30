@@ -61,7 +61,6 @@ func (r *Router) initHlsRoutes() {
 func (api *HLSHandler) GetMaster(c *fiber.Ctx) error {
 	assetID := c.Params("asset_id")
 	if assetID == "" {
-		api.logger.Error().Msg("GetMaster - asset_id is empty")
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"error": "asset_id is required",
 		})
@@ -72,7 +71,6 @@ func (api *HLSHandler) GetMaster(c *fiber.Ctx) error {
 		WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assetID}).
 		WithAssetMetadata())
 	if err != nil {
-		api.logger.Error().Err(err).Str("asset_id", assetID).Msg("Failed to get asset")
 		return c.Status(http.StatusNotFound).JSON(fiber.Map{
 			"error": "Asset not found",
 		})
@@ -80,7 +78,6 @@ func (api *HLSHandler) GetMaster(c *fiber.Ctx) error {
 
 	// Check if transcoder is available
 	if api.transcoder == nil {
-		api.logger.Error().Msg("Transcoder not initialized")
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Transcoder not available",
 		})
@@ -91,7 +88,6 @@ func (api *HLSHandler) GetMaster(c *fiber.Ctx) error {
 	// Get simple master playlist (single stream based on device type)
 	master, err := api.transcoder.GetMasterPlaylistSingle(c.Context(), asset.Path, assetID, ua.Mobile())
 	if err != nil {
-		api.logger.Error().Err(err).Str("asset_id", assetID).Msg("Failed to get master playlist")
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to generate master playlist",
 		})
@@ -136,7 +132,6 @@ func (api *HLSHandler) GetVideoIndex(c *fiber.Ctx) error {
 	// Get video index
 	indexPlaylist, err := api.transcoder.GetVideoIndex(c.Context(), asset.Path, uint32(index), quality, assetID)
 	if err != nil {
-		api.logger.Error().Err(err).Str("asset_id", assetID).Msg("Failed to get video index")
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to generate video index",
 		})
@@ -187,22 +182,12 @@ func (api *HLSHandler) GetVideoSegment(c *fiber.Ctx) error {
 	}
 
 	// Get video segment
-	api.logger.Info().
-		Str("path", asset.Path).
-		Uint64("index", index).
-		Str("quality", qualityStr).
-		Int64("segment", segment).
-		Msg("Requesting video segment from transcoder")
-
 	segmentPath, err := api.transcoder.GetVideoSegment(c.Context(), asset.Path, uint32(index), quality, int32(segment), assetID)
 	if err != nil {
-		api.logger.Error().Err(err).Str("asset_id", assetID).Msg("Failed to get video segment")
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to generate video segment",
 		})
 	}
-
-	api.logger.Info().Str("segment_path", segmentPath).Msg("Video segment ready")
 
 	// Serve the segment file
 	return c.Status(http.StatusOK).SendFile(segmentPath)
@@ -235,7 +220,6 @@ func (api *HLSHandler) GetAudioIndex(c *fiber.Ctx) error {
 	// Get audio index
 	indexPlaylist, err := api.transcoder.GetAudioIndex(c.Context(), asset.Path, uint32(index), assetID)
 	if err != nil {
-		api.logger.Error().Err(err).Str("asset_id", assetID).Msg("Failed to get audio index")
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to generate audio index",
 		})
@@ -278,21 +262,12 @@ func (api *HLSHandler) GetAudioSegment(c *fiber.Ctx) error {
 	}
 
 	// Get audio segment
-	api.logger.Info().
-		Str("path", asset.Path).
-		Uint64("index", index).
-		Int64("segment", segment).
-		Msg("Requesting audio segment from transcoder")
-
 	segmentPath, err := api.transcoder.GetAudioSegment(c.Context(), asset.Path, uint32(index), int32(segment), assetID)
 	if err != nil {
-		api.logger.Error().Err(err).Str("asset_id", assetID).Msg("Failed to get audio segment")
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to generate audio segment",
 		})
 	}
-
-	api.logger.Info().Str("segment_path", segmentPath).Msg("Audio segment ready")
 
 	// Serve the segment file
 	return c.Status(http.StatusOK).SendFile(segmentPath)
@@ -314,7 +289,6 @@ func (api *HLSHandler) GetQualities(c *fiber.Ctx) error {
 		WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assetID}).
 		WithAssetMetadata())
 	if err != nil {
-		api.logger.Error().Err(err).Str("asset_id", assetID).Msg("Failed to get asset")
 		return c.Status(http.StatusNotFound).JSON(fiber.Map{
 			"error": "Asset not found",
 		})
@@ -322,7 +296,6 @@ func (api *HLSHandler) GetQualities(c *fiber.Ctx) error {
 
 	// Check if transcoder is available
 	if api.transcoder == nil {
-		api.logger.Error().Msg("Transcoder not initialized")
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Transcoder not available",
 		})
@@ -331,7 +304,6 @@ func (api *HLSHandler) GetQualities(c *fiber.Ctx) error {
 	// Get available qualities
 	qualities, err := api.transcoder.GetQualities(c.Context(), asset.Path, assetID)
 	if err != nil {
-		api.logger.Error().Err(err).Str("asset_id", assetID).Msg("Failed to get qualities")
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to get available qualities",
 		})

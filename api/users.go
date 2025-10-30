@@ -8,6 +8,7 @@ import (
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/auth"
+	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/queryparser"
 	"github.com/geerew/off-course/utils/session"
 	"github.com/geerew/off-course/utils/types"
@@ -17,6 +18,7 @@ import (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type userAPI struct {
+	logger         *logger.Logger
 	dao            *dao.DAO
 	sessionManager *session.SessionManager
 }
@@ -26,6 +28,7 @@ type userAPI struct {
 // initFsRoutes initializes the filesystem routes
 func (r *Router) initUserRoutes() {
 	userAPI := userAPI{
+		logger:         r.logger.WithAPI(),
 		dao:            r.dao,
 		sessionManager: r.sessionManager,
 	}
@@ -57,11 +60,13 @@ func (api userAPI) getUsers(c *fiber.Ctx) error {
 
 	dbOpts, err := optionsBuilder(c, builderOpts, principal.UserID)
 	if err != nil {
+		api.logger.Warn().Err(err).Msg("users: failed to parse query options")
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
 	users, err := api.dao.ListUsers(ctx, dbOpts)
 	if err != nil {
+		api.logger.Error().Err(err).Msg("users: failed to list users")
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up users", err)
 	}
 
@@ -111,10 +116,8 @@ func (api userAPI) createUser(c *fiber.Ctx) error {
 		if strings.HasPrefix(err.Error(), "UNIQUE constraint failed") {
 			return errorResponse(c, fiber.StatusBadRequest, "Username already exists", nil)
 		}
-
 		return errorResponse(c, fiber.StatusInternalServerError, "Error creating user", err)
 	}
-
 	return c.SendStatus(fiber.StatusCreated)
 }
 
@@ -205,7 +208,6 @@ func (api userAPI) deleteUser(c *fiber.Ctx) error {
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user sessions", err)
 	}
-
 	return c.Status(fiber.StatusNoContent).Send(nil)
 }
 
@@ -218,7 +220,6 @@ func (api userAPI) deleteUserSession(c *fiber.Ctx) error {
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user sessions", err)
 	}
-
 	return c.Status(fiber.StatusNoContent).Send(nil)
 }
 

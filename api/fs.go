@@ -23,7 +23,7 @@ type fsAPI struct {
 // initFsRoutes initializes the filesystem routes
 func (r *Router) initFsRoutes() {
 	fsAPI := fsAPI{
-		logger: r.config.Logger,
+		logger: r.logger.WithAPI(),
 		appFs:  r.config.AppFs,
 		dao:    r.dao,
 	}

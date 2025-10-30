@@ -39,13 +39,51 @@ func requestLoggingMiddleware(logger *logger.Logger) fiber.Handler {
 
 		duration := time.Since(start)
 
-		logger.Debug().
-			Str("method", c.Method()).
-			Str("path", c.Path()).
-			Int("status", c.Response().StatusCode()).
-			Dur("duration", duration).
-			Str("ip", c.IP()).
-			Msg("Request processed")
+		status := c.Response().StatusCode()
+		apiLogger := logger.WithAPI()
+
+		// Pull any error info stored by errorResponse
+		errMsg, _ := c.Locals("api_error_message").(string)
+		errDetail, _ := c.Locals("api_error_detail").(string)
+
+		switch {
+		case status >= 500:
+			evt := apiLogger.Error().
+				Str("method", c.Method()).
+				Str("path", c.Path()).
+				Int("status", status).
+				Dur("duration", duration).
+				Str("ip", c.IP())
+			if errMsg != "" {
+				evt = evt.Str("error_message", errMsg)
+			}
+			if errDetail != "" {
+				evt = evt.Str("error_detail", errDetail)
+			}
+			evt.Msg("Request processed")
+		case status >= 400:
+			evt := apiLogger.Warn().
+				Str("method", c.Method()).
+				Str("path", c.Path()).
+				Int("status", status).
+				Dur("duration", duration).
+				Str("ip", c.IP())
+			if errMsg != "" {
+				evt = evt.Str("error_message", errMsg)
+			}
+			if errDetail != "" {
+				evt = evt.Str("error_detail", errDetail)
+			}
+			evt.Msg("Request processed")
+		default:
+			apiLogger.Debug().
+				Str("method", c.Method()).
+				Str("path", c.Path()).
+				Int("status", status).
+				Dur("duration", duration).
+				Str("ip", c.IP()).
+				Msg("Request processed")
+		}
 
 		return err
 	}

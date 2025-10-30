@@ -23,7 +23,7 @@ type logsAPI struct {
 // initLogRoutes initializes the log routes
 func (r *Router) initLogRoutes() {
 	logsAPI := logsAPI{
-		logger: r.config.Logger,
+		logger: r.logger.WithAPI(),
 		dao:    r.logDao,
 	}
 
