@@ -18,6 +18,7 @@ type VideoStream struct {
 // NewVideoStream creates a new video stream for the given file, index and quality
 func NewVideoStream(streamWrapper *StreamWrapper, videoIndex uint32, quality Quality) (*VideoStream, error) {
 	streamWrapper.config.Logger.Debug().
+		Str("asset_id", streamWrapper.assetID).
 		Str("path", streamWrapper.Info.Path).
 		Uint32("video_index", videoIndex).
 		Str("quality", string(quality)).

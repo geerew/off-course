@@ -167,8 +167,9 @@ func (s *Stream) run(startSegment int32) error {
 	s.lock.Unlock()
 
 	s.streamWrapper.config.Logger.Debug().
-		Int("encoder_id", encoderID).
+		Str("asset_id", s.streamWrapper.assetID).
 		Str("path", s.streamWrapper.Info.Path).
+		Int("encoder_id", encoderID).
 		Int32("start_segment", startSegment).
 		Int32("end_segment", endSegment).
 		Int("total_segments", length).
@@ -193,6 +194,13 @@ func (s *Stream) run(startSegment int32) error {
 	outPath := s.streamer.getOutPath(encoderID)
 	err := s.streamWrapper.config.AppFs.Fs.MkdirAll(filepath.Dir(outPath), 0o755)
 	if err != nil {
+		s.streamWrapper.config.Logger.Error().
+			Err(err).
+			Str("asset_id", s.streamWrapper.assetID).
+			Str("path", s.streamWrapper.Info.Path).
+			Int("encoder_id", encoderID).
+			Str("out_path", outPath).
+			Msg("Failed to create output directory for transcoding")
 		return err
 	}
 
@@ -261,11 +269,22 @@ func (s *Stream) run(startSegment int32) error {
 
 	// Run the FFmpeg command
 	cmd := exec.Command("ffmpeg", args...)
-	s.streamWrapper.config.Logger.Debug().Str("command", strings.Join(cmd.Args, " ")).Msg("Running FFmpeg")
+	s.streamWrapper.config.Logger.Debug().
+		Str("asset_id", s.streamWrapper.assetID).
+		Str("path", s.streamWrapper.Info.Path).
+		Int("encoder_id", encoderID).
+		Str("command", strings.Join(cmd.Args, " ")).
+		Msg("Running FFmpeg")
 
 	// Set the stdout pipe
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
+		s.streamWrapper.config.Logger.Error().
+			Err(err).
+			Str("asset_id", s.streamWrapper.assetID).
+			Str("path", s.streamWrapper.Info.Path).
+			Int("encoder_id", encoderID).
+			Msg("Failed to create stdout pipe for FFmpeg")
 		return err
 	}
 
@@ -276,6 +295,12 @@ func (s *Stream) run(startSegment int32) error {
 	// Start the command
 	err = cmd.Start()
 	if err != nil {
+		s.streamWrapper.config.Logger.Error().
+			Err(err).
+			Str("asset_id", s.streamWrapper.assetID).
+			Str("path", s.streamWrapper.Info.Path).
+			Int("encoder_id", encoderID).
+			Msg("Failed to start FFmpeg command")
 		return err
 	}
 
@@ -312,6 +337,8 @@ func (s *Stream) run(startSegment int32) error {
 			}
 
 			s.streamWrapper.config.Logger.Debug().
+				Str("asset_id", s.streamWrapper.assetID).
+				Str("path", s.streamWrapper.Info.Path).
 				Str("stream_type", streamType).
 				Int32("segment", segment).
 				Int("encoder_id", encoderID).
@@ -322,6 +349,8 @@ func (s *Stream) run(startSegment int32) error {
 				// Another encoder already completed this segment, stop this one
 				cmd.Process.Signal(os.Interrupt)
 				s.streamWrapper.config.Logger.Debug().
+					Str("asset_id", s.streamWrapper.assetID).
+					Str("path", s.streamWrapper.Info.Path).
 					Str("stream_type", streamType).
 					Int("encoder_id", encoderID).
 					Int32("segment", segment).
@@ -339,7 +368,13 @@ func (s *Stream) run(startSegment int32) error {
 				} else if s.isSegmentReady(segment + 1) {
 					// Next segment is already ready, stop to avoid duplicate work
 					cmd.Process.Signal(os.Interrupt)
-					s.streamWrapper.config.Logger.Debug().Int32("segment", segment).Msg("Killing ffmpeg because next segment is ready")
+					s.streamWrapper.config.Logger.Debug().
+						Str("asset_id", s.streamWrapper.assetID).
+						Str("path", s.streamWrapper.Info.Path).
+						Str("stream_type", streamType).
+						Int("encoder_id", encoderID).
+						Int32("segment", segment).
+						Msg("Killing ffmpeg because next segment is ready")
 					shouldStop = true
 				}
 			}
@@ -353,7 +388,12 @@ func (s *Stream) run(startSegment int32) error {
 
 		// Handle any scanner errors
 		if err := scanner.Err(); err != nil {
-			s.streamWrapper.config.Logger.Error().Err(err).Msg("Error reading stdout of ffmpeg")
+			s.streamWrapper.config.Logger.Error().
+				Err(err).
+				Str("asset_id", s.streamWrapper.assetID).
+				Str("path", s.streamWrapper.Info.Path).
+				Int("encoder_id", encoderID).
+				Msg("Error reading stdout of ffmpeg")
 		}
 	}()
 
@@ -363,17 +403,27 @@ func (s *Stream) run(startSegment int32) error {
 
 		if exiterr, ok := err.(*exec.ExitError); ok && exiterr.ExitCode() == 255 {
 			// FFmpeg was interrupted by us (normal termination)
-			s.streamWrapper.config.Logger.Debug().Int("encoder_id", encoderID).Msg("ffmpeg was killed by us")
+			s.streamWrapper.config.Logger.Debug().
+				Str("asset_id", s.streamWrapper.assetID).
+				Str("path", s.streamWrapper.Info.Path).
+				Int("encoder_id", encoderID).
+				Msg("ffmpeg was killed by us")
 		} else if err != nil {
 			// FFmpeg encountered an error during execution
 			s.streamWrapper.config.Logger.Error().
 				Err(err).
+				Str("asset_id", s.streamWrapper.assetID).
+				Str("path", s.streamWrapper.Info.Path).
 				Int("encoder_id", encoderID).
 				Str("stderr", stderr.String()).
 				Msg("ffmpeg occurred an error")
 		} else {
 			// FFmpeg completed successfully
-			s.streamWrapper.config.Logger.Debug().Int("encoder_id", encoderID).Msg("ffmpeg finished successfully")
+			s.streamWrapper.config.Logger.Debug().
+				Str("asset_id", s.streamWrapper.assetID).
+				Str("path", s.streamWrapper.Info.Path).
+				Int("encoder_id", encoderID).
+				Msg("ffmpeg finished successfully")
 		}
 
 		s.lock.Lock()
@@ -479,15 +529,25 @@ func (s *Stream) GetSegment(segment int32) (string, error) {
 		// Only start a new encode if there is too big a distance between the current encoder and the segment.
 		if distance > 60 || !isScheduled {
 			s.streamWrapper.config.Logger.Info().
+				Str("asset_id", s.streamWrapper.assetID).
+				Str("path", s.streamWrapper.Info.Path).
 				Int32("segment", segment).
 				Float64("distance", distance).
 				Msg("Creating new head since closest head is far away")
 			err := s.run(segment)
 			if err != nil {
+				s.streamWrapper.config.Logger.Error().
+					Err(err).
+					Str("asset_id", s.streamWrapper.assetID).
+					Str("path", s.streamWrapper.Info.Path).
+					Int32("segment", segment).
+					Msg("Failed to start transcoding")
 				return "", err
 			}
 		} else {
-			s.streamWrapper.config.Logger.Info().
+			s.streamWrapper.config.Logger.Debug().
+				Str("asset_id", s.streamWrapper.assetID).
+				Str("path", s.streamWrapper.Info.Path).
 				Int32("segment", segment).
 				Float64("distance", distance).
 				Msg("Waiting for segment since encoder head is close")
@@ -496,7 +556,14 @@ func (s *Stream) GetSegment(segment int32) (string, error) {
 		select {
 		case <-readyChan:
 		case <-time.After(60 * time.Second):
-			return "", errors.New("could not retrieve the selected segment (timeout)")
+			err := errors.New("could not retrieve the selected segment (timeout)")
+			s.streamWrapper.config.Logger.Warn().
+				Err(err).
+				Str("asset_id", s.streamWrapper.assetID).
+				Str("path", s.streamWrapper.Info.Path).
+				Int32("segment", segment).
+				Msg("Segment retrieval timeout")
+			return "", err
 		}
 	}
 
@@ -526,7 +593,11 @@ func (s *Stream) prepareNextSegments(segment int32) {
 			continue
 		}
 
-		s.streamWrapper.config.Logger.Info().Int32("segment", i).Msg("Creating new head for future segment")
+		s.streamWrapper.config.Logger.Debug().
+			Str("asset_id", s.streamWrapper.assetID).
+			Str("path", s.streamWrapper.Info.Path).
+			Int32("segment", i).
+			Msg("Creating new head for future segment")
 		go s.run(i)
 
 		return
@@ -586,7 +657,11 @@ func (s *Stream) KillHead(encoderID int) {
 func getKeyframes(wrapper *StreamWrapper) []float64 {
 	assetKeyframes, err := wrapper.config.Dao.GetAssetKeyframes(context.Background(), wrapper.assetID)
 	if err != nil {
-		wrapper.config.Logger.Error().Err(err).Msg("Failed to get keyframes")
+		wrapper.config.Logger.Error().
+			Err(err).
+			Str("asset_id", wrapper.assetID).
+			Str("path", wrapper.Info.Path).
+			Msg("Failed to get keyframes")
 		return []float64{}
 	}
 

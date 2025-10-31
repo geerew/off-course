@@ -92,7 +92,11 @@ func (t *Transcoder) newStreamWrapper(ctx context.Context, path string, assetID 
 		WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assetID}).
 		WithAssetMetadata())
 	if err != nil {
-		t.config.Logger.Error().Err(err).Str("asset_id", assetID).Msg("Failed to get asset metadata")
+		t.config.Logger.Error().
+			Err(err).
+			Str("asset_id", assetID).
+			Str("path", path).
+			Msg("Failed to get asset metadata")
 		streamWrapper.err = err
 		return streamWrapper
 	}

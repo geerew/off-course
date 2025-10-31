@@ -74,7 +74,10 @@ func (sw *StreamWrapper) Kill() {
 
 // Destroy removes all transcoded files from the cache directory
 func (sw *StreamWrapper) Destroy() {
-	sw.config.Logger.Debug().Str("path", sw.Info.Path).Msg("Removing all transcode cache files")
+	sw.config.Logger.Debug().
+		Str("asset_id", sw.assetID).
+		Str("path", sw.Info.Path).
+		Msg("Removing all transcode cache files")
 	sw.Kill()
 	_ = sw.config.AppFs.Fs.RemoveAll(sw.Out)
 }

@@ -17,8 +17,9 @@ type AudioStream struct {
 // NewAudioStream creates a new audio stream for the given file and index
 func NewAudioStream(streamWrapper *StreamWrapper, audioIndex uint32) (*AudioStream, error) {
 	streamWrapper.config.Logger.Debug().
-		Uint32("audio_index", audioIndex).
+		Str("asset_id", streamWrapper.assetID).
 		Str("path", streamWrapper.Info.Path).
+		Uint32("audio_index", audioIndex).
 		Msg("Creating an audio stream")
 
 	audioStream := &AudioStream{
