@@ -1,20 +1,12 @@
 package cron
 
 import (
-	"log/slog"
-
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/logger"
-	"github.com/geerew/off-course/utils/types"
 	"github.com/robfig/cron/v3"
 )
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// loggerType is the type of logger
-var loggerType = slog.Any("type", types.LogTypeCron)
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

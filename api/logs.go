@@ -7,7 +7,6 @@ import (
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/queryparser"
-	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -29,7 +28,6 @@ func (r *Router) initLogRoutes() {
 
 	logGroup := r.api.Group("/logs")
 	logGroup.Get("/", protectedRoute, logsAPI.getLogs)
-	logGroup.Get("/types", protectedRoute, logsAPI.getLogTypes)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -63,13 +61,6 @@ func (api *logsAPI) getLogs(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(pResult)
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-func (api *logsAPI) getLogTypes(c *fiber.Ctx) error {
-	types := types.AllLogTypes()
-	return c.Status(fiber.StatusOK).JSON(types)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

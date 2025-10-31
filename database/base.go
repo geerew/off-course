@@ -6,14 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/geerew/off-course/utils/appfs"
-	"github.com/geerew/off-course/utils/types"
 	"github.com/jmoiron/sqlx"
-)
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-var (
-	loggerType = slog.Any("type", types.LogTypeDB)
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
