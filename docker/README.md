@@ -54,12 +54,12 @@ Additional volumes can be mounted as needed
 
 There are several environment variables that can be set
 
-- OC_DEV - Whether to run in development mode. Defaults to `false`
+- OC_DEBUG - Whether to enable debug logging. Defaults to `false`
 - OC_ENABLE_SIGNUP - Whether to enable signup. Defaults to `false`
 
 ### Hardware Acceleration
 
-Off Course supports hardware-accelerated video transcoding for improved performance.
+OffCourse supports hardware-accelerated video transcoding for improved performance.
 
 The following environment variables control hardware acceleration
 
@@ -101,7 +101,7 @@ services:
 
 ## Bootstrapping
 
-When Off Course is first launched in Docker, it needs to be bootstrapped with an initial administrator account
+When OffCourse is first launched in Docker, it needs to be bootstrapped with an initial administrator account
 
 ### Process
 

@@ -22,6 +22,7 @@ import (
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
+	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/media/probe"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/spf13/afero"
@@ -43,21 +44,20 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	}
 
 	startTime := time.Now()
-	s.logger.Info().Str("course_id", scan.CourseID).Msg("Starting scan for course")
+	courseID := scan.CourseID
+	s.logger.Info().Str("course_id", courseID).Msg("Starting scan for course")
 
 	scan.Status.SetProcessing()
 	if err := s.dao.UpdateScan(ctx, scan); err != nil {
 		return err
 	}
 
-	course, err := fetchCourse(ctx, s, scan.CourseID)
+	course, err := fetchCourse(ctx, s, courseID)
 	if err != nil {
-		s.logger.Error().
-			Err(err).
-			Str("course_id", scan.CourseID).
-			Msg("Failed to fetch course")
+		s.logger.Error().Err(err).Str("course_id", courseID).Msg("Failed to fetch course")
 		return err
 	}
+
 	if course == nil {
 		return nil
 	}
@@ -65,7 +65,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	coursePath := course.Path
 	courseTitle := course.Title
 	s.logger.Debug().
-		Str("course_id", scan.CourseID).
+		Str("course_id", courseID).
 		Str("course_path", coursePath).
 		Str("course_title", courseTitle).
 		Msg("Found course")
@@ -75,7 +75,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		if err := clearCourseMaintenance(ctx, s, course); err != nil {
 			s.logger.Error().
 				Err(err).
-				Str("course_id", scan.CourseID).
+				Str("course_id", courseID).
 				Str("course_path", coursePath).
 				Msg("Failed to clear course from maintenance mode")
 		}
@@ -86,23 +86,20 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	if err != nil {
 		s.logger.Error().
 			Err(err).
-			Str("course_id", scan.CourseID).
+			Str("course_id", courseID).
 			Str("course_path", coursePath).
 			Msg("Failed to check course availability")
 		return err
 	}
+
 	if !available {
-		s.logger.Debug().
-			Str("course_id", scan.CourseID).
-			Str("course_path", coursePath).
-			Msg("Course is unavailable, skipping scan")
 		return nil
 	}
 
 	if err := enableCourseMaintenance(ctx, s, course); err != nil {
 		s.logger.Error().
 			Err(err).
-			Str("course_id", scan.CourseID).
+			Str("course_id", courseID).
 			Str("course_path", coursePath).
 			Msg("Failed to enable course maintenance mode")
 		return err
@@ -110,78 +107,77 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 
 	// Scan the course directory for files and populate assets and attachments. Also check if there is
 	// a course card
-	s.logger.Debug().
-		Str("course_id", scan.CourseID).
-		Str("course_path", coursePath).
-		Msg("Scanning course directory")
-	scanned, err := scanFiles(s, coursePath, course.ID)
+	scanned, err := scanFiles(s, course)
 	if err != nil {
 		s.logger.Error().
 			Err(err).
-			Str("course_id", scan.CourseID).
+			Str("course_id", courseID).
 			Str("course_path", coursePath).
 			Msg("Failed to scan course directory")
 		return err
 	}
 
+	// Flatten the found lessons into attachments and assets
+	scannedAttachments, scannedAssets := flatAttachmentsAndAssets(scanned.lessons)
+
 	s.logger.Info().
-		Str("course_id", scan.CourseID).
+		Str("course_id", courseID).
 		Str("course_path", coursePath).
 		Int("lessons_count", len(scanned.lessons)).
+		Int("attachments_count", len(scannedAttachments)).
+		Int("assets_count", len(scannedAssets)).
 		Str("card_path", scanned.cardPath).
 		Msg("Found lessons")
 
 	// List the assets that already exist in the database for this course
-
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_COURSE_ID: course.ID})
 	existingGroups, err := s.dao.ListLessons(ctx, dbOpts)
 	if err != nil {
 		s.logger.Error().
 			Err(err).
-			Str("course_id", scan.CourseID).
+			Str("course_id", courseID).
 			Str("course_path", coursePath).
 			Msg("Failed to list existing lessons")
 		return err
 	}
 
-	scannedAttachments, scannedAssets := flatAttachmentsAndAssets(scanned.lessons)
+	// Flatten the existing lessons into attachments and assets
 	existingAttachments, existingAssets := flatAttachmentsAndAssets(existingGroups)
 
 	// Populate hashes of assets that have changed
-	if err := populateHashesIfChanged(s.appFs.Fs, scannedAssets, existingAssets); err != nil {
+	if err := populateHashesIfChanged(s.appFs.Fs, scannedAssets, existingAssets, course, s.logger); err != nil {
 		s.logger.Error().
 			Err(err).
-			Str("course_id", scan.CourseID).
+			Str("course_id", courseID).
 			Str("course_path", coursePath).
 			Msg("Failed to populate asset hashes")
 		return err
 	}
 
 	// Reconcile what to do
-	s.logger.Debug().
-		Str("course_id", scan.CourseID).
+	s.logger.Info().
+		Str("course_id", courseID).
 		Str("course_path", coursePath).
 		Int("scanned_assets", len(scannedAssets)).
 		Int("existing_assets", len(existingAssets)).
-		Msg("Reconciling changes")
+		Int("scanned_attachments", len(scannedAttachments)).
+		Int("existing_attachments", len(existingAttachments)).
+		Msg("Generating reconciliation operations")
+
 	groupOps := reconcileLessons(scanned.lessons, existingGroups)
 	assetOps := reconcileAssets(scannedAssets, existingAssets)
 	attachmentOps := reconcileAttachments(scannedAttachments, existingAttachments)
 
 	s.logger.Info().
-		Str("course_id", scan.CourseID).
+		Str("course_id", courseID).
 		Str("course_path", coursePath).
 		Int("lesson_ops", len(groupOps)).
 		Int("asset_ops", len(assetOps)).
 		Int("attachment_ops", len(attachmentOps)).
-		Msg("Generated operations")
+		Msg("Generated reconciliation operations")
 
 	// FFprobe only assets that need it
-	s.logger.Debug().
-		Str("course_id", scan.CourseID).
-		Str("course_path", coursePath).
-		Msg("Probing video assets for metadata and keyframes")
-	assetMetadataByPath := probeVideos(s, assetOps)
+	assetMetadataByPath := probeVideos(s, assetOps, course)
 
 	updatedCourse := course.CardPath != scanned.cardPath
 	if updatedCourse {
@@ -196,8 +192,8 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	// Count operations before applying
 	opCounts := countOperations(groupOps, assetOps, attachmentOps)
 
-	s.logger.Debug().
-		Str("course_id", scan.CourseID).
+	s.logger.Info().
+		Str("course_id", courseID).
 		Str("course_path", coursePath).
 		Msg("Applying database changes in transaction")
 
@@ -229,7 +225,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		if updatedCourse {
 			course.InitialScan = true
 			s.logger.Debug().
-				Str("course_id", scan.CourseID).
+				Str("course_id", courseID).
 				Str("course_path", coursePath).
 				Msg("Updating course metadata")
 			return s.dao.UpdateCourse(txCtx, course)
@@ -240,7 +236,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	if err != nil {
 		s.logger.Error().
 			Err(err).
-			Str("course_id", scan.CourseID).
+			Str("course_id", courseID).
 			Str("course_path", coursePath).
 			Msg("Failed to apply changes")
 		return err
@@ -249,7 +245,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	// Final summary log with timing and operation counts
 	duration := time.Since(startTime)
 	s.logger.Info().
-		Str("course_id", scan.CourseID).
+		Str("course_id", courseID).
 		Str("course_path", coursePath).
 		Dur("duration", duration).
 		Int("lessons_created", opCounts.LessonsCreated).
@@ -435,8 +431,13 @@ type scannedResults struct {
 
 // scanFiles scans the course directory for files. It will return a list of grouped assets,
 // and a card path, if found.
-func scanFiles(s *CourseScan, coursePath, courseID string) (*scannedResults, error) {
-	files, err := s.appFs.ReadDirFlat(coursePath, 2)
+func scanFiles(s *CourseScan, course *models.Course) (*scannedResults, error) {
+	s.logger.Info().
+		Str("course_id", course.ID).
+		Str("course_path", course.Path).
+		Msg("Scanning course directory")
+
+	files, err := s.appFs.ReadDirFlat(course.Path, 2)
 	if err != nil {
 		return nil, err
 	}
@@ -450,7 +451,7 @@ func scanFiles(s *CourseScan, coursePath, courseID string) (*scannedResults, err
 		normalizedPath := utils.NormalizeWindowsDrive(fp)
 		filename := filepath.Base(normalizedPath)
 		dir := filepath.Dir(normalizedPath)
-		inRoot := dir == utils.NormalizeWindowsDrive(coursePath)
+		inRoot := dir == utils.NormalizeWindowsDrive(course.Path)
 
 		module := ""
 		if !inRoot {
@@ -507,7 +508,7 @@ func scanFiles(s *CourseScan, coursePath, courseID string) (*scannedResults, err
 			})
 
 			lesson := &models.Lesson{
-				CourseID: courseID,
+				CourseID: course.ID,
 				Module:   module,
 				Prefix:   sql.NullInt16{Int16: int16(prefix), Valid: true},
 			}
@@ -519,7 +520,7 @@ func scanFiles(s *CourseScan, coursePath, courseID string) (*scannedResults, err
 
 			if len(bucket.groupedFiles) > 0 {
 				for _, parsedFile := range bucket.groupedFiles {
-					asset, err := parsedFile.toAsset(s.appFs.Fs, module, courseID)
+					asset, err := parsedFile.toAsset(s.appFs.Fs, module, course.ID)
 					if err != nil {
 						return nil, err
 					}
@@ -538,7 +539,7 @@ func scanFiles(s *CourseScan, coursePath, courseID string) (*scannedResults, err
 					idx := pickBest(bucket.soloFiles)
 					pf := bucket.soloFiles[idx]
 
-					asset, err := pf.toAsset(s.appFs.Fs, module, courseID)
+					asset, err := pf.toAsset(s.appFs.Fs, module, course.ID)
 					if err != nil {
 						return nil, err
 					}
@@ -556,7 +557,7 @@ func scanFiles(s *CourseScan, coursePath, courseID string) (*scannedResults, err
 						lesson.Attachments = append(lesson.Attachments, other.toAttachment())
 					}
 				} else {
-					asset, err := bucket.soloFiles[0].toAsset(s.appFs.Fs, module, courseID)
+					asset, err := bucket.soloFiles[0].toAsset(s.appFs.Fs, module, course.ID)
 					if err != nil {
 						return nil, err
 					}
@@ -603,8 +604,7 @@ func flatAttachmentsAndAssets(lessons []*models.Lesson) ([]*models.Attachment, [
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // probeVideos probes videos assets that match the operations create, replace, or swap
-func probeVideos(s *CourseScan, ops []Op) map[string]*models.AssetMetadata {
-
+func probeVideos(s *CourseScan, ops []Op, course *models.Course) map[string]*models.AssetMetadata {
 	var targets []*models.Asset
 	for _, op := range ops {
 		switch v := op.(type) {
@@ -626,12 +626,29 @@ func probeVideos(s *CourseScan, ops []Op) map[string]*models.AssetMetadata {
 		}
 	}
 
-	s.logger.Debug().Int("video_assets_count", len(targets)).Msg("Found video assets to probe")
+	if len(targets) == 0 {
+		return map[string]*models.AssetMetadata{}
+	}
+
+	s.logger.Info().
+		Str("course_id", course.ID).
+		Str("course_path", course.Path).
+		Int("video_assets_count", len(targets)).
+		Msg("Starting video probing and keyframe extraction")
 
 	assetMetadataByPath := map[string]*models.AssetMetadata{}
 	mediaProbe := probe.MediaProbe{FFmpeg: s.ffmpeg}
+	totalVideos := len(targets)
 
-	for _, asset := range targets {
+	for i, asset := range targets {
+		current := i + 1
+		s.logger.Info().
+			Str("course_id", course.ID).
+			Str("course_path", course.Path).
+			Str("progress", fmt.Sprintf("%d of %d", current, totalVideos)).
+			Str("video_path", asset.Path).
+			Msg("Probing video and extracting keyframes")
+
 		if info, err := mediaProbe.ProbeVideo(asset.Path); err == nil {
 			assetMetadataByPath[asset.Path] = &models.AssetMetadata{
 				VideoMetadata: &models.VideoMetadata{
@@ -663,6 +680,9 @@ func probeVideos(s *CourseScan, ops []Op) map[string]*models.AssetMetadata {
 				// We'll handle this in the asset processing phase
 				s.extractedKeyframes[asset.Path] = keyframes
 				s.logger.Debug().
+					Str("course_id", course.ID).
+					Str("course_path", course.Path).
+					Str("progress", fmt.Sprintf("%d of %d", current, totalVideos)).
 					Int("keyframes_count", len(keyframes)).
 					Str("video_path", asset.Path).
 					Msg("Extracted keyframes for video")
@@ -670,6 +690,9 @@ func probeVideos(s *CourseScan, ops []Op) map[string]*models.AssetMetadata {
 				// Log keyframe extraction failure but don't fail the scan
 				s.logger.Warn().
 					Err(err).
+					Str("course_id", course.ID).
+					Str("course_path", course.Path).
+					Str("progress", fmt.Sprintf("%d of %d", current, totalVideos)).
 					Str("video_path", asset.Path).
 					Msg("Failed to extract keyframes for video")
 			}
@@ -677,10 +700,19 @@ func probeVideos(s *CourseScan, ops []Op) map[string]*models.AssetMetadata {
 			// Log video probe failure but don't fail the scan
 			s.logger.Warn().
 				Err(err).
+				Str("course_id", course.ID).
+				Str("course_path", course.Path).
+				Str("progress", fmt.Sprintf("%d of %d", current, totalVideos)).
 				Str("video_path", asset.Path).
 				Msg("Failed to probe video file")
 		}
 	}
+
+	s.logger.Info().
+		Str("course_id", course.ID).
+		Str("course_path", course.Path).
+		Int("videos_processed", totalVideos).
+		Msg("Completed video probing and keyframe extraction")
 
 	return assetMetadataByPath
 }
@@ -832,6 +864,8 @@ func applyAssetOps(
 							// Log error but don't fail the scan
 							s.logger.Error().
 								Err(err).
+								Str("course_id", course.ID).
+								Str("course_path", course.Path).
 								Str("asset_id", v.New.ID).
 								Str("asset_path", v.New.Path).
 								Msg("Failed to store keyframes for asset")
@@ -1112,17 +1146,44 @@ func isCard(filename string) bool {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // populateHashesIfChanged populates the hashes of the scanned assets if they have changed
-func populateHashesIfChanged(fs afero.Fs, scanned []*models.Asset, existing []*models.Asset) error {
+func populateHashesIfChanged(fs afero.Fs, scanned []*models.Asset, existing []*models.Asset, course *models.Course, logger *logger.Logger) error {
+	logger.Info().
+		Str("course_id", course.ID).
+		Str("course_path", course.Path).
+		Int("assets_to_hash", len(scanned)).
+		Msg("Calculating asset hashes")
+
 	existingMap := make(map[string]*models.Asset)
 	for _, e := range existing {
 		existingMap[e.Path] = e
 	}
 
+	hashedCount := 0
+	totalToHash := 0
 	for _, s := range scanned {
 		e := existingMap[s.Path]
 		if e == nil || e.FileSize != s.FileSize || e.ModTime != s.ModTime {
+			totalToHash++
+		}
+	}
+
+	if totalToHash == 0 {
+		return nil
+	}
+
+	for _, s := range scanned {
+		e := existingMap[s.Path]
+		if e == nil || e.FileSize != s.FileSize || e.ModTime != s.ModTime {
+			hashedCount++
 			hash, err := hashFilePartial(fs, s.Path, 1024*1024)
 			if err != nil {
+				logger.Error().
+					Err(err).
+					Str("course_id", course.ID).
+					Str("course_path", course.Path).
+					Str("progress", fmt.Sprintf("%d of %d", hashedCount, totalToHash)).
+					Str("asset_path", s.Path).
+					Msg("Failed to hash asset")
 				return err
 			}
 			s.Hash = hash
