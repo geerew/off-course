@@ -88,8 +88,9 @@ func (s *CourseScan) Add(ctx context.Context, courseId string) (*models.Scan, er
 	} else {
 		// Scan job already exists
 		s.logger.Debug().
+			Str("course_id", courseId).
+			Str("course_path", course.Path).
 			Str("job", scan.ID).
-			Str("path", course.Path).
 			Msg("Scan job already exists")
 
 		return scan, nil
@@ -102,7 +103,8 @@ func (s *CourseScan) Add(ctx context.Context, courseId string) (*models.Scan, er
 	}
 
 	s.logger.Info().
-		Str("path", course.Path).
+		Str("course_id", courseId).
+		Str("course_path", course.Path).
 		Msg("Added scan job")
 
 	return scan, nil
@@ -144,15 +146,18 @@ func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessor
 			}
 
 			s.logger.Info().
+				Str("course_id", nextScan.CourseID).
+				Str("course_path", nextScan.CoursePath).
 				Str("job", nextScan.ID).
-				Str("path", nextScan.CoursePath).
 				Msg("Processing scan job")
 
 			err = processorFn(ctx, s, nextScan)
 			if err != nil {
 				s.logger.Error().
 					Err(err).
-					Str("path", nextScan.CoursePath).
+					Str("course_id", nextScan.CourseID).
+					Str("course_path", nextScan.CoursePath).
+					Str("job", nextScan.ID).
 					Msg("Failed to process scan job")
 			}
 

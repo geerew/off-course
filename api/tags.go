@@ -164,7 +164,6 @@ func (api *tagsAPI) updateTag(c *fiber.Ctx) error {
 
 	tagReq := &tagRequest{}
 	if err := c.BodyParser(tagReq); err != nil {
-		api.logger.Warn().Err(err).Str("tag_id", id).Msg("tags: invalid update tag payload")
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
 	}
 
@@ -176,7 +175,6 @@ func (api *tagsAPI) updateTag(c *fiber.Ctx) error {
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: id})
 	tag, err := api.dao.GetTag(ctx, dbOpts)
 	if err != nil {
-		api.logger.Error().Err(err).Str("tag_id", id).Msg("tags: failed to get tag for update")
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tag", err)
 	}
 

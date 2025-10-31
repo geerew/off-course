@@ -60,13 +60,11 @@ func (api userAPI) getUsers(c *fiber.Ctx) error {
 
 	dbOpts, err := optionsBuilder(c, builderOpts, principal.UserID)
 	if err != nil {
-		api.logger.Warn().Err(err).Msg("users: failed to parse query options")
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
 	users, err := api.dao.ListUsers(ctx, dbOpts)
 	if err != nil {
-		api.logger.Error().Err(err).Msg("users: failed to list users")
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up users", err)
 	}
 

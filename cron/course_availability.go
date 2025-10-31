@@ -37,7 +37,7 @@ func (ca *courseAvailability) run() error {
 	ca.logger.Info().
 		Int("per_page", perPage).
 		Int("batch_size", ca.batchSize).
-		Msg("cron: updating course availability started")
+		Msg("Updating course availability started")
 
 	coursesBatch := make([]*models.Course, 0, ca.batchSize)
 
@@ -55,7 +55,7 @@ func (ca *courseAvailability) run() error {
 		// Fetch a batch of courses
 		courses, err := ca.dao.ListCourses(ctx, dbOpts)
 		if err != nil {
-			ca.logger.Error().Err(err).Int("page", page).Msg("cron: failed to fetch courses")
+			ca.logger.Error().Err(err).Int("page", page).Msg("Failed to fetch courses")
 			return err
 		}
 		totalScanned += len(courses)
@@ -81,7 +81,7 @@ func (ca *courseAvailability) run() error {
 						Err(err).
 						Str("course", course.Title).
 						Str("path", course.Path).
-						Msg("cron: failed to stat course")
+						Msg("Failed to stat course")
 					return err
 				}
 			} else if !course.Available {
@@ -94,11 +94,11 @@ func (ca *courseAvailability) run() error {
 			// Update the courses if we hit the batch size
 			if len(coursesBatch) == ca.batchSize {
 				if err := ca.writeAll(ctx, coursesBatch); err != nil {
-					ca.logger.Error().Err(err).Int("batch_len", len(coursesBatch)).Msg("cron: failed to write availability batch")
+					ca.logger.Error().Err(err).Int("batch_len", len(coursesBatch)).Msg("Failed to write availability batch")
 					return err
 				}
 				updatedCount += len(coursesBatch)
-				ca.logger.Debug().Int("updated", len(coursesBatch)).Msg("cron: availability batch written")
+				ca.logger.Debug().Int("updated", len(coursesBatch)).Msg("Availability batch written")
 				coursesBatch = coursesBatch[:0]
 			}
 		}
@@ -109,11 +109,11 @@ func (ca *courseAvailability) run() error {
 	// Update any remaining courses
 	if len(coursesBatch) > 0 {
 		if err := ca.writeAll(ctx, coursesBatch); err != nil {
-			ca.logger.Error().Err(err).Int("batch_len", len(coursesBatch)).Msg("cron: failed to write final availability batch")
+			ca.logger.Error().Err(err).Int("batch_len", len(coursesBatch)).Msg("Failed to write final availability batch")
 			return err
 		}
 		updatedCount += len(coursesBatch)
-		ca.logger.Debug().Int("updated", len(coursesBatch)).Msg("cron: final availability batch written")
+		ca.logger.Debug().Int("updated", len(coursesBatch)).Msg("Final availability batch written")
 	}
 
 	ca.logger.Info().
@@ -121,7 +121,7 @@ func (ca *courseAvailability) run() error {
 		Int("updated", updatedCount).
 		Int("made_available", madeAvailable).
 		Int("made_unavailable", madeUnavailable).
-		Msg("cron: updating course availability completed")
+		Msg("Updating course availability completed")
 
 	return nil
 }
