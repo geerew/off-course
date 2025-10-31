@@ -42,6 +42,14 @@ func errorResponse(c *fiber.Ctx, status int, message string, err error) error {
 		resp["error"] = err.Error()
 	}
 
+	// Store error details for centralized logging in middleware
+	if status >= 400 {
+		c.Locals("api_error_message", message)
+		if err != nil {
+			c.Locals("api_error_detail", err.Error())
+		}
+	}
+
 	return c.Status(status).JSON(resp)
 }
 

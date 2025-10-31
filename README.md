@@ -1,8 +1,8 @@
-# Off Course
+# OffCourse
 
 ## Overview
 
-Off Course is a local course management application that enables you to view, organize, and track progress through educational content
+OffCourse is a local course management application that enables you to view, organize, and track progress through educational content
 stored on your local filesystem. It provides a web-based interface for browsing courses, tracking learning progress, and managing course
 materials without requiring an internet connection.
 
@@ -194,7 +194,7 @@ go test -tags dev -v ./...
 
 ## CLI Commands
 
-Off Course includes several CLI commands
+OffCourse includes several CLI commands
 
 ### Serve
 
@@ -210,6 +210,7 @@ The `serve` command runs the application
 - `--data-dir <path>` - Data directory path (default: ./oc_data)
 - `--enable-signup` - Allow user registration
 - `--dev` - Run in development mode
+- `--debug` - Enable debug logging
 
 ### Admin
 
@@ -221,7 +222,7 @@ The `admin` command allows you to reset the password of a user
 
 ## Bootstrapping
 
-When first launched, Off Course needs to be bootstrapped with an initial administrator account
+When first launched, OffCourse needs to be bootstrapped with an initial administrator account
 
 ### Process
 

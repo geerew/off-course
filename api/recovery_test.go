@@ -9,101 +9,19 @@ import (
 	"testing"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
-	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/auth"
-	"github.com/geerew/off-course/utils/coursescan"
-	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/security"
 	"github.com/geerew/off-course/utils/types"
-	"github.com/gofiber/fiber/v2"
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// createTestRouter creates a test router
-func createTestRouter(t *testing.T) *Router {
-	return createTestRouterWithDataDir(t, "./oc_data")
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// createTestRouterWithDataDir creates a router with a specific data directory
-func createTestRouterWithDataDir(t *testing.T, dataDir string) *Router {
-	t.Helper()
-
-	// Create a test logger
-	testLogger := logger.New(&logger.Config{
-		Level:         logger.LevelInfo,
-		ConsoleOutput: false, // Disable console output for tests
-	})
-
-	appFs := appfs.New(afero.NewMemMapFs())
-
-	dbManager, err := database.NewSQLiteManager(&database.DatabaseManagerConfig{
-		DataDir: dataDir,
-		AppFs:   appFs,
-		Testing: true,
-	})
-	require.NoError(t, err)
-	require.NotNil(t, dbManager)
-
-	// Get FFmpeg instance
-	ffmpeg := getCachedFFmpeg(t)
-
-	courseScan := coursescan.New(&coursescan.CourseScanConfig{
-		Db:     dbManager.DataDb,
-		AppFs:  appFs,
-		Logger: testLogger.WithCourseScan(),
-		FFmpeg: ffmpeg,
-	})
-
-	// Router config
-	config := &RouterConfig{
-		DbManager:     dbManager,
-		AppFs:         appFs,
-		CourseScan:    courseScan,
-		FFmpeg:        ffmpeg,
-		Logger:        testLogger.WithAPI(),
-		SignupEnabled: true,
-		DataDir:       dataDir,
-		Testing:       true,
-	}
-
-	// Create router
-	router := &Router{
-		config: config,
-		dao:    dao.New(config.DbManager.DataDb),
-		logDao: dao.New(config.DbManager.LogsDb),
-		logger: config.Logger,
-	}
-
-	router.createSessionStore()
-
-	router.App = fiber.New(fiber.Config{
-		DisableStartupMessage: true,
-	})
-
-	// Only add CORS middleware, no authentication
-	router.App.Use(corsMiddleWare())
-	router.initRoutes()
-
-	return router
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 func TestRecovery_ResetPassword(t *testing.T) {
 	t.Run("200 (success)", func(t *testing.T) {
-		ctx := context.Background()
-		tempDir := t.TempDir()
-
-		// Create router with temp directory
-		router := createTestRouterWithDataDir(t, tempDir)
+		router, ctx := setupNoAuth(t)
 
 		// Create admin user
 		user := &models.User{
@@ -114,8 +32,8 @@ func TestRecovery_ResetPassword(t *testing.T) {
 		}
 		require.NoError(t, router.dao.CreateUser(ctx, user))
 
-		// Generate recovery token in the same directory
-		recoveryToken, err := auth.GenerateRecoveryToken("testadmin", "newpassword123", tempDir)
+		// Generate recovery token in the router's data directory
+		recoveryToken, err := auth.GenerateRecoveryToken(router.config.AppFs, "testadmin", "newpassword123", router.config.DataDir)
 		require.NoError(t, err)
 
 		// Make request
@@ -145,8 +63,7 @@ func TestRecovery_ResetPassword(t *testing.T) {
 	})
 
 	t.Run("401 (invalid token)", func(t *testing.T) {
-		tempDir := t.TempDir()
-		router := createTestRouterWithDataDir(t, tempDir)
+		router, _ := setupNoAuth(t)
 
 		// Make request with invalid token
 		reqBody := map[string]string{
@@ -162,8 +79,7 @@ func TestRecovery_ResetPassword(t *testing.T) {
 	})
 
 	t.Run("401 (no token file)", func(t *testing.T) {
-		tempDir := t.TempDir()
-		router := createTestRouterWithDataDir(t, tempDir)
+		router, _ := setupNoAuth(t)
 
 		// Make request with token but no file
 		reqBody := map[string]string{
@@ -179,7 +95,7 @@ func TestRecovery_ResetPassword(t *testing.T) {
 	})
 
 	t.Run("400 (missing token)", func(t *testing.T) {
-		router := createTestRouter(t)
+		router, _ := setupNoAuth(t)
 
 		// Make request without token
 		req := httptest.NewRequest(http.MethodPost, "/api/admin/recovery", bytes.NewBuffer([]byte("{}")))
@@ -191,11 +107,10 @@ func TestRecovery_ResetPassword(t *testing.T) {
 	})
 
 	t.Run("404 (user not found)", func(t *testing.T) {
-		tempDir := t.TempDir()
-		router := createTestRouterWithDataDir(t, tempDir)
+		router, _ := setupNoAuth(t)
 
 		// Generate recovery token for non-existent user
-		recoveryToken, err := auth.GenerateRecoveryToken("nonexistent", "password", tempDir)
+		recoveryToken, err := auth.GenerateRecoveryToken(router.config.AppFs, "nonexistent", "password", router.config.DataDir)
 		require.NoError(t, err)
 
 		// Make request
@@ -213,8 +128,7 @@ func TestRecovery_ResetPassword(t *testing.T) {
 
 	t.Run("403 (user not admin)", func(t *testing.T) {
 		ctx := context.Background()
-		tempDir := t.TempDir()
-		router := createTestRouterWithDataDir(t, tempDir)
+		router, _ := setupNoAuth(t)
 
 		// Create regular user (not admin)
 		user := &models.User{
@@ -226,7 +140,7 @@ func TestRecovery_ResetPassword(t *testing.T) {
 		require.NoError(t, router.dao.CreateUser(ctx, user))
 
 		// Generate recovery token
-		recoveryToken, err := auth.GenerateRecoveryToken("testuser", "newpassword123", tempDir)
+		recoveryToken, err := auth.GenerateRecoveryToken(router.config.AppFs, "testuser", "newpassword123", router.config.DataDir)
 		require.NoError(t, err)
 
 		// Make request

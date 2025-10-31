@@ -8,7 +8,9 @@ package api
 
 import (
 	"strings"
+	"time"
 
+	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -24,6 +26,67 @@ func corsMiddleWare() fiber.Handler {
 		AllowOrigins: "*",
 		AllowMethods: "GET, POST, PUT, DELETE, HEAD, PATCH",
 	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// requestLoggingMiddleware creates a request logging middleware
+func requestLoggingMiddleware(logger *logger.Logger) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		start := time.Now()
+
+		err := c.Next()
+
+		duration := time.Since(start)
+
+		status := c.Response().StatusCode()
+		apiLogger := logger.WithAPI()
+
+		// Pull any error info stored by errorResponse
+		errMsg, _ := c.Locals("api_error_message").(string)
+		errDetail, _ := c.Locals("api_error_detail").(string)
+
+		switch {
+		case status >= 500:
+			evt := apiLogger.Error().
+				Str("method", c.Method()).
+				Str("path", c.Path()).
+				Int("status", status).
+				Dur("duration", duration).
+				Str("ip", c.IP())
+			if errMsg != "" {
+				evt = evt.Str("error_message", errMsg)
+			}
+			if errDetail != "" {
+				evt = evt.Str("error_detail", errDetail)
+			}
+			evt.Msg("Request processed")
+		case status >= 400:
+			evt := apiLogger.Warn().
+				Str("method", c.Method()).
+				Str("path", c.Path()).
+				Int("status", status).
+				Dur("duration", duration).
+				Str("ip", c.IP())
+			if errMsg != "" {
+				evt = evt.Str("error_message", errMsg)
+			}
+			if errDetail != "" {
+				evt = evt.Str("error_detail", errDetail)
+			}
+			evt.Msg("Request processed")
+		default:
+			apiLogger.Debug().
+				Str("method", c.Method()).
+				Str("path", c.Path()).
+				Int("status", status).
+				Dur("duration", duration).
+				Str("ip", c.IP()).
+				Msg("Request processed")
+		}
+
+		return err
+	}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

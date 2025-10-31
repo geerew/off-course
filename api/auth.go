@@ -8,6 +8,7 @@ import (
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/auth"
+	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/session"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
@@ -21,6 +22,7 @@ type authAPI struct {
 	dao            *dao.DAO
 	sessionManager *session.SessionManager
 	r              *Router
+	logger         *logger.Logger
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -31,6 +33,7 @@ func (r *Router) initAuthRoutes() {
 		dao:            r.dao,
 		sessionManager: r.sessionManager,
 		r:              r,
+		logger:         r.logger.WithAPI(),
 	}
 
 	authGroup := r.api.Group("/auth")
@@ -97,7 +100,6 @@ func (api authAPI) register(c *fiber.Ctx) error {
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error setting session", err)
 	}
-
 	return c.SendStatus(fiber.StatusCreated)
 }
 
@@ -117,7 +119,6 @@ func (api authAPI) bootstrap(c *fiber.Ctx) error {
 	// Validate bootstrap token
 	_, err := auth.ValidateBootstrapToken(token, api.r.config.DataDir, api.r.config.AppFs.Fs)
 	if err != nil {
-		api.r.logger.Error().Err(err).Msg("Invalid bootstrap token")
 		return errorResponse(c, fiber.StatusUnauthorized, "Invalid or expired bootstrap token", nil)
 	}
 
@@ -158,7 +159,6 @@ func (api authAPI) login(c *fiber.Ctx) error {
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error setting session", err)
 	}
-
 	return c.SendStatus(fiber.StatusOK)
 }
 
@@ -169,7 +169,6 @@ func (api authAPI) logout(c *fiber.Ctx) error {
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting session", err)
 	}
-
 	return c.SendStatus(fiber.StatusNoContent)
 }
 

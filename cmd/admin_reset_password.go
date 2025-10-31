@@ -40,6 +40,7 @@ var adminResetPasswordCmd = &cobra.Command{
 		// Get configuration
 		dataDir := viper.GetString("data-dir")
 		httpAddr := viper.GetString("http")
+		appFs := appfs.New(afero.NewOsFs())
 
 		// Verify user exists and is admin
 		if err := verifyAdminUser(username, dataDir); err != nil {
@@ -69,7 +70,7 @@ var adminResetPasswordCmd = &cobra.Command{
 		fmt.Println()
 
 		// Generate recovery token
-		recoveryToken, err := auth.GenerateRecoveryToken(username, password, dataDir)
+		recoveryToken, err := auth.GenerateRecoveryToken(appFs, username, password, dataDir)
 		if err != nil {
 			errorMessage("Failed to generate recovery token: %s", err)
 			os.Exit(1)
@@ -78,13 +79,13 @@ var adminResetPasswordCmd = &cobra.Command{
 		// Make HTTP request to running application
 		if err := resetPasswordViaAPI(recoveryToken.Token, httpAddr); err != nil {
 			// Clean up token file on error
-			auth.DeleteRecoveryToken(dataDir)
+			auth.DeleteRecoveryToken(appFs, dataDir)
 			errorMessage("Failed to reset password: %s", err)
 			os.Exit(1)
 		}
 
 		// Clean up token file on success
-		auth.DeleteRecoveryToken(dataDir)
+		auth.DeleteRecoveryToken(appFs, dataDir)
 
 		successMessage("✅ Password reset successfully for admin user '%s'", username)
 	},

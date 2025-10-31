@@ -37,10 +37,17 @@ var serveCmd = &cobra.Command{
 		isDev := viper.GetBool("dev")
 		dataDir := viper.GetString("data-dir")
 		enableSignup := viper.GetBool("enable-signup")
+		isDebug := viper.GetBool("debug")
+
+		// Determine log level
+		logLevel := logger.LevelInfo
+		if isDebug {
+			logLevel = logger.LevelDebug
+		}
 
 		// Logger
 		appLogger := logger.New(&logger.Config{
-			Level:         logger.LevelInfo,
+			Level:         logLevel,
 			ConsoleOutput: true,
 		})
 
@@ -108,7 +115,6 @@ var serveCmd = &cobra.Command{
 			Logger:        appLogger.WithAPI(),
 			AppFs:         appFs,
 			CourseScan:    courseScan,
-			FFmpeg:        ffmpeg,
 			HttpAddr:      httpAddr,
 			IsProduction:  !isDev,
 			SignupEnabled: enableSignup,
@@ -175,6 +181,7 @@ func init() {
 	serveCmd.Flags().String("http", "127.0.0.1:9081", "TCP address to listen for the HTTP server")
 	serveCmd.Flags().String("data-dir", "./oc_data", "Directory to store data files")
 	serveCmd.Flags().Bool("enable-signup", false, "Allow users to create new accounts")
+	serveCmd.Flags().Bool("debug", false, "Enable debug logging")
 
 	// Bind flags
 	viper.SetEnvPrefix("OC")
@@ -186,4 +193,5 @@ func init() {
 	_ = viper.BindPFlag("http", serveCmd.Flags().Lookup("http"))
 	_ = viper.BindPFlag("data-dir", serveCmd.Flags().Lookup("data-dir"))
 	_ = viper.BindPFlag("enable-signup", serveCmd.Flags().Lookup("enable-signup"))
+	_ = viper.BindPFlag("debug", serveCmd.Flags().Lookup("debug"))
 }

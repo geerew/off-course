@@ -5,16 +5,20 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/geerew/off-course/utils/appfs"
+	"github.com/spf13/afero"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func TestGenerateRecoveryToken(t *testing.T) {
-	tempDir := t.TempDir()
+	appFs := appfs.New(afero.NewMemMapFs())
+	dataDir := "/test"
 	username := "testuser"
 	password := "testpass123"
 
-	token, err := GenerateRecoveryToken(username, password, tempDir)
+	token, err := GenerateRecoveryToken(appFs, username, password, dataDir)
 	if err != nil {
 		t.Fatalf("Failed to generate recovery token: %v", err)
 	}
@@ -33,8 +37,8 @@ func TestGenerateRecoveryToken(t *testing.T) {
 	}
 
 	// Check token file exists
-	tokenPath := filepath.Join(tempDir, ".recovery-token")
-	if _, err := os.Stat(tokenPath); os.IsNotExist(err) {
+	tokenPath := filepath.Join(dataDir, ".recovery-token")
+	if _, err := appFs.Fs.Stat(tokenPath); os.IsNotExist(err) {
 		t.Error("Token file should exist")
 	}
 
@@ -53,18 +57,19 @@ func TestGenerateRecoveryToken(t *testing.T) {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func TestValidateRecoveryToken(t *testing.T) {
-	tempDir := t.TempDir()
+	appFs := appfs.New(afero.NewMemMapFs())
+	dataDir := "/test"
 	username := "testuser"
 	password := "testpass123"
 
 	// Generate token
-	originalToken, err := GenerateRecoveryToken(username, password, tempDir)
+	originalToken, err := GenerateRecoveryToken(appFs, username, password, dataDir)
 	if err != nil {
 		t.Fatalf("Failed to generate recovery token: %v", err)
 	}
 
 	// Validate token
-	validatedToken, err := ValidateRecoveryToken(originalToken.Token, tempDir)
+	validatedToken, err := ValidateRecoveryToken(appFs, originalToken.Token, dataDir)
 	if err != nil {
 		t.Fatalf("Failed to validate recovery token: %v", err)
 	}
@@ -86,18 +91,19 @@ func TestValidateRecoveryToken(t *testing.T) {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func TestValidateRecoveryToken_InvalidToken(t *testing.T) {
-	tempDir := t.TempDir()
+	appFs := appfs.New(afero.NewMemMapFs())
+	dataDir := "/test"
 	username := "testuser"
 	password := "testpass123"
 
 	// Generate token
-	_, err := GenerateRecoveryToken(username, password, tempDir)
+	_, err := GenerateRecoveryToken(appFs, username, password, dataDir)
 	if err != nil {
 		t.Fatalf("Failed to generate recovery token: %v", err)
 	}
 
 	// Try to validate with wrong token
-	_, err = ValidateRecoveryToken("invalid-token", tempDir)
+	_, err = ValidateRecoveryToken(appFs, "invalid-token", dataDir)
 	if err == nil {
 		t.Error("Expected error for invalid token")
 	}
@@ -106,10 +112,11 @@ func TestValidateRecoveryToken_InvalidToken(t *testing.T) {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func TestValidateRecoveryToken_NoFile(t *testing.T) {
-	tempDir := t.TempDir()
+	appFs := appfs.New(afero.NewMemMapFs())
+	dataDir := "/test"
 
 	// Try to validate token when no file exists
-	_, err := ValidateRecoveryToken("any-token", tempDir)
+	_, err := ValidateRecoveryToken(appFs, "any-token", dataDir)
 	if err == nil {
 		t.Error("Expected error when token file does not exist")
 	}
@@ -118,30 +125,31 @@ func TestValidateRecoveryToken_NoFile(t *testing.T) {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func TestDeleteRecoveryToken(t *testing.T) {
-	tempDir := t.TempDir()
+	appFs := appfs.New(afero.NewMemMapFs())
+	dataDir := "/test"
 	username := "testuser"
 	password := "testpass123"
 
 	// Generate token
-	_, err := GenerateRecoveryToken(username, password, tempDir)
+	_, err := GenerateRecoveryToken(appFs, username, password, dataDir)
 	if err != nil {
 		t.Fatalf("Failed to generate recovery token: %v", err)
 	}
 
 	// Check token file exists
-	tokenPath := filepath.Join(tempDir, ".recovery-token")
-	if _, err := os.Stat(tokenPath); os.IsNotExist(err) {
+	tokenPath := filepath.Join(dataDir, ".recovery-token")
+	if _, err := appFs.Fs.Stat(tokenPath); os.IsNotExist(err) {
 		t.Error("Token file should exist")
 	}
 
 	// Delete token
-	err = DeleteRecoveryToken(tempDir)
+	err = DeleteRecoveryToken(appFs, dataDir)
 	if err != nil {
 		t.Fatalf("Failed to delete recovery token: %v", err)
 	}
 
 	// Check token file is gone
-	if _, err := os.Stat(tokenPath); !os.IsNotExist(err) {
+	if _, err := appFs.Fs.Stat(tokenPath); !os.IsNotExist(err) {
 		t.Error("Token file should be deleted")
 	}
 }
@@ -149,10 +157,11 @@ func TestDeleteRecoveryToken(t *testing.T) {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func TestDeleteRecoveryToken_NoFile(t *testing.T) {
-	tempDir := t.TempDir()
+	appFs := appfs.New(afero.NewMemMapFs())
+	dataDir := "/test"
 
 	// Try to delete token when no file exists
-	err := DeleteRecoveryToken(tempDir)
+	err := DeleteRecoveryToken(appFs, dataDir)
 	if err != nil {
 		t.Errorf("Expected no error when deleting non-existent token file: %v", err)
 	}

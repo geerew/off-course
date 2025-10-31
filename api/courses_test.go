@@ -28,7 +28,7 @@ import (
 
 func TestCourses_GetCourses(t *testing.T) {
 	t.Run("200 (empty)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/", nil))
 		require.NoError(t, err)
@@ -40,7 +40,7 @@ func TestCourses_GetCourses(t *testing.T) {
 	})
 
 	t.Run("200 (found)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		for i := range 5 {
 			course := &models.Course{
@@ -61,7 +61,7 @@ func TestCourses_GetCourses(t *testing.T) {
 	})
 
 	t.Run("200 (sort)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		courses := []*models.Course{}
 		for i := range 5 {
@@ -99,7 +99,7 @@ func TestCourses_GetCourses(t *testing.T) {
 	})
 
 	t.Run("200 (pagination)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		courses := []*models.Course{}
 		for i := range 17 {
@@ -147,7 +147,7 @@ func TestCourses_GetCourses(t *testing.T) {
 	})
 
 	t.Run("200 (filter)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		defaultSort := " sort:\"" + models.COURSE_TABLE_CREATED_AT + " asc\""
 
@@ -296,7 +296,7 @@ func TestCourses_GetCourses(t *testing.T) {
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		// Drop the courses table
 		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
@@ -312,7 +312,7 @@ func TestCourses_GetCourses(t *testing.T) {
 
 func TestCourses_GetCourse(t *testing.T) {
 	t.Run("200 (found)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		courses := []*models.Course{}
 		for i := range 3 {
@@ -332,7 +332,7 @@ func TestCourses_GetCourse(t *testing.T) {
 	})
 
 	t.Run("404 (not found)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/invalid", nil))
 		require.NoError(t, err)
@@ -340,7 +340,7 @@ func TestCourses_GetCourse(t *testing.T) {
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)
@@ -355,7 +355,7 @@ func TestCourses_GetCourse(t *testing.T) {
 
 func TestCourses_CreateCourse(t *testing.T) {
 	t.Run("201 (created)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		router.config.AppFs.Fs.MkdirAll("/course 1", os.ModePerm)
 
@@ -376,7 +376,7 @@ func TestCourses_CreateCourse(t *testing.T) {
 	})
 
 	t.Run("400 (bind error)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/courses/", strings.NewReader(`{`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -388,7 +388,7 @@ func TestCourses_CreateCourse(t *testing.T) {
 	})
 
 	t.Run("400 (invalid data)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		// Missing title
 		req := httptest.NewRequest(http.MethodPost, "/api/courses/", strings.NewReader(`{"title": ""}`))
@@ -419,7 +419,7 @@ func TestCourses_CreateCourse(t *testing.T) {
 	})
 
 	t.Run("400 (existing course)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		router.config.AppFs.Fs.MkdirAll("/course 1", os.ModePerm)
 
@@ -437,7 +437,7 @@ func TestCourses_CreateCourse(t *testing.T) {
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)
@@ -454,7 +454,7 @@ func TestCourses_CreateCourse(t *testing.T) {
 	})
 
 	t.Run("500 (scan error)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.SCAN_TABLE)
 		require.NoError(t, err)
@@ -475,7 +475,7 @@ func TestCourses_CreateCourse(t *testing.T) {
 
 func TestCourses_DeleteCourse(t *testing.T) {
 	t.Run("204 (deleted)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		courses := []*models.Course{}
 		for i := range 3 {
@@ -495,7 +495,7 @@ func TestCourses_DeleteCourse(t *testing.T) {
 	})
 
 	t.Run("204 (not found)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/courses/invalid", nil))
 		require.NoError(t, err)
@@ -503,7 +503,7 @@ func TestCourses_DeleteCourse(t *testing.T) {
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)
@@ -518,7 +518,7 @@ func TestCourses_DeleteCourse(t *testing.T) {
 
 func TestCourses_GetCard(t *testing.T) {
 	t.Run("200 (found)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{
 			Title:    "course 1",
@@ -537,7 +537,7 @@ func TestCourses_GetCard(t *testing.T) {
 	})
 
 	t.Run("404 (invalid id)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/invalid/card", nil))
 		require.NoError(t, err)
@@ -546,7 +546,7 @@ func TestCourses_GetCard(t *testing.T) {
 	})
 
 	t.Run("404 (no card)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{
 			Title: "course 1",
@@ -561,7 +561,7 @@ func TestCourses_GetCard(t *testing.T) {
 	})
 
 	t.Run("404 (card not found)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{
 			Title:    "course 1",
@@ -577,7 +577,7 @@ func TestCourses_GetCard(t *testing.T) {
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)
@@ -592,7 +592,7 @@ func TestCourses_GetCard(t *testing.T) {
 
 func TestCourses_GetLessons(t *testing.T) {
 	t.Run("200 (empty)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		courses := []*models.Course{}
 		for i := range 2 {
@@ -611,7 +611,7 @@ func TestCourses_GetLessons(t *testing.T) {
 	})
 
 	t.Run("200 (found)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		courses := []*models.Course{}
 		lessons := []*models.Lesson{}
@@ -697,7 +697,7 @@ func TestCourses_GetLessons(t *testing.T) {
 	})
 
 	t.Run("200 (withUserProgress)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		courses := []*models.Course{}
 		lessons := []*models.Lesson{}
@@ -784,7 +784,7 @@ func TestCourses_GetLessons(t *testing.T) {
 	})
 
 	t.Run("200 (orderBy)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		courses := []*models.Course{}
 		for i := range 2 {
@@ -834,7 +834,7 @@ func TestCourses_GetLessons(t *testing.T) {
 	})
 
 	t.Run("200 (pagination)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -890,7 +890,7 @@ func TestCourses_GetLessons(t *testing.T) {
 	})
 
 	t.Run("500 (asset internal error)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -908,7 +908,7 @@ func TestCourses_GetLessons(t *testing.T) {
 
 func TestCourses_GetLesson(t *testing.T) {
 	t.Run("200 (found)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -976,7 +976,7 @@ func TestCourses_GetLesson(t *testing.T) {
 	})
 
 	t.Run("200 (found withUserProgress)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -1079,7 +1079,7 @@ func TestCourses_GetLesson(t *testing.T) {
 	})
 
 	t.Run("404 (invalid lesson for course)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course1 := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course1))
@@ -1104,7 +1104,7 @@ func TestCourses_GetLesson(t *testing.T) {
 	})
 
 	t.Run("404 (lesson not found)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -1116,7 +1116,7 @@ func TestCourses_GetLesson(t *testing.T) {
 	})
 
 	t.Run("500 (lesson internal error)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -1135,7 +1135,7 @@ func TestCourses_GetLesson(t *testing.T) {
 
 func TestCourses_GetModules(t *testing.T) {
 	t.Run("200 (empty)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		courses := []*models.Course{}
 		for i := range 2 {
@@ -1155,7 +1155,7 @@ func TestCourses_GetModules(t *testing.T) {
 	})
 
 	t.Run("200 (found)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		courses := []*models.Course{}
 		lessons := []*models.Lesson{}
@@ -1235,7 +1235,7 @@ func TestCourses_GetModules(t *testing.T) {
 	})
 
 	t.Run("200 (withUserProgress)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		courses := []*models.Course{}
 		lessons := []*models.Lesson{}
@@ -1316,7 +1316,7 @@ func TestCourses_GetModules(t *testing.T) {
 	})
 
 	t.Run("500 (asset internal error)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -1334,7 +1334,7 @@ func TestCourses_GetModules(t *testing.T) {
 
 func TestCourses_GetAttachments(t *testing.T) {
 	t.Run("200 (empty)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -1358,7 +1358,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 	})
 
 	t.Run("200 (found)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -1395,7 +1395,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 	})
 
 	t.Run("200 (orderBy)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -1447,7 +1447,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 	})
 
 	t.Run("200 (pagination)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -1510,7 +1510,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 	})
 
 	t.Run("200 (invalid lesson)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -1526,7 +1526,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 	})
 
 	t.Run("200 (invalid lesson for course)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course1 := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course1))
@@ -1557,7 +1557,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 
 func TestCourses_GetAttachment(t *testing.T) {
 	t.Run("200 (found)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -1589,7 +1589,7 @@ func TestCourses_GetAttachment(t *testing.T) {
 	})
 
 	t.Run("404 (invalid lesson for course)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course1 := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course1))
@@ -1613,7 +1613,7 @@ func TestCourses_GetAttachment(t *testing.T) {
 	})
 
 	t.Run("404 (invalid attachment for lessons)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -1650,7 +1650,7 @@ func TestCourses_GetAttachment(t *testing.T) {
 	})
 
 	t.Run("404 (course not found)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/invalid/lessons/invalid/attachments/invalid", nil)
 		status, _, err := requestHelper(t, router, req)
@@ -1659,7 +1659,7 @@ func TestCourses_GetAttachment(t *testing.T) {
 	})
 
 	t.Run("404 (lesson not found)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -1671,7 +1671,7 @@ func TestCourses_GetAttachment(t *testing.T) {
 	})
 
 	t.Run("404 (attachment not found)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -1696,7 +1696,7 @@ func TestCourses_GetAttachment(t *testing.T) {
 
 func TestCourses_ServeAttachment(t *testing.T) {
 	t.Run("200 (ok)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -1727,7 +1727,7 @@ func TestCourses_ServeAttachment(t *testing.T) {
 	})
 
 	t.Run("400 (invalid path)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -1755,7 +1755,7 @@ func TestCourses_ServeAttachment(t *testing.T) {
 	})
 
 	t.Run("404 (invalid lesson for course)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course1 := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course1))
@@ -1779,7 +1779,7 @@ func TestCourses_ServeAttachment(t *testing.T) {
 	})
 
 	t.Run("404 (invalid attachment for lesson)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -1811,7 +1811,7 @@ func TestCourses_ServeAttachment(t *testing.T) {
 	})
 
 	t.Run("404 (asset not found)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -1824,7 +1824,7 @@ func TestCourses_ServeAttachment(t *testing.T) {
 	})
 
 	t.Run("404 (attachment not found)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -1849,7 +1849,7 @@ func TestCourses_ServeAttachment(t *testing.T) {
 
 func TestCourses_ServeAsset(t *testing.T) {
 	t.Run("200 (full video)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -1887,7 +1887,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 	})
 
 	t.Run("200 (stream video)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -1927,7 +1927,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 	})
 
 	t.Run("400 (invalid path)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -1962,7 +1962,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 	})
 
 	t.Run("400 (invalid video range)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -2002,7 +2002,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 	})
 
 	t.Run("404 (invalid asset for course)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course1 := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course1))
@@ -2040,7 +2040,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 	})
 
 	t.Run("404 (not found)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/invalid/lessons/invalid/assets/invalid/serve", nil)
 		status, body, err := requestHelper(t, router, req)
@@ -2050,7 +2050,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.ASSET_TABLE)
 		require.NoError(t, err)
@@ -2069,7 +2069,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 
 func TestCourses_UpdateAssetProgress(t *testing.T) {
 	t.Run("200 (found)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -2165,7 +2165,7 @@ func TestCourses_UpdateAssetProgress(t *testing.T) {
 	})
 
 	t.Run("400 (invalid data)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		req := httptest.NewRequest(http.MethodPut, "/api/courses/invalid/lessons/invalid/assets/invalid/progress", strings.NewReader(`bob`))
 		req.Header.Set("Content-Type", "application/json")
@@ -2177,7 +2177,7 @@ func TestCourses_UpdateAssetProgress(t *testing.T) {
 	})
 
 	t.Run("404 (asset not found)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		req := httptest.NewRequest(http.MethodPut, "/api/courses/invalid/lessons/invalid/assets/invalid/progress", strings.NewReader(`{"Position": 10}`))
 		req.Header.Set("Content-Type", "application/json")
@@ -2234,7 +2234,7 @@ func TestCourses_UpdateAssetProgress(t *testing.T) {
 
 func TestCourses_GetTags(t *testing.T) {
 	t.Run("200 (empty)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		courses := []*models.Course{}
 		for i := range 3 {
@@ -2254,7 +2254,7 @@ func TestCourses_GetTags(t *testing.T) {
 	})
 
 	t.Run("200 (found)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		tagOptions := []string{"Go", "C", "JavaScript", "TypeScript", "Java", "Python"}
 
@@ -2283,7 +2283,7 @@ func TestCourses_GetTags(t *testing.T) {
 	})
 
 	t.Run("200 (course not found)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/invalid/tags", nil))
 		require.NoError(t, err)
@@ -2296,7 +2296,7 @@ func TestCourses_GetTags(t *testing.T) {
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -2314,7 +2314,7 @@ func TestCourses_GetTags(t *testing.T) {
 
 func TestCourses_CreateTag(t *testing.T) {
 	t.Run("201 (created)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -2334,7 +2334,7 @@ func TestCourses_CreateTag(t *testing.T) {
 	})
 
 	t.Run("400 (bind error)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/courses/invalid/tags", strings.NewReader(`{`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -2346,7 +2346,7 @@ func TestCourses_CreateTag(t *testing.T) {
 	})
 
 	t.Run("400 (invalid data)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -2361,7 +2361,7 @@ func TestCourses_CreateTag(t *testing.T) {
 	})
 
 	t.Run("400 (existing tag)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -2381,7 +2381,7 @@ func TestCourses_CreateTag(t *testing.T) {
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course))
@@ -2403,7 +2403,7 @@ func TestCourses_CreateTag(t *testing.T) {
 
 func TestCourses_DeleteTag(t *testing.T) {
 	t.Run("204 (deleted)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		courses := []*models.Course{}
 		for i := range 3 {
@@ -2432,7 +2432,7 @@ func TestCourses_DeleteTag(t *testing.T) {
 	})
 
 	t.Run("204 (not found)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/courses/invalid/tags/invalid", nil))
 		require.NoError(t, err)
@@ -2440,7 +2440,7 @@ func TestCourses_DeleteTag(t *testing.T) {
 	})
 
 	t.Run("204 (invalid tag for course)", func(t *testing.T) {
-		router, ctx := setup(t, "admin", types.UserRoleAdmin)
+		router, ctx := setupAdmin(t)
 
 		course1 := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.dao.CreateCourse(ctx, course1))
@@ -2470,7 +2470,7 @@ func TestCourses_DeleteTag(t *testing.T) {
 	})
 
 	t.Run("500 (internal error)", func(t *testing.T) {
-		router, _ := setup(t, "admin", types.UserRoleAdmin)
+		router, _ := setupAdmin(t)
 
 		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TAG_TABLE)
 		require.NoError(t, err)

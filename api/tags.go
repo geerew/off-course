@@ -26,7 +26,7 @@ type tagsAPI struct {
 // initTagRoutes initializes the tag routes
 func (r *Router) initTagRoutes() {
 	tagsAPI := tagsAPI{
-		logger: r.config.Logger,
+		logger: r.logger.WithAPI(),
 		dao:    r.dao,
 	}
 
@@ -151,7 +151,6 @@ func (api *tagsAPI) createTag(c *fiber.Ctx) error {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return errorResponse(c, fiber.StatusBadRequest, "Tag already exists", err)
 		}
-
 		return errorResponse(c, fiber.StatusInternalServerError, "Error creating tag", err)
 	}
 
@@ -189,7 +188,6 @@ func (api *tagsAPI) updateTag(c *fiber.Ctx) error {
 		if strings.HasPrefix(err.Error(), "UNIQUE constraint failed") {
 			return errorResponse(c, fiber.StatusBadRequest, "Tag already exists", err)
 		}
-
 		return errorResponse(c, fiber.StatusInternalServerError, "Error updating tag", err)
 	}
 
@@ -210,7 +208,6 @@ func (api *tagsAPI) deleteTag(c *fiber.Ctx) error {
 	if err = api.dao.DeleteTags(ctx, dbOpts); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting tag", err)
 	}
-
 	return c.Status(fiber.StatusNoContent).Send(nil)
 }
 

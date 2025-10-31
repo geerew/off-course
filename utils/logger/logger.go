@@ -139,11 +139,6 @@ func (l *Logger) WithAppFS() *Logger {
 	return l.withComponent("appfs")
 }
 
-// WithDB creates a logger for the database component
-func (l *Logger) WithDB() *Logger {
-	return l.withComponent("db")
-}
-
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // withComponent creates a new Logger with the specified component (internal use)

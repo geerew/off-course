@@ -24,7 +24,7 @@ type HwAccelT struct {
 func DetectHardwareAccel(logger *logger.Logger) HwAccelT {
 	name := utils.GetEnvOr("OC_HWACCEL", "disabled")
 
-	logger.Info().Str("hwaccel", name).Msg("Using hardware acceleration")
+	logger.Debug().Str("hwaccel", name).Msg("Using hardware acceleration")
 
 	// superfast/ultrafast create extremely big files, so we prefer to ignore them. Fast
 	// is available on all modes so we use that by default (except for vaapi, which does not
