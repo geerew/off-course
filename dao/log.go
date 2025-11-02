@@ -3,6 +3,7 @@ package dao
 import (
 	"context"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
@@ -65,4 +66,65 @@ func (dao *DAO) ListLogs(ctx context.Context, dbOpts *database.Options) ([]*mode
 		SetDbOpts(dbOpts)
 
 	return listGeneric[models.Log](ctx, dao, *builderOpts)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// CreateLogsBatch inserts multiple log records in a single query
+func (dao *DAO) CreateLogsBatch(ctx context.Context, logs []*models.Log) error {
+	if len(logs) == 0 {
+		return nil
+	}
+
+	// Validate and prepare logs
+	for _, log := range logs {
+		if log == nil {
+			return utils.ErrNilPtr
+		}
+
+		if log.Message == "" {
+			return utils.ErrLogMessage
+		}
+
+		if log.ID == "" {
+			log.RefreshId()
+		}
+
+		log.RefreshCreatedAt()
+		log.RefreshUpdatedAt()
+	}
+
+	// Build batch insert query
+	builder := squirrel.
+		StatementBuilder.
+		PlaceholderFormat(squirrel.Question).
+		Insert(models.LOG_TABLE).
+		Columns(
+			models.BASE_ID,
+			models.LOG_LEVEL,
+			models.LOG_MESSAGE,
+			models.LOG_DATA,
+			models.BASE_CREATED_AT,
+			models.BASE_UPDATED_AT,
+		)
+
+	for _, log := range logs {
+		builder = builder.Values(
+			log.ID,
+			log.Level,
+			log.Message,
+			log.Data,
+			log.CreatedAt,
+			log.UpdatedAt,
+		)
+	}
+
+	sqlStr, args, err := builder.ToSql()
+	if err != nil {
+		return err
+	}
+
+	q := database.QuerierFromContext(ctx, dao.db)
+	_, err = q.ExecContext(ctx, sqlStr, args...)
+	return err
 }

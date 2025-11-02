@@ -194,3 +194,95 @@ func Test_ListLogs(t *testing.T) {
 		require.Equal(t, logs[16].ID, records[6].ID)
 	})
 }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func Test_CreateLogsBatch(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		dao, ctx := setupLog(t)
+
+		logs := []*models.Log{}
+		for i := range 5 {
+			log := &models.Log{
+				Data:    map[string]any{"test": i},
+				Level:   i % 3,
+				Message: fmt.Sprintf("batch log %d", i+1),
+			}
+			logs = append(logs, log)
+		}
+
+		require.NoError(t, dao.CreateLogsBatch(ctx, logs))
+
+		// Verify all logs were inserted
+		records, err := dao.ListLogs(ctx, nil)
+		require.NoError(t, err)
+		require.Len(t, records, 5)
+
+		// Check that all messages are present
+		messages := make(map[string]bool)
+		for _, record := range records {
+			messages[record.Message] = true
+		}
+
+		for _, log := range logs {
+			require.True(t, messages[log.Message], "Message %s should be present", log.Message)
+		}
+	})
+
+	t.Run("empty slice", func(t *testing.T) {
+		dao, ctx := setupLog(t)
+
+		logs := []*models.Log{}
+		require.NoError(t, dao.CreateLogsBatch(ctx, logs))
+
+		// Verify no logs were inserted
+		records, err := dao.ListLogs(ctx, nil)
+		require.NoError(t, err)
+		require.Empty(t, records)
+	})
+
+	t.Run("nil pointer in slice", func(t *testing.T) {
+		dao, ctx := setupLog(t)
+
+		logs := []*models.Log{
+			{Data: map[string]any{}, Level: 0, Message: "valid log"},
+			nil,
+			{Data: map[string]any{}, Level: 1, Message: "another valid log"},
+		}
+
+		require.ErrorIs(t, dao.CreateLogsBatch(ctx, logs), utils.ErrNilPtr)
+	})
+
+	t.Run("invalid message in slice", func(t *testing.T) {
+		dao, ctx := setupLog(t)
+
+		logs := []*models.Log{
+			{Data: map[string]any{}, Level: 0, Message: "valid log"},
+			{Data: map[string]any{}, Level: 0, Message: ""}, // Invalid
+			{Data: map[string]any{}, Level: 1, Message: "another valid log"},
+		}
+
+		require.ErrorIs(t, dao.CreateLogsBatch(ctx, logs), utils.ErrLogMessage)
+	})
+
+	t.Run("large batch", func(t *testing.T) {
+		dao, ctx := setupLog(t)
+
+		logs := []*models.Log{}
+		for i := range 100 {
+			log := &models.Log{
+				Data:    map[string]any{"index": i},
+				Level:   i % 3,
+				Message: fmt.Sprintf("large batch log %d", i+1),
+			}
+			logs = append(logs, log)
+		}
+
+		require.NoError(t, dao.CreateLogsBatch(ctx, logs))
+
+		// Verify all logs were inserted
+		records, err := dao.ListLogs(ctx, nil)
+		require.NoError(t, err)
+		require.Len(t, records, 100)
+	})
+}

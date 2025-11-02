@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"time"
 
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
@@ -29,6 +30,9 @@ type App struct {
 
 	// Configuration
 	Config *Config
+
+	// Internal
+	dbWriter *logger.DbWriter
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -52,16 +56,6 @@ func New(ctx context.Context, config *Config) (*App, error) {
 		logLevel = logger.LevelDebug
 	}
 
-	// Logger
-	appLogger := logger.New(&logger.Config{
-		Level:         logLevel,
-		ConsoleOutput: true,
-	})
-
-	if appLogger == nil {
-		return nil, &InitializationError{Message: "Failed to initialize logger"}
-	}
-
 	// AppFS (filesystem)
 	appFs := appfs.New(afero.NewOsFs())
 
@@ -81,6 +75,27 @@ func New(ctx context.Context, config *Config) (*App, error) {
 		return nil, &InitializationError{Message: "Failed to create database manager", Err: err}
 	}
 
+	// Create DAO for database logging
+	logDao := dao.New(dbManager.LogsDb)
+
+	// Create database log writer with batching
+	dbWriter := logger.CreateDbWriter(logDao, &logger.DbWriterConfig{
+		BatchSize:     100,
+		FlushInterval: 5 * time.Second,
+	})
+
+	// Create logger with database writer
+	appLogger := logger.New(&logger.Config{
+		Level:         logLevel,
+		ConsoleOutput: true,
+		DbWriter:      dbWriter,
+	})
+
+	if appLogger == nil {
+		dbWriter.Close()
+		return nil, &InitializationError{Message: "Failed to initialize logger"}
+	}
+
 	// Create app instance first (needed for service initialization)
 	app := &App{
 		Logger:    appLogger,
@@ -88,6 +103,7 @@ func New(ctx context.Context, config *Config) (*App, error) {
 		FFmpeg:    ffmpeg,
 		DbManager: dbManager,
 		Config:    config,
+		dbWriter:  dbWriter,
 	}
 
 	// Course scanner
@@ -114,6 +130,16 @@ func New(ctx context.Context, config *Config) (*App, error) {
 	app.Transcoder = transcoder
 
 	return app, nil
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Close closes all resources that need cleanup (e.g., database log writer)
+func (a *App) Close() error {
+	if a.dbWriter != nil {
+		return a.dbWriter.Close()
+	}
+	return nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
