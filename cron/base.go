@@ -1,33 +1,23 @@
 package cron
 
 import (
+	"github.com/geerew/off-course/app"
 	"github.com/geerew/off-course/dao"
-	"github.com/geerew/off-course/database"
-	"github.com/geerew/off-course/utils/appfs"
-	"github.com/geerew/off-course/utils/logger"
 	"github.com/robfig/cron/v3"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-type CronConfig struct {
-	Db     database.Database
-	AppFs  *appfs.AppFs
-	Logger *logger.Logger
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 // StartCron initializes the cron jobs
-func StartCron(config *CronConfig) {
+func StartCron(application *app.App) {
 	c := cron.New()
 
 	// Course availability
 	ca := &courseAvailability{
-		db:        config.Db,
-		dao:       dao.New(config.Db),
-		appFs:     config.AppFs,
-		logger:    config.Logger.WithCron(),
+		db:        application.DbManager.DataDb,
+		dao:       dao.New(application.DbManager.DataDb),
+		appFs:     application.AppFs,
+		logger:    application.Logger.WithCron(),
 		batchSize: 200,
 	}
 

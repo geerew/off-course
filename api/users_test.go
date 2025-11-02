@@ -28,7 +28,7 @@ func TestUsers_GetUsers(t *testing.T) {
 
 		// Remove the admin user
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: "admin"})
-		require.NoError(t, router.dao.DeleteUsers(ctx, dbOpts))
+		require.NoError(t, router.appDao.DeleteUsers(ctx, dbOpts))
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/", nil))
 		require.NoError(t, err)
@@ -44,7 +44,7 @@ func TestUsers_GetUsers(t *testing.T) {
 
 		// Remove the admin user
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: "admin"})
-		require.NoError(t, router.dao.DeleteUsers(ctx, dbOpts))
+		require.NoError(t, router.appDao.DeleteUsers(ctx, dbOpts))
 
 		for i := range 5 {
 			users := &models.User{
@@ -53,7 +53,7 @@ func TestUsers_GetUsers(t *testing.T) {
 				PasswordHash: security.RandomString(10),
 				Role:         types.UserRoleUser,
 			}
-			require.NoError(t, router.dao.CreateUser(ctx, users))
+			require.NoError(t, router.appDao.CreateUser(ctx, users))
 		}
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/", nil))
@@ -70,7 +70,7 @@ func TestUsers_GetUsers(t *testing.T) {
 
 		// Remove the admin user
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: "admin"})
-		require.NoError(t, router.dao.DeleteUsers(ctx, dbOpts))
+		require.NoError(t, router.appDao.DeleteUsers(ctx, dbOpts))
 
 		users := []*models.User{}
 		for i := range 5 {
@@ -80,7 +80,7 @@ func TestUsers_GetUsers(t *testing.T) {
 				PasswordHash: security.RandomString(10),
 				Role:         types.UserRoleUser,
 			}
-			require.NoError(t, router.dao.CreateUser(ctx, user))
+			require.NoError(t, router.appDao.CreateUser(ctx, user))
 			users = append(users, user)
 			time.Sleep(1 * time.Millisecond)
 		}
@@ -113,7 +113,7 @@ func TestUsers_GetUsers(t *testing.T) {
 
 		// Remove the admin user
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: "admin"})
-		require.NoError(t, router.dao.DeleteUsers(ctx, dbOpts))
+		require.NoError(t, router.appDao.DeleteUsers(ctx, dbOpts))
 
 		users := []*models.User{}
 		for i := range 17 {
@@ -123,7 +123,7 @@ func TestUsers_GetUsers(t *testing.T) {
 				PasswordHash: security.RandomString(10),
 				Role:         types.UserRoleUser,
 			}
-			require.NoError(t, router.dao.CreateUser(ctx, user))
+			require.NoError(t, router.appDao.CreateUser(ctx, user))
 			users = append(users, user)
 		}
 
@@ -166,7 +166,7 @@ func TestUsers_GetUsers(t *testing.T) {
 
 		// Remove the admin user
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: "admin"})
-		require.NoError(t, router.dao.DeleteUsers(ctx, dbOpts))
+		require.NoError(t, router.appDao.DeleteUsers(ctx, dbOpts))
 
 		defaultSort := " sort:\"" + models.USER_TABLE_USERNAME + " asc\""
 
@@ -183,7 +183,7 @@ func TestUsers_GetUsers(t *testing.T) {
 				PasswordHash: security.RandomString(10),
 				Role:         role,
 			}
-			require.NoError(t, router.dao.CreateUser(ctx, user))
+			require.NoError(t, router.appDao.CreateUser(ctx, user))
 			users = append(users, user)
 		}
 
@@ -246,7 +246,7 @@ func TestUsers_GetUsers(t *testing.T) {
 		router, _ := setupAdmin(t)
 
 		// Drop the users table
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.USER_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.USER_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/", nil))
@@ -332,7 +332,7 @@ func TestUsers_CreateUser(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.USER_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.USER_TABLE)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/users/", strings.NewReader(`{"username": "admin", "password": "1234"}`))
@@ -357,7 +357,7 @@ func TestUsers_UpdateUser(t *testing.T) {
 			PasswordHash: security.RandomString(10),
 			Role:         types.UserRoleUser,
 		}
-		require.NoError(t, router.dao.CreateUser(ctx, user))
+		require.NoError(t, router.appDao.CreateUser(ctx, user))
 
 		// Update display name
 		req := httptest.NewRequest(http.MethodPut, "/api/users/"+user.ID, strings.NewReader(`{"displayName": "Bob"}`))
@@ -368,7 +368,7 @@ func TestUsers_UpdateUser(t *testing.T) {
 		require.Equal(t, http.StatusOK, status)
 
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: user.ID})
-		record, err := router.dao.GetUser(ctx, dbOpts)
+		record, err := router.appDao.GetUser(ctx, dbOpts)
 		require.NoError(t, err)
 		require.Equal(t, "Bob", record.DisplayName)
 
@@ -380,7 +380,7 @@ func TestUsers_UpdateUser(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
-		record, err = router.dao.GetUser(ctx, dbOpts)
+		record, err = router.appDao.GetUser(ctx, dbOpts)
 		require.NoError(t, err)
 		require.Equal(t, "Bob", record.DisplayName)
 		require.True(t, auth.ComparePassword(record.PasswordHash, "1234"))
@@ -393,7 +393,7 @@ func TestUsers_UpdateUser(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
-		record, err = router.dao.GetUser(ctx, dbOpts)
+		record, err = router.appDao.GetUser(ctx, dbOpts)
 		require.NoError(t, err)
 		require.Equal(t, "Bob", record.DisplayName)
 		require.True(t, auth.ComparePassword(record.PasswordHash, "1234"))
@@ -439,7 +439,7 @@ func TestUsers_UpdateUser(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.USER_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.USER_TABLE)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodPut, "/api/users/invalid", strings.NewReader(`{"username": "admin", "password": "1234"}`))
@@ -466,7 +466,7 @@ func TestUsers_DeleteUser(t *testing.T) {
 				PasswordHash: security.RandomString(10),
 				Role:         types.UserRoleUser,
 			}
-			require.NoError(t, router.dao.CreateUser(ctx, u))
+			require.NoError(t, router.appDao.CreateUser(ctx, u))
 			users = append(users, u)
 		}
 
@@ -475,7 +475,7 @@ func TestUsers_DeleteUser(t *testing.T) {
 		require.Equal(t, http.StatusNoContent, status)
 
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: users[1].ID})
-		record, err := router.dao.GetUser(ctx, dbOpts)
+		record, err := router.appDao.GetUser(ctx, dbOpts)
 		require.NoError(t, err)
 		require.Nil(t, record)
 	})
@@ -500,7 +500,7 @@ func TestUsers_DeleteUser(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.USER_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.USER_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/users/invalid", nil))

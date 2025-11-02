@@ -5,46 +5,15 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"sync"
 	"testing"
 
-	"github.com/geerew/off-course/dao"
-	"github.com/geerew/off-course/database"
+	"github.com/geerew/off-course/app"
 	"github.com/geerew/off-course/models"
-	"github.com/geerew/off-course/utils/appfs"
-	"github.com/geerew/off-course/utils/coursescan"
-	"github.com/geerew/off-course/utils/logger"
-	"github.com/geerew/off-course/utils/media"
-	"github.com/geerew/off-course/utils/media/hls"
 	"github.com/geerew/off-course/utils/pagination"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 )
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-var (
-	// Cache FFmpeg instance for course scanning
-	cachedFFmpeg *media.FFmpeg
-	ffmpegOnce   sync.Once
-)
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// getCachedFFmpeg returns a cached FFmpeg instance for course scanning
-func getCachedFFmpeg(t *testing.T) *media.FFmpeg {
-	ffmpegOnce.Do(func() {
-		ffmpeg, err := media.NewFFmpeg()
-		if err != nil {
-			// Skip if FFmpeg unavailable
-			t.Skip("FFmpeg not available for testing")
-		}
-		cachedFFmpeg = ffmpeg
-	})
-	return cachedFFmpeg
-}
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -75,66 +44,35 @@ func setupNoAuth(t *testing.T) (*Router, context.Context) {
 func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Context) {
 	t.Helper()
 
-	// Create a test logger
-	testLogger := logger.New(&logger.Config{
-		Level:         logger.LevelInfo,
-		ConsoleOutput: false, // Disable console output for tests
-	})
+	// Create test app
+	application := app.NewTestApp(t)
 
-	appFs := appfs.New(afero.NewMemMapFs())
-
-	dbManager, err := database.NewSQLiteManager(&database.DatabaseManagerConfig{
-		DataDir: "./oc_data",
-		AppFs:   appFs,
-		Testing: true,
-	})
-
-	require.NoError(t, err)
-	require.NotNil(t, dbManager)
-
-	// Get FFmpeg instance
-	ffmpeg := getCachedFFmpeg(t)
-
-	// Initialize HLS settings
-	transcoder, err := hls.NewTranscoder(&hls.TranscoderConfig{
-		CachePath: "./oc_data",
-		AppFs:     appFs,
-		Logger:    testLogger.WithHLS(),
-		Dao:       dao.New(dbManager.DataDb),
-	})
-	require.NoError(t, err)
-	require.NotNil(t, transcoder)
-
-	courseScan := coursescan.New(&coursescan.CourseScanConfig{
-		Db:     dbManager.DataDb,
-		AppFs:  appFs,
-		Logger: testLogger.WithCourseScan(),
-		FFmpeg: ffmpeg,
-	})
-
-	// Router
-	config := &RouterConfig{
-		DbManager:     dbManager,
-		AppFs:         appFs,
-		CourseScan:    courseScan,
-		Logger:        testLogger.WithAPI(),
-		SignupEnabled: true,
-	}
+	// Create router from app
+	router := NewRouter(application)
 
 	// Configure middleware based on whether we have auth
 	if id != "" {
 		// Use dev auth for normal tests
-		config.Middleware = []MiddlewareFactory{
-			func(r *Router) fiber.Handler { return devAuthMiddleware(id, role) },
-		}
-	} else {
-		// Use CORS-only for recovery tests
-		config.Middleware = []MiddlewareFactory{
+		router.SetTestMiddleware(
+			func(r *Router) fiber.Handler { return requestLoggingMiddleware(r.logger) },
 			func(r *Router) fiber.Handler { return corsMiddleWare() },
-		}
+			func(r *Router) fiber.Handler { return bootstrapMiddleware(r) },
+			func(r *Router) fiber.Handler {
+				return func(c *fiber.Ctx) error {
+					c.Locals(types.PrincipalContextKey, types.Principal{
+						UserID: id,
+						Role:   role,
+					})
+					return c.Next()
+				}
+			},
+		)
+	} else {
+		// Use CORS-only (for recovery tests)
+		router.SetTestMiddleware(
+			func(r *Router) fiber.Handler { return corsMiddleWare() },
+		)
 	}
-
-	router := NewRouter(config)
 
 	// Create user only if we have auth
 	if id != "" {
@@ -147,11 +85,17 @@ func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Conte
 			PasswordHash: "password",
 			DisplayName:  "Test User",
 		}
-		require.NoError(t, router.dao.CreateUser(context.Background(), &user))
+		require.NoError(t, router.appDao.CreateUser(context.Background(), &user))
 	}
 
 	// Initialize bootstrap
 	router.InitBootstrap()
+
+	// In tests, if we have a user, consider the app bootstrapped
+	// (even if the user is not an admin, so protectedRoute can handle the check)
+	if id != "" {
+		router.setBootstrapped()
+	}
 
 	ctx := context.Background()
 
@@ -173,7 +117,7 @@ func setup(t *testing.T, id string, role types.UserRole) (*Router, context.Conte
 func requestHelper(t *testing.T, router *Router, req *http.Request) (int, []byte, error) {
 	t.Helper()
 
-	resp, err := router.App.Test(req)
+	resp, err := router.Test(req)
 	if err != nil {
 		return -1, nil, err
 	}

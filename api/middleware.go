@@ -113,7 +113,7 @@ func bootstrapMiddleware(r *Router) fiber.Handler {
 					c.Locals("bootstrapping", true)
 					return c.Next()
 				} else {
-					return c.SendStatus(fiber.StatusForbidden)
+					return errorResponse(c, fiber.StatusForbidden, "app is not bootstrapped", nil)
 				}
 			}
 
@@ -170,7 +170,7 @@ func authMiddleware(r *Router) fiber.Handler {
 		if sessionFresh {
 			// Is API request
 			if strings.HasPrefix(path, "/api/") {
-				if strings.HasPrefix(path, "/api/auth/login") || (r.config.SignupEnabled && strings.HasPrefix(path, "/api/auth/register")) ||
+				if strings.HasPrefix(path, "/api/auth/login") || (r.app.Config.EnableSignup && strings.HasPrefix(path, "/api/auth/register")) ||
 					strings.HasPrefix(path, "/api/auth/signup-status") || strings.HasPrefix(path, "/api/admin/recovery") {
 					return c.Next()
 				}
@@ -178,7 +178,7 @@ func authMiddleware(r *Router) fiber.Handler {
 			}
 
 			if isAuthUI {
-				if !r.config.SignupEnabled && strings.HasPrefix(path, "/auth/register") {
+				if !r.app.Config.EnableSignup && strings.HasPrefix(path, "/auth/register") {
 					return c.Redirect("/auth/login")
 				}
 
@@ -221,25 +221,9 @@ func authMiddleware(r *Router) fiber.Handler {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// devAuthMiddleware sets the id, role (for use in development only)
-func devAuthMiddleware(id string, role types.UserRole) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		principal := types.Principal{
-			UserID: id,
-			Role:   role,
-		}
-
-		// for your UI/router logic:
-		c.Locals(types.PrincipalContextKey, principal)
-		return c.Next()
-	}
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 // isProdUIPath checks if the request is for a sveltekit asset when running in production mode
 func (r *Router) isProdUIPath(path string) bool {
-	if r.config.IsProduction && strings.HasPrefix(path, "/_app/") {
+	if !r.app.Config.IsDev && strings.HasPrefix(path, "/_app/") {
 		return true
 	}
 
@@ -250,7 +234,7 @@ func (r *Router) isProdUIPath(path string) bool {
 
 // isDevUIPath checks if the request is for a sveltekit path when running in dev mode
 func (r *Router) isDevUIPath(path string) bool {
-	if !r.config.IsProduction &&
+	if r.app.Config.IsDev &&
 		(strings.HasPrefix(path, "/node_modules/") ||
 			strings.HasPrefix(path, "/.svelte-kit/") ||
 			strings.HasPrefix(path, "/src/") ||

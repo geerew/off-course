@@ -35,14 +35,14 @@ func TestTags_GetTags(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.Nil(t, router.dao.CreateCourse(ctx, course))
+		require.Nil(t, router.appDao.CreateCourse(ctx, course))
 
 		for i := range 5 {
 			tag := &models.Tag{Tag: fmt.Sprintf("Tag %02d", i)}
-			require.Nil(t, router.dao.CreateTag(ctx, tag))
+			require.Nil(t, router.appDao.CreateTag(ctx, tag))
 
 			courseTag := models.CourseTag{CourseID: course.ID, TagID: tag.ID}
-			require.Nil(t, router.dao.CreateCourseTag(ctx, &courseTag))
+			require.Nil(t, router.appDao.CreateCourseTag(ctx, &courseTag))
 		}
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/", nil))
@@ -59,16 +59,16 @@ func TestTags_GetTags(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course1 := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.Nil(t, router.dao.CreateCourse(ctx, course1))
+		require.Nil(t, router.appDao.CreateCourse(ctx, course1))
 
 		course2 := &models.Course{Title: "Course 2", Path: "/Course 2"}
-		require.Nil(t, router.dao.CreateCourse(ctx, course2))
+		require.Nil(t, router.appDao.CreateCourse(ctx, course2))
 
 		tag_keys := []string{"JavaScript", "Python", "Java", "Ruby", "PHP"}
 		for _, tag := range tag_keys {
-			require.Nil(t, router.dao.CreateTag(ctx, &models.Tag{Tag: tag}))
-			require.Nil(t, router.dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: course1.ID, Tag: tag}))
-			require.Nil(t, router.dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: course2.ID, Tag: tag}))
+			require.Nil(t, router.appDao.CreateTag(ctx, &models.Tag{Tag: tag}))
+			require.Nil(t, router.appDao.CreateCourseTag(ctx, &models.CourseTag{CourseID: course1.ID, Tag: tag}))
+			require.Nil(t, router.appDao.CreateCourseTag(ctx, &models.CourseTag{CourseID: course2.ID, Tag: tag}))
 			time.Sleep(1 * time.Millisecond)
 		}
 
@@ -103,7 +103,7 @@ func TestTags_GetTags(t *testing.T) {
 		tag_keys := []string{"slightly", "light", "lighter", "highlight", "ghoul", "lightning", "delight"}
 
 		for _, tag := range tag_keys {
-			require.Nil(t, router.dao.CreateTag(ctx, &models.Tag{Tag: tag}))
+			require.Nil(t, router.appDao.CreateTag(ctx, &models.Tag{Tag: tag}))
 			time.Sleep(1 * time.Millisecond)
 		}
 
@@ -163,7 +163,7 @@ func TestTags_GetTags(t *testing.T) {
 
 		// Case insensitive
 		tag := &models.Tag{Tag: "Slight"}
-		require.Nil(t, router.dao.CreateTag(ctx, tag))
+		require.Nil(t, router.appDao.CreateTag(ctx, tag))
 
 		q = "SLigHt sort:special"
 		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/?q="+url.QueryEscape(q), nil))
@@ -183,7 +183,7 @@ func TestTags_GetTags(t *testing.T) {
 		tags := []*models.Tag{}
 		for i := range 17 {
 			tag := &models.Tag{Tag: fmt.Sprintf("Tag %02d", i+1)}
-			require.Nil(t, router.dao.CreateTag(ctx, tag))
+			require.Nil(t, router.appDao.CreateTag(ctx, tag))
 			tags = append(tags, tag)
 		}
 
@@ -225,7 +225,7 @@ func TestTags_GetTags(t *testing.T) {
 		router, _ := setupAdmin(t)
 
 		// Drop the courses table
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/", nil))
@@ -254,7 +254,7 @@ func TestTags_GetTagNames(t *testing.T) {
 
 		for i := range 5 {
 			tag := &models.Tag{Tag: fmt.Sprintf("Tag %02d", i)}
-			require.Nil(t, router.dao.CreateTag(ctx, tag))
+			require.Nil(t, router.appDao.CreateTag(ctx, tag))
 		}
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/names", nil))
@@ -271,7 +271,7 @@ func TestTags_GetTagNames(t *testing.T) {
 
 		tag_keys := []string{"JavaScript", "Python", "Java", "Ruby", "PHP"}
 		for _, tag := range tag_keys {
-			require.Nil(t, router.dao.CreateTag(ctx, &models.Tag{Tag: tag}))
+			require.Nil(t, router.appDao.CreateTag(ctx, &models.Tag{Tag: tag}))
 			time.Sleep(1 * time.Millisecond)
 		}
 
@@ -305,7 +305,7 @@ func TestTags_GetTagNames(t *testing.T) {
 		tag_keys := []string{"slightly", "light", "lighter", "highlight", "ghoul", "lightning", "delight"}
 
 		for _, tag := range tag_keys {
-			require.Nil(t, router.dao.CreateTag(ctx, &models.Tag{Tag: tag}))
+			require.Nil(t, router.appDao.CreateTag(ctx, &models.Tag{Tag: tag}))
 			time.Sleep(1 * time.Millisecond)
 		}
 
@@ -362,7 +362,7 @@ func TestTags_GetTagNames(t *testing.T) {
 
 		// Case insensitive
 		tag := &models.Tag{Tag: "Slight"}
-		require.Nil(t, router.dao.CreateTag(ctx, tag))
+		require.Nil(t, router.appDao.CreateTag(ctx, tag))
 
 		q = "SLigHt sort:special"
 		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/names?q="+url.QueryEscape(q), nil))
@@ -379,7 +379,7 @@ func TestTags_GetTagNames(t *testing.T) {
 		router, _ := setupAdmin(t)
 
 		// Drop the courses table
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/names", nil))
@@ -395,10 +395,10 @@ func TestTags_GetTag(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		tag1 := &models.Tag{Tag: "Go"}
-		require.Nil(t, router.dao.CreateTag(ctx, tag1))
+		require.Nil(t, router.appDao.CreateTag(ctx, tag1))
 
 		tag2 := &models.Tag{Tag: "PHP"}
-		require.Nil(t, router.dao.CreateTag(ctx, tag2))
+		require.Nil(t, router.appDao.CreateTag(ctx, tag2))
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/Go", nil))
 		require.NoError(t, err)
@@ -422,10 +422,10 @@ func TestTags_GetTag(t *testing.T) {
 
 		// Add a course to the tag
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.Nil(t, router.dao.CreateCourse(ctx, course))
+		require.Nil(t, router.appDao.CreateCourse(ctx, course))
 
 		courseTag := models.CourseTag{CourseID: course.ID, TagID: tag1.ID}
-		require.Nil(t, router.dao.CreateCourseTag(ctx, &courseTag))
+		require.Nil(t, router.appDao.CreateCourseTag(ctx, &courseTag))
 
 		status, body, err = requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/Go", nil))
 		require.NoError(t, err)
@@ -449,7 +449,7 @@ func TestTags_GetTag(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/test", nil))
@@ -522,7 +522,7 @@ func TestTags_CreateTag(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/tags/", strings.NewReader(`{"tag": "test"}`))
@@ -542,7 +542,7 @@ func TestTags_UpdateTag(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		tag1 := &models.Tag{Tag: "Go"}
-		require.Nil(t, router.dao.CreateTag(ctx, tag1))
+		require.Nil(t, router.appDao.CreateTag(ctx, tag1))
 
 		// Update from `Go` to `go`
 		req := httptest.NewRequest(http.MethodPut, "/api/tags/"+tag1.ID, strings.NewReader(`{"tag":"go"}`))
@@ -600,10 +600,10 @@ func TestTags_UpdateTag(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		tag1 := &models.Tag{Tag: "Go"}
-		require.Nil(t, router.dao.CreateTag(ctx, tag1))
+		require.Nil(t, router.appDao.CreateTag(ctx, tag1))
 
 		tag2 := &models.Tag{Tag: "PHP"}
-		require.Nil(t, router.dao.CreateTag(ctx, tag2))
+		require.Nil(t, router.appDao.CreateTag(ctx, tag2))
 
 		// Update from `Go` to `PHP`
 		req := httptest.NewRequest(http.MethodPut, "/api/tags/"+tag1.ID, strings.NewReader(`{"tag":"PHP"}`))
@@ -628,7 +628,7 @@ func TestTags_UpdateTag(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodPut, "/api/tags/test", strings.NewReader(`{"id": "1234567"}`))
@@ -647,17 +647,17 @@ func TestTags_DeleteTag(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		tag1 := &models.Tag{Tag: "Go"}
-		require.Nil(t, router.dao.CreateTag(ctx, tag1))
+		require.Nil(t, router.appDao.CreateTag(ctx, tag1))
 
 		tag2 := &models.Tag{Tag: "PHP"}
-		require.Nil(t, router.dao.CreateTag(ctx, tag2))
+		require.Nil(t, router.appDao.CreateTag(ctx, tag2))
 
 		// Delete tag `Go`
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/tags/"+tag1.ID, nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, status)
 
-		count, err := router.dao.CountTags(ctx, nil)
+		count, err := router.appDao.CountTags(ctx, nil)
 		require.NoError(t, err)
 		require.Equal(t, 1, count)
 	})
@@ -673,7 +673,7 @@ func TestTags_DeleteTag(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/tags/test", nil))

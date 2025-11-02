@@ -32,7 +32,7 @@ func TestAuth_Register(t *testing.T) {
 		require.Equal(t, http.StatusCreated, status)
 
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test"})
-		record, err := router.dao.GetUser(ctx, dbOpts)
+		record, err := router.appDao.GetUser(ctx, dbOpts)
 		require.NoError(t, err)
 		require.NotEqual(t, "password", record.PasswordHash)
 		require.Equal(t, types.UserRoleUser, record.Role)
@@ -125,12 +125,12 @@ func TestAuth_Bootstrap(t *testing.T) {
 
 		// Clear the admin user to make it unbootstrapped
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "admin"})
-		err := router.dao.DeleteUsers(ctx, dbOpts)
+		err := router.appDao.DeleteUsers(ctx, dbOpts)
 		require.NoError(t, err)
 		router.InitBootstrap()
 
 		// Generate a bootstrap token using the app's data directory and filesystem
-		bootstrapToken, err := auth.GenerateBootstrapToken(router.config.DataDir, router.config.AppFs.Fs)
+		bootstrapToken, err := auth.GenerateBootstrapToken(router.app.Config.DataDir, router.app.AppFs.Fs)
 		require.NoError(t, err)
 
 		// Create user with token
@@ -142,7 +142,7 @@ func TestAuth_Bootstrap(t *testing.T) {
 		require.Equal(t, http.StatusCreated, status)
 
 		dbOpts2 := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test"})
-		record, err3 := router.dao.GetUser(ctx, dbOpts2)
+		record, err3 := router.appDao.GetUser(ctx, dbOpts2)
 		require.NoError(t, err3)
 		require.NotEqual(t, "password", record.PasswordHash)
 		require.Equal(t, types.UserRoleAdmin, record.Role)
@@ -154,7 +154,7 @@ func TestAuth_Bootstrap(t *testing.T) {
 
 		// Clear the admin user to make it unbootstrapped
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "admin"})
-		err := router.dao.DeleteUsers(context.Background(), dbOpts)
+		err := router.appDao.DeleteUsers(context.Background(), dbOpts)
 		require.NoError(t, err)
 		router.InitBootstrap()
 
@@ -170,7 +170,7 @@ func TestAuth_Bootstrap(t *testing.T) {
 		router, _ := setupAdmin(t)
 
 		// Generate a bootstrap token using the app's data directory and filesystem
-		bootstrapToken, err := auth.GenerateBootstrapToken(router.config.DataDir, router.config.AppFs.Fs)
+		bootstrapToken, err := auth.GenerateBootstrapToken(router.app.Config.DataDir, router.app.AppFs.Fs)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/bootstrap/"+bootstrapToken.Token, strings.NewReader(`{"username": "test", "password": "abcd1234" }`))
@@ -194,10 +194,10 @@ func TestAuth_Login(t *testing.T) {
 			PasswordHash: auth.GeneratePassword("abcd1234"),
 			Role:         types.UserRoleAdmin,
 		}
-		require.NoError(t, router.dao.CreateUser(ctx, user))
+		require.NoError(t, router.appDao.CreateUser(ctx, user))
 
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: user.ID})
-		_, err := router.dao.GetUser(ctx, dbOpts)
+		_, err := router.appDao.GetUser(ctx, dbOpts)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"username": "test", "password": "abcd1234" }`))
@@ -269,7 +269,7 @@ func TestAuth_Login(t *testing.T) {
 			PasswordHash: auth.GeneratePassword("abcd1234"),
 			Role:         types.UserRoleAdmin,
 		}
-		require.NoError(t, router.dao.CreateUser(ctx, user))
+		require.NoError(t, router.appDao.CreateUser(ctx, user))
 
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"username": "invalid", "password": "abcd1234" }`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -289,7 +289,7 @@ func TestAuth_Login(t *testing.T) {
 			PasswordHash: auth.GeneratePassword("abcd1234"),
 			Role:         types.UserRoleAdmin,
 		}
-		require.NoError(t, router.dao.CreateUser(ctx, user))
+		require.NoError(t, router.appDao.CreateUser(ctx, user))
 
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"username": "test", "password": "invalid" }`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)

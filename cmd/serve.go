@@ -10,17 +10,11 @@ import (
 	"syscall"
 
 	"github.com/geerew/off-course/api"
+	"github.com/geerew/off-course/app"
 	"github.com/geerew/off-course/cron"
-	"github.com/geerew/off-course/dao"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
-	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/auth"
 	"github.com/geerew/off-course/utils/coursescan"
-	"github.com/geerew/off-course/utils/logger"
-	"github.com/geerew/off-course/utils/media"
-	"github.com/geerew/off-course/utils/media/hls"
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -39,93 +33,35 @@ var serveCmd = &cobra.Command{
 		enableSignup := viper.GetBool("enable-signup")
 		isDebug := viper.GetBool("debug")
 
-		// Determine log level
-		logLevel := logger.LevelInfo
-		if isDebug {
-			logLevel = logger.LevelDebug
-		}
-
-		// Logger
-		appLogger := logger.New(&logger.Config{
-			Level:         logLevel,
-			ConsoleOutput: true,
-		})
-
-		if appLogger == nil {
-			panic("Failed to initialize logger")
-		}
-
-		mainLogger := appLogger.WithMain()
-
-		// AppFS (filesystem)
-		appFs := appfs.New(afero.NewOsFs())
-
-		// FFmpeg
-		ffmpeg, err := media.NewFFmpeg()
-		if err != nil {
-			mainLogger.Error().Err(err).Msg("Failed to initialize FFmpeg")
-			os.Exit(1)
-		}
-
-		// Database manager
-		dbManager, err := database.NewSQLiteManager(&database.DatabaseManagerConfig{
-			DataDir: dataDir,
-			AppFs:   appFs,
+		// Create app with all dependencies
+		application, err := app.New(ctx, &app.Config{
+			HttpAddr:     httpAddr,
+			DataDir:      dataDir,
+			IsDev:        isDev,
+			EnableSignup: enableSignup,
+			IsDebug:      isDebug,
 		})
 
 		if err != nil {
-			mainLogger.Error().Err(err).Msg("Failed to create database manager")
+			os.Stderr.WriteString("Failed to initialize application: " + err.Error() + "\n")
 			os.Exit(1)
 		}
 
-		// Course scanner
-		courseScan := coursescan.New(&coursescan.CourseScanConfig{
-			Db:     dbManager.DataDb,
-			AppFs:  appFs,
-			Logger: appLogger.WithCourseScan(),
-			FFmpeg: ffmpeg,
-		})
+		mainLogger := application.Logger.WithMain()
 
 		// Start the course scan worker
-		go courseScan.Worker(ctx, coursescan.Processor, nil)
+		go application.CourseScan.Worker(ctx, coursescan.Processor, nil)
 
 		// Start cron
-		cron.StartCron(&cron.CronConfig{
-			Db:     dbManager.DataDb,
-			AppFs:  appFs,
-			Logger: appLogger.WithCron(),
-		})
-
-		// HLS
-		transcoder, err := hls.NewTranscoder(&hls.TranscoderConfig{
-			CachePath: dataDir,
-			AppFs:     appFs,
-			Logger:    appLogger.WithHLS(),
-			Dao:       dao.New(dbManager.DataDb),
-		})
-
-		if err != nil {
-			mainLogger.Error().Err(err).Msg("Failed to create HLS transcoder")
-			os.Exit(1)
-		}
+		cron.StartCron(application)
 
 		// Router
-		router := api.NewRouter(&api.RouterConfig{
-			DbManager:     dbManager,
-			Logger:        appLogger.WithAPI(),
-			AppFs:         appFs,
-			CourseScan:    courseScan,
-			HttpAddr:      httpAddr,
-			IsProduction:  !isDev,
-			SignupEnabled: enableSignup,
-			DataDir:       dataDir,
-			Transcoder:    transcoder,
-		})
+		router := api.NewRouter(application)
 
 		// Check bootstrap status and generate token if needed
 		router.InitBootstrap()
 		if !router.IsBootstrapped() {
-			bootstrapToken, err := auth.GenerateBootstrapToken(dataDir, appFs.Fs)
+			bootstrapToken, err := auth.GenerateBootstrapToken(dataDir, application.AppFs.Fs)
 			if err != nil {
 				mainLogger.Error().Err(err).Msg("Failed to generate bootstrap token")
 				os.Exit(1)
@@ -137,7 +73,7 @@ var serveCmd = &cobra.Command{
 				Str("expires_in", "5 minutes").
 				Msg("Bootstrap required")
 		} else {
-			auth.DeleteBootstrapToken(dataDir, appFs.Fs)
+			auth.DeleteBootstrapToken(dataDir, application.AppFs.Fs)
 			mainLogger.Info().Msg("Application bootstrapped")
 		}
 
@@ -166,7 +102,7 @@ var serveCmd = &cobra.Command{
 		mainLogger.Info().Msg("Shutting down...")
 
 		// Delete all scans
-		_, err = dbManager.DataDb.Exec("DELETE FROM " + models.SCAN_TABLE)
+		_, err = application.DbManager.DataDb.Exec("DELETE FROM " + models.SCAN_TABLE)
 		if err != nil {
 			mainLogger.Error().Err(err).Msg("Failed to delete scans")
 		}

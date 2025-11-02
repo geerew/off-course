@@ -4,12 +4,9 @@ import (
 	"context"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
-	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/auth"
-	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
 )
@@ -17,10 +14,7 @@ import (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type recoveryAPI struct {
-	dao     *dao.DAO
-	logger  *logger.Logger
-	dataDir string
-	appFs   *appfs.AppFs
+	r *Router
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -35,14 +29,12 @@ type recoveryRequest struct {
 // initRecoveryRoutes initializes the recovery routes
 func (r *Router) initRecoveryRoutes() {
 	recoveryAPI := recoveryAPI{
-		dao:     r.dao,
-		logger:  r.config.Logger,
-		dataDir: r.config.DataDir,
-		appFs:   r.config.AppFs,
+		r: r,
 	}
 
-	// Recovery endpoint - no authentication required (validates via token file)
-	r.api.Post("/admin/recovery", recoveryAPI.resetPassword)
+	g := r.apiGroup("admin")
+
+	g.Post("/recovery", recoveryAPI.resetPassword)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -59,7 +51,7 @@ func (api recoveryAPI) resetPassword(c *fiber.Ctx) error {
 	}
 
 	// Validate recovery token
-	recoveryToken, err := auth.ValidateRecoveryToken(api.appFs, req.Token, api.dataDir)
+	recoveryToken, err := auth.ValidateRecoveryToken(api.r.app.AppFs, req.Token, api.r.app.Config.DataDir)
 	if err != nil {
 		return errorResponse(c, fiber.StatusUnauthorized, "Invalid or expired recovery token", nil)
 	}
@@ -67,7 +59,7 @@ func (api recoveryAPI) resetPassword(c *fiber.Ctx) error {
 	// Get user by username
 	ctx := context.Background()
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: recoveryToken.Username})
-	user, err := api.dao.GetUser(ctx, dbOpts)
+	user, err := api.r.appDao.GetUser(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up user", err)
 	}
@@ -83,13 +75,13 @@ func (api recoveryAPI) resetPassword(c *fiber.Ctx) error {
 
 	// Update password
 	user.PasswordHash = recoveryToken.PasswordHash
-	err = api.dao.UpdateUser(ctx, user)
+	err = api.r.appDao.UpdateUser(ctx, user)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error updating password", err)
 	}
 
 	// Delete the recovery token file (best-effort)
-	_ = auth.DeleteRecoveryToken(api.appFs, api.dataDir)
+	_ = auth.DeleteRecoveryToken(api.r.app.AppFs, api.r.app.Config.DataDir)
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"message":  "Password reset successfully",
