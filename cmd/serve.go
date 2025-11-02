@@ -101,6 +101,10 @@ var serveCmd = &cobra.Command{
 
 		mainLogger.Info().Msg("Shutting down...")
 
+		if err := application.Close(); err != nil {
+			mainLogger.Error().Err(err).Msg("Failed to close application resources")
+		}
+
 		// Delete all scans
 		_, err = application.DbManager.DataDb.Exec("DELETE FROM " + models.SCAN_TABLE)
 		if err != nil {
