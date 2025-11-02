@@ -81,35 +81,39 @@ func New(ctx context.Context, config *Config) (*App, error) {
 		return nil, &InitializationError{Message: "Failed to create database manager", Err: err}
 	}
 
+	// Create app instance first (needed for service initialization)
+	application := &App{
+		Logger:    appLogger,
+		AppFs:     appFs,
+		FFmpeg:    ffmpeg,
+		DbManager: dbManager,
+		Config:    config,
+	}
+
 	// Course scanner
-	courseScan := coursescan.New(&coursescan.CourseScanConfig{
-		Db:     dbManager.DataDb,
-		AppFs:  appFs,
-		Logger: appLogger.WithCourseScan(),
-		FFmpeg: ffmpeg,
+	application.CourseScan = coursescan.New(&coursescan.CourseScanConfig{
+		Db:     application.DbManager.DataDb,
+		AppFs:  application.AppFs,
+		Logger: application.Logger.WithCourseScan(),
+		FFmpeg: application.FFmpeg,
 	})
 
 	// HLS Transcoder
 	transcoder, err := hls.NewTranscoder(&hls.TranscoderConfig{
-		CachePath: config.DataDir,
-		AppFs:     appFs,
-		Logger:    appLogger.WithHLS(),
-		Dao:       dao.New(dbManager.DataDb),
+		CachePath: application.Config.DataDir,
+		HwAccel:   hls.DetectHardwareAccel(application.Logger),
+		AppFs:     application.AppFs,
+		Logger:    application.Logger.WithHLS(),
+		Dao:       dao.New(application.DbManager.DataDb),
 	})
 
 	if err != nil {
 		return nil, &InitializationError{Message: "Failed to create HLS transcoder", Err: err}
 	}
 
-	return &App{
-		Logger:     appLogger,
-		AppFs:      appFs,
-		FFmpeg:     ffmpeg,
-		DbManager:  dbManager,
-		CourseScan: courseScan,
-		Transcoder: transcoder,
-		Config:     config,
-	}, nil
+	application.Transcoder = transcoder
+
+	return application, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

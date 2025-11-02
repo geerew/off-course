@@ -9,15 +9,15 @@ import (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // StartCron initializes the cron jobs
-func StartCron(application *app.App) {
+func StartCron(app *app.App) {
 	c := cron.New()
 
 	// Course availability
 	ca := &courseAvailability{
-		db:        application.DbManager.DataDb,
-		dao:       dao.New(application.DbManager.DataDb),
-		appFs:     application.AppFs,
-		logger:    application.Logger.WithCron(),
+		db:        app.DbManager.DataDb,
+		dao:       dao.New(app.DbManager.DataDb),
+		appFs:     app.AppFs,
+		logger:    app.Logger.WithCron(),
 		batchSize: 200,
 	}
 

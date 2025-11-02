@@ -82,18 +82,19 @@ func NewTestApp(t *testing.T) *App {
 
 	// Initialize CourseScan
 	application.CourseScan = coursescan.New(&coursescan.CourseScanConfig{
-		Db:     dbManager.DataDb,
-		AppFs:  appFs,
-		Logger: testLogger.WithCourseScan(),
-		FFmpeg: ffmpeg,
+		Db:     application.DbManager.DataDb,
+		AppFs:  application.AppFs,
+		Logger: application.Logger.WithCourseScan(),
+		FFmpeg: application.FFmpeg,
 	})
 
 	// Initialize Transcoder
 	transcoder, err := hls.NewTranscoder(&hls.TranscoderConfig{
-		CachePath: "./oc_data",
-		AppFs:     appFs,
-		Logger:    testLogger.WithHLS(),
-		Dao:       dao.New(dbManager.DataDb),
+		CachePath: application.Config.DataDir,
+		HwAccel:   hls.DetectHardwareAccel(application.Logger),
+		AppFs:     application.AppFs,
+		Logger:    application.Logger.WithHLS(),
+		Dao:       dao.New(application.DbManager.DataDb),
 	})
 	require.NoError(t, err)
 	application.Transcoder = transcoder
