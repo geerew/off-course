@@ -66,7 +66,7 @@ func NewTestApp(t *testing.T) *App {
 	ffmpeg := getCachedFFmpeg(t)
 
 	// Create app instance with test-friendly defaults
-	application := &App{
+	app := &App{
 		Logger:    testLogger,
 		AppFs:     appFs,
 		FFmpeg:    ffmpeg,
@@ -81,23 +81,23 @@ func NewTestApp(t *testing.T) *App {
 	}
 
 	// Initialize CourseScan
-	application.CourseScan = coursescan.New(&coursescan.CourseScanConfig{
-		Db:     application.DbManager.DataDb,
-		AppFs:  application.AppFs,
-		Logger: application.Logger.WithCourseScan(),
-		FFmpeg: application.FFmpeg,
+	app.CourseScan = coursescan.New(&coursescan.CourseScanConfig{
+		Db:     app.DbManager.DataDb,
+		AppFs:  app.AppFs,
+		Logger: app.Logger.WithCourseScan(),
+		FFmpeg: app.FFmpeg,
 	})
 
 	// Initialize Transcoder
 	transcoder, err := hls.NewTranscoder(&hls.TranscoderConfig{
-		CachePath: application.Config.DataDir,
-		HwAccel:   hls.DetectHardwareAccel(application.Logger),
-		AppFs:     application.AppFs,
-		Logger:    application.Logger.WithHLS(),
-		Dao:       dao.New(application.DbManager.DataDb),
+		CachePath: app.Config.DataDir,
+		HwAccel:   hls.DetectHardwareAccel(app.Logger),
+		AppFs:     app.AppFs,
+		Logger:    app.Logger.WithHLS(),
+		Dao:       dao.New(app.DbManager.DataDb),
 	})
 	require.NoError(t, err)
-	application.Transcoder = transcoder
+	app.Transcoder = transcoder
 
-	return application
+	return app
 }

@@ -82,7 +82,7 @@ func New(ctx context.Context, config *Config) (*App, error) {
 	}
 
 	// Create app instance first (needed for service initialization)
-	application := &App{
+	app := &App{
 		Logger:    appLogger,
 		AppFs:     appFs,
 		FFmpeg:    ffmpeg,
@@ -91,29 +91,29 @@ func New(ctx context.Context, config *Config) (*App, error) {
 	}
 
 	// Course scanner
-	application.CourseScan = coursescan.New(&coursescan.CourseScanConfig{
-		Db:     application.DbManager.DataDb,
-		AppFs:  application.AppFs,
-		Logger: application.Logger.WithCourseScan(),
-		FFmpeg: application.FFmpeg,
+	app.CourseScan = coursescan.New(&coursescan.CourseScanConfig{
+		Db:     app.DbManager.DataDb,
+		AppFs:  app.AppFs,
+		Logger: app.Logger.WithCourseScan(),
+		FFmpeg: app.FFmpeg,
 	})
 
 	// HLS Transcoder
 	transcoder, err := hls.NewTranscoder(&hls.TranscoderConfig{
-		CachePath: application.Config.DataDir,
-		HwAccel:   hls.DetectHardwareAccel(application.Logger),
-		AppFs:     application.AppFs,
-		Logger:    application.Logger.WithHLS(),
-		Dao:       dao.New(application.DbManager.DataDb),
+		CachePath: app.Config.DataDir,
+		HwAccel:   hls.DetectHardwareAccel(app.Logger),
+		AppFs:     app.AppFs,
+		Logger:    app.Logger.WithHLS(),
+		Dao:       dao.New(app.DbManager.DataDb),
 	})
 
 	if err != nil {
 		return nil, &InitializationError{Message: "Failed to create HLS transcoder", Err: err}
 	}
 
-	application.Transcoder = transcoder
+	app.Transcoder = transcoder
 
-	return application, nil
+	return app, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

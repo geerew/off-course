@@ -56,9 +56,9 @@ func TestCourseAvailability_Run(t *testing.T) {
 	})
 
 	t.Run("stat error", func(t *testing.T) {
-		application, ctx := setup(t)
+		app, ctx := setup(t)
 
-		dao := dao.New(application.DbManager.DataDb)
+		dao := dao.New(app.DbManager.DataDb)
 
 		course := &models.Course{Title: "course 1", Path: "/course-1", Available: false}
 		require.NoError(t, dao.CreateCourse(ctx, course))
@@ -69,10 +69,10 @@ func TestCourseAvailability_Run(t *testing.T) {
 		}
 
 		ca := &courseAvailability{
-			db:        application.DbManager.DataDb,
+			db:        app.DbManager.DataDb,
 			dao:       dao,
 			appFs:     appfs.New(fsWithError),
-			logger:    application.Logger.WithCron(),
+			logger:    app.Logger.WithCron(),
 			batchSize: 1,
 		}
 
@@ -83,17 +83,17 @@ func TestCourseAvailability_Run(t *testing.T) {
 	})
 
 	t.Run("db error", func(t *testing.T) {
-		application, _ := setup(t)
+		app, _ := setup(t)
 
-		db := application.DbManager.DataDb
+		db := app.DbManager.DataDb
 		_, err := db.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)
 
 		ca := &courseAvailability{
 			db:        db,
 			dao:       dao.New(db),
-			appFs:     application.AppFs,
-			logger:    application.Logger.WithCron(),
+			appFs:     app.AppFs,
+			logger:    app.Logger.WithCron(),
 			batchSize: 1,
 		}
 
