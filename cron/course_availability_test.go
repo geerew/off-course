@@ -18,9 +18,9 @@ import (
 
 func TestCourseAvailability_Run(t *testing.T) {
 	t.Run("update", func(t *testing.T) {
-		db, appFs, ctx, logger := setup(t)
+		app, ctx := setup(t)
 
-		dao := dao.New(db)
+		dao := dao.New(app.DbManager.DataDb)
 
 		courses := []*models.Course{}
 		for i := range 3 {
@@ -30,10 +30,10 @@ func TestCourseAvailability_Run(t *testing.T) {
 		}
 
 		ca := &courseAvailability{
-			db:        db,
+			db:        app.DbManager.DataDb,
 			dao:       dao,
-			appFs:     appFs,
-			logger:    logger,
+			appFs:     app.AppFs,
+			logger:    app.Logger.WithCron(),
 			batchSize: 2,
 		}
 
@@ -41,7 +41,7 @@ func TestCourseAvailability_Run(t *testing.T) {
 		require.NoError(t, err)
 
 		for _, course := range courses {
-			require.Nil(t, appFs.Fs.MkdirAll(course.Path, 0755))
+			require.Nil(t, app.AppFs.Fs.MkdirAll(course.Path, 0755))
 		}
 
 		err = ca.run()
@@ -56,9 +56,9 @@ func TestCourseAvailability_Run(t *testing.T) {
 	})
 
 	t.Run("stat error", func(t *testing.T) {
-		db, _, ctx, logger := setup(t)
+		app, ctx := setup(t)
 
-		dao := dao.New(db)
+		dao := dao.New(app.DbManager.DataDb)
 
 		course := &models.Course{Title: "course 1", Path: "/course-1", Available: false}
 		require.NoError(t, dao.CreateCourse(ctx, course))
@@ -69,10 +69,10 @@ func TestCourseAvailability_Run(t *testing.T) {
 		}
 
 		ca := &courseAvailability{
-			db:        db,
+			db:        app.DbManager.DataDb,
 			dao:       dao,
 			appFs:     appfs.New(fsWithError),
-			logger:    logger,
+			logger:    app.Logger.WithCron(),
 			batchSize: 1,
 		}
 
@@ -83,16 +83,17 @@ func TestCourseAvailability_Run(t *testing.T) {
 	})
 
 	t.Run("db error", func(t *testing.T) {
-		db, appFs, _, logger := setup(t)
+		app, _ := setup(t)
 
+		db := app.DbManager.DataDb
 		_, err := db.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)
 
 		ca := &courseAvailability{
 			db:        db,
 			dao:       dao.New(db),
-			appFs:     appFs,
-			logger:    logger,
+			appFs:     app.AppFs,
+			logger:    app.Logger.WithCron(),
 			batchSize: 1,
 		}
 

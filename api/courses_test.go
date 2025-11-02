@@ -47,7 +47,7 @@ func TestCourses_GetCourses(t *testing.T) {
 				Title: fmt.Sprintf("course %d", i+1),
 				Path:  fmt.Sprintf("/course %d", i+1),
 			}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
+			require.NoError(t, router.appDao.CreateCourse(ctx, course))
 			time.Sleep(1 * time.Millisecond)
 		}
 
@@ -69,7 +69,7 @@ func TestCourses_GetCourses(t *testing.T) {
 				Title: fmt.Sprintf("course %d", i+1),
 				Path:  fmt.Sprintf("/course %d", i+1),
 			}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
+			require.NoError(t, router.appDao.CreateCourse(ctx, course))
 			courses = append(courses, course)
 			time.Sleep(1 * time.Millisecond)
 		}
@@ -107,7 +107,7 @@ func TestCourses_GetCourses(t *testing.T) {
 				Title: fmt.Sprintf("course %d", i+1),
 				Path:  fmt.Sprintf("/course %d", i+1),
 			}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
+			require.NoError(t, router.appDao.CreateCourse(ctx, course))
 			courses = append(courses, course)
 			time.Sleep(1 * time.Millisecond)
 		}
@@ -157,7 +157,7 @@ func TestCourses_GetCourses(t *testing.T) {
 				Title: fmt.Sprintf("course %d", i+1),
 				Path:  fmt.Sprintf("/course %d", i+1),
 			}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
+			require.NoError(t, router.appDao.CreateCourse(ctx, course))
 			courses = append(courses, course)
 			time.Sleep(1 * time.Millisecond)
 		}
@@ -171,7 +171,7 @@ func TestCourses_GetCourses(t *testing.T) {
 				Prefix:   sql.NullInt16{Int16: int16(i + 1), Valid: true},
 				Module:   "Module 1",
 			}
-			require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+			require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 
 			asset := &models.Asset{
 				CourseID: c.ID,
@@ -185,32 +185,32 @@ func TestCourses_GetCourses(t *testing.T) {
 				ModTime:  time.Now().Format(time.RFC3339Nano),
 				Hash:     security.RandomString(64),
 			}
-			require.NoError(t, router.dao.CreateAsset(ctx, asset))
+			require.NoError(t, router.appDao.CreateAsset(ctx, asset))
 			assets = append(assets, asset)
 		}
 
 		// Set progress (course 1 started, course 5 completed)
-		require.NoError(t, router.dao.UpsertAssetProgress(ctx, &models.AssetProgress{AssetID: assets[0].ID, Position: 10}))
-		require.NoError(t, router.dao.UpsertAssetProgress(ctx, &models.AssetProgress{AssetID: assets[4].ID, Position: 10, Completed: true}))
+		require.NoError(t, router.appDao.UpsertAssetProgress(ctx, &models.AssetProgress{AssetID: assets[0].ID, Position: 10}))
+		require.NoError(t, router.appDao.UpsertAssetProgress(ctx, &models.AssetProgress{AssetID: assets[4].ID, Position: 10, Completed: true}))
 
 		// Set availability (courses 1, 3, 5 available)
 		for i, c := range courses {
 			c.Available = i%2 == 0
-			require.NoError(t, router.dao.UpdateCourse(ctx, c))
+			require.NoError(t, router.appDao.UpdateCourse(ctx, c))
 		}
 
 		// Set tags
-		require.NoError(t, router.dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[0].ID, Tag: "tag1"}))
-		require.NoError(t, router.dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[0].ID, Tag: "tag2"}))
+		require.NoError(t, router.appDao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[0].ID, Tag: "tag1"}))
+		require.NoError(t, router.appDao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[0].ID, Tag: "tag2"}))
 
-		require.NoError(t, router.dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[1].ID, Tag: "tag1"}))
-		require.NoError(t, router.dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[1].ID, Tag: "tag2"}))
-		require.NoError(t, router.dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[1].ID, Tag: "tag3"}))
+		require.NoError(t, router.appDao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[1].ID, Tag: "tag1"}))
+		require.NoError(t, router.appDao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[1].ID, Tag: "tag2"}))
+		require.NoError(t, router.appDao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[1].ID, Tag: "tag3"}))
 
-		require.NoError(t, router.dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[2].ID, Tag: "tag1"}))
+		require.NoError(t, router.appDao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[2].ID, Tag: "tag1"}))
 
-		require.NoError(t, router.dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[3].ID, Tag: "tag3"}))
-		require.NoError(t, router.dao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[3].ID, Tag: "tag4"}))
+		require.NoError(t, router.appDao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[3].ID, Tag: "tag3"}))
+		require.NoError(t, router.appDao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[3].ID, Tag: "tag4"}))
 
 		// No filter
 		{
@@ -299,7 +299,7 @@ func TestCourses_GetCourses(t *testing.T) {
 		router, _ := setupAdmin(t)
 
 		// Drop the courses table
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/", nil))
@@ -317,7 +317,7 @@ func TestCourses_GetCourse(t *testing.T) {
 		courses := []*models.Course{}
 		for i := range 3 {
 			course := &models.Course{Title: fmt.Sprintf("course %d", i), Path: fmt.Sprintf("/course %d", i)}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
+			require.NoError(t, router.appDao.CreateCourse(ctx, course))
 			courses = append(courses, course)
 		}
 
@@ -342,7 +342,7 @@ func TestCourses_GetCourse(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/invalid", nil))
@@ -357,7 +357,7 @@ func TestCourses_CreateCourse(t *testing.T) {
 	t.Run("201 (created)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		router.config.AppFs.Fs.MkdirAll("/course 1", os.ModePerm)
+		router.app.AppFs.Fs.MkdirAll("/course 1", os.ModePerm)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/courses/", strings.NewReader(`{"title": "course 1", "path": "/course 1" }`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -421,7 +421,7 @@ func TestCourses_CreateCourse(t *testing.T) {
 	t.Run("400 (existing course)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		router.config.AppFs.Fs.MkdirAll("/course 1", os.ModePerm)
+		router.app.AppFs.Fs.MkdirAll("/course 1", os.ModePerm)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/courses/", strings.NewReader(`{"title": "course 1", "path": "/course 1" }`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -439,10 +439,10 @@ func TestCourses_CreateCourse(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)
 
-		router.config.AppFs.Fs.MkdirAll("/course 1", os.ModePerm)
+		router.app.AppFs.Fs.MkdirAll("/course 1", os.ModePerm)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/courses/", strings.NewReader(`{"title": "course 1", "path": "/course 1" }`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -456,10 +456,10 @@ func TestCourses_CreateCourse(t *testing.T) {
 	t.Run("500 (scan error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.SCAN_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.SCAN_TABLE)
 		require.NoError(t, err)
 
-		router.config.AppFs.Fs.MkdirAll("/course 1", os.ModePerm)
+		router.app.AppFs.Fs.MkdirAll("/course 1", os.ModePerm)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/courses/", strings.NewReader(`{"title": "course 1", "path": "/course 1" }`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -480,7 +480,7 @@ func TestCourses_DeleteCourse(t *testing.T) {
 		courses := []*models.Course{}
 		for i := range 3 {
 			course := &models.Course{Title: fmt.Sprintf("course %d", i), Path: fmt.Sprintf("/course %d", i)}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
+			require.NoError(t, router.appDao.CreateCourse(ctx, course))
 			courses = append(courses, course)
 		}
 
@@ -489,7 +489,7 @@ func TestCourses_DeleteCourse(t *testing.T) {
 		require.Equal(t, http.StatusNoContent, status)
 
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: courses[1].ID})
-		course, err := router.dao.GetCourse(ctx, dbOpts)
+		course, err := router.appDao.GetCourse(ctx, dbOpts)
 		require.NoError(t, err)
 		require.Nil(t, course)
 	})
@@ -505,7 +505,7 @@ func TestCourses_DeleteCourse(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/courses/invalid", nil))
@@ -525,10 +525,10 @@ func TestCourses_GetCard(t *testing.T) {
 			Path:     "/course 1",
 			CardPath: "/course 1/card.png",
 		}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
-		router.config.AppFs.Fs.MkdirAll("/"+course.Path, os.ModePerm)
-		require.Nil(t, afero.WriteFile(router.config.AppFs.Fs, course.CardPath, []byte("test"), os.ModePerm))
+		router.app.AppFs.Fs.MkdirAll("/"+course.Path, os.ModePerm)
+		require.Nil(t, afero.WriteFile(router.app.AppFs.Fs, course.CardPath, []byte("test"), os.ModePerm))
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/card", nil))
 		require.NoError(t, err)
@@ -552,7 +552,7 @@ func TestCourses_GetCard(t *testing.T) {
 			Title: "course 1",
 			Path:  "/course 1",
 		}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/card", nil))
 		require.NoError(t, err)
@@ -568,7 +568,7 @@ func TestCourses_GetCard(t *testing.T) {
 			Path:     "/course 1",
 			CardPath: "/course 1/card.png",
 		}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/card", nil))
 		require.NoError(t, err)
@@ -579,7 +579,7 @@ func TestCourses_GetCard(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/invalid/card", nil))
@@ -597,7 +597,7 @@ func TestCourses_GetLessons(t *testing.T) {
 		courses := []*models.Course{}
 		for i := range 2 {
 			course := &models.Course{Title: fmt.Sprintf("course %d", i), Path: fmt.Sprintf("/course %d", i)}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
+			require.NoError(t, router.appDao.CreateCourse(ctx, course))
 			courses = append(courses, course)
 		}
 
@@ -620,7 +620,7 @@ func TestCourses_GetLessons(t *testing.T) {
 
 		for i := range 2 {
 			course := &models.Course{Title: fmt.Sprintf("Course %d", i+1), Path: fmt.Sprintf("/course/%d", i+1)}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
+			require.NoError(t, router.appDao.CreateCourse(ctx, course))
 			courses = append(courses, course)
 		}
 
@@ -633,7 +633,7 @@ func TestCourses_GetLessons(t *testing.T) {
 					Prefix:   sql.NullInt16{Int16: int16(j + 1), Valid: true},
 					Module:   "Module 1",
 				}
-				require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+				require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 				lessons = append(lessons, lesson)
 
 				attachment := &models.Attachment{
@@ -641,7 +641,7 @@ func TestCourses_GetLessons(t *testing.T) {
 					Title:    fmt.Sprintf("attachment %d", j+1),
 					Path:     fmt.Sprintf("/%s/attachment %d", security.RandomString(4), j+1),
 				}
-				require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
+				require.NoError(t, router.appDao.CreateAttachment(ctx, attachment))
 				attachments = append(attachments, attachment)
 
 				for k := range 2 {
@@ -657,7 +657,7 @@ func TestCourses_GetLessons(t *testing.T) {
 						ModTime:  time.Now().Format(time.RFC3339Nano),
 						Hash:     security.RandomString(64),
 					}
-					require.NoError(t, router.dao.CreateAsset(ctx, asset))
+					require.NoError(t, router.appDao.CreateAsset(ctx, asset))
 					assets = append(assets, asset)
 					time.Sleep(1 * time.Millisecond)
 				}
@@ -706,7 +706,7 @@ func TestCourses_GetLessons(t *testing.T) {
 
 		for i := range 2 {
 			course := &models.Course{Title: fmt.Sprintf("Course %d", i+1), Path: fmt.Sprintf("/course/%d", i+1)}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
+			require.NoError(t, router.appDao.CreateCourse(ctx, course))
 			courses = append(courses, course)
 		}
 
@@ -719,7 +719,7 @@ func TestCourses_GetLessons(t *testing.T) {
 					Prefix:   sql.NullInt16{Int16: int16(j + 1), Valid: true},
 					Module:   "Module 1",
 				}
-				require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+				require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 				lessons = append(lessons, lesson)
 
 				attachment := &models.Attachment{
@@ -727,7 +727,7 @@ func TestCourses_GetLessons(t *testing.T) {
 					Title:    fmt.Sprintf("attachment %d", j+1),
 					Path:     fmt.Sprintf("/%s/attachment %d", security.RandomString(4), j+1),
 				}
-				require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
+				require.NoError(t, router.appDao.CreateAttachment(ctx, attachment))
 				attachments = append(attachments, attachment)
 
 				for k := range 2 {
@@ -743,7 +743,7 @@ func TestCourses_GetLessons(t *testing.T) {
 						ModTime:  time.Now().Format(time.RFC3339Nano),
 						Hash:     security.RandomString(64),
 					}
-					require.NoError(t, router.dao.CreateAsset(ctx, asset))
+					require.NoError(t, router.appDao.CreateAsset(ctx, asset))
 					assets = append(assets, asset)
 					time.Sleep(1 * time.Millisecond)
 				}
@@ -789,7 +789,7 @@ func TestCourses_GetLessons(t *testing.T) {
 		courses := []*models.Course{}
 		for i := range 2 {
 			course := &models.Course{Title: fmt.Sprintf("course %d", i), Path: fmt.Sprintf("/course %d", i)}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
+			require.NoError(t, router.appDao.CreateCourse(ctx, course))
 			courses = append(courses, course)
 		}
 
@@ -802,7 +802,7 @@ func TestCourses_GetLessons(t *testing.T) {
 					Prefix:   sql.NullInt16{Int16: int16(j + 1), Valid: true},
 					Module:   fmt.Sprintf("Chapter %d", j+1),
 				}
-				require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+				require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 				lessons = append(lessons, lesson)
 				time.Sleep(1 * time.Millisecond)
 			}
@@ -837,7 +837,7 @@ func TestCourses_GetLessons(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		lessons := []*models.Lesson{}
 		for i := range 17 {
@@ -847,7 +847,7 @@ func TestCourses_GetLessons(t *testing.T) {
 				Prefix:   sql.NullInt16{Int16: int16(i + 1), Valid: true},
 				Module:   fmt.Sprintf("Chapter %d", i+1),
 			}
-			require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+			require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 			lessons = append(lessons, lesson)
 			time.Sleep(1 * time.Millisecond)
 		}
@@ -893,9 +893,9 @@ func TestCourses_GetLessons(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.LESSON_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.LESSON_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/lessons/", nil))
@@ -911,7 +911,7 @@ func TestCourses_GetLesson(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		lessons := []*models.Lesson{}
 		attachments := []*models.Attachment{}
@@ -924,7 +924,7 @@ func TestCourses_GetLesson(t *testing.T) {
 				Prefix:   sql.NullInt16{Int16: int16(i + 1), Valid: true},
 				Module:   fmt.Sprintf("Chapter %d", i+1),
 			}
-			require.NoError(t, router.dao.CreateLesson(ctx, ag))
+			require.NoError(t, router.appDao.CreateLesson(ctx, ag))
 			lessons = append(lessons, ag)
 			time.Sleep(1 * time.Millisecond)
 
@@ -935,7 +935,7 @@ func TestCourses_GetLesson(t *testing.T) {
 					Title:    fmt.Sprintf("attachment %d", j+1),
 					Path:     fmt.Sprintf("/%s/attachment %d", security.RandomString(4), j+1),
 				}
-				require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
+				require.NoError(t, router.appDao.CreateAttachment(ctx, attachment))
 				attachments = append(attachments, attachment)
 
 				asset := &models.Asset{
@@ -948,7 +948,7 @@ func TestCourses_GetLesson(t *testing.T) {
 					Type:      *types.NewAsset("mp4"),
 					Path:      fmt.Sprintf("/course-1/%02d video %d {%02d}.mp4", ag.Prefix.Int16, j+1, j+1),
 				}
-				require.NoError(t, router.dao.CreateAsset(ctx, asset))
+				require.NoError(t, router.appDao.CreateAsset(ctx, asset))
 			}
 		}
 
@@ -979,7 +979,7 @@ func TestCourses_GetLesson(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		lessons := []*models.Lesson{}
 		attachments := []*models.Attachment{}
@@ -992,7 +992,7 @@ func TestCourses_GetLesson(t *testing.T) {
 				Prefix:   sql.NullInt16{Int16: int16(i + 1), Valid: true},
 				Module:   fmt.Sprintf("Chapter %d", i+1),
 			}
-			require.NoError(t, router.dao.CreateLesson(ctx, ag))
+			require.NoError(t, router.appDao.CreateLesson(ctx, ag))
 			lessons = append(lessons, ag)
 			time.Sleep(1 * time.Millisecond)
 
@@ -1002,7 +1002,7 @@ func TestCourses_GetLesson(t *testing.T) {
 					Title:    fmt.Sprintf("attachment %d", j+1),
 					Path:     fmt.Sprintf("/%s/attachment %d", security.RandomString(4), j+1),
 				}
-				require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
+				require.NoError(t, router.appDao.CreateAttachment(ctx, attachment))
 				attachments = append(attachments, attachment)
 
 				asset := &models.Asset{
@@ -1015,7 +1015,7 @@ func TestCourses_GetLesson(t *testing.T) {
 					Type:      *types.NewAsset("mp4"),
 					Path:      fmt.Sprintf("/course-1/%02d video %d {%02d}.mp4", ag.Prefix.Int16, j+1, j+1),
 				}
-				require.NoError(t, router.dao.CreateAsset(ctx, asset))
+				require.NoError(t, router.appDao.CreateAsset(ctx, asset))
 
 				// Create asset metadata
 				meta := &models.AssetMetadata{
@@ -1034,7 +1034,7 @@ func TestCourses_GetLesson(t *testing.T) {
 					},
 					AudioMetadata: nil,
 				}
-				require.NoError(t, router.dao.CreateAssetMetadata(ctx, meta))
+				require.NoError(t, router.appDao.CreateAssetMetadata(ctx, meta))
 
 				// Mark the asset as completed
 				assetProgress := &models.AssetProgress{
@@ -1043,7 +1043,7 @@ func TestCourses_GetLesson(t *testing.T) {
 					Completed:   true,
 					CompletedAt: types.NowDateTime(),
 				}
-				require.NoError(t, router.dao.UpsertAssetProgress(ctx, assetProgress))
+				require.NoError(t, router.appDao.UpsertAssetProgress(ctx, assetProgress))
 			}
 		}
 
@@ -1082,10 +1082,10 @@ func TestCourses_GetLesson(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course1 := &models.Course{Title: "course 1", Path: "/course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course1))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course1))
 
 		course2 := &models.Course{Title: "course 2", Path: "/course 2"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course2))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course2))
 
 		lesson := &models.Lesson{
 			CourseID: course2.ID,
@@ -1093,7 +1093,7 @@ func TestCourses_GetLesson(t *testing.T) {
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+		require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 
 		// Request an lesson that does not belong to the course
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course1.ID+"/lessons/"+lesson.ID, nil)
@@ -1107,7 +1107,7 @@ func TestCourses_GetLesson(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/lessons/invalid", nil)
 		status, _, err := requestHelper(t, router, req)
@@ -1119,9 +1119,9 @@ func TestCourses_GetLesson(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.LESSON_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.LESSON_TABLE)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/lessons/invalid", nil)
@@ -1140,7 +1140,7 @@ func TestCourses_GetModules(t *testing.T) {
 		courses := []*models.Course{}
 		for i := range 2 {
 			course := &models.Course{Title: fmt.Sprintf("course %d", i), Path: fmt.Sprintf("/course %d", i)}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
+			require.NoError(t, router.appDao.CreateCourse(ctx, course))
 			courses = append(courses, course)
 		}
 
@@ -1164,7 +1164,7 @@ func TestCourses_GetModules(t *testing.T) {
 
 		for i := range 2 {
 			course := &models.Course{Title: fmt.Sprintf("Course %d", i+1), Path: fmt.Sprintf("/course/%d", i+1)}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
+			require.NoError(t, router.appDao.CreateCourse(ctx, course))
 			courses = append(courses, course)
 		}
 
@@ -1177,7 +1177,7 @@ func TestCourses_GetModules(t *testing.T) {
 					Prefix:   sql.NullInt16{Int16: int16(j + 1), Valid: true},
 					Module:   fmt.Sprintf("Chapter %d", j+1),
 				}
-				require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+				require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 				lessons = append(lessons, lesson)
 
 				attachment := &models.Attachment{
@@ -1185,7 +1185,7 @@ func TestCourses_GetModules(t *testing.T) {
 					Title:    fmt.Sprintf("attachment %d", j+1),
 					Path:     fmt.Sprintf("%s/attachment %d", c.Path, j+1),
 				}
-				require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
+				require.NoError(t, router.appDao.CreateAttachment(ctx, attachment))
 				attachments = append(attachments, attachment)
 
 				asset := &models.Asset{
@@ -1200,7 +1200,7 @@ func TestCourses_GetModules(t *testing.T) {
 					ModTime:  time.Now().Format(time.RFC3339Nano),
 					Hash:     security.RandomString(64),
 				}
-				require.NoError(t, router.dao.CreateAsset(ctx, asset))
+				require.NoError(t, router.appDao.CreateAsset(ctx, asset))
 				assets = append(assets, asset)
 				time.Sleep(1 * time.Millisecond)
 			}
@@ -1244,7 +1244,7 @@ func TestCourses_GetModules(t *testing.T) {
 
 		for i := range 2 {
 			course := &models.Course{Title: fmt.Sprintf("Course %d", i+1), Path: fmt.Sprintf("/course/%d", i+1)}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
+			require.NoError(t, router.appDao.CreateCourse(ctx, course))
 			courses = append(courses, course)
 		}
 
@@ -1257,7 +1257,7 @@ func TestCourses_GetModules(t *testing.T) {
 					Prefix:   sql.NullInt16{Int16: int16(j + 1), Valid: true},
 					Module:   fmt.Sprintf("Chapter %d", j+1),
 				}
-				require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+				require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 				lessons = append(lessons, lesson)
 
 				attachment := &models.Attachment{
@@ -1265,7 +1265,7 @@ func TestCourses_GetModules(t *testing.T) {
 					Title:    fmt.Sprintf("attachment %d", j+1),
 					Path:     fmt.Sprintf("%s/attachment %d", c.Path, j+1),
 				}
-				require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
+				require.NoError(t, router.appDao.CreateAttachment(ctx, attachment))
 				attachments = append(attachments, attachment)
 
 				asset := &models.Asset{
@@ -1280,7 +1280,7 @@ func TestCourses_GetModules(t *testing.T) {
 					ModTime:  time.Now().Format(time.RFC3339Nano),
 					Hash:     security.RandomString(64),
 				}
-				require.NoError(t, router.dao.CreateAsset(ctx, asset))
+				require.NoError(t, router.appDao.CreateAsset(ctx, asset))
 				assets = append(assets, asset)
 				time.Sleep(1 * time.Millisecond)
 			}
@@ -1319,9 +1319,9 @@ func TestCourses_GetModules(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.LESSON_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.LESSON_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/modules/", nil))
@@ -1337,7 +1337,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		lesson := &models.Lesson{
 			CourseID: course.ID,
@@ -1345,7 +1345,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+		require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/lessons/"+lesson.ID+"/attachments", nil)
 		status, body, err := requestHelper(t, router, req)
@@ -1361,7 +1361,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		lesson := &models.Lesson{
 			CourseID: course.ID,
@@ -1369,7 +1369,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+		require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 
 		attachments := []*models.Attachment{}
 		for i := range 2 {
@@ -1378,7 +1378,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 				Title:    fmt.Sprintf("attachment %d", i+1),
 				Path:     fmt.Sprintf("/%s/attachment %d", security.RandomString(4), i+1),
 			}
-			require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
+			require.NoError(t, router.appDao.CreateAttachment(ctx, attachment))
 			attachments = append(attachments, attachment)
 		}
 
@@ -1398,7 +1398,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		lesson := &models.Lesson{
 			CourseID: course.ID,
@@ -1406,7 +1406,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+		require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 
 		attachments := []*models.Attachment{}
 		for i := range 2 {
@@ -1415,7 +1415,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 				Title:    fmt.Sprintf("attachment %d", i+1),
 				Path:     fmt.Sprintf("/%s/attachment %d", security.RandomString(4), i+1),
 			}
-			require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
+			require.NoError(t, router.appDao.CreateAttachment(ctx, attachment))
 			attachments = append(attachments, attachment)
 			time.Sleep(1 * time.Millisecond)
 		}
@@ -1450,7 +1450,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		lesson := &models.Lesson{
 			CourseID: course.ID,
@@ -1458,7 +1458,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+		require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 
 		attachments := []*models.Attachment{}
 		for i := range 17 {
@@ -1467,7 +1467,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 				Title:    fmt.Sprintf("attachment %d", i+1),
 				Path:     fmt.Sprintf("/%s/attachment %d", security.RandomString(4), i+1),
 			}
-			require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
+			require.NoError(t, router.appDao.CreateAttachment(ctx, attachment))
 			attachments = append(attachments, attachment)
 			time.Sleep(1 * time.Millisecond)
 		}
@@ -1513,7 +1513,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/lessons/invalid/attachments", nil)
 		status, body, err := requestHelper(t, router, req)
@@ -1529,10 +1529,10 @@ func TestCourses_GetAttachments(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course1 := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course1))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course1))
 
 		course2 := &models.Course{Title: "Course 2", Path: "/course/2"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course2))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course2))
 
 		lesson := &models.Lesson{
 			CourseID: course2.ID,
@@ -1540,7 +1540,7 @@ func TestCourses_GetAttachments(t *testing.T) {
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+		require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course1.ID+"/lessons/"+lesson.ID+"/attachments", nil)
 		status, body, err := requestHelper(t, router, req)
@@ -1560,7 +1560,7 @@ func TestCourses_GetAttachment(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		lesson := &models.Lesson{
 			CourseID: course.ID,
@@ -1568,14 +1568,14 @@ func TestCourses_GetAttachment(t *testing.T) {
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+		require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 
 		attachment := &models.Attachment{
 			LessonID: lesson.ID,
 			Title:    "attachment 1",
 			Path:     fmt.Sprintf("/%s/attachment 1", security.RandomString(4)),
 		}
-		require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
+		require.NoError(t, router.appDao.CreateAttachment(ctx, attachment))
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/lessons/"+lesson.ID+"/attachments/"+attachment.ID, nil)
 		status, body, err := requestHelper(t, router, req)
@@ -1592,10 +1592,10 @@ func TestCourses_GetAttachment(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course1 := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course1))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course1))
 
 		course2 := &models.Course{Title: "Course 2", Path: "/course/2"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course2))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course2))
 
 		lesson := &models.Lesson{
 			CourseID: course2.ID,
@@ -1603,7 +1603,7 @@ func TestCourses_GetAttachment(t *testing.T) {
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+		require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course1.ID+"/lessons/"+lesson.ID+"/attachments/invalid", nil)
 		status, body, err := requestHelper(t, router, req)
@@ -1616,7 +1616,7 @@ func TestCourses_GetAttachment(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		lesson1 := &models.Lesson{
 			CourseID: course.ID,
@@ -1624,7 +1624,7 @@ func TestCourses_GetAttachment(t *testing.T) {
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateLesson(ctx, lesson1))
+		require.NoError(t, router.appDao.CreateLesson(ctx, lesson1))
 
 		lesson2 := &models.Lesson{
 			CourseID: course.ID,
@@ -1632,14 +1632,14 @@ func TestCourses_GetAttachment(t *testing.T) {
 			Prefix:   sql.NullInt16{Int16: 2, Valid: true},
 			Module:   "Module 2",
 		}
-		require.NoError(t, router.dao.CreateLesson(ctx, lesson2))
+		require.NoError(t, router.appDao.CreateLesson(ctx, lesson2))
 
 		attachment := &models.Attachment{
 			LessonID: lesson1.ID,
 			Title:    "attachment 1",
 			Path:     fmt.Sprintf("/%s/attachment 1", security.RandomString(4)),
 		}
-		require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
+		require.NoError(t, router.appDao.CreateAttachment(ctx, attachment))
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/lessons/"+lesson2.ID+"/attachments/"+attachment.ID, nil)
 
@@ -1662,7 +1662,7 @@ func TestCourses_GetAttachment(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/lessons/invalid/attachments/invalid", nil)
 		status, _, err := requestHelper(t, router, req)
@@ -1674,7 +1674,7 @@ func TestCourses_GetAttachment(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		lesson := &models.Lesson{
 			CourseID: course.ID,
@@ -1682,7 +1682,7 @@ func TestCourses_GetAttachment(t *testing.T) {
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+		require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/lessons/"+lesson.ID+"/attachments/invalid", nil)
 		status, body, err := requestHelper(t, router, req)
@@ -1699,7 +1699,7 @@ func TestCourses_ServeAttachment(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		lesson := &models.Lesson{
 			CourseID: course.ID,
@@ -1707,17 +1707,17 @@ func TestCourses_ServeAttachment(t *testing.T) {
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+		require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 
 		attachment := &models.Attachment{
 			LessonID: lesson.ID,
 			Title:    "attachment 1",
 			Path:     fmt.Sprintf("/%s/attachment 1", security.RandomString(4)),
 		}
-		require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
+		require.NoError(t, router.appDao.CreateAttachment(ctx, attachment))
 
-		require.Nil(t, router.config.AppFs.Fs.MkdirAll(filepath.Dir(attachment.Path), os.ModePerm))
-		require.Nil(t, afero.WriteFile(router.config.AppFs.Fs, attachment.Path, []byte("hello"), os.ModePerm))
+		require.Nil(t, router.app.AppFs.Fs.MkdirAll(filepath.Dir(attachment.Path), os.ModePerm))
+		require.Nil(t, afero.WriteFile(router.app.AppFs.Fs, attachment.Path, []byte("hello"), os.ModePerm))
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/lessons/"+lesson.ID+"/attachments/"+attachment.ID+"/serve", nil)
 		status, body, err := requestHelper(t, router, req)
@@ -1730,7 +1730,7 @@ func TestCourses_ServeAttachment(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		lesson := &models.Lesson{
 			CourseID: course.ID,
@@ -1738,14 +1738,14 @@ func TestCourses_ServeAttachment(t *testing.T) {
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+		require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 
 		attachment := &models.Attachment{
 			LessonID: lesson.ID,
 			Title:    "attachment 1",
 			Path:     fmt.Sprintf("/%s/attachment 1", security.RandomString(4)),
 		}
-		require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
+		require.NoError(t, router.appDao.CreateAttachment(ctx, attachment))
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/lessons/"+lesson.ID+"/attachments/"+attachment.ID+"/serve", nil)
 		status, body, err := requestHelper(t, router, req)
@@ -1758,10 +1758,10 @@ func TestCourses_ServeAttachment(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course1 := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course1))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course1))
 
 		course2 := &models.Course{Title: "Course 2", Path: "/course/2"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course2))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course2))
 
 		lesson := &models.Lesson{
 			CourseID: course2.ID,
@@ -1769,7 +1769,7 @@ func TestCourses_ServeAttachment(t *testing.T) {
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+		require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course1.ID+"/lessons/"+lesson.ID+"/attachments/invalid/serve", nil)
 		status, body, err := requestHelper(t, router, req)
@@ -1782,7 +1782,7 @@ func TestCourses_ServeAttachment(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		lessons := []*models.Lesson{}
 		for j := range 2 {
@@ -1792,7 +1792,7 @@ func TestCourses_ServeAttachment(t *testing.T) {
 				Prefix:   sql.NullInt16{Int16: int16(j + 1), Valid: true},
 				Module:   fmt.Sprintf("Chapter %d", j+1),
 			}
-			require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+			require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 			lessons = append(lessons, lesson)
 		}
 
@@ -1801,7 +1801,7 @@ func TestCourses_ServeAttachment(t *testing.T) {
 			Title:    "attachment 1",
 			Path:     fmt.Sprintf("/%s/attachment 1", security.RandomString(4)),
 		}
-		require.NoError(t, router.dao.CreateAttachment(ctx, attachment))
+		require.NoError(t, router.appDao.CreateAttachment(ctx, attachment))
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/lessons/"+lessons[1].ID+"/attachments/"+attachment.ID+"/serve", nil)
 		status, body, err := requestHelper(t, router, req)
@@ -1814,7 +1814,7 @@ func TestCourses_ServeAttachment(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/lessons/invalid/attachments/invalid/serve", nil)
 		status, body, err := requestHelper(t, router, req)
@@ -1827,7 +1827,7 @@ func TestCourses_ServeAttachment(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		lesson := &models.Lesson{
 			CourseID: course.ID,
@@ -1835,7 +1835,7 @@ func TestCourses_ServeAttachment(t *testing.T) {
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+		require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/lessons/"+lesson.ID+"/attachments/invalid/serve", nil)
 		status, body, err := requestHelper(t, router, req)
@@ -1852,7 +1852,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		lesson := &models.Lesson{
 			CourseID: course.ID,
@@ -1860,7 +1860,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+		require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 
 		asset := &models.Asset{
 			CourseID: course.ID,
@@ -1874,10 +1874,10 @@ func TestCourses_ServeAsset(t *testing.T) {
 			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+		require.NoError(t, router.appDao.CreateAsset(ctx, asset))
 
-		require.Nil(t, router.config.AppFs.Fs.MkdirAll(filepath.Dir(asset.Path), os.ModePerm))
-		require.Nil(t, afero.WriteFile(router.config.AppFs.Fs, asset.Path, []byte("video"), os.ModePerm))
+		require.Nil(t, router.app.AppFs.Fs.MkdirAll(filepath.Dir(asset.Path), os.ModePerm))
+		require.Nil(t, afero.WriteFile(router.app.AppFs.Fs, asset.Path, []byte("video"), os.ModePerm))
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/lessons/"+lesson.ID+"/assets/"+asset.ID+"/serve", nil)
 		status, body, err := requestHelper(t, router, req)
@@ -1890,7 +1890,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		lesson := &models.Lesson{
 			CourseID: course.ID,
@@ -1898,7 +1898,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+		require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 
 		asset := &models.Asset{
 			CourseID: course.ID,
@@ -1912,10 +1912,10 @@ func TestCourses_ServeAsset(t *testing.T) {
 			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+		require.NoError(t, router.appDao.CreateAsset(ctx, asset))
 
-		require.Nil(t, router.config.AppFs.Fs.MkdirAll(filepath.Dir(asset.Path), os.ModePerm))
-		require.Nil(t, afero.WriteFile(router.config.AppFs.Fs, asset.Path, []byte("video"), os.ModePerm))
+		require.Nil(t, router.app.AppFs.Fs.MkdirAll(filepath.Dir(asset.Path), os.ModePerm))
+		require.Nil(t, afero.WriteFile(router.app.AppFs.Fs, asset.Path, []byte("video"), os.ModePerm))
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/lessons/"+lesson.ID+"/assets/"+asset.ID+"/serve", nil)
 		req.Header.Add("Range", "bytes=0-")
@@ -1930,7 +1930,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		lesson := &models.Lesson{
 			CourseID: course.ID,
@@ -1938,7 +1938,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+		require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 
 		asset := &models.Asset{
 			CourseID: course.ID,
@@ -1952,7 +1952,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+		require.NoError(t, router.appDao.CreateAsset(ctx, asset))
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/lessons/"+lesson.ID+"/assets/"+asset.ID+"/serve", nil)
 		status, body, err := requestHelper(t, router, req)
@@ -1965,7 +1965,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		lesson := &models.Lesson{
 			CourseID: course.ID,
@@ -1973,7 +1973,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+		require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 
 		asset := &models.Asset{
 			CourseID: course.ID,
@@ -1987,10 +1987,10 @@ func TestCourses_ServeAsset(t *testing.T) {
 			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+		require.NoError(t, router.appDao.CreateAsset(ctx, asset))
 
-		require.Nil(t, router.config.AppFs.Fs.MkdirAll(filepath.Dir(asset.Path), os.ModePerm))
-		require.Nil(t, afero.WriteFile(router.config.AppFs.Fs, asset.Path, []byte("video"), os.ModePerm))
+		require.Nil(t, router.app.AppFs.Fs.MkdirAll(filepath.Dir(asset.Path), os.ModePerm))
+		require.Nil(t, afero.WriteFile(router.app.AppFs.Fs, asset.Path, []byte("video"), os.ModePerm))
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/lessons/"+lesson.ID+"/assets/"+asset.ID+"/serve", nil)
 		req.Header.Add("Range", "bytes=10-1")
@@ -2005,10 +2005,10 @@ func TestCourses_ServeAsset(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course1 := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course1))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course1))
 
 		course2 := &models.Course{Title: "Course 2", Path: "/course/2"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course2))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course2))
 
 		lesson := &models.Lesson{
 			CourseID: course2.ID,
@@ -2016,7 +2016,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+		require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 
 		asset := &models.Asset{
 			CourseID: course2.ID,
@@ -2030,7 +2030,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+		require.NoError(t, router.appDao.CreateAsset(ctx, asset))
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course1.ID+"/lessons/"+lesson.ID+"/assets/"+asset.ID+"/serve", nil)
 		status, body, err := requestHelper(t, router, req)
@@ -2052,7 +2052,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.ASSET_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.ASSET_TABLE)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/invalid/lessons/invalid/assets/invalid/serve", nil)
@@ -2072,7 +2072,7 @@ func TestCourses_UpdateAssetProgress(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		lesson := &models.Lesson{
 			CourseID: course.ID,
@@ -2080,7 +2080,7 @@ func TestCourses_UpdateAssetProgress(t *testing.T) {
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
 		}
-		require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+		require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 
 		asset := &models.Asset{
 			CourseID: course.ID,
@@ -2094,7 +2094,7 @@ func TestCourses_UpdateAssetProgress(t *testing.T) {
 			ModTime:  time.Now().Format(time.RFC3339Nano),
 			Hash:     security.RandomString(64),
 		}
-		require.NoError(t, router.dao.CreateAsset(ctx, asset))
+		require.NoError(t, router.appDao.CreateAsset(ctx, asset))
 
 		// Update video position
 		assetProgress := &assetProgressRequest{
@@ -2112,7 +2112,7 @@ func TestCourses_UpdateAssetProgress(t *testing.T) {
 		require.Equal(t, http.StatusNoContent, status)
 
 		dbOpts := database.NewOptions().WithUserProgress().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: asset.ID})
-		assetResult, err := router.dao.GetAsset(ctx, dbOpts)
+		assetResult, err := router.appDao.GetAsset(ctx, dbOpts)
 		require.NoError(t, err)
 		require.NotNil(t, assetResult)
 		require.NotNil(t, assetResult.Progress)
@@ -2133,7 +2133,7 @@ func TestCourses_UpdateAssetProgress(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, status)
 
-		assetResult, err = router.dao.GetAsset(ctx, dbOpts)
+		assetResult, err = router.appDao.GetAsset(ctx, dbOpts)
 		require.NoError(t, err)
 		require.NotNil(t, assetResult)
 		require.NotNil(t, assetResult.Progress)
@@ -2155,7 +2155,7 @@ func TestCourses_UpdateAssetProgress(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, status)
 
-		assetResult, err = router.dao.GetAsset(ctx, dbOpts)
+		assetResult, err = router.appDao.GetAsset(ctx, dbOpts)
 		require.NoError(t, err)
 		require.NotNil(t, assetResult)
 		require.NotNil(t, assetResult.Progress)
@@ -2193,10 +2193,10 @@ func TestCourses_UpdateAssetProgress(t *testing.T) {
 	// 	router, ctx := setup(t, "admin", types.UserRoleAdmin)
 
 	// 	course1 := &models.Course{Title: "Course 1", Path: "/Course 1"}
-	// 	require.NoError(t, router.dao.CreateCourse(ctx, course1))
+	// 	require.NoError(t, router.appDao.CreateCourse(ctx, course1))
 
 	// 	course2 := &models.Course{Title: "Course 2", Path: "/course/2"}
-	// 	require.NoError(t, router.dao.CreateCourse(ctx, course2))
+	// 	require.NoError(t, router.appDao.CreateCourse(ctx, course2))
 
 	// 	lesson := &models.Lesson{
 	// 		CourseID: course2.ID,
@@ -2204,7 +2204,7 @@ func TestCourses_UpdateAssetProgress(t *testing.T) {
 	// 		Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 	// 		Module:   "Module 1",
 	// 	}
-	// 	require.NoError(t, router.dao.CreateLesson(ctx, lesson))
+	// 	require.NoError(t, router.appDao.CreateLesson(ctx, lesson))
 
 	// 	asset := &models.Asset{
 	// 		CourseID: course2.ID,
@@ -2218,7 +2218,7 @@ func TestCourses_UpdateAssetProgress(t *testing.T) {
 	// 		ModTime:  time.Now().Format(time.RFC3339Nano),
 	// 		Hash:     security.RandomString(64),
 	// 	}
-	// 	require.NoError(t, router.dao.CreateAsset(ctx, asset))
+	// 	require.NoError(t, router.appDao.CreateAsset(ctx, asset))
 
 	// 	req := httptest.NewRequest(http.MethodPut, "/api/courses/"+course1.ID+"/lessons/"+lesson.ID+"/assets/"+asset.ID+"/progress", strings.NewReader(`{"Position": 10}`))
 	// 	req.Header.Set("Content-Type", "application/json")
@@ -2239,7 +2239,7 @@ func TestCourses_GetTags(t *testing.T) {
 		courses := []*models.Course{}
 		for i := range 3 {
 			course := &models.Course{Title: fmt.Sprintf("course %d", i), Path: fmt.Sprintf("/course %d", i)}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
+			require.NoError(t, router.appDao.CreateCourse(ctx, course))
 			courses = append(courses, course)
 		}
 
@@ -2261,12 +2261,12 @@ func TestCourses_GetTags(t *testing.T) {
 		courses := []*models.Course{}
 		for i := range 3 {
 			course := &models.Course{Title: fmt.Sprintf("course %d", i), Path: fmt.Sprintf("/course %d", i)}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
+			require.NoError(t, router.appDao.CreateCourse(ctx, course))
 			courses = append(courses, course)
 
 			for _, tag := range tagOptions {
 				tag := &models.CourseTag{CourseID: course.ID, Tag: tag}
-				require.NoError(t, router.dao.CreateCourseTag(ctx, tag))
+				require.NoError(t, router.appDao.CreateCourseTag(ctx, tag))
 			}
 		}
 
@@ -2299,9 +2299,9 @@ func TestCourses_GetTags(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TAG_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/tags/", nil))
@@ -2317,7 +2317,7 @@ func TestCourses_CreateTag(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		req := httptest.NewRequest(http.MethodPost, "/api/courses/"+course.ID+"/tags", strings.NewReader(`{"tag": "Go" }`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -2349,7 +2349,7 @@ func TestCourses_CreateTag(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		req := httptest.NewRequest(http.MethodPost, "/api/courses/"+course.ID+"/tags", strings.NewReader(`{"tag": ""}`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -2364,7 +2364,7 @@ func TestCourses_CreateTag(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		req := httptest.NewRequest(http.MethodPost, "/api/courses/"+course.ID+"/tags", strings.NewReader(`{"tag": "Go"}`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -2384,9 +2384,9 @@ func TestCourses_CreateTag(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TAG_TABLE)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/courses/"+course.ID+"/tags", strings.NewReader(`{"tag": "Go"}`))
@@ -2408,17 +2408,17 @@ func TestCourses_DeleteTag(t *testing.T) {
 		courses := []*models.Course{}
 		for i := range 3 {
 			course := &models.Course{Title: fmt.Sprintf("course %d", i), Path: fmt.Sprintf("/course %d", i)}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
+			require.NoError(t, router.appDao.CreateCourse(ctx, course))
 			courses = append(courses, course)
 
 			for j := range 3 {
 				tag := &models.CourseTag{CourseID: course.ID, Tag: fmt.Sprintf("Tag %d", j)}
-				require.NoError(t, router.dao.CreateCourseTag(ctx, tag))
+				require.NoError(t, router.appDao.CreateCourseTag(ctx, tag))
 			}
 		}
 
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courses[1].ID})
-		records, err := router.dao.ListCourseTags(ctx, dbOpts)
+		records, err := router.appDao.ListCourseTags(ctx, dbOpts)
 		require.NoError(t, err)
 		require.Len(t, records, 3)
 
@@ -2426,7 +2426,7 @@ func TestCourses_DeleteTag(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, status)
 
-		records, err = router.dao.ListCourseTags(ctx, dbOpts)
+		records, err = router.appDao.ListCourseTags(ctx, dbOpts)
 		require.NoError(t, err)
 		require.Len(t, records, 2)
 	})
@@ -2443,28 +2443,28 @@ func TestCourses_DeleteTag(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course1 := &models.Course{Title: "course 1", Path: "/course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course1))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course1))
 
 		tag1 := &models.CourseTag{CourseID: course1.ID, Tag: "Go"}
-		require.NoError(t, router.dao.CreateCourseTag(ctx, tag1))
+		require.NoError(t, router.appDao.CreateCourseTag(ctx, tag1))
 
 		course2 := &models.Course{Title: "course 2", Path: "/course 2"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course2))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course2))
 
 		tag2 := &models.CourseTag{CourseID: course2.ID, Tag: "C"}
-		require.NoError(t, router.dao.CreateCourseTag(ctx, tag2))
+		require.NoError(t, router.appDao.CreateCourseTag(ctx, tag2))
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/courses/"+course1.ID+"/tags/"+tag2.ID, nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, status)
 
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: tag1.ID})
-		record, err := router.dao.GetCourseTag(ctx, dbOpts)
+		record, err := router.appDao.GetCourseTag(ctx, dbOpts)
 		require.NoError(t, err)
 		require.NotNil(t, record)
 
 		dbOpts = database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: tag2.ID})
-		record, err = router.dao.GetCourseTag(ctx, dbOpts)
+		record, err = router.appDao.GetCourseTag(ctx, dbOpts)
 		require.NoError(t, err)
 		require.NotNil(t, record)
 	})
@@ -2472,7 +2472,7 @@ func TestCourses_DeleteTag(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TAG_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/courses/invalid/tags/invalid", nil))

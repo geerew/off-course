@@ -4,18 +4,17 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/http"
 	"time"
 
 	"sync/atomic"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/geerew/off-course/app"
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
-	"github.com/geerew/off-course/utils/appfs"
-	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/logger"
-	"github.com/geerew/off-course/utils/media/hls"
 	"github.com/geerew/off-course/utils/session"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
@@ -31,10 +30,9 @@ type MiddlewareFactory func(r *Router) fiber.Handler
 
 // Router defines a router
 type Router struct {
-	App            *fiber.App
-	api            fiber.Router
-	config         *RouterConfig
-	dao            *dao.DAO
+	fiberApp       *fiber.App
+	app            *app.App
+	appDao         *dao.DAO
 	logDao         *dao.DAO
 	bootstrapped   int32
 	sessionManager *session.SessionManager
@@ -43,47 +41,22 @@ type Router struct {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// RouterConfig defines the configuration for the router
-type RouterConfig struct {
-	DbManager     *database.DatabaseManager
-	Logger        *logger.Logger
-	AppFs         *appfs.AppFs
-	CourseScan    *coursescan.CourseScan
-	Transcoder    *hls.Transcoder
-	HttpAddr      string
-	IsProduction  bool
-	SignupEnabled bool
-	DataDir       string
-
-	// Optional custom middleware stack; if empty, defaults are applied
-	Middleware []MiddlewareFactory
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// New creates a new router
-func NewRouter(config *RouterConfig) *Router {
+// NewRouter creates a new router from an App instance
+func NewRouter(app *app.App) *Router {
 	r := &Router{
-		config: config,
-		dao:    dao.New(config.DbManager.DataDb),
-		logDao: dao.New(config.DbManager.LogsDb),
-		logger: config.Logger,
+		app:    app,
+		appDao: dao.New(app.DbManager.DataDb),
+		logDao: dao.New(app.DbManager.LogsDb),
+		logger: app.Logger.WithAPI(),
 	}
 
 	r.createSessionStore()
 
-	r.App = fiber.New(fiber.Config{
+	r.fiberApp = fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 	})
 
-	if len(config.Middleware) == 0 {
-		r.initMiddleware()
-	} else {
-		for _, f := range config.Middleware {
-			r.App.Use(f(r))
-		}
-	}
-
+	r.initMiddleware()
 	r.initRoutes()
 
 	return r
@@ -93,16 +66,14 @@ func NewRouter(config *RouterConfig) *Router {
 
 // Serve serves the API and UI
 func (r *Router) Serve() error {
-	r.InitBootstrap()
-
-	ln, err := net.Listen("tcp", r.config.HttpAddr)
+	ln, err := net.Listen("tcp", r.app.Config.HttpAddr)
 	if err != nil {
 		return err
 	}
 
-	r.logger.Info().Str("url", fmt.Sprintf("http://%s", r.config.HttpAddr)).Msg("Server started")
+	r.logger.Info().Str("url", fmt.Sprintf("http://%s", r.app.Config.HttpAddr)).Msg("Server started")
 
-	return r.App.Listener(ln)
+	return r.fiberApp.Listener(ln)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -112,10 +83,10 @@ func (r *Router) Serve() error {
 // initMiddleware initializes the middleware
 func (r *Router) initMiddleware() {
 	// Middleware
-	r.App.Use(requestLoggingMiddleware(r.logger))
-	r.App.Use(corsMiddleWare())
-	r.App.Use(bootstrapMiddleware(r))
-	r.App.Use(authMiddleware(r))
+	r.fiberApp.Use(requestLoggingMiddleware(r.logger))
+	r.fiberApp.Use(corsMiddleWare())
+	r.fiberApp.Use(bootstrapMiddleware(r))
+	r.fiberApp.Use(authMiddleware(r))
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -125,8 +96,7 @@ func (r *Router) initRoutes() {
 	// UI
 	r.bindUi()
 
-	// API
-	r.api = r.App.Group("/api")
+	// API routes
 	r.initAuthRoutes()
 	r.initFsRoutes()
 	r.initCourseRoutes()
@@ -148,18 +118,18 @@ func (r *Router) createSessionStore() {
 		CookieHTTPOnly: true,
 	}
 
-	sqliteStorage := session.NewSqliteStorage(r.config.DbManager.DataDb, 10*time.Second)
+	sqliteStorage := session.NewSqliteStorage(r.app.DbManager.DataDb, 10*time.Second)
 
-	r.sessionManager = session.New(r.config.DbManager.DataDb, config, sqliteStorage)
+	r.sessionManager = session.New(r.app.DbManager.DataDb, config, sqliteStorage)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// InitBootstrap determines if the application is bootstrapped by checking if there is
+// InitBootstrap determines if the app is bootstrapped by checking if there is
 // an admin user
 func (r *Router) InitBootstrap() {
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ROLE: types.UserRoleAdmin})
-	count, err := r.dao.CountUsers(context.Background(), dbOpts)
+	count, err := r.appDao.CountUsers(context.Background(), dbOpts)
 	if err != nil {
 		r.logger.Error().Err(err).Msg("Failed to count users")
 	}
@@ -183,4 +153,47 @@ func (r *Router) setBootstrapped() {
 // IsBootstrapped checks if the application is bootstrapped
 func (r *Router) IsBootstrapped() bool {
 	return atomic.LoadInt32(&r.bootstrapped) == 1
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// apiGroup returns the API router group
+func (r *Router) apiGroup(groupPath string) fiber.Router {
+	return r.fiberApp.Group("/api/" + groupPath)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// SetTestMiddleware replaces the middleware stack with test middleware.
+// This should only be used in tests.
+func (r *Router) SetTestMiddleware(factories ...MiddlewareFactory) {
+	// Clear existing middleware by creating a new Fiber app with same config
+	r.fiberApp = fiber.New(fiber.Config{
+		DisableStartupMessage: true,
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			// Default error handler that returns JSON
+			code := fiber.StatusInternalServerError
+			if e, ok := err.(*fiber.Error); ok {
+				code = e.Code
+			}
+			return c.Status(code).JSON(fiber.Map{
+				"message": err.Error(),
+			})
+		},
+	})
+
+	// Apply test middleware
+	for _, factory := range factories {
+		r.fiberApp.Use(factory(r))
+	}
+
+	// Re-initialize routes (they depend on the Fiber app)
+	r.initRoutes()
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Test is a test helper that wraps FiberApp.Test() for testing purposes
+func (r *Router) Test(req *http.Request, msTimeout ...int) (*http.Response, error) {
+	return r.fiberApp.Test(req, msTimeout...)
 }

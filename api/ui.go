@@ -15,8 +15,8 @@ import (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (r *Router) bindUi() {
-	if r.config.IsProduction {
-		r.App.Use(filesystem.New(filesystem.Config{
+	if !r.app.Config.IsDev {
+		r.fiberApp.Use(filesystem.New(filesystem.Config{
 			Root: http.FS(ui.Assets()),
 		}))
 
@@ -37,10 +37,10 @@ func (r *Router) bindUi() {
 			return c.Send(data)
 		}
 
-		r.App.Get("/*", fallback)
-		r.App.Head("/*", fallback)
+		r.fiberApp.Get("/*", fallback)
+		r.fiberApp.Head("/*", fallback)
 	} else {
-		r.App.Use(func(c *fiber.Ctx) error {
+		r.fiberApp.Use(func(c *fiber.Ctx) error {
 			if strings.HasPrefix(c.OriginalURL(), "/api") {
 				return c.Next()
 			}

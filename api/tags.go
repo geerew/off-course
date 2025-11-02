@@ -6,10 +6,8 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
-	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/queryparser"
 	"github.com/gofiber/fiber/v2"
 )
@@ -17,8 +15,7 @@ import (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type tagsAPI struct {
-	logger *logger.Logger
-	dao    *dao.DAO
+	r *Router
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -26,17 +23,17 @@ type tagsAPI struct {
 // initTagRoutes initializes the tag routes
 func (r *Router) initTagRoutes() {
 	tagsAPI := tagsAPI{
-		logger: r.logger.WithAPI(),
-		dao:    r.dao,
+		r: r,
 	}
 
-	tagGroup := r.api.Group("/tags")
-	tagGroup.Get("", tagsAPI.getTags)
-	tagGroup.Get("/names", tagsAPI.getTagNames)
-	tagGroup.Get("/:name", tagsAPI.getTag)
-	tagGroup.Post("", protectedRoute, tagsAPI.createTag)
-	tagGroup.Put("/:id", protectedRoute, tagsAPI.updateTag)
-	tagGroup.Delete("/:id", protectedRoute, tagsAPI.deleteTag)
+	g := r.apiGroup("tags")
+
+	g.Get("", tagsAPI.getTags)
+	g.Get("/names", tagsAPI.getTagNames)
+	g.Get("/:name", tagsAPI.getTag)
+	g.Post("", protectedRoute, tagsAPI.createTag)
+	g.Put("/:id", protectedRoute, tagsAPI.updateTag)
+	g.Delete("/:id", protectedRoute, tagsAPI.deleteTag)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -58,7 +55,7 @@ func (api *tagsAPI) getTags(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
-	tags, err := api.dao.ListTags(ctx, dbOpts)
+	tags, err := api.r.appDao.ListTags(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tags", err)
 	}
@@ -90,7 +87,7 @@ func (api *tagsAPI) getTagNames(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
-	tags, err := api.dao.ListTagNames(ctx, dbOpts)
+	tags, err := api.r.appDao.ListTagNames(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tags", err)
 	}
@@ -117,7 +114,7 @@ func (api *tagsAPI) getTag(c *fiber.Ctx) error {
 
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_TAG: name})
 
-	tag, err := api.dao.GetTag(ctx, dbOpts)
+	tag, err := api.r.appDao.GetTag(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tag", err)
 	}
@@ -147,7 +144,7 @@ func (api *tagsAPI) createTag(c *fiber.Ctx) error {
 	}
 
 	tag := &models.Tag{Tag: req.Tag}
-	if err := api.dao.CreateTag(ctx, tag); err != nil {
+	if err := api.r.appDao.CreateTag(ctx, tag); err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return errorResponse(c, fiber.StatusBadRequest, "Tag already exists", err)
 		}
@@ -173,7 +170,7 @@ func (api *tagsAPI) updateTag(c *fiber.Ctx) error {
 	}
 
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: id})
-	tag, err := api.dao.GetTag(ctx, dbOpts)
+	tag, err := api.r.appDao.GetTag(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tag", err)
 	}
@@ -184,7 +181,7 @@ func (api *tagsAPI) updateTag(c *fiber.Ctx) error {
 
 	tag.Tag = tagReq.Tag
 
-	if err := api.dao.UpdateTag(ctx, tag); err != nil {
+	if err := api.r.appDao.UpdateTag(ctx, tag); err != nil {
 		if strings.HasPrefix(err.Error(), "UNIQUE constraint failed") {
 			return errorResponse(c, fiber.StatusBadRequest, "Tag already exists", err)
 		}
@@ -205,7 +202,7 @@ func (api *tagsAPI) deleteTag(c *fiber.Ctx) error {
 	}
 
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: id})
-	if err = api.dao.DeleteTags(ctx, dbOpts); err != nil {
+	if err = api.r.appDao.DeleteTags(ctx, dbOpts); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting tag", err)
 	}
 	return c.Status(fiber.StatusNoContent).Send(nil)

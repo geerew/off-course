@@ -4,39 +4,22 @@ import (
 	"context"
 	"testing"
 
+	"github.com/geerew/off-course/app"
 	"github.com/geerew/off-course/dao"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
-	"github.com/geerew/off-course/utils/appfs"
-	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/types"
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func setup(t *testing.T) (database.Database, *appfs.AppFs, context.Context, *logger.Logger) {
+func setup(t *testing.T) (*app.App, context.Context) {
 	t.Helper()
 
-	// Create a test logger
-	testLogger := logger.New(&logger.Config{
-		Level:         logger.LevelInfo,
-		ConsoleOutput: false, // Disable console output for tests
-	})
+	application := app.NewTestApp(t)
 
-	appFs := appfs.New(afero.NewMemMapFs())
-
-	dbManager, err := database.NewSQLiteManager(&database.DatabaseManagerConfig{
-		DataDir: "./oc_data",
-		AppFs:   appFs,
-		Testing: true,
-	})
-
-	require.NoError(t, err)
-	require.NotNil(t, dbManager)
-
-	dao := dao.New(dbManager.DataDb)
+	// Create DAO to create a user
+	appDao := dao.New(application.DbManager.DataDb)
 
 	// User
 	user := &models.User{
@@ -45,7 +28,7 @@ func setup(t *testing.T) (database.Database, *appfs.AppFs, context.Context, *log
 		PasswordHash: "test-password",
 		Role:         types.UserRoleAdmin,
 	}
-	require.NoError(t, dao.CreateUser(context.Background(), user))
+	require.NoError(t, appDao.CreateUser(context.Background(), user))
 
 	principal := types.Principal{
 		UserID: user.ID,
@@ -54,5 +37,5 @@ func setup(t *testing.T) (database.Database, *appfs.AppFs, context.Context, *log
 
 	ctx := context.WithValue(context.Background(), types.PrincipalContextKey, principal)
 
-	return dbManager.DataDb, appFs, ctx, testLogger
+	return application, ctx
 }

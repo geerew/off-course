@@ -2,10 +2,8 @@ package api
 
 import (
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
-	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/queryparser"
 	"github.com/gofiber/fiber/v2"
 )
@@ -13,8 +11,7 @@ import (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type logsAPI struct {
-	logger *logger.Logger
-	dao    *dao.DAO
+	r *Router
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -22,12 +19,11 @@ type logsAPI struct {
 // initLogRoutes initializes the log routes
 func (r *Router) initLogRoutes() {
 	logsAPI := logsAPI{
-		logger: r.logger.WithAPI(),
-		dao:    r.logDao,
+		r: r,
 	}
 
-	logGroup := r.api.Group("/logs")
-	logGroup.Get("/", protectedRoute, logsAPI.getLogs)
+	g := r.apiGroup("logs")
+	g.Get("/", protectedRoute, logsAPI.getLogs)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -50,7 +46,7 @@ func (api *logsAPI) getLogs(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
-	logs, err := api.dao.ListLogs(ctx, dbOpts)
+	logs, err := api.r.logDao.ListLogs(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up logs", err)
 	}

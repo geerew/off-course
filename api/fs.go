@@ -3,19 +3,14 @@ package api
 import (
 	"path/filepath"
 
-	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/utils"
-	"github.com/geerew/off-course/utils/appfs"
-	"github.com/geerew/off-course/utils/logger"
 	"github.com/gofiber/fiber/v2"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type fsAPI struct {
-	logger *logger.Logger
-	appFs  *appfs.AppFs
-	dao    *dao.DAO
+	r *Router
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -23,15 +18,13 @@ type fsAPI struct {
 // initFsRoutes initializes the filesystem routes
 func (r *Router) initFsRoutes() {
 	fsAPI := fsAPI{
-		logger: r.logger.WithAPI(),
-		appFs:  r.config.AppFs,
-		dao:    r.dao,
+		r: r,
 	}
 
-	fsGroup := r.api.Group("/filesystem")
+	g := r.apiGroup("filesystem")
 
-	fsGroup.Get("", protectedRoute, fsAPI.fileSystem)
-	fsGroup.Get("/:path", protectedRoute, fsAPI.path)
+	g.Get("", protectedRoute, fsAPI.fileSystem)
+	g.Get("/:path", protectedRoute, fsAPI.path)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -40,7 +33,7 @@ func (r *Router) initFsRoutes() {
 //
 // Note: On WSL, the drives will consist of / and /mnt* (ignoring /mnt/wsl*)
 func (api fsAPI) fileSystem(c *fiber.Ctx) error {
-	drives, err := api.appFs.AvailableDrives()
+	drives, err := api.r.app.AppFs.AvailableDrives()
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "error looking up available drives - " + err.Error(),
@@ -62,7 +55,7 @@ func (api fsAPI) fileSystem(c *fiber.Ctx) error {
 	}
 
 	// Include path classification; ancestor, course, descendant, none
-	if classificationResult, err := api.dao.ClassifyCoursePaths(ctx, normalizedPaths); err != nil {
+	if classificationResult, err := api.r.appDao.ClassifyCoursePaths(ctx, normalizedPaths); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "error classifying paths - " + err.Error(),
 		})
@@ -94,7 +87,7 @@ func (api fsAPI) path(c *fiber.Ctx) error {
 	files := make([]*fileInfoResponse, 0)
 
 	// Get a string slice of items in a directory
-	items, err := api.appFs.ReadDir(path, true)
+	items, err := api.r.app.AppFs.ReadDir(path, true)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"message": "error reading directory - " + err.Error(),
@@ -115,7 +108,7 @@ func (api fsAPI) path(c *fiber.Ctx) error {
 	}
 
 	// Include path classification; ancestor, course, descendant, none
-	if classificationResult, err := api.dao.ClassifyCoursePaths(ctx, paths); err != nil {
+	if classificationResult, err := api.r.appDao.ClassifyCoursePaths(ctx, paths); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "error classifying paths - " + err.Error(),
 		})

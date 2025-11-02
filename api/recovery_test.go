@@ -30,10 +30,10 @@ func TestRecovery_ResetPassword(t *testing.T) {
 			PasswordHash: security.RandomString(10),
 			Role:         types.UserRoleAdmin,
 		}
-		require.NoError(t, router.dao.CreateUser(ctx, user))
+		require.NoError(t, router.appDao.CreateUser(ctx, user))
 
 		// Generate recovery token in the router's data directory
-		recoveryToken, err := auth.GenerateRecoveryToken(router.config.AppFs, "testadmin", "newpassword123", router.config.DataDir)
+		recoveryToken, err := auth.GenerateRecoveryToken(router.app.AppFs, "testadmin", "newpassword123", router.app.Config.DataDir)
 		require.NoError(t, err)
 
 		// Make request
@@ -57,7 +57,7 @@ func TestRecovery_ResetPassword(t *testing.T) {
 
 		// Verify password was updated
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "testadmin"})
-		updatedUser, err := router.dao.GetUser(ctx, dbOpts)
+		updatedUser, err := router.appDao.GetUser(ctx, dbOpts)
 		require.NoError(t, err)
 		require.True(t, auth.ComparePassword(updatedUser.PasswordHash, "newpassword123"))
 	})
@@ -110,7 +110,7 @@ func TestRecovery_ResetPassword(t *testing.T) {
 		router, _ := setupNoAuth(t)
 
 		// Generate recovery token for non-existent user
-		recoveryToken, err := auth.GenerateRecoveryToken(router.config.AppFs, "nonexistent", "password", router.config.DataDir)
+		recoveryToken, err := auth.GenerateRecoveryToken(router.app.AppFs, "nonexistent", "password", router.app.Config.DataDir)
 		require.NoError(t, err)
 
 		// Make request
@@ -137,10 +137,10 @@ func TestRecovery_ResetPassword(t *testing.T) {
 			PasswordHash: security.RandomString(10),
 			Role:         types.UserRoleUser,
 		}
-		require.NoError(t, router.dao.CreateUser(ctx, user))
+		require.NoError(t, router.appDao.CreateUser(ctx, user))
 
 		// Generate recovery token
-		recoveryToken, err := auth.GenerateRecoveryToken(router.config.AppFs, "testuser", "newpassword123", router.config.DataDir)
+		recoveryToken, err := auth.GenerateRecoveryToken(router.app.AppFs, "testuser", "newpassword123", router.app.Config.DataDir)
 		require.NoError(t, err)
 
 		// Make request

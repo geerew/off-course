@@ -2,13 +2,9 @@ package api
 
 import (
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
-	"github.com/geerew/off-course/utils/appfs"
-	"github.com/geerew/off-course/utils/coursescan"
-	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
 )
@@ -16,10 +12,7 @@ import (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type scansAPI struct {
-	logger     *logger.Logger
-	appFs      *appfs.AppFs
-	dao        *dao.DAO
-	courseScan *coursescan.CourseScan
+	r *Router
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -27,17 +20,15 @@ type scansAPI struct {
 // initScanRoutes initializes the scan routes
 func (r *Router) initScanRoutes() {
 	scansAPI := scansAPI{
-		logger:     r.logger.WithAPI(),
-		appFs:      r.config.AppFs,
-		courseScan: r.config.CourseScan,
-		dao:        r.dao,
+		r: r,
 	}
 
-	scanGroup := r.api.Group("/scans")
-	scanGroup.Get("/", protectedRoute, scansAPI.getScans)
-	scanGroup.Get("/:courseId", protectedRoute, scansAPI.getScan)
-	scanGroup.Post("", protectedRoute, scansAPI.createScan)
-	scanGroup.Delete("/:id", protectedRoute, scansAPI.deleteScan)
+	g := r.apiGroup("scans")
+
+	g.Get("/", protectedRoute, scansAPI.getScans)
+	g.Get("/:courseId", protectedRoute, scansAPI.getScan)
+	g.Post("", protectedRoute, scansAPI.createScan)
+	g.Delete("/:id", protectedRoute, scansAPI.deleteScan)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -58,7 +49,7 @@ func (api *scansAPI) getScans(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
-	scans, err := api.dao.ListScans(ctx, dbOpts)
+	scans, err := api.r.appDao.ListScans(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up scan", err)
 	}
@@ -82,7 +73,7 @@ func (api *scansAPI) getScan(c *fiber.Ctx) error {
 	}
 
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_COURSE_ID: courseId})
-	scan, err := api.dao.GetScan(ctx, dbOpts)
+	scan, err := api.r.appDao.GetScan(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up scan", err)
 	}
@@ -111,7 +102,7 @@ func (api *scansAPI) createScan(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	scan, err := api.courseScan.Add(ctx, req.CourseID)
+	scan, err := api.r.app.CourseScan.Add(ctx, req.CourseID)
 	if err != nil {
 		if err == utils.ErrCourseNotFound {
 			return errorResponse(c, fiber.StatusBadRequest, "Invalid course ID", nil)
@@ -133,7 +124,7 @@ func (api scansAPI) deleteScan(c *fiber.Ctx) error {
 	}
 
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_ID: id})
-	if err := api.dao.DeleteScans(ctx, dbOpts); err != nil {
+	if err := api.r.appDao.DeleteScans(ctx, dbOpts); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting scan", err)
 	}
 	return c.Status(fiber.StatusNoContent).Send(nil)

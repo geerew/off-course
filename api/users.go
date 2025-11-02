@@ -4,13 +4,10 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/auth"
-	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/queryparser"
-	"github.com/geerew/off-course/utils/session"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
 )
@@ -18,9 +15,7 @@ import (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type userAPI struct {
-	logger         *logger.Logger
-	dao            *dao.DAO
-	sessionManager *session.SessionManager
+	r *Router
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -28,19 +23,17 @@ type userAPI struct {
 // initFsRoutes initializes the filesystem routes
 func (r *Router) initUserRoutes() {
 	userAPI := userAPI{
-		logger:         r.logger.WithAPI(),
-		dao:            r.dao,
-		sessionManager: r.sessionManager,
+		r: r,
 	}
 
-	userGroup := r.api.Group("/users")
+	g := r.apiGroup("users")
 
-	userGroup.Get("", protectedRoute, userAPI.getUsers)
-	userGroup.Post("", protectedRoute, userAPI.createUser)
-	userGroup.Put("/:id", protectedRoute, userAPI.updateUser)
-	userGroup.Delete("/:id", protectedRoute, userAPI.deleteUser)
+	g.Get("", protectedRoute, userAPI.getUsers)
+	g.Post("", protectedRoute, userAPI.createUser)
+	g.Put("/:id", protectedRoute, userAPI.updateUser)
+	g.Delete("/:id", protectedRoute, userAPI.deleteUser)
 
-	userGroup.Delete("/:id/sessions", protectedRoute, userAPI.deleteUserSession)
+	g.Delete("/:id/sessions", protectedRoute, userAPI.deleteUserSession)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -63,7 +56,7 @@ func (api userAPI) getUsers(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
 	}
 
-	users, err := api.dao.ListUsers(ctx, dbOpts)
+	users, err := api.r.appDao.ListUsers(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up users", err)
 	}
@@ -110,7 +103,7 @@ func (api userAPI) createUser(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	if err := api.dao.CreateUser(ctx, user); err != nil {
+	if err := api.r.appDao.CreateUser(ctx, user); err != nil {
 		if strings.HasPrefix(err.Error(), "UNIQUE constraint failed") {
 			return errorResponse(c, fiber.StatusBadRequest, "Username already exists", nil)
 		}
@@ -140,7 +133,7 @@ func (api userAPI) updateUser(c *fiber.Ctx) error {
 	}
 
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: id})
-	user, err := api.dao.GetUser(ctx, dbOpts)
+	user, err := api.r.appDao.GetUser(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up user", err)
 	}
@@ -166,14 +159,14 @@ func (api userAPI) updateUser(c *fiber.Ctx) error {
 		}
 	}
 
-	err = api.dao.UpdateUser(ctx, user)
+	err = api.r.appDao.UpdateUser(ctx, user)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error updating user", err)
 	}
 
 	// Update all the sessions for the user with the new role
 	if userReq.Role != "" {
-		if err := api.sessionManager.UpdateSessionRoleForUser(id, user.Role); err != nil {
+		if err := api.r.sessionManager.UpdateSessionRoleForUser(id, user.Role); err != nil {
 			return errorResponse(c, fiber.StatusInternalServerError, "Error updating user sessions", err)
 		}
 	}
@@ -197,12 +190,12 @@ func (api userAPI) deleteUser(c *fiber.Ctx) error {
 	}
 
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: id})
-	err = api.dao.DeleteUsers(ctx, dbOpts)
+	err = api.r.appDao.DeleteUsers(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user", err)
 	}
 
-	err = api.sessionManager.DeleteUserSessions(id)
+	err = api.r.sessionManager.DeleteUserSessions(id)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user sessions", err)
 	}
@@ -214,7 +207,7 @@ func (api userAPI) deleteUser(c *fiber.Ctx) error {
 func (api userAPI) deleteUserSession(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	err := api.sessionManager.DeleteUserSessions(id)
+	err := api.r.sessionManager.DeleteUserSessions(id)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user sessions", err)
 	}

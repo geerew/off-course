@@ -36,10 +36,10 @@ func TestScans_GetScans(t *testing.T) {
 
 		for i := range 5 {
 			course := &models.Course{Title: fmt.Sprintf("course %d", i), Path: fmt.Sprintf("/course %d", i)}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
+			require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 			scan := &models.Scan{CourseID: course.ID}
-			require.NoError(t, router.dao.CreateScan(ctx, scan))
+			require.NoError(t, router.appDao.CreateScan(ctx, scan))
 		}
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/scans/", nil))
@@ -57,10 +57,10 @@ func TestScans_GetScans(t *testing.T) {
 		scans := []*models.Scan{}
 		for i := range 5 {
 			course := &models.Course{Title: fmt.Sprintf("course %d", i+1), Path: fmt.Sprintf("/course %d", i+1)}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
+			require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 			scan := &models.Scan{CourseID: course.ID}
-			require.NoError(t, router.dao.CreateScan(ctx, scan))
+			require.NoError(t, router.appDao.CreateScan(ctx, scan))
 			scans = append(scans, scan)
 			time.Sleep(1 * time.Millisecond)
 		}
@@ -94,10 +94,10 @@ func TestScans_GetScans(t *testing.T) {
 		scans := []*models.Scan{}
 		for i := range 17 {
 			course := &models.Course{Title: fmt.Sprintf("course %d", i), Path: fmt.Sprintf("/course %d", i)}
-			require.NoError(t, router.dao.CreateCourse(ctx, course))
+			require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 			scan := &models.Scan{CourseID: course.ID}
-			require.NoError(t, router.dao.CreateScan(ctx, scan))
+			require.NoError(t, router.appDao.CreateScan(ctx, scan))
 			scans = append(scans, scan)
 
 			time.Sleep(1 * time.Millisecond)
@@ -150,7 +150,7 @@ func TestScans_GetScans(t *testing.T) {
 		router, _ := setupAdmin(t)
 
 		// Drop the courses table
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.SCAN_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.SCAN_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/scans/", nil))
@@ -166,10 +166,10 @@ func TestScans_GetScan(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		scan := &models.Scan{CourseID: course.ID}
-		require.NoError(t, router.dao.CreateScan(ctx, scan))
+		require.NoError(t, router.appDao.CreateScan(ctx, scan))
 
 		req := httptest.NewRequest(http.MethodGet, "/api/scans/"+course.ID, nil)
 		status, body, err := requestHelper(t, router, req)
@@ -205,7 +205,7 @@ func TestScans_GetScan(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.SCAN_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.SCAN_TABLE)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/api/scans/test", nil)
@@ -223,7 +223,7 @@ func TestScans_CreateScan(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{Title: "Course 1", Path: "/Course 1"}
-		require.NoError(t, router.dao.CreateCourse(ctx, course))
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
 		req := httptest.NewRequest(http.MethodPost, "/api/scans/", strings.NewReader(fmt.Sprintf(`{"courseID": "%s"}`, course.ID)))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
@@ -286,7 +286,7 @@ func TestScans_CreateScan(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.config.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
+		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/scans/", strings.NewReader(`{"courseID": "test"}`))

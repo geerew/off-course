@@ -13,9 +13,6 @@ import (
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
-	"github.com/geerew/off-course/utils/appfs"
-	"github.com/geerew/off-course/utils/coursescan"
-	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/queryparser"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
@@ -27,10 +24,7 @@ import (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type coursesAPI struct {
-	logger     *logger.Logger
-	appFs      *appfs.AppFs
-	courseScan *coursescan.CourseScan
-	dao        *dao.DAO
+	r *Router
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -38,48 +32,45 @@ type coursesAPI struct {
 // initCourseRoutes initializes the course routes
 func (r *Router) initCourseRoutes() {
 	coursesAPI := coursesAPI{
-		logger:     r.logger.WithAPI(),
-		appFs:      r.config.AppFs,
-		courseScan: r.config.CourseScan,
-		dao:        r.dao,
+		r: r,
 	}
 
-	courseGroup := r.api.Group("/courses")
+	g := r.apiGroup("courses")
 
 	// Course
-	courseGroup.Get("", coursesAPI.getCourses)
-	courseGroup.Get("/:id", coursesAPI.getCourse)
-	courseGroup.Post("", protectedRoute, coursesAPI.createCourse)
-	courseGroup.Delete("/:id", protectedRoute, coursesAPI.deleteCourse)
+	g.Get("", coursesAPI.getCourses)
+	g.Get("/:id", coursesAPI.getCourse)
+	g.Post("", protectedRoute, coursesAPI.createCourse)
+	g.Delete("/:id", protectedRoute, coursesAPI.deleteCourse)
 
 	// Progress
-	courseGroup.Delete("/:id/progress", coursesAPI.deleteCourseProgress)
+	g.Delete("/:id/progress", coursesAPI.deleteCourseProgress)
 
 	// Card
-	courseGroup.Head("/:id/card", coursesAPI.getCard)
-	courseGroup.Get("/:id/card", coursesAPI.getCard)
+	g.Head("/:id/card", coursesAPI.getCard)
+	g.Get("/:id/card", coursesAPI.getCard)
 
 	// Lessons
-	courseGroup.Get("/:id/lessons", coursesAPI.getLessons)
-	courseGroup.Get("/:id/lessons/:lesson", coursesAPI.getLesson)
+	g.Get("/:id/lessons", coursesAPI.getLessons)
+	g.Get("/:id/lessons/:lesson", coursesAPI.getLesson)
 
 	// Modules (chaptered lessons)
-	courseGroup.Get("/:id/modules", coursesAPI.getModules)
+	g.Get("/:id/modules", coursesAPI.getModules)
 
 	// lesson attachments
-	courseGroup.Get("/:id/lessons/:lesson/attachments", coursesAPI.getAttachments)
-	courseGroup.Get("/:id/lessons/:lesson/attachments/:attachment", coursesAPI.getAttachment)
-	courseGroup.Get("/:id/lessons/:lesson/attachments/:attachment/serve", coursesAPI.serveAttachment)
+	g.Get("/:id/lessons/:lesson/attachments", coursesAPI.getAttachments)
+	g.Get("/:id/lessons/:lesson/attachments/:attachment", coursesAPI.getAttachment)
+	g.Get("/:id/lessons/:lesson/attachments/:attachment/serve", coursesAPI.serveAttachment)
 
 	// Asset
-	courseGroup.Get("/:id/lessons/:lesson/assets/:asset/serve", coursesAPI.serveAsset)
-	courseGroup.Put("/:id/lessons/:lesson/assets/:asset/progress", coursesAPI.updateAssetProgress)
-	courseGroup.Delete("/:id/lessons/:lesson/assets/:asset/progress", coursesAPI.deleteAssetProgress)
+	g.Get("/:id/lessons/:lesson/assets/:asset/serve", coursesAPI.serveAsset)
+	g.Put("/:id/lessons/:lesson/assets/:asset/progress", coursesAPI.updateAssetProgress)
+	g.Delete("/:id/lessons/:lesson/assets/:asset/progress", coursesAPI.deleteAssetProgress)
 
 	// Tags
-	courseGroup.Get("/:id/tags", coursesAPI.getTags)
-	courseGroup.Post("/:id/tags", protectedRoute, coursesAPI.createTag)
-	courseGroup.Delete("/:id/tags/:tagId", protectedRoute, coursesAPI.deleteTag)
+	g.Get("/:id/tags", coursesAPI.getTags)
+	g.Post("/:id/tags", protectedRoute, coursesAPI.createTag)
+	g.Delete("/:id/tags/:tagId", protectedRoute, coursesAPI.deleteTag)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -120,7 +111,7 @@ func (api coursesAPI) getCourses(c *fiber.Ctx) error {
 		dbOpts.WithUserProgress()
 	}
 
-	courses, err := api.dao.ListCourses(ctx, dbOpts)
+	courses, err := api.r.appDao.ListCourses(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up courses", err)
 	}
@@ -152,7 +143,7 @@ func (api coursesAPI) getCourse(c *fiber.Ctx) error {
 		}
 	}
 
-	course, err := api.dao.GetCourse(ctx, dbOpts)
+	course, err := api.r.appDao.GetCourse(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up course", err)
 	}
@@ -183,7 +174,7 @@ func (api coursesAPI) createCourse(c *fiber.Ctx) error {
 	}
 
 	// Validate the path
-	if exists, err := afero.DirExists(api.appFs.Fs, course.Path); err != nil || !exists {
+	if exists, err := afero.DirExists(api.r.app.AppFs.Fs, course.Path); err != nil || !exists {
 		return errorResponse(c, fiber.StatusBadRequest, "Invalid course path", err)
 	}
 
@@ -195,7 +186,7 @@ func (api coursesAPI) createCourse(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	if err := api.dao.CreateCourse(ctx, course); err != nil {
+	if err := api.r.appDao.CreateCourse(ctx, course); err != nil {
 		if strings.HasPrefix(err.Error(), "UNIQUE constraint failed") {
 			return errorResponse(c, fiber.StatusBadRequest, "A course with this path already exists", err)
 		}
@@ -203,7 +194,7 @@ func (api coursesAPI) createCourse(c *fiber.Ctx) error {
 	}
 
 	// Start a scan job
-	if _, err := api.courseScan.Add(ctx, course.ID); err != nil {
+	if _, err := api.r.app.CourseScan.Add(ctx, course.ID); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error creating scan job", err)
 	}
 
@@ -221,7 +212,7 @@ func (api coursesAPI) deleteCourse(c *fiber.Ctx) error {
 	}
 
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: id})
-	if err := api.dao.DeleteCourses(ctx, dbOpts); err != nil {
+	if err := api.r.appDao.DeleteCourses(ctx, dbOpts); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting course", err)
 	}
 	return c.Status(fiber.StatusNoContent).Send(nil)
@@ -238,7 +229,7 @@ func (api coursesAPI) deleteCourseProgress(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	err = dao.RunInTransaction(ctx, api.dao, func(txCtx context.Context) error {
+	err = dao.RunInTransaction(ctx, api.r.appDao, func(txCtx context.Context) error {
 		// Delete the course progress for this user
 		dbOpts := database.NewOptions().WithWhere(squirrel.And{
 			squirrel.Eq{models.COURSE_PROGRESS_COURSE_ID: courseId},
@@ -246,11 +237,11 @@ func (api coursesAPI) deleteCourseProgress(c *fiber.Ctx) error {
 		},
 		)
 
-		if err := api.dao.DeleteCourseProgress(txCtx, dbOpts); err != nil {
+		if err := api.r.appDao.DeleteCourseProgress(txCtx, dbOpts); err != nil {
 			return err
 		}
 
-		if err := api.dao.DeleteAssetProgressForCourse(txCtx, courseId, principal.UserID); err != nil {
+		if err := api.r.appDao.DeleteAssetProgressForCourse(txCtx, courseId, principal.UserID); err != nil {
 			return err
 		}
 
@@ -275,7 +266,7 @@ func (api coursesAPI) getCard(c *fiber.Ctx) error {
 	}
 
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: id})
-	course, err := api.dao.GetCourse(ctx, dbOpts)
+	course, err := api.r.appDao.GetCourse(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up course", err)
 	}
@@ -288,14 +279,14 @@ func (api coursesAPI) getCard(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusNotFound, "Course has no card", nil)
 	}
 
-	_, err = api.appFs.Fs.Stat(course.CardPath)
+	_, err = api.r.app.AppFs.Fs.Stat(course.CardPath)
 	if os.IsNotExist(err) {
 		return errorResponse(c, fiber.StatusNotFound, "Course card not found", nil)
 	}
 
 	// The fiber function sendFile(...) does not support using a custom FS. Therefore, use
 	// SendFile() from the filesystem middleware.
-	return filesystem.SendFile(c, afero.NewHttpFs(api.appFs.Fs), course.CardPath)
+	return filesystem.SendFile(c, afero.NewHttpFs(api.r.app.AppFs.Fs), course.CardPath)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -327,7 +318,7 @@ func (api coursesAPI) getLessons(c *fiber.Ctx) error {
 		}
 	}
 
-	lessons, err := api.dao.ListLessons(ctx, dbOpts)
+	lessons, err := api.r.appDao.ListLessons(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up lessons", err)
 	}
@@ -364,7 +355,7 @@ func (api coursesAPI) getLesson(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	lesson, err := api.dao.GetLesson(ctx, dbOpts)
+	lesson, err := api.r.appDao.GetLesson(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up lesson", err)
 	}
@@ -404,7 +395,7 @@ func (api coursesAPI) getModules(c *fiber.Ctx) error {
 		}
 	}
 
-	lessons, err := api.dao.ListLessons(ctx, dbOpts)
+	lessons, err := api.r.appDao.ListLessons(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up lessons", err)
 	}
@@ -440,7 +431,7 @@ func (api coursesAPI) getAttachments(c *fiber.Ctx) error {
 			squirrel.Eq{models.COURSE_TABLE_ID: id},
 		})
 
-	attachments, err := api.dao.ListAttachments(ctx, dbOpts)
+	attachments, err := api.r.appDao.ListAttachments(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up attachments", err)
 	}
@@ -474,7 +465,7 @@ func (api coursesAPI) getAttachment(c *fiber.Ctx) error {
 			squirrel.Eq{models.COURSE_TABLE_ID: id},
 		})
 
-	attachment, err := api.dao.GetAttachment(ctx, dbOpts)
+	attachment, err := api.r.appDao.GetAttachment(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up attachment", err)
 	}
@@ -507,7 +498,7 @@ func (api coursesAPI) serveAttachment(c *fiber.Ctx) error {
 			squirrel.Eq{models.COURSE_TABLE_ID: id},
 		})
 
-	attachment, err := api.dao.GetAttachment(ctx, dbOpts)
+	attachment, err := api.r.appDao.GetAttachment(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up attachment", err)
 	}
@@ -516,12 +507,12 @@ func (api coursesAPI) serveAttachment(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusNotFound, "Attachment not found", nil)
 	}
 
-	if exists, err := afero.Exists(api.appFs.Fs, attachment.Path); err != nil || !exists {
+	if exists, err := afero.Exists(api.r.app.AppFs.Fs, attachment.Path); err != nil || !exists {
 		return errorResponse(c, fiber.StatusBadRequest, "Attachment does not exist", err)
 	}
 
 	c.Set(fiber.HeaderContentDisposition, `attachment; filename="`+attachment.Title+`"`)
-	return filesystem.SendFile(c, afero.NewHttpFs(api.appFs.Fs), attachment.Path)
+	return filesystem.SendFile(c, afero.NewHttpFs(api.r.app.AppFs.Fs), attachment.Path)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -546,7 +537,7 @@ func (api coursesAPI) serveAsset(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	asset, err := api.dao.GetAsset(ctx, dbOpts)
+	asset, err := api.r.appDao.GetAsset(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up asset", err)
 	}
@@ -556,14 +547,14 @@ func (api coursesAPI) serveAsset(c *fiber.Ctx) error {
 	}
 
 	// Check for invalid path
-	if exists, err := afero.Exists(api.appFs.Fs, asset.Path); err != nil || !exists {
+	if exists, err := afero.Exists(api.r.app.AppFs.Fs, asset.Path); err != nil || !exists {
 		return errorResponse(c, fiber.StatusBadRequest, "Asset does not exist", nil)
 	}
 
 	if asset.Type.IsVideo() {
-		return handleVideo(c, api.appFs, asset)
+		return handleVideo(c, api.r.app.AppFs, asset)
 	} else if asset.Type.IsText() || asset.Type.IsMarkdown() {
-		return handleText(c, api.appFs, asset)
+		return handleText(c, api.r.app.AppFs, asset)
 	}
 
 	return c.Status(fiber.StatusOK).SendString("done")
@@ -590,7 +581,7 @@ func (api coursesAPI) updateAssetProgress(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	if err := api.dao.UpsertAssetProgress(ctx, assetProgress); err != nil {
+	if err := api.r.appDao.UpsertAssetProgress(ctx, assetProgress); err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Asset not found", nil)
 		}
@@ -613,7 +604,7 @@ func (api coursesAPI) deleteAssetProgress(c *fiber.Ctx) error {
 	}
 
 	// First, verify the asset belongs to the specified course
-	asset, err := api.dao.GetAsset(ctx, database.NewOptions().
+	asset, err := api.r.appDao.GetAsset(ctx, database.NewOptions().
 		WithWhere(squirrel.And{
 			squirrel.Eq{models.ASSET_TABLE_ID: assetId},
 			squirrel.Eq{models.ASSET_TABLE_COURSE_ID: courseId},
@@ -633,7 +624,7 @@ func (api coursesAPI) deleteAssetProgress(c *fiber.Ctx) error {
 			squirrel.Eq{models.ASSET_PROGRESS_USER_ID: principal.UserID},
 		})
 
-	if err := api.dao.DeleteAssetProgress(ctx, dbOpts); err != nil {
+	if err := api.r.appDao.DeleteAssetProgress(ctx, dbOpts); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting asset progress", err)
 	}
 
@@ -654,7 +645,7 @@ func (api coursesAPI) getTags(c *fiber.Ctx) error {
 		WithOrderBy(defaultTagsOrderBy...).
 		WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: id})
 
-	courseTags, err := api.dao.ListCourseTags(ctx, dbOpts)
+	courseTags, err := api.r.appDao.ListCourseTags(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up course tags", err)
 	}
@@ -686,7 +677,7 @@ func (api coursesAPI) createTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	if err := api.dao.CreateCourseTag(ctx, courseTag); err != nil {
+	if err := api.r.appDao.CreateCourseTag(ctx, courseTag); err != nil {
 		if strings.HasPrefix(err.Error(), "UNIQUE constraint failed") {
 			return errorResponse(c, fiber.StatusBadRequest, "A tag for this course already exists", err)
 		}
@@ -714,7 +705,7 @@ func (api coursesAPI) deleteTag(c *fiber.Ctx) error {
 			squirrel.Eq{models.COURSE_TAG_TABLE_ID: tagId},
 		})
 
-	if err := api.dao.DeleteCourseTags(ctx, dbOpts); err != nil {
+	if err := api.r.appDao.DeleteCourseTags(ctx, dbOpts); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting course tag", err)
 	}
 

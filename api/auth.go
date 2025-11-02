@@ -4,12 +4,9 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/auth"
-	"github.com/geerew/off-course/utils/logger"
-	"github.com/geerew/off-course/utils/session"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
 )
@@ -19,24 +16,16 @@ import (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type authAPI struct {
-	dao            *dao.DAO
-	sessionManager *session.SessionManager
-	r              *Router
-	logger         *logger.Logger
+	r *Router
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // initFsRoutes initializes the filesystem routes
 func (r *Router) initAuthRoutes() {
-	authAPI := authAPI{
-		dao:            r.dao,
-		sessionManager: r.sessionManager,
-		r:              r,
-		logger:         r.logger.WithAPI(),
-	}
+	authAPI := authAPI{r: r}
 
-	authGroup := r.api.Group("/auth")
+	authGroup := r.apiGroup("auth")
 
 	authGroup.Get("/signup-status", authAPI.signupStatus)
 	authGroup.Post("/bootstrap/:token", authAPI.bootstrap)
@@ -53,14 +42,14 @@ func (r *Router) initAuthRoutes() {
 
 func (api authAPI) signupStatus(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(signupStatusResponse{
-		Enabled: api.r.config.SignupEnabled,
+		Enabled: api.r.app.Config.EnableSignup,
 	})
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api authAPI) register(c *fiber.Ctx) error {
-	if api.r.IsBootstrapped() && !api.r.config.SignupEnabled {
+	if api.r.IsBootstrapped() && !api.r.app.Config.EnableSignup {
 		return errorResponse(c, fiber.StatusForbidden, "Sign-up is disabled", nil)
 	}
 
@@ -87,7 +76,7 @@ func (api authAPI) register(c *fiber.Ctx) error {
 		user.Role = types.UserRoleUser
 	}
 
-	err := api.dao.CreateUser(c.UserContext(), user)
+	err := api.r.appDao.CreateUser(c.UserContext(), user)
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "UNIQUE constraint failed") {
 			return errorResponse(c, fiber.StatusBadRequest, "Username already exists", nil)
@@ -96,7 +85,7 @@ func (api authAPI) register(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error creating user", err)
 	}
 
-	err = api.sessionManager.SetSession(c, user.ID, user.Role)
+	err = api.r.sessionManager.SetSession(c, user.ID, user.Role)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error setting session", err)
 	}
@@ -117,7 +106,7 @@ func (api authAPI) bootstrap(c *fiber.Ctx) error {
 	}
 
 	// Validate bootstrap token
-	_, err := auth.ValidateBootstrapToken(token, api.r.config.DataDir, api.r.config.AppFs.Fs)
+	_, err := auth.ValidateBootstrapToken(token, api.r.app.Config.DataDir, api.r.app.AppFs.Fs)
 	if err != nil {
 		return errorResponse(c, fiber.StatusUnauthorized, "Invalid or expired bootstrap token", nil)
 	}
@@ -126,7 +115,7 @@ func (api authAPI) bootstrap(c *fiber.Ctx) error {
 	err = api.register(c)
 	if err == nil {
 		api.r.setBootstrapped()
-		auth.DeleteBootstrapToken(api.r.config.DataDir, api.r.config.AppFs.Fs)
+		auth.DeleteBootstrapToken(api.r.app.Config.DataDir, api.r.app.AppFs.Fs)
 	}
 
 	return err
@@ -146,7 +135,7 @@ func (api authAPI) login(c *fiber.Ctx) error {
 	}
 
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: loginReq.Username})
-	user, err := api.dao.GetUser(c.UserContext(), dbOpts)
+	user, err := api.r.appDao.GetUser(c.UserContext(), dbOpts)
 	if err != nil || user == nil {
 		return errorResponse(c, fiber.StatusUnauthorized, "Invalid username and/or password", nil)
 	}
@@ -155,7 +144,7 @@ func (api authAPI) login(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Invalid username and/or password", nil)
 	}
 
-	err = api.sessionManager.SetSession(c, user.ID, user.Role)
+	err = api.r.sessionManager.SetSession(c, user.ID, user.Role)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error setting session", err)
 	}
@@ -165,7 +154,7 @@ func (api authAPI) login(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api authAPI) logout(c *fiber.Ctx) error {
-	err := api.sessionManager.DeleteSession(c)
+	err := api.r.sessionManager.DeleteSession(c)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting session", err)
 	}
@@ -181,7 +170,7 @@ func (api authAPI) getMe(c *fiber.Ctx) error {
 	}
 
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: principal.UserID})
-	user, err := api.dao.GetUser(ctx, dbOpts)
+	user, err := api.r.appDao.GetUser(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error getting user information", err)
 	}
@@ -203,7 +192,7 @@ func (api authAPI) updateMe(c *fiber.Ctx) error {
 	}
 
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: principal.UserID})
-	user, err := api.dao.GetUser(ctx, dbOpts)
+	user, err := api.r.appDao.GetUser(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error getting user information", err)
 	}
@@ -229,7 +218,7 @@ func (api authAPI) updateMe(c *fiber.Ctx) error {
 		user.PasswordHash = auth.GeneratePassword(updateReq.Password)
 	}
 
-	err = api.dao.UpdateUser(ctx, user)
+	err = api.r.appDao.UpdateUser(ctx, user)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error updating user", err)
 	}
@@ -251,7 +240,7 @@ func (api authAPI) deleteMe(c *fiber.Ctx) error {
 	}
 
 	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: principal.UserID})
-	user, err := api.dao.GetUser(ctx, dbOpts)
+	user, err := api.r.appDao.GetUser(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error getting user information", err)
 	}
@@ -268,7 +257,7 @@ func (api authAPI) deleteMe(c *fiber.Ctx) error {
 	if user.Role == types.UserRoleAdmin {
 		// Count the number of admin users and fail if there is only one
 		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ROLE: types.UserRoleAdmin})
-		adminCount, err := api.dao.CountUsers(ctx, dbOpts)
+		adminCount, err := api.r.appDao.CountUsers(ctx, dbOpts)
 		if err != nil {
 			return errorResponse(c, fiber.StatusInternalServerError, "Error counting admin users", err)
 		}
@@ -278,12 +267,12 @@ func (api authAPI) deleteMe(c *fiber.Ctx) error {
 		}
 	}
 
-	err = api.dao.DeleteUsers(ctx, dbOpts)
+	err = api.r.appDao.DeleteUsers(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user", err)
 	}
 
-	err = api.sessionManager.DeleteUserSessions(user.ID)
+	err = api.r.sessionManager.DeleteUserSessions(user.ID)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user sessions", err)
 	}
