@@ -45,10 +45,7 @@ func NewTestApp(t *testing.T) *App {
 	t.Helper()
 
 	// Create a test logger
-	testLogger := logger.New(&logger.Config{
-		Level:         logger.LevelInfo,
-		ConsoleOutput: false, // Disable console output for tests
-	})
+	testLogger := logger.NilLogger()
 
 	// Create in-memory filesystem
 	appFs := appfs.New(afero.NewMemMapFs())

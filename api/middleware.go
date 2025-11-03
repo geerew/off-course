@@ -50,7 +50,6 @@ func requestLoggingMiddleware(logger *logger.Logger) fiber.Handler {
 		case status >= 500:
 			evt := apiLogger.Error().
 				Str("method", c.Method()).
-				Str("path", c.Path()).
 				Int("status", status).
 				Dur("duration", duration).
 				Str("ip", c.IP())
@@ -60,11 +59,10 @@ func requestLoggingMiddleware(logger *logger.Logger) fiber.Handler {
 			if errDetail != "" {
 				evt = evt.Str("error_detail", errDetail)
 			}
-			evt.Msg("Request processed")
+			evt.Msg(c.Path())
 		case status >= 400:
 			evt := apiLogger.Warn().
 				Str("method", c.Method()).
-				Str("path", c.Path()).
 				Int("status", status).
 				Dur("duration", duration).
 				Str("ip", c.IP())
@@ -74,15 +72,14 @@ func requestLoggingMiddleware(logger *logger.Logger) fiber.Handler {
 			if errDetail != "" {
 				evt = evt.Str("error_detail", errDetail)
 			}
-			evt.Msg("Request processed")
+			evt.Msg(c.Path())
 		default:
 			apiLogger.Debug().
 				Str("method", c.Method()).
-				Str("path", c.Path()).
 				Int("status", status).
 				Dur("duration", duration).
 				Str("ip", c.IP()).
-				Msg("Request processed")
+				Msg(c.Path())
 		}
 
 		return err

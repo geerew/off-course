@@ -47,7 +47,7 @@ var serveCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		mainLogger := application.Logger.WithMain()
+		appLogger := application.Logger.WithApp()
 
 		// Start the course scan worker
 		go application.CourseScan.Worker(ctx, coursescan.Processor, nil)
@@ -63,18 +63,18 @@ var serveCmd = &cobra.Command{
 		if !router.IsBootstrapped() {
 			bootstrapToken, err := auth.GenerateBootstrapToken(dataDir, application.AppFs.Fs)
 			if err != nil {
-				mainLogger.Error().Err(err).Msg("Failed to generate bootstrap token")
+				appLogger.Error().Err(err).Msg("Failed to generate bootstrap token")
 				os.Exit(1)
 			}
 
 			bootstrapURL := fmt.Sprintf("http://%s/auth/bootstrap/%s", httpAddr, bootstrapToken.Token)
-			mainLogger.Info().
+			appLogger.Info().
 				Str("bootstrap_url", bootstrapURL).
 				Str("expires_in", "5 minutes").
 				Msg("Bootstrap required")
 		} else {
 			auth.DeleteBootstrapToken(dataDir, application.AppFs.Fs)
-			mainLogger.Info().Msg("Application bootstrapped")
+			appLogger.Info().Msg("Application bootstrapped")
 		}
 
 		var wg sync.WaitGroup
@@ -92,23 +92,23 @@ var serveCmd = &cobra.Command{
 		go func() {
 			defer wg.Done()
 			if err := router.Serve(); err != nil {
-				mainLogger.Error().Err(err).Msg("Failed to start router")
+				appLogger.Error().Err(err).Msg("Failed to start router")
 				os.Exit(1)
 			}
 		}()
 
 		wg.Wait()
 
-		mainLogger.Info().Msg("Shutting down...")
+		appLogger.Info().Msg("Shutting down...")
 
 		if err := application.Close(); err != nil {
-			mainLogger.Error().Err(err).Msg("Failed to close application resources")
+			appLogger.Error().Err(err).Msg("Failed to close application resources")
 		}
 
 		// Delete all scans
 		_, err = application.DbManager.DataDb.Exec("DELETE FROM " + models.SCAN_TABLE)
 		if err != nil {
-			mainLogger.Error().Err(err).Msg("Failed to delete scans")
+			appLogger.Error().Err(err).Msg("Failed to delete scans")
 		}
 	},
 }

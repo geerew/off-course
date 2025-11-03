@@ -117,7 +117,7 @@ func New(ctx context.Context, config *Config) (*App, error) {
 	// HLS Transcoder
 	transcoder, err := hls.NewTranscoder(&hls.TranscoderConfig{
 		CachePath: app.Config.DataDir,
-		HwAccel:   hls.DetectHardwareAccel(app.Logger),
+		HwAccel:   hls.DetectHardwareAccel(app.Logger.WithHLS()),
 		AppFs:     app.AppFs,
 		Logger:    app.Logger.WithHLS(),
 		Dao:       dao.New(app.DbManager.DataDb),
