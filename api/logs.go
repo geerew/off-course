@@ -32,7 +32,7 @@ func (api *logsAPI) getLogs(c *fiber.Ctx) error {
 	builderOpts := builderOptions{
 		DefaultOrderBy: defaultLogsOrderBy,
 		Paginate:       true,
-		AllowedFilters: []string{"level", "type"},
+		AllowedFilters: []string{"level", "type", "component"},
 		AfterParseHook: logsAfterParseHook,
 	}
 
@@ -79,6 +79,8 @@ func logsWhereBuilder(expr queryparser.QueryExpr) squirrel.Sqlizer {
 			return squirrel.Eq{models.LOG_TABLE_LEVEL: node.Value}
 		case "type":
 			return squirrel.Eq{"JSON_EXTRACT(" + models.LOG_TABLE_DATA + ", '$.type')": node.Value}
+		case "component":
+			return squirrel.Eq{"JSON_EXTRACT(" + models.LOG_TABLE_DATA + ", '$.component')": node.Value}
 		default:
 			return nil
 		}
