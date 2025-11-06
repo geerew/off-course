@@ -129,7 +129,7 @@ func (w *DbWriter) Write(p []byte) (n int, err error) {
 	case "info":
 		level = int(LevelInfo)
 	case "warn":
-		level = int(LevelInfo) // Map warn to info in our 3-level system
+		level = int(LevelWarn)
 	case "error":
 		level = int(LevelError)
 	default:

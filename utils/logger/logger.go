@@ -15,6 +15,7 @@ type LogLevel int
 const (
 	LevelDebug LogLevel = -1
 	LevelInfo  LogLevel = 0
+	LevelWarn  LogLevel = 2
 	LevelError LogLevel = 1
 )
 
@@ -94,6 +95,8 @@ func New(config *Config) *Logger {
 		zlog = zlog.Level(zerolog.DebugLevel)
 	case LevelInfo:
 		zlog = zlog.Level(zerolog.InfoLevel)
+	case LevelWarn:
+		zlog = zlog.Level(zerolog.WarnLevel)
 	case LevelError:
 		zlog = zlog.Level(zerolog.ErrorLevel)
 	default:
