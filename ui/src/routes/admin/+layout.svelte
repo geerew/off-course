@@ -1,6 +1,13 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { BurgerMenuIcon, CourseIcon, ScanIcon, TagIcon, UserIcon } from '$lib/components/icons';
+	import {
+		BurgerMenuIcon,
+		CourseIcon,
+		LogsIcon,
+		ScanIcon,
+		TagIcon,
+		UserIcon
+	} from '$lib/components/icons';
 	import { Button } from '$lib/components/ui';
 	import { cn, remCalc } from '$lib/utils';
 	import { Dialog } from 'bits-ui';
@@ -40,6 +47,12 @@
 			href: '/admin/users',
 			matcher: '/admin/users/',
 			icon: UserIcon
+		},
+		{
+			label: 'Logs',
+			href: '/admin/logs',
+			matcher: '/admin/logs/',
+			icon: LogsIcon
 		}
 	];
 
@@ -59,7 +72,7 @@
 			class={cn(
 				'text-foreground-alt-2 hover:text-foreground hover:bg-background-alt-1 relative h-auto justify-start gap-3 px-2.5 leading-6',
 				page.url.pathname.startsWith(item.matcher) &&
-					'bg-background-alt-1 after:bg-background-primary after:absolute after:top-0 after:right-0 after:h-full after:w-1',
+					'bg-background-alt-1 after:bg-background-primary after:absolute after:right-0 after:top-0 after:h-full after:w-1',
 				mobile ? 'py-6 text-base' : 'py-3'
 			)}
 			onclick={() => {
@@ -77,7 +90,7 @@
 
 <div
 	class={cn(
-		'grid grid-rows-1 gap-6 pt-[calc(var(--header-height)+1))]',
+		'pt-[calc(var(--header-height)+1))] grid grid-rows-1 gap-6',
 		menuPopupMode ? 'grid-cols-1' : 'grid-cols-[var(--settings-menu-width)_1fr]'
 	)}
 >
@@ -89,9 +102,9 @@
 				/>
 
 				<Dialog.Content
-					class="border-foreground-alt-4 bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left fixed top-0 left-0 z-50 h-full w-[var(--settings-menu-width)] border-r pt-4 pl-4"
+					class="border-foreground-alt-4 bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left fixed left-0 top-0 z-50 h-full w-[var(--settings-menu-width)] border-r pl-4 pt-4"
 				>
-					<nav class="flex h-full w-full flex-col gap-3 overflow-x-hidden overflow-y-auto pb-8">
+					<nav class="flex h-full w-full flex-col gap-3 overflow-y-auto overflow-x-hidden pb-8">
 						{@render menuContents(true)}
 					</nav>
 				</Dialog.Content>
@@ -101,7 +114,7 @@
 		<div class="relative row-span-full">
 			<div class="absolute inset-0">
 				<nav
-					class="container-pl border-foreground-alt-5 sticky top-[calc(var(--header-height)+1px)] left-0 flex h-[calc(100dvh-(var(--header-height)+1px))] w-[var(--settings-menu-width)] flex-col gap-4 border-r py-8"
+					class="container-pl border-foreground-alt-5 sticky left-0 top-[calc(var(--header-height)+1px)] flex h-[calc(100dvh-(var(--header-height)+1px))] w-[var(--settings-menu-width)] flex-col gap-4 border-r py-8"
 				>
 					{@render menuContents(false)}
 				</nav>

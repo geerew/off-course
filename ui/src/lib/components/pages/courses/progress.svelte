@@ -54,10 +54,13 @@
 			<Dropdown.Content class="w-50" align="start">
 				<div class="flex flex-col gap-1">
 					<div class="flex flex-row items-center justify-between px-1.5">
-						<span class="text-background-primary-alt-1 text-base font-semibold">Progress</span>
+						<span class="text-background-primary-alt-1 text-sm font-semibold">Progress</span>
 						<Button
 							variant="ghost"
-							class="text-foreground-alt-3 hover:text-foreground-alt-2 p-0 text-sm hover:bg-transparent"
+							class={cn(
+								'text-foreground-alt-3 hover:text-foreground-alt-2 p-0 text-sm hover:bg-transparent',
+								selected.length === 0 && 'invisible'
+							)}
 							onclick={() => {
 								selected = [];
 								value = '';
@@ -89,7 +92,7 @@
 		<Accordion.Header>
 			<Accordion.Trigger
 				class={cn(
-					'group data-[state=open]:border-b-foreground-alt-4 flex w-full flex-1 items-center justify-between border-b border-transparent px-2.5 py-5 font-medium transition-transform select-none hover:cursor-pointer',
+					'data-[state=open]:border-b-foreground-alt-4 group flex w-full flex-1 select-none items-center justify-between border-b border-transparent px-2.5 py-5 font-medium transition-transform hover:cursor-pointer',
 					value &&
 						'data-[state=open]:border-b-background-primary-alt-1 data-[state=closed]:border-b-background-primary-alt-1 data-[state=closed]:border-b-2'
 				)}
@@ -104,7 +107,7 @@
 						variant="ghost"
 						class={cn(
 							'text-foreground-alt-3 hover:text-foreground-alt-2 h-auto p-0 text-sm hover:bg-transparent',
-							!value && 'invisible'
+							selected.length === 0 && 'invisible'
 						)}
 						onclick={(e: MouseEvent) => {
 							e.preventDefault();
@@ -161,7 +164,7 @@
 						<Label.Root
 							id="{id}-label"
 							for={id}
-							class="inline-flex w-full py-1 pr-1.5 pl-3.5 text-sm select-none hover:cursor-pointer"
+							class="inline-flex w-full select-none py-1 pl-3.5 pr-1.5 text-sm hover:cursor-pointer"
 						>
 							{progress.label}
 						</Label.Root>
