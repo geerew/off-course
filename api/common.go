@@ -27,7 +27,7 @@ var (
 	defaultCourseLessonAttachmentsOrderBy = []string{models.ATTACHMENT_TABLE_TITLE + " asc"}
 	defaultTagsOrderBy                    = []string{models.TAG_TABLE_TAG + " asc"}
 	defaultUsersOrderBy                   = []string{models.USER_TABLE_CREATED_AT + " desc"}
-	defaultLogsOrderBy                    = []string{models.LOG_TABLE_CREATED_AT + " desc"}
+	defaultLogsOrderBy                    = []string{models.LOG_TABLE_CREATED_AT + " desc", "rowid desc"}
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
