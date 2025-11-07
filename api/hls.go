@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 
@@ -55,9 +56,7 @@ func (api *hlsAPI) GetMaster(c *fiber.Ctx) error {
 	}
 
 	// Get asset with metadata
-	asset, err := api.r.appDao.GetAsset(c.Context(), database.NewOptions().
-		WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assetID}).
-		WithAssetMetadata())
+	asset, err := api.getAssetWithMetadata(c.Context(), assetID)
 	if err != nil {
 		return c.Status(http.StatusNotFound).JSON(fiber.Map{
 			"error": "Asset not found",
@@ -108,9 +107,7 @@ func (api *hlsAPI) GetVideoIndex(c *fiber.Ctx) error {
 	}
 
 	// Get asset
-	asset, err := api.r.appDao.GetAsset(c.Context(), database.NewOptions().
-		WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assetID}).
-		WithAssetMetadata())
+	asset, err := api.getAssetWithMetadata(c.Context(), assetID)
 	if err != nil {
 		return c.Status(http.StatusNotFound).JSON(fiber.Map{
 			"error": "Asset not found",
@@ -160,9 +157,7 @@ func (api *hlsAPI) GetVideoSegment(c *fiber.Ctx) error {
 	}
 
 	// Get asset
-	asset, err := api.r.appDao.GetAsset(c.Context(), database.NewOptions().
-		WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assetID}).
-		WithAssetMetadata())
+	asset, err := api.getAssetWithMetadata(c.Context(), assetID)
 	if err != nil {
 		return c.Status(http.StatusNotFound).JSON(fiber.Map{
 			"error": "Asset not found",
@@ -196,9 +191,7 @@ func (api *hlsAPI) GetAudioIndex(c *fiber.Ctx) error {
 	}
 
 	// Get asset
-	asset, err := api.r.appDao.GetAsset(c.Context(), database.NewOptions().
-		WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assetID}).
-		WithAssetMetadata())
+	asset, err := api.getAssetWithMetadata(c.Context(), assetID)
 	if err != nil {
 		return c.Status(http.StatusNotFound).JSON(fiber.Map{
 			"error": "Asset not found",
@@ -240,9 +233,7 @@ func (api *hlsAPI) GetAudioSegment(c *fiber.Ctx) error {
 	}
 
 	// Get asset
-	asset, err := api.r.appDao.GetAsset(c.Context(), database.NewOptions().
-		WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assetID}).
-		WithAssetMetadata())
+	asset, err := api.getAssetWithMetadata(c.Context(), assetID)
 	if err != nil {
 		return c.Status(http.StatusNotFound).JSON(fiber.Map{
 			"error": "Asset not found",
@@ -273,9 +264,7 @@ func (api *hlsAPI) GetQualities(c *fiber.Ctx) error {
 	}
 
 	// Get asset with metadata
-	asset, err := api.r.appDao.GetAsset(c.Context(), database.NewOptions().
-		WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assetID}).
-		WithAssetMetadata())
+	asset, err := api.getAssetWithMetadata(c.Context(), assetID)
 	if err != nil {
 		return c.Status(http.StatusNotFound).JSON(fiber.Map{
 			"error": "Asset not found",
@@ -306,4 +295,13 @@ func (api *hlsAPI) GetQualities(c *fiber.Ctx) error {
 	return c.Status(http.StatusOK).JSON(fiber.Map{
 		"qualities": qualityStrings,
 	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// getAssetWithMetadata retrieves an asset with its metadata by asset ID
+func (api *hlsAPI) getAssetWithMetadata(ctx context.Context, assetID string) (*models.Asset, error) {
+	return api.r.appDao.GetAsset(ctx, database.NewOptions().
+		WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assetID}).
+		WithAssetMetadata())
 }

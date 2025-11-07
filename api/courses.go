@@ -126,6 +126,8 @@ func (api coursesAPI) getCourses(c *fiber.Ctx) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // TODO add tests when initial scan is false
 func (api coursesAPI) getCourse(c *fiber.Ctx) error {
 	id := c.Params("id")
@@ -135,15 +137,16 @@ func (api coursesAPI) getCourse(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: id})
-
+	var courseOpts []func(*database.Options)
 	if raw := c.Query("withUserProgress"); raw != "" {
 		if v, err := strconv.ParseBool(raw); err == nil && v {
-			dbOpts.WithUserProgress()
+			courseOpts = append(courseOpts, func(opts *database.Options) {
+				opts.WithUserProgress()
+			})
 		}
 	}
 
-	course, err := api.r.appDao.GetCourse(ctx, dbOpts)
+	course, err := api.getCourseByID(ctx, id, courseOpts...)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up course", err)
 	}
@@ -265,8 +268,7 @@ func (api coursesAPI) getCard(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: id})
-	course, err := api.r.appDao.GetCourse(ctx, dbOpts)
+	course, err := api.getCourseByID(ctx, id)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up course", err)
 	}
@@ -845,4 +847,15 @@ func courseTagsBuilder(tags []string) squirrel.Sqlizer {
 	}
 
 	return squirrel.Expr("EXISTS (?)", baseQuery)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// getCourseByID retrieves a course by its ID with optional database options
+func (api coursesAPI) getCourseByID(ctx context.Context, courseID string, opts ...func(*database.Options)) (*models.Course, error) {
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: courseID})
+	for _, opt := range opts {
+		opt(dbOpts)
+	}
+	return api.r.appDao.GetCourse(ctx, dbOpts)
 }

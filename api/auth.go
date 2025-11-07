@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
@@ -169,8 +170,7 @@ func (api authAPI) getMe(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: principal.UserID})
-	user, err := api.r.appDao.GetUser(ctx, dbOpts)
+	user, err := api.getUserByPrincipal(ctx, principal)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error getting user information", err)
 	}
@@ -191,8 +191,7 @@ func (api authAPI) updateMe(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: principal.UserID})
-	user, err := api.r.appDao.GetUser(ctx, dbOpts)
+	user, err := api.getUserByPrincipal(ctx, principal)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error getting user information", err)
 	}
@@ -239,8 +238,7 @@ func (api authAPI) deleteMe(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: principal.UserID})
-	user, err := api.r.appDao.GetUser(ctx, dbOpts)
+	user, err := api.getUserByPrincipal(ctx, principal)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error getting user information", err)
 	}
@@ -267,6 +265,7 @@ func (api authAPI) deleteMe(c *fiber.Ctx) error {
 		}
 	}
 
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: principal.UserID})
 	err = api.r.appDao.DeleteUsers(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user", err)
@@ -278,4 +277,12 @@ func (api authAPI) deleteMe(c *fiber.Ctx) error {
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// getUserByPrincipal retrieves a user by the principal's user ID
+func (api authAPI) getUserByPrincipal(ctx context.Context, principal types.Principal) (*models.User, error) {
+	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: principal.UserID})
+	return api.r.appDao.GetUser(ctx, dbOpts)
 }
