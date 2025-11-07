@@ -15,33 +15,31 @@ const DefaultDateLayout = "2006-01-02 15:04:05.000Z"
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// DateTime represents a [time.Time] instance in UTC that is serialized
+// using the app default date layout
+type DateTime time.Time
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // NowDateTime returns new DateTime instance with the current local time
 func NowDateTime() DateTime {
-	return DateTime{t: time.Now()}
+	return DateTime(time.Now())
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // ParseDateTime creates a new DateTime from the provided value
 func ParseDateTime(value any) (DateTime, error) {
-	d := DateTime{}
+	var d DateTime
 	err := d.Scan(value)
 	return d, err
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// DateTime represents a [time.Time] instance in UTC that is wrapped and serialized
-// using the app default date layout
-type DateTime struct {
-	t time.Time
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 // Time returns the internal [time.Time] instance
 func (d DateTime) Time() time.Time {
-	return d.t
+	return time.Time(d)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -55,8 +53,7 @@ func (d DateTime) IsZero() bool {
 
 // Equal checks if two DateTime instances represent the same point in time
 func (d DateTime) Equal(other DateTime) bool {
-	return d.t.UTC().Truncate(time.Millisecond).Equal(other.t.UTC().Truncate(time.Millisecond))
-
+	return time.Time(d).UTC().Truncate(time.Millisecond).Equal(time.Time(other).UTC().Truncate(time.Millisecond))
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -105,28 +102,28 @@ func (d DateTime) Value() (driver.Value, error) {
 func (d *DateTime) Scan(value any) error {
 	switch v := value.(type) {
 	case time.Time:
-		d.t = v
+		*d = DateTime(v)
 	case DateTime:
-		d.t = v.Time()
+		*d = v
 	case string:
 		if v == "" {
-			d.t = time.Time{}
+			*d = DateTime(time.Time{})
 		} else {
 			t, err := time.Parse(DefaultDateLayout, v)
 			if err != nil {
 				// check for other common date layouts
 				t = cast.ToTime(v)
 			}
-			d.t = t
+			*d = DateTime(t)
 		}
 	case int, int64, int32, uint, uint64, uint32:
-		d.t = cast.ToTime(v)
+		*d = DateTime(cast.ToTime(v))
 	default:
 		str := cast.ToString(v)
 		if str == "" {
-			d.t = time.Time{}
+			*d = DateTime(time.Time{})
 		} else {
-			d.t = cast.ToTime(str)
+			*d = DateTime(cast.ToTime(str))
 		}
 	}
 

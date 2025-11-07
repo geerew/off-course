@@ -606,8 +606,7 @@ func createTestAsset(t *testing.T, ctx context.Context, dao *DAO, title string) 
 	err = dao.db.QueryRowContext(ctx, "SELECT id FROM lessons LIMIT 1").Scan(&lessonID)
 	require.NoError(t, err)
 
-	assetType := &types.Asset{}
-	assetType.SetVideo()
+	assetType := types.AssetVideo
 
 	asset := &models.Asset{
 		CourseID: courseID,
@@ -617,7 +616,7 @@ func createTestAsset(t *testing.T, ctx context.Context, dao *DAO, title string) 
 		Hash:     "hash-" + title,
 		Weight:   1,
 		Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-		Type:     *assetType,
+		Type:     assetType,
 	}
 	asset.RefreshId()
 	asset.RefreshCreatedAt()

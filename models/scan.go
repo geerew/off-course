@@ -29,8 +29,8 @@ const (
 // Scan defines the model for a scan
 type Scan struct {
 	Base
-	CourseID string           `db:"course_id"` // Immutable
-	Status   types.ScanStatus `db:"status"`    // Mutable, defaults to "waiting" if not set
+	CourseID string               `db:"course_id"` // Immutable
+	Status   types.ScanStatusType `db:"status"`    // Mutable, defaults to "waiting" if not set
 
 	// Joins
 	CoursePath string `db:"course_path"`

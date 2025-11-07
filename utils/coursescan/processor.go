@@ -47,7 +47,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	courseID := scan.CourseID
 	s.logger.Info().Str("course_id", courseID).Msg("Starting scan for course")
 
-	scan.Status.SetProcessing()
+	scan.Status = types.ScanStatusProcessing
 	if err := s.dao.UpdateScan(ctx, scan); err != nil {
 		return err
 	}
@@ -1073,7 +1073,7 @@ func pickBest(assets []*parsedFile) int {
 	bestRank := len(assetPriority)
 	for i, asset := range assets {
 		for rank, at := range assetPriority {
-			if asset.AssetType != nil && asset.AssetType.Type() == at {
+			if asset.AssetType.IsValid() && asset.AssetType == at {
 				if rank < bestRank {
 					bestRank = rank
 					bestIdx = i
@@ -1115,7 +1115,7 @@ func categorizeFile(p *parsedFile) FileCategory {
 	}
 
 	// Asset || grouped asset
-	if p.AssetType != nil && p.Title != "" {
+	if p.AssetType.IsValid() && p.Title != "" {
 		if p.SubPrefix != nil {
 			return GroupedAsset
 		}
@@ -1276,8 +1276,8 @@ type parsedFile struct {
 	// Lowercase extension (without dot)
 	Ext string
 
-	// Non-nill when type is one of video, pdf, markdown, text
-	AssetType *types.Asset
+	// Non-empty when type is one of video, pdf, markdown, text
+	AssetType types.AssetType
 
 	// True when the file is a card
 	IsCard bool
@@ -1339,7 +1339,7 @@ func parseFilename(normalizedPath, filename string) *parsedFile {
 		return &parsedFile{
 			Title:          "card",
 			Ext:            strings.ToLower(strings.TrimPrefix(filepath.Ext(filename), ".")),
-			AssetType:      types.NewAsset(""),
+			AssetType:      types.AssetType(""), // Empty for cards
 			IsCard:         true,
 			Original:       filename,
 			NormalizedPath: normalizedPath,
@@ -1364,9 +1364,11 @@ func parseFilename(normalizedPath, filename string) *parsedFile {
 	ext := strings.ToLower(matches[filenameRegex.SubexpIndex("Ext")])
 
 	// Asset type
-	var assetType *types.Asset
+	var assetType types.AssetType
 	if ext != "" {
-		assetType = types.NewAsset(ext)
+		if at, err := types.NewAsset(ext); err == nil {
+			assetType = at
+		}
 	}
 
 	var subPrefix *int
@@ -1408,7 +1410,7 @@ func (p *parsedFile) toAsset(fs afero.Fs, module, courseID string) (*models.Asse
 		Prefix:    sql.NullInt16{Int16: int16(p.Prefix), Valid: true},
 		SubPrefix: sql.NullInt16{Int16: int16(getInt(p.SubPrefix)), Valid: p.SubPrefix != nil},
 		SubTitle:  p.SubTitle,
-		Type:      *p.AssetType,
+		Type:      p.AssetType,
 		Path:      p.NormalizedPath,
 		FileSize:  stat.Size(),
 		ModTime:   mtime,

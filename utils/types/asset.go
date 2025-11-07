@@ -3,7 +3,6 @@ package types
 import (
 	"database/sql/driver"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -17,12 +16,6 @@ type AssetType string
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-type Asset struct {
-	s AssetType
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 const (
 	AssetVideo    AssetType = "video"
 	AssetPDF      AssetType = "pdf"
@@ -32,9 +25,9 @@ const (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// NewAsset creates an Asset based upon an extension. For example "mp4" => AssetVideo. When an
-// unknown extension is passed in, nil is returned
-func NewAsset(ext string) *Asset {
+// NewAsset creates an AssetType based upon an extension. For example "mp4" => AssetVideo.
+// Returns an error if the extension is unknown.
+func NewAsset(ext string) (AssetType, error) {
 	switch strings.ToLower(ext) {
 	case "avi",
 		"mkv",
@@ -49,99 +42,91 @@ func NewAsset(ext string) *Asset {
 		"opus",
 		"webm",
 		"wav":
-		return &Asset{s: AssetVideo}
+		return AssetVideo, nil
 	case "pdf":
-		return &Asset{s: AssetPDF}
+		return AssetPDF, nil
 	case "md":
-		return &Asset{s: AssetMarkdown}
+		return AssetMarkdown, nil
 	case "txt":
-		return &Asset{s: AssetText}
+		return AssetText, nil
+	default:
+		return "", fmt.Errorf("invalid asset extension: %s", ext)
 	}
-
-	return nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// SetVideo sets the asset type to video
-func (a *Asset) SetVideo() {
-	a.s = AssetVideo
+// MustAsset creates an AssetType from an extension, panicking on error.
+// This is useful in tests and initialization code where invalid extensions
+// should cause immediate failure.
+func MustAsset(ext string) AssetType {
+	at, err := NewAsset(ext)
+	if err != nil {
+		panic(fmt.Sprintf("MustAsset(%q): %v", ext, err))
+	}
+	return at
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// IsVideo returns true is the asset is of type video
-func (a Asset) IsVideo() bool {
-	return a.s == AssetVideo
+// IsValid checks if the asset type is valid
+func (a AssetType) IsValid() bool {
+	switch a {
+	case AssetVideo, AssetPDF, AssetMarkdown, AssetText:
+		return true
+	}
+	return false
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// SetPDF sets the asset type to PDF
-func (a *Asset) SetPDF() {
-	a.s = AssetPDF
+// IsVideo returns true if the asset is of type video
+func (a AssetType) IsVideo() bool {
+	return a == AssetVideo
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// IsPDF returns true is the asset is of type PDF
-func (a Asset) IsPDF() bool {
-	return a.s == AssetPDF
+// IsPDF returns true if the asset is of type PDF
+func (a AssetType) IsPDF() bool {
+	return a == AssetPDF
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// SetMarkdown sets the asset type to Markdown
-func (a *Asset) SetMarkdown() {
-	a.s = AssetMarkdown
+// IsMarkdown returns true if the asset is of type Markdown
+func (a AssetType) IsMarkdown() bool {
+	return a == AssetMarkdown
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// IsMarkdown returns true is the asset is of type Markdown
-func (a Asset) IsMarkdown() bool {
-	return a.s == AssetMarkdown
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// SetText sets the asset type to Text
-func (a *Asset) SetText() {
-	a.s = AssetText
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// IsText returns true is the asset is of type Text
-func (a Asset) IsText() bool {
-	return a.s == AssetText
+// IsText returns true if the asset is of type Text
+func (a AssetType) IsText() bool {
+	return a == AssetText
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // String implements the `Stringer` interface
-func (a Asset) String() string {
-	return fmt.Sprint(a.s)
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// Type returns the type of the asset
-func (a Asset) Type() AssetType {
-	return a.s
+func (a AssetType) String() string {
+	return string(a)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // MarshalJSON implements the `json.Marshaler` interface
-func (a Asset) MarshalJSON() ([]byte, error) {
-	return []byte(`"` + a.s + `"`), nil
+func (a AssetType) MarshalJSON() ([]byte, error) {
+	if !a.IsValid() {
+		return nil, fmt.Errorf("invalid asset type: %s", a)
+	}
+	return []byte(`"` + string(a) + `"`), nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // UnmarshalJSON implements the `json.Unmarshaler` interface
-func (a *Asset) UnmarshalJSON(b []byte) error {
+func (a *AssetType) UnmarshalJSON(b []byte) error {
 	var raw string
 	if err := json.Unmarshal(b, &raw); err != nil {
 		return err
@@ -153,27 +138,30 @@ func (a *Asset) UnmarshalJSON(b []byte) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Value implements the `driver.Valuer` interface
-func (a Asset) Value() (driver.Value, error) {
-	return a.String(), nil
+func (a AssetType) Value() (driver.Value, error) {
+	if !a.IsValid() {
+		return nil, fmt.Errorf("invalid asset type: %s", a)
+	}
+	return string(a), nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Scan implements `sql.Scanner` interface
-func (a *Asset) Scan(value any) error {
+func (a *AssetType) Scan(value any) error {
 	vv := cast.ToString(value)
 
 	switch vv {
 	case string(AssetVideo):
-		a.s = AssetVideo
+		*a = AssetVideo
 	case string(AssetPDF):
-		a.s = AssetPDF
+		*a = AssetPDF
 	case string(AssetMarkdown):
-		a.s = AssetMarkdown
+		*a = AssetMarkdown
 	case string(AssetText):
-		a.s = AssetText
+		*a = AssetText
 	default:
-		return errors.New("invalid asset type")
+		return fmt.Errorf("invalid asset type: %s", vv)
 	}
 
 	return nil

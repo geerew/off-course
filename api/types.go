@@ -311,18 +311,18 @@ type assetMetadataResponse struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type assetResponse struct {
-	ID        string         `json:"id"`
-	CourseID  string         `json:"courseId"`
-	LessonID  string         `json:"lessonId"`
-	Title     string         `json:"title"`
-	Prefix    int            `json:"prefix"`
-	SubPrefix int            `json:"subPrefix,omitempty"`
-	SubTitle  string         `json:"subTitle,omitempty"`
-	Module    string         `json:"module"`
-	Path      string         `json:"path"`
-	Type      types.Asset    `json:"type"`
-	CreatedAt types.DateTime `json:"createdAt"`
-	UpdatedAt types.DateTime `json:"updatedAt"`
+	ID        string          `json:"id"`
+	CourseID  string          `json:"courseId"`
+	LessonID  string          `json:"lessonId"`
+	Title     string          `json:"title"`
+	Prefix    int             `json:"prefix"`
+	SubPrefix int             `json:"subPrefix,omitempty"`
+	SubTitle  string          `json:"subTitle,omitempty"`
+	Module    string          `json:"module"`
+	Path      string          `json:"path"`
+	Type      types.AssetType `json:"type"`
+	CreatedAt types.DateTime  `json:"createdAt"`
+	UpdatedAt types.DateTime  `json:"updatedAt"`
 
 	// Relations
 	Metadata *assetMetadataResponse `json:"metadata"`
@@ -448,12 +448,12 @@ type ScanRequest struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type scanResponse struct {
-	ID         string           `json:"id"`
-	CourseID   string           `json:"courseId"`
-	CoursePath string           `json:"coursePath,omitempty"`
-	Status     types.ScanStatus `json:"status"`
-	CreatedAt  types.DateTime   `json:"createdAt"`
-	UpdatedAt  types.DateTime   `json:"updatedAt"`
+	ID         string               `json:"id"`
+	CourseID   string               `json:"courseId"`
+	CoursePath string               `json:"coursePath,omitempty"`
+	Status     types.ScanStatusType `json:"status"`
+	CreatedAt  types.DateTime       `json:"createdAt"`
+	UpdatedAt  types.DateTime       `json:"updatedAt"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

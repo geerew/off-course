@@ -51,19 +51,19 @@ const (
 // Asset defines the model for an asset
 type Asset struct {
 	Base
-	CourseID  string        `db:"course_id"`  // Immutable
-	LessonID  string        `db:"lesson_id"`  // Mutable
-	Title     string        `db:"title"`      // Mutable
-	Prefix    sql.NullInt16 `db:"prefix"`     // Mutable
-	SubPrefix sql.NullInt16 `db:"sub_prefix"` // Mutable
-	SubTitle  string        `db:"sub_title"`  // Mutable
-	Module    string        `db:"module"`     // Mutable
-	Type      types.Asset   `db:"type"`       // Mutable
-	Path      string        `db:"path"`       // Mutable
-	FileSize  int64         `db:"file_size"`  // Mutable
-	ModTime   string        `db:"mod_time"`   // Mutable
-	Hash      string        `db:"hash"`       // Mutable
-	Weight    int           `db:"weight"`
+	CourseID  string          `db:"course_id"`  // Immutable
+	LessonID  string          `db:"lesson_id"`  // Mutable
+	Title     string          `db:"title"`      // Mutable
+	Prefix    sql.NullInt16   `db:"prefix"`     // Mutable
+	SubPrefix sql.NullInt16   `db:"sub_prefix"` // Mutable
+	SubTitle  string          `db:"sub_title"`  // Mutable
+	Module    string          `db:"module"`     // Mutable
+	Type      types.AssetType `db:"type"`       // Mutable
+	Path      string          `db:"path"`       // Mutable
+	FileSize  int64           `db:"file_size"`  // Mutable
+	ModTime   string          `db:"mod_time"`   // Mutable
+	Hash      string          `db:"hash"`       // Mutable
+	Weight    int             `db:"weight"`
 
 	// Relations
 	AssetMetadata *AssetMetadata `db:"-"`

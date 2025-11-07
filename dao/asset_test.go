@@ -39,7 +39,7 @@ func Test_CreateAsset(t *testing.T) {
 			Title:    "Asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
-			Type:     *types.NewAsset("mp4"),
+			Type:     types.MustAsset("mp4"),
 			Path:     "/course-1/01 asset.mp4",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
@@ -106,7 +106,7 @@ func Test_GetAsset(t *testing.T) {
 			Title:    "Asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
-			Type:     *types.NewAsset("mp4"),
+			Type:     types.MustAsset("mp4"),
 			Path:     "/course-1/01 asset.mp4",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
@@ -139,7 +139,7 @@ func Test_GetAsset(t *testing.T) {
 			Title:    "Asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
-			Type:     *types.NewAsset("mp4"),
+			Type:     types.MustAsset("mp4"),
 			Path:     "/course-1/01 asset.mp4",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
@@ -299,7 +299,7 @@ func Test_ListAssets(t *testing.T) {
 				Title:    "Asset 1",
 				Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 				Module:   "Module 1",
-				Type:     *types.NewAsset("mp4"),
+				Type:     types.MustAsset("mp4"),
 				Path:     fmt.Sprintf("/course-%d/01 asset.mp4", i),
 			}
 			require.NoError(t, dao.CreateAsset(ctx, asset))
@@ -341,7 +341,7 @@ func Test_ListAssets(t *testing.T) {
 				Title:    "Asset 1",
 				Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 				Module:   "Module 1",
-				Type:     *types.NewAsset("mp4"),
+				Type:     types.MustAsset("mp4"),
 				Path:     fmt.Sprintf("/course-%d/01 asset.mp4", i),
 			}
 			require.NoError(t, dao.CreateAsset(ctx, asset))
@@ -522,7 +522,7 @@ func Test_ListAssets(t *testing.T) {
 				Title:    "Asset 1",
 				Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 				Module:   "Module 1",
-				Type:     *types.NewAsset("mp4"),
+				Type:     types.MustAsset("mp4"),
 				Path:     fmt.Sprintf("/course-%d/01 asset.mp4", i),
 			}
 			require.NoError(t, dao.CreateAsset(ctx, asset))
@@ -571,7 +571,7 @@ func Test_ListAssets(t *testing.T) {
 			Title:    "Asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
-			Type:     *types.NewAsset("mp4"),
+			Type:     types.MustAsset("mp4"),
 			Path:     fmt.Sprintf("/course-%d/01 asset.mp4", 1),
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
@@ -607,7 +607,7 @@ func Test_ListAssets(t *testing.T) {
 				Title:    "Asset 1",
 				Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 				Module:   "Module 1",
-				Type:     *types.NewAsset("mp4"),
+				Type:     types.MustAsset("mp4"),
 				Path:     fmt.Sprintf("/course-%d/01 asset.mp4", i),
 			}
 			require.NoError(t, dao.CreateAsset(ctx, asset))
@@ -656,7 +656,7 @@ func Test_UpdateAsset(t *testing.T) {
 			Title:    "Asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
-			Type:     *types.NewAsset("mp4"),
+			Type:     types.MustAsset("mp4"),
 			Path:     "/course-1/01 asset.mp4",
 			FileSize: 1024,
 			ModTime:  time.Now().GoString(),
@@ -681,7 +681,7 @@ func Test_UpdateAsset(t *testing.T) {
 			Title:    "Updated Asset",
 			Prefix:   sql.NullInt16{Int16: 2, Valid: true},
 			Module:   "Updated Module",
-			Type:     *types.NewAsset("mkv"),
+			Type:     types.MustAsset("mkv"),
 			Path:     "/course-1/02 asset.mkv",
 			FileSize: 2048,
 			ModTime:  time.Now().Add(1 * time.Hour).GoString(),
@@ -775,7 +775,7 @@ func Test_DeleteAsset(t *testing.T) {
 			Title:    "Asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
-			Type:     *types.NewAsset("mp4"),
+			Type:     types.MustAsset("mp4"),
 			Path:     "/course/01 asset.mp4",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
@@ -808,7 +808,7 @@ func Test_DeleteAsset(t *testing.T) {
 			Title:    "Asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
-			Type:     *types.NewAsset("mp4"),
+			Type:     types.MustAsset("mp4"),
 			Path:     "/course/01 asset.mp4",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
@@ -842,7 +842,7 @@ func Test_DeleteAsset(t *testing.T) {
 			Title:    "Asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
-			Type:     *types.NewAsset("mp4"),
+			Type:     types.MustAsset("mp4"),
 			Path:     "/course/01 asset.mp4",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
@@ -875,7 +875,7 @@ func Test_DeleteAsset(t *testing.T) {
 			Title:    "Asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
-			Type:     *types.NewAsset("mp4"),
+			Type:     types.MustAsset("mp4"),
 			Path:     "/course/01 asset.mp4",
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))

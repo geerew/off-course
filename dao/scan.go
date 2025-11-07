@@ -27,7 +27,7 @@ func (dao *DAO) CreateScan(ctx context.Context, scan *models.Scan) error {
 	scan.RefreshUpdatedAt()
 
 	if !scan.Status.IsWaiting() {
-		scan.Status.SetWaiting()
+		scan.Status = types.ScanStatusWaiting
 	}
 
 	builderOpts := newBuilderOptions(models.SCAN_TABLE).

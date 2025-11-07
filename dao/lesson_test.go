@@ -54,7 +54,7 @@ func helper_createLessons(t *testing.T, ctx context.Context, dao *DAO, numCourse
 					Prefix:    sql.NullInt16{Int16: int16(assetIndex), Valid: true},
 					SubPrefix: sql.NullInt16{Int16: int16(assetIndex), Valid: true},
 					Module:    fmt.Sprintf("Module %d", assetIndex),
-					Type:      *types.NewAsset("mp4"),
+					Type:      types.MustAsset("mp4"),
 					Path:      fmt.Sprintf("%s/%s asset {%02d}.mp4", course.Path, lessonPrefix, assetIndex),
 				}
 				require.NoError(t, dao.CreateAsset(ctx, asset))
