@@ -55,9 +55,20 @@ func (api *hlsAPI) GetMaster(c *fiber.Ctx) error {
 		})
 	}
 
-	// Get asset with metadata
-	asset, err := api.getAssetWithMetadata(c.Context(), assetID)
+	// Verify authentication
+	_, ctx, err := principalCtx(c)
 	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	// Get asset with metadata and verify it belongs to a course
+	asset, err := api.getAssetWithMetadataAndCourse(ctx, assetID)
+	if err != nil {
+		return c.Status(http.StatusNotFound).JSON(fiber.Map{
+			"error": "Asset not found",
+		})
+	}
+	if asset == nil {
 		return c.Status(http.StatusNotFound).JSON(fiber.Map{
 			"error": "Asset not found",
 		})
@@ -73,7 +84,7 @@ func (api *hlsAPI) GetMaster(c *fiber.Ctx) error {
 	ua := ua.New(c.Get("User-Agent"))
 
 	// Get simple master playlist (single stream based on device type)
-	master, err := api.r.app.Transcoder.GetMasterPlaylistSingle(c.Context(), asset.Path, assetID, ua.Mobile())
+	master, err := api.r.app.Transcoder.GetMasterPlaylistSingle(ctx, asset.Path, assetID, ua.Mobile())
 	if err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to generate master playlist",
@@ -106,16 +117,27 @@ func (api *hlsAPI) GetVideoIndex(c *fiber.Ctx) error {
 		})
 	}
 
-	// Get asset
-	asset, err := api.getAssetWithMetadata(c.Context(), assetID)
+	// Verify authentication
+	_, ctx, err := principalCtx(c)
 	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	// Get asset and verify it belongs to a course
+	asset, err := api.getAssetWithMetadataAndCourse(ctx, assetID)
+	if err != nil {
+		return c.Status(http.StatusNotFound).JSON(fiber.Map{
+			"error": "Asset not found",
+		})
+	}
+	if asset == nil {
 		return c.Status(http.StatusNotFound).JSON(fiber.Map{
 			"error": "Asset not found",
 		})
 	}
 
 	// Get video index
-	indexPlaylist, err := api.r.app.Transcoder.GetVideoIndex(c.Context(), asset.Path, uint32(index), quality, assetID)
+	indexPlaylist, err := api.r.app.Transcoder.GetVideoIndex(ctx, asset.Path, uint32(index), quality, assetID)
 	if err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to generate video index",
@@ -156,16 +178,27 @@ func (api *hlsAPI) GetVideoSegment(c *fiber.Ctx) error {
 		})
 	}
 
-	// Get asset
-	asset, err := api.getAssetWithMetadata(c.Context(), assetID)
+	// Verify authentication
+	_, ctx, err := principalCtx(c)
 	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	// Get asset and verify it belongs to a course
+	asset, err := api.getAssetWithMetadataAndCourse(ctx, assetID)
+	if err != nil {
+		return c.Status(http.StatusNotFound).JSON(fiber.Map{
+			"error": "Asset not found",
+		})
+	}
+	if asset == nil {
 		return c.Status(http.StatusNotFound).JSON(fiber.Map{
 			"error": "Asset not found",
 		})
 	}
 
 	// Get video segment
-	segmentPath, err := api.r.app.Transcoder.GetVideoSegment(c.Context(), asset.Path, uint32(index), quality, int32(segment), assetID)
+	segmentPath, err := api.r.app.Transcoder.GetVideoSegment(ctx, asset.Path, uint32(index), quality, int32(segment), assetID)
 	if err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to generate video segment",
@@ -190,16 +223,27 @@ func (api *hlsAPI) GetAudioIndex(c *fiber.Ctx) error {
 		})
 	}
 
-	// Get asset
-	asset, err := api.getAssetWithMetadata(c.Context(), assetID)
+	// Verify authentication
+	_, ctx, err := principalCtx(c)
 	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	// Get asset and verify it belongs to a course
+	asset, err := api.getAssetWithMetadataAndCourse(ctx, assetID)
+	if err != nil {
+		return c.Status(http.StatusNotFound).JSON(fiber.Map{
+			"error": "Asset not found",
+		})
+	}
+	if asset == nil {
 		return c.Status(http.StatusNotFound).JSON(fiber.Map{
 			"error": "Asset not found",
 		})
 	}
 
 	// Get audio index
-	indexPlaylist, err := api.r.app.Transcoder.GetAudioIndex(c.Context(), asset.Path, uint32(index), assetID)
+	indexPlaylist, err := api.r.app.Transcoder.GetAudioIndex(ctx, asset.Path, uint32(index), assetID)
 	if err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to generate audio index",
@@ -232,16 +276,27 @@ func (api *hlsAPI) GetAudioSegment(c *fiber.Ctx) error {
 		})
 	}
 
-	// Get asset
-	asset, err := api.getAssetWithMetadata(c.Context(), assetID)
+	// Verify authentication
+	_, ctx, err := principalCtx(c)
 	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	// Get asset and verify it belongs to a course
+	asset, err := api.getAssetWithMetadataAndCourse(ctx, assetID)
+	if err != nil {
+		return c.Status(http.StatusNotFound).JSON(fiber.Map{
+			"error": "Asset not found",
+		})
+	}
+	if asset == nil {
 		return c.Status(http.StatusNotFound).JSON(fiber.Map{
 			"error": "Asset not found",
 		})
 	}
 
 	// Get audio segment
-	segmentPath, err := api.r.app.Transcoder.GetAudioSegment(c.Context(), asset.Path, uint32(index), int32(segment), assetID)
+	segmentPath, err := api.r.app.Transcoder.GetAudioSegment(ctx, asset.Path, uint32(index), int32(segment), assetID)
 	if err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to generate audio segment",
@@ -263,9 +318,20 @@ func (api *hlsAPI) GetQualities(c *fiber.Ctx) error {
 		})
 	}
 
-	// Get asset with metadata
-	asset, err := api.getAssetWithMetadata(c.Context(), assetID)
+	// Verify authentication
+	_, ctx, err := principalCtx(c)
 	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	// Get asset with metadata and verify it belongs to a course
+	asset, err := api.getAssetWithMetadataAndCourse(ctx, assetID)
+	if err != nil {
+		return c.Status(http.StatusNotFound).JSON(fiber.Map{
+			"error": "Asset not found",
+		})
+	}
+	if asset == nil {
 		return c.Status(http.StatusNotFound).JSON(fiber.Map{
 			"error": "Asset not found",
 		})
@@ -279,7 +345,7 @@ func (api *hlsAPI) GetQualities(c *fiber.Ctx) error {
 	}
 
 	// Get available qualities
-	qualities, err := api.r.app.Transcoder.GetQualities(c.Context(), asset.Path, assetID)
+	qualities, err := api.r.app.Transcoder.GetQualities(ctx, asset.Path, assetID)
 	if err != nil {
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to get available qualities",
@@ -299,9 +365,23 @@ func (api *hlsAPI) GetQualities(c *fiber.Ctx) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// getAssetWithMetadata retrieves an asset with its metadata by asset ID
-func (api *hlsAPI) getAssetWithMetadata(ctx context.Context, assetID string) (*models.Asset, error) {
-	return api.r.appDao.GetAsset(ctx, database.NewOptions().
+// getAssetWithMetadataAndCourse retrieves an asset with its metadata by asset ID
+// and verifies it belongs to a course
+func (api *hlsAPI) getAssetWithMetadataAndCourse(ctx context.Context, assetID string) (*models.Asset, error) {
+	dbOpts := database.NewOptions().
+		WithCourse().
 		WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assetID}).
-		WithAssetMetadata())
+		WithAssetMetadata()
+
+	asset, err := api.r.appDao.GetAsset(ctx, dbOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	// Verify asset exists and belongs to a course
+	if asset == nil || asset.CourseID == "" {
+		return nil, nil
+	}
+
+	return asset, nil
 }

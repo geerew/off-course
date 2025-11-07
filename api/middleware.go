@@ -133,11 +133,13 @@ func bootstrapMiddleware(r *Router) fiber.Handler {
 		if strings.HasPrefix(path, "/auth/bootstrap/") {
 			// Check if user is logged in
 			session, err := r.sessionManager.Get(c)
-			if err != nil || !session.Fresh() {
-				// Not logged in, redirect to login
+
+			if err != nil || session.Fresh() {
+				// Error getting session or session is fresh (no valid cookie), redirect to login
 				return c.Redirect("/auth/login")
 			}
-			// Logged in, redirect to home
+
+			// Logged in (session exists and is not fresh), redirect to home
 			return c.Redirect("/")
 		}
 
@@ -195,10 +197,18 @@ func authMiddleware(r *Router) fiber.Handler {
 			return c.Redirect("/")
 		}
 
-		if strings.HasPrefix(path, "/api/auth/") && !strings.HasPrefix(path, "/api/auth/me") {
-			return c.SendStatus(fiber.StatusOK)
+		// Allow public auth endpoints to proceed even with a session cookie
+		if strings.HasPrefix(path, "/api/auth/") {
+			if strings.HasPrefix(path, "/api/auth/login") ||
+				(r.app.Config.EnableSignup && strings.HasPrefix(path, "/api/auth/register")) ||
+				strings.HasPrefix(path, "/api/auth/signup-status") ||
+				strings.HasPrefix(path, "/api/auth/bootstrap/") {
+
+				return c.Next()
+			}
 		}
 
+		// Validate session for protected endpoints
 		userID, ok1 := session.Get("id").(string)
 		userRole, ok2 := session.Get("role").(string)
 		if !ok1 || !ok2 || userID == "" || userRole == "" {
