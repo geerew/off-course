@@ -72,7 +72,7 @@ func TestAuth_Register(t *testing.T) {
 		require.Contains(t, string(body), "Username and/or password cannot be empty")
 
 		// Missing username
-		req = httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(`{"password": "test"}`))
+		req = httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(`{"password": "password123"}`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 
 		status, body, err = requestHelper(t, router, req)
@@ -242,7 +242,7 @@ func TestAuth_Login(t *testing.T) {
 		require.Contains(t, string(body), "Username and/or password cannot be empty")
 
 		// Missing username
-		req = httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"password": "test"}`))
+		req = httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"password": "password123"}`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 
 		status, body, err = requestHelper(t, router, req)
@@ -291,7 +291,7 @@ func TestAuth_Login(t *testing.T) {
 		}
 		require.NoError(t, router.appDao.CreateUser(ctx, user))
 
-		req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"username": "test", "password": "invalid" }`))
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"username": "test", "password": "wrongpass123" }`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 
 		status, body, err := requestHelper(t, router, req)

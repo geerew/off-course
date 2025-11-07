@@ -82,6 +82,10 @@ func (api userAPI) createUser(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "A username and password are required", nil)
 	}
 
+	if err := validatePassword(userReq.Password); err != nil {
+		return errorResponse(c, fiber.StatusBadRequest, err.Error(), nil)
+	}
+
 	// Default the role to a user when not provided
 	if userReq.Role == "" {
 		userReq.Role = types.UserRoleUser.String()
@@ -147,6 +151,9 @@ func (api userAPI) updateUser(c *fiber.Ctx) error {
 	}
 
 	if userReq.Password != "" {
+		if err := validatePassword(userReq.Password); err != nil {
+			return errorResponse(c, fiber.StatusBadRequest, err.Error(), nil)
+		}
 		user.PasswordHash = auth.GeneratePassword(userReq.Password)
 	}
 

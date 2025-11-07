@@ -565,11 +565,32 @@ func (api coursesAPI) serveAsset(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api coursesAPI) updateAssetProgress(c *fiber.Ctx) error {
+	courseId := c.Params("id")
 	assetId := c.Params("asset")
 
 	req := &assetProgressRequest{}
 	if err := c.BodyParser(req); err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
+	}
+
+	_, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	// First, verify the asset belongs to the specified course
+	asset, err := api.r.appDao.GetAsset(ctx, database.NewOptions().
+		WithWhere(squirrel.And{
+			squirrel.Eq{models.ASSET_TABLE_ID: assetId},
+			squirrel.Eq{models.ASSET_TABLE_COURSE_ID: courseId},
+		}))
+
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up asset", err)
+	}
+
+	if asset == nil {
+		return errorResponse(c, fiber.StatusNotFound, "Asset not found for this course", nil)
 	}
 
 	assetProgress := &models.AssetProgress{
@@ -578,16 +599,11 @@ func (api coursesAPI) updateAssetProgress(c *fiber.Ctx) error {
 		Completed: req.Completed,
 	}
 
-	_, ctx, err := principalCtx(c)
-	if err != nil {
-		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
-	}
-
 	if err := api.r.appDao.UpsertAssetProgress(ctx, assetProgress); err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Asset not found", nil)
 		}
-		return errorResponse(c, fiber.StatusInternalServerError, "Error updating asset", err)
+		return errorResponse(c, fiber.StatusInternalServerError, "Error updating asset progress", err)
 	}
 
 	return c.Status(fiber.StatusNoContent).Send(nil)

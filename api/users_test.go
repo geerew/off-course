@@ -262,7 +262,7 @@ func TestUsers_CreateUser(t *testing.T) {
 	t.Run("201 (created)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		req := httptest.NewRequest(http.MethodPost, "/api/users/", strings.NewReader(`{"username": "testuser", "password": "1234"}`))
+		req := httptest.NewRequest(http.MethodPost, "/api/users/", strings.NewReader(`{"username": "testuser", "password": "password123"}`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 
 		status, _, err := requestHelper(t, router, req)
@@ -307,7 +307,7 @@ func TestUsers_CreateUser(t *testing.T) {
 	t.Run("400 (existing user)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		req := httptest.NewRequest(http.MethodPost, "/api/users/", strings.NewReader(`{"username": "testuser", "password": "1234" }`))
+		req := httptest.NewRequest(http.MethodPost, "/api/users/", strings.NewReader(`{"username": "testuser", "password": "password123" }`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 
 		status, _, err := requestHelper(t, router, req)
@@ -335,7 +335,7 @@ func TestUsers_CreateUser(t *testing.T) {
 		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.USER_TABLE)
 		require.NoError(t, err)
 
-		req := httptest.NewRequest(http.MethodPost, "/api/users/", strings.NewReader(`{"username": "admin", "password": "1234"}`))
+		req := httptest.NewRequest(http.MethodPost, "/api/users/", strings.NewReader(`{"username": "admin", "password": "password123"}`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 
 		status, body, err := requestHelper(t, router, req)
@@ -373,7 +373,7 @@ func TestUsers_UpdateUser(t *testing.T) {
 		require.Equal(t, "Bob", record.DisplayName)
 
 		// Update password
-		req = httptest.NewRequest(http.MethodPut, "/api/users/"+user.ID, strings.NewReader(`{"password": "1234"}`))
+		req = httptest.NewRequest(http.MethodPut, "/api/users/"+user.ID, strings.NewReader(`{"password": "password123"}`))
 		req.Header.Set("Content-Type", "application/json")
 
 		status, _, err = requestHelper(t, router, req)
@@ -383,7 +383,7 @@ func TestUsers_UpdateUser(t *testing.T) {
 		record, err = router.appDao.GetUser(ctx, dbOpts)
 		require.NoError(t, err)
 		require.Equal(t, "Bob", record.DisplayName)
-		require.True(t, auth.ComparePassword(record.PasswordHash, "1234"))
+		require.True(t, auth.ComparePassword(record.PasswordHash, "password123"))
 
 		// Update role
 		req = httptest.NewRequest(http.MethodPut, "/api/users/"+user.ID, strings.NewReader(`{"role": "admin"}`))
@@ -396,7 +396,7 @@ func TestUsers_UpdateUser(t *testing.T) {
 		record, err = router.appDao.GetUser(ctx, dbOpts)
 		require.NoError(t, err)
 		require.Equal(t, "Bob", record.DisplayName)
-		require.True(t, auth.ComparePassword(record.PasswordHash, "1234"))
+		require.True(t, auth.ComparePassword(record.PasswordHash, "password123"))
 		require.Equal(t, types.UserRoleAdmin, record.Role)
 	})
 
@@ -442,7 +442,7 @@ func TestUsers_UpdateUser(t *testing.T) {
 		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.USER_TABLE)
 		require.NoError(t, err)
 
-		req := httptest.NewRequest(http.MethodPut, "/api/users/invalid", strings.NewReader(`{"username": "admin", "password": "1234"}`))
+		req := httptest.NewRequest(http.MethodPut, "/api/users/invalid", strings.NewReader(`{"username": "admin", "password": "password123"}`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 
 		status, body, err := requestHelper(t, router, req)

@@ -116,6 +116,7 @@ func (r *Router) createSessionStore() {
 		KeyLookup:      "cookie:session",
 		Expiration:     7 * (24 * time.Hour),
 		CookieHTTPOnly: true,
+		CookieSameSite: "Lax",
 	}
 
 	sqliteStorage := session.NewSqliteStorage(r.app.DbManager.DataDb, 10*time.Second)

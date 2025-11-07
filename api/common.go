@@ -55,6 +55,21 @@ func errorResponse(c *fiber.Ctx, status int, message string, err error) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// validatePassword validates a password
+func validatePassword(password string) error {
+	if len(password) < 8 {
+		return fmt.Errorf("password must be at least 8 characters")
+	}
+
+	if len(password) > 128 {
+		return fmt.Errorf("password must be no more than 128 characters")
+	}
+
+	return nil
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // builderOptions is a struct to hold the options for the optionsBuilder
 type builderOptions struct {
 	// A default order by clause to use if none is found in the query

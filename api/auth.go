@@ -64,6 +64,10 @@ func (api authAPI) register(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Username and/or password cannot be empty", nil)
 	}
 
+	if err := validatePassword(registerReq.Password); err != nil {
+		return errorResponse(c, fiber.StatusBadRequest, err.Error(), nil)
+	}
+
 	user := &models.User{
 		Username:     registerReq.Username,
 		DisplayName:  registerReq.Username, // Set the display name to the username by default
