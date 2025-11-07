@@ -73,11 +73,14 @@
 
 {#snippet title()}
 	<div class="flex flex-row items-center justify-between px-1.5">
-		<span class="text-background-primary-alt-1 text-base font-semibold">Tags</span>
+		<span class="text-background-primary-alt-1 text-sm font-semibold">Tags</span>
 		{#if allTags && allTags.length > 0}
 			<Button
 				variant="ghost"
-				class="text-foreground-alt-3 hover:text-foreground-alt-2 p-0 text-sm hover:bg-transparent"
+				class={cn(
+					'text-foreground-alt-3 hover:text-foreground-alt-2 p-0 text-sm hover:bg-transparent',
+					selected.length === 0 && 'invisible'
+				)}
 				disabled={isDisabled}
 				onclick={() => {
 					selected = [];
@@ -202,7 +205,7 @@
 		<Accordion.Header>
 			<Accordion.Trigger
 				class={cn(
-					'group data-[state=open]:border-b-foreground-alt-4 flex w-full flex-1 items-center justify-between border-b border-transparent px-2.5 py-5 font-medium transition-transform select-none hover:cursor-pointer',
+					'data-[state=open]:border-b-foreground-alt-4 group flex w-full flex-1 items-center justify-between border-b border-transparent px-2.5 py-5 font-medium transition-transform select-none hover:cursor-pointer',
 					value &&
 						'data-[state=open]:border-b-background-primary-alt-1 data-[state=closed]:border-b-background-primary-alt-1 data-[state=closed]:border-b-2',
 					isDisabled && 'cursor-not-allowed opacity-50'
@@ -220,7 +223,7 @@
 							variant="ghost"
 							class={cn(
 								'text-foreground-alt-3 hover:text-foreground-alt-2 h-auto p-0 text-sm hover:bg-transparent',
-								!value && 'invisible'
+								selected.length === 0 && 'invisible'
 							)}
 							disabled={isDisabled}
 							onclick={(e: MouseEvent) => {

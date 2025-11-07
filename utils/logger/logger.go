@@ -15,6 +15,7 @@ type LogLevel int
 const (
 	LevelDebug LogLevel = -1
 	LevelInfo  LogLevel = 0
+	LevelWarn  LogLevel = 2
 	LevelError LogLevel = 1
 )
 
@@ -94,6 +95,8 @@ func New(config *Config) *Logger {
 		zlog = zlog.Level(zerolog.DebugLevel)
 	case LevelInfo:
 		zlog = zlog.Level(zerolog.InfoLevel)
+	case LevelWarn:
+		zlog = zlog.Level(zerolog.WarnLevel)
 	case LevelError:
 		zlog = zlog.Level(zerolog.ErrorLevel)
 	default:
@@ -107,36 +110,37 @@ func New(config *Config) *Logger {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Component-specific logger creators for type safety
-
-// WithMain creates a logger for the main application component
-func (l *Logger) WithMain() *Logger {
-	return l.withComponent("main")
+// WithApp creates a logger for the application
+func (l *Logger) WithApp() *Logger {
+	return l.withComponent("app")
 }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // WithAPI creates a logger for the API component
 func (l *Logger) WithAPI() *Logger {
 	return l.withComponent("api")
 }
 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // WithHLS creates a logger for the HLS transcoding component
 func (l *Logger) WithHLS() *Logger {
 	return l.withComponent("hls")
 }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // WithCourseScan creates a logger for the course scanning component
 func (l *Logger) WithCourseScan() *Logger {
 	return l.withComponent("coursescan")
 }
 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // WithCron creates a logger for the cron jobs component
 func (l *Logger) WithCron() *Logger {
 	return l.withComponent("cron")
-}
-
-// WithAppFS creates a logger for the app filesystem component
-func (l *Logger) WithAppFS() *Logger {
-	return l.withComponent("appfs")
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -172,7 +176,7 @@ func (l *Logger) Error() *zerolog.Event {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Warn returns a warn level event (for compatibility, maps to Info in our 3-level system)
+// Warn returns a warn level event
 func (l *Logger) Warn() *zerolog.Event {
 	return l.zlog.Warn()
 }
@@ -196,16 +200,6 @@ func (l *Logger) Component() string {
 // NilLogger creates a logger that discards all output (useful for tests)
 func NilLogger() *Logger {
 	zlog := zerolog.New(io.Discard)
-	return &Logger{
-		zlog: zlog,
-	}
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// TestLogger creates a logger that writes to the provided writer (useful for tests)
-func TestLogger(writer io.Writer) *Logger {
-	zlog := zerolog.New(writer).With().Timestamp().Logger()
 	return &Logger{
 		zlog: zlog,
 	}

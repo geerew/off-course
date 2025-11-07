@@ -1,6 +1,13 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { BurgerMenuIcon, CourseIcon, ScanIcon, TagIcon, UserIcon } from '$lib/components/icons';
+	import {
+		BurgerMenuIcon,
+		CourseIcon,
+		LogsIcon,
+		ScanIcon,
+		TagIcon,
+		UserIcon
+	} from '$lib/components/icons';
 	import { Button } from '$lib/components/ui';
 	import { cn, remCalc } from '$lib/utils';
 	import { Dialog } from 'bits-ui';
@@ -40,6 +47,12 @@
 			href: '/admin/users',
 			matcher: '/admin/users/',
 			icon: UserIcon
+		},
+		{
+			label: 'Logs',
+			href: '/admin/logs',
+			matcher: '/admin/logs/',
+			icon: LogsIcon
 		}
 	];
 

@@ -24,10 +24,7 @@ func setup(t *testing.T) (*CourseScan, context.Context) {
 	t.Helper()
 
 	// Create a test logger
-	testLogger := logger.New(&logger.Config{
-		Level:         logger.LevelInfo,
-		ConsoleOutput: false, // Disable console output for tests
-	})
+	testLogger := logger.NilLogger()
 
 	appFs := appfs.New(afero.NewMemMapFs())
 
