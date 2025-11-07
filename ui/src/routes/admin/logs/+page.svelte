@@ -20,7 +20,7 @@
 	let showScrollToTop = $state(false);
 	let filtersInitialized = $state(false);
 
-	const perPage = 100;
+	const perPage = 50;
 
 	let loadPromise = $state(fetchLogs());
 
