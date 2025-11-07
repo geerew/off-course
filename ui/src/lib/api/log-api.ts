@@ -26,4 +26,3 @@ export async function GetLogs(params?: LogReqParams): Promise<LogPaginationModel
 		throw new APIError(response.status, data.message || 'Unknown error');
 	}
 }
-
