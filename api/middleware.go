@@ -39,6 +39,12 @@ func requestLoggingMiddleware(logger *logger.Logger) fiber.Handler {
 
 		duration := time.Since(start)
 
+		// Only log API requests (paths starting with /api)
+		path := c.Path()
+		if !strings.HasPrefix(path, "/api/") {
+			return err
+		}
+
 		status := c.Response().StatusCode()
 		apiLogger := logger.WithAPI()
 
