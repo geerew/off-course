@@ -175,7 +175,7 @@ func Test_DbWriter_Write(t *testing.T) {
 		}{
 			{"debug", int(LevelDebug), "debug"},
 			{"info", int(LevelInfo), "info"},
-			{"warn", int(LevelInfo), "warn"}, // Warn maps to Info
+			{"warn", int(LevelWarn), "warn"},
 			{"error", int(LevelError), "error"},
 			{"unknown", int(LevelInfo), "unknown"}, // Unknown defaults to Info
 		}
