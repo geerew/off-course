@@ -46,7 +46,7 @@ func (dao *DAO) CreateParam(ctx context.Context, param *models.Param) error {
 
 // GetParam gets a record from the params table based upon the where clause in the options. If
 // there is no where clause, it will return the first record in the table
-func (dao *DAO) GetParam(ctx context.Context, dbOpts *database.Options) (*models.Param, error) {
+func (dao *DAO) GetParam(ctx context.Context, dbOpts *Options) (*models.Param, error) {
 	builderOpts := newBuilderOptions(models.PARAM_TABLE).
 		WithColumns(models.ParamColumns()...).
 		SetDbOpts(dbOpts).
@@ -59,7 +59,7 @@ func (dao *DAO) GetParam(ctx context.Context, dbOpts *database.Options) (*models
 
 // ListParams gets all records from the params table based upon the where clause and pagination
 // in the options
-func (dao *DAO) ListParams(ctx context.Context, dbOpts *database.Options) ([]*models.Param, error) {
+func (dao *DAO) ListParams(ctx context.Context, dbOpts *Options) ([]*models.Param, error) {
 	builderOpts := newBuilderOptions(models.PARAM_TABLE).
 		WithColumns(models.ParamColumns()...).
 		SetDbOpts(dbOpts)
@@ -85,7 +85,7 @@ func (dao *DAO) UpdateParam(ctx context.Context, param *models.Param) error {
 
 	param.RefreshUpdatedAt()
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: param.ID})
+	dbOpts := NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: param.ID})
 
 	builderOpts := newBuilderOptions(models.PARAM_TABLE).
 		WithData(
@@ -105,7 +105,7 @@ func (dao *DAO) UpdateParam(ctx context.Context, param *models.Param) error {
 // DeleteParams deletes records from the params table
 //
 // Errors when a where clause is not provided
-func (dao *DAO) DeleteParams(ctx context.Context, dbOpts *database.Options) error {
+func (dao *DAO) DeleteParams(ctx context.Context, dbOpts *Options) error {
 	if dbOpts == nil || dbOpts.Where == nil {
 		return utils.ErrWhere
 	}

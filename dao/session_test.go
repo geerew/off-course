@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/pagination"
@@ -47,7 +46,7 @@ func Test_CreateOrReplaceSession(t *testing.T) {
 		require.NoError(t, dao.CreateOrReplaceSession(ctx, session))
 
 		// Verify the session was updated
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_USER_ID: session.UserId})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_USER_ID: session.UserId})
 		record, err := dao.GetSession(ctx, dbOpts)
 		require.NoError(t, err)
 		require.Equal(t, session.UserId, record.UserId)
@@ -99,7 +98,7 @@ func Test_GetSession(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateOrReplaceSession(ctx, session))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_ID: session.ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_ID: session.ID})
 		record, err := dao.GetSession(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Equal(t, session.ID, record.ID)
@@ -167,7 +166,7 @@ func Test_ListSessions(t *testing.T) {
 		}
 
 		// Descending order by created_at
-		opts := database.NewOptions().WithOrderBy(models.SESSION_TABLE_USER_ID + " DESC")
+		opts := NewOptions().WithOrderBy(models.SESSION_TABLE_USER_ID + " DESC")
 
 		records, err := dao.ListSessions(ctx, opts)
 		require.Nil(t, err)
@@ -178,7 +177,7 @@ func Test_ListSessions(t *testing.T) {
 		}
 
 		// Ascending order by created_at
-		opts = database.NewOptions().WithOrderBy(models.SESSION_TABLE_USER_ID + " ASC")
+		opts = NewOptions().WithOrderBy(models.SESSION_TABLE_USER_ID + " ASC")
 
 		records, err = dao.ListSessions(ctx, opts)
 		require.Nil(t, err)
@@ -200,7 +199,7 @@ func Test_ListSessions(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateOrReplaceSession(ctx, session))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_ID: session.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_ID: session.ID})
 		records, err := dao.ListSessions(ctx, opts)
 		require.Nil(t, err)
 		require.Len(t, records, 1)
@@ -224,7 +223,7 @@ func Test_ListSessions(t *testing.T) {
 		}
 
 		// First page with 10 records
-		p := database.NewOptions().WithPagination(pagination.New(1, 10))
+		p := NewOptions().WithPagination(pagination.New(1, 10))
 		records, err := dao.ListSessions(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 10)
@@ -232,7 +231,7 @@ func Test_ListSessions(t *testing.T) {
 		require.Equal(t, sessions[9].ID, records[9].ID)
 
 		// Second page with remaining 7 records
-		p = database.NewOptions().WithPagination(pagination.New(2, 10))
+		p = NewOptions().WithPagination(pagination.New(2, 10))
 		records, err = dao.ListSessions(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 7)
@@ -265,7 +264,7 @@ func Test_UpdateSession(t *testing.T) {
 		time.Sleep(1 * time.Millisecond)
 		require.NoError(t, dao.UpdateSession(ctx, updatedSession))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_ID: originalSession.ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_ID: originalSession.ID})
 		record, err := dao.GetSession(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Equal(t, originalSession.ID, record.ID)          // No change
@@ -357,7 +356,7 @@ func Test_DeleteSessions(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateOrReplaceSession(ctx, session))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_ID: session.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_ID: session.ID})
 		require.Nil(t, dao.DeleteSessions(ctx, opts))
 
 		records, err := dao.ListSessions(ctx, opts)
@@ -376,7 +375,7 @@ func Test_DeleteSessions(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateOrReplaceSession(ctx, session))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_ID: "non-existent"})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_ID: "non-existent"})
 		require.Nil(t, dao.DeleteSessions(ctx, opts))
 
 		records, err := dao.ListSessions(ctx, nil)

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/pagination"
@@ -63,7 +62,7 @@ func Test_GetCourseProgress(t *testing.T) {
 		}))
 
 		// No progress
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_PROGRESS_TABLE_COURSE_ID: course.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.COURSE_PROGRESS_TABLE_COURSE_ID: course.ID})
 		cp, err := dao.GetCourseProgress(ctx, opts)
 		require.NoError(t, err)
 		require.Nil(t, cp)
@@ -179,7 +178,7 @@ func Test_GetCourseProgress(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateAsset(ctx, doc))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_PROGRESS_TABLE_COURSE_ID: course.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.COURSE_PROGRESS_TABLE_COURSE_ID: course.ID})
 
 		// A @ 50s (0.5), B @ 0 (0.0), Doc not completed (0.0):
 		// percent = round(100 * (0.5 + 0 + 0) / 3) = 17
@@ -344,7 +343,7 @@ func Test_ListCourseProgress(t *testing.T) {
 		}
 
 		// Descending order by created_at
-		opts := database.NewOptions().WithOrderBy(models.COURSE_PROGRESS_TABLE_CREATED_AT + " DESC")
+		opts := NewOptions().WithOrderBy(models.COURSE_PROGRESS_TABLE_CREATED_AT + " DESC")
 
 		records, err := dao.ListCourseProgress(ctx, opts)
 		require.Nil(t, err)
@@ -355,7 +354,7 @@ func Test_ListCourseProgress(t *testing.T) {
 		}
 
 		// Ascending order by created_at
-		opts = database.NewOptions().WithOrderBy(models.COURSE_PROGRESS_TABLE_CREATED_AT + " ASC")
+		opts = NewOptions().WithOrderBy(models.COURSE_PROGRESS_TABLE_CREATED_AT + " ASC")
 
 		records, err = dao.ListCourseProgress(ctx, opts)
 		require.Nil(t, err)
@@ -401,7 +400,7 @@ func Test_ListCourseProgress(t *testing.T) {
 		}
 		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_PROGRESS_TABLE_COURSE_ID: course.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.COURSE_PROGRESS_TABLE_COURSE_ID: course.ID})
 		records, err := dao.ListCourseProgress(ctx, opts)
 		require.Nil(t, err)
 		require.Len(t, records, 1)
@@ -449,7 +448,7 @@ func Test_ListCourseProgress(t *testing.T) {
 		}
 
 		// First page with 10 records
-		p := database.NewOptions().WithPagination(pagination.New(1, 10))
+		p := NewOptions().WithPagination(pagination.New(1, 10))
 		records, err := dao.ListCourseProgress(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 10)
@@ -457,7 +456,7 @@ func Test_ListCourseProgress(t *testing.T) {
 		require.Equal(t, courses[9].ID, records[9].CourseID)
 
 		// Second page with remaining 7 records
-		p = database.NewOptions().WithPagination(pagination.New(2, 10))
+		p = NewOptions().WithPagination(pagination.New(2, 10))
 		records, err = dao.ListCourseProgress(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 7)
@@ -504,7 +503,7 @@ func Test_DeleteCourseProgress(t *testing.T) {
 		}
 		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_PROGRESS_TABLE_COURSE_ID: course.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.COURSE_PROGRESS_TABLE_COURSE_ID: course.ID})
 		require.Nil(t, dao.DeleteCourseProgress(ctx, opts))
 
 		records, err := dao.ListCourseProgress(ctx, opts)
@@ -547,7 +546,7 @@ func Test_DeleteCourseProgress(t *testing.T) {
 		}
 		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_PROGRESS_TABLE_ID: "non-existent"})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.COURSE_PROGRESS_TABLE_ID: "non-existent"})
 		require.Nil(t, dao.DeleteCourseProgress(ctx, opts))
 
 		records, err := dao.ListCourseProgress(ctx, nil)
@@ -634,7 +633,7 @@ func Test_DeleteCourseProgress(t *testing.T) {
 		}
 		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
 		require.Nil(t, dao.DeleteCourses(ctx, dbOpts))
 
 		records, err := dao.ListCourseProgress(ctx, nil)

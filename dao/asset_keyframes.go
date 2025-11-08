@@ -129,7 +129,7 @@ func (dao *DAO) UpdateAssetKeyframes(ctx context.Context, keyframes *models.Asse
 				models.KEYFRAMES_IS_COMPLETE: keyframes.IsComplete,
 				models.BASE_UPDATED_AT:       keyframes.UpdatedAt,
 			}).
-		SetDbOpts(database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: keyframes.ID}))
+		SetDbOpts(NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: keyframes.ID}))
 
 	_, err := updateGeneric(ctx, dao, *builderOpts)
 	return err
@@ -144,7 +144,7 @@ func (dao *DAO) DeleteAssetKeyframes(ctx context.Context, assetID string) error 
 	}
 
 	builderOpts := newBuilderOptions(models.ASSET_KEYFRAMES_TABLE).
-		SetDbOpts(database.NewOptions().WithWhere(squirrel.Eq{models.KEYFRAMES_ASSET_ID: assetID}))
+		SetDbOpts(NewOptions().WithWhere(squirrel.Eq{models.KEYFRAMES_ASSET_ID: assetID}))
 
 	sqlStr, args, err := deleteBuilder(*builderOpts)
 	if err != nil {
@@ -165,7 +165,7 @@ func (dao *DAO) DeleteAssetKeyframesById(ctx context.Context, id string) error {
 	}
 
 	builderOpts := newBuilderOptions(models.ASSET_KEYFRAMES_TABLE).
-		SetDbOpts(database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: id}))
+		SetDbOpts(NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: id}))
 
 	sqlStr, args, err := deleteBuilder(*builderOpts)
 	if err != nil {
@@ -180,7 +180,7 @@ func (dao *DAO) DeleteAssetKeyframesById(ctx context.Context, id string) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // ListAssetKeyframes retrieves asset keyframes with optional filtering
-func (dao *DAO) ListAssetKeyframes(ctx context.Context, opts *database.Options) ([]*models.AssetKeyframes, error) {
+func (dao *DAO) ListAssetKeyframes(ctx context.Context, opts *Options) ([]*models.AssetKeyframes, error) {
 	query := squirrel.Select(models.AssetKeyframesColumns()...).
 		From(models.ASSET_KEYFRAMES_TABLE)
 
@@ -273,7 +273,7 @@ func (dao *DAO) ExistsAssetKeyframes(ctx context.Context, assetID string) (bool,
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // GetAssetKeyframesCount returns the total number of asset keyframes records
-func (dao *DAO) GetAssetKeyframesCount(ctx context.Context, opts *database.Options) (int, error) {
+func (dao *DAO) GetAssetKeyframesCount(ctx context.Context, opts *Options) (int, error) {
 	query := squirrel.Select("COUNT(*)").
 		From(models.ASSET_KEYFRAMES_TABLE)
 

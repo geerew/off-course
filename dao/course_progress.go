@@ -43,7 +43,7 @@ func (dao *DAO) SyncCourseProgress(ctx context.Context, assetId string) error {
 
 // GetCourseProgress gets a record from the course progress table based upon the where clause in the options. If
 // there is no where clause, it will return the first record in the table
-func (dao *DAO) GetCourseProgress(ctx context.Context, dbOpts *database.Options) (*models.CourseProgress, error) {
+func (dao *DAO) GetCourseProgress(ctx context.Context, dbOpts *Options) (*models.CourseProgress, error) {
 	builderOpts := newBuilderOptions(models.COURSE_PROGRESS_TABLE).
 		WithColumns(models.CourseProgressColumns()...).
 		SetDbOpts(dbOpts).
@@ -56,7 +56,7 @@ func (dao *DAO) GetCourseProgress(ctx context.Context, dbOpts *database.Options)
 
 // ListCourseProgress gets all records from the course progress table based upon the where clause and pagination
 // in the options
-func (dao *DAO) ListCourseProgress(ctx context.Context, dbOpts *database.Options) ([]*models.CourseProgress, error) {
+func (dao *DAO) ListCourseProgress(ctx context.Context, dbOpts *Options) ([]*models.CourseProgress, error) {
 	builderOpts := newBuilderOptions(models.COURSE_PROGRESS_TABLE).
 		WithColumns(models.CourseProgressColumns()...).
 		SetDbOpts(dbOpts)
@@ -69,7 +69,7 @@ func (dao *DAO) ListCourseProgress(ctx context.Context, dbOpts *database.Options
 // DeleteCourseProgress deletes records from the course progress table
 //
 // Errors when a where clause is not provided
-func (dao *DAO) DeleteCourseProgress(ctx context.Context, dbOpts *database.Options) error {
+func (dao *DAO) DeleteCourseProgress(ctx context.Context, dbOpts *Options) error {
 	if dbOpts == nil || dbOpts.Where == nil {
 		return utils.ErrWhere
 	}

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/pagination"
@@ -68,7 +67,7 @@ func Test_GetScan(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID}
 		require.NoError(t, dao.CreateScan(ctx, scan))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_ID: scan.ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_ID: scan.ID})
 		record, err := dao.GetScan(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Equal(t, scan.ID, record.ID)
@@ -139,7 +138,7 @@ func Test_ListScans(t *testing.T) {
 		}
 
 		// Descending order by created_at
-		opts := database.NewOptions().WithOrderBy(models.SCAN_TABLE_CREATED_AT + " DESC")
+		opts := NewOptions().WithOrderBy(models.SCAN_TABLE_CREATED_AT + " DESC")
 
 		records, err := dao.ListScans(ctx, opts)
 		require.Nil(t, err)
@@ -151,7 +150,7 @@ func Test_ListScans(t *testing.T) {
 		}
 
 		// Ascending order by created_at
-		opts = database.NewOptions().WithOrderBy(models.SCAN_TABLE_CREATED_AT + " ASC")
+		opts = NewOptions().WithOrderBy(models.SCAN_TABLE_CREATED_AT + " ASC")
 
 		records, err = dao.ListScans(ctx, opts)
 		require.Nil(t, err)
@@ -172,7 +171,7 @@ func Test_ListScans(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID}
 		require.NoError(t, dao.CreateScan(ctx, scan))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_ID: scan.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_ID: scan.ID})
 		records, err := dao.ListScans(ctx, opts)
 		require.Nil(t, err)
 		require.Len(t, records, 1)
@@ -194,7 +193,7 @@ func Test_ListScans(t *testing.T) {
 		}
 
 		// First page with 10 records
-		p := database.NewOptions().WithPagination(pagination.New(1, 10))
+		p := NewOptions().WithPagination(pagination.New(1, 10))
 		records, err := dao.ListScans(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 10)
@@ -202,7 +201,7 @@ func Test_ListScans(t *testing.T) {
 		require.Equal(t, scans[9].ID, records[9].ID)
 
 		// Second page with remaining 7 records
-		p = database.NewOptions().WithPagination(pagination.New(2, 10))
+		p = NewOptions().WithPagination(pagination.New(2, 10))
 		records, err = dao.ListScans(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 7)
@@ -232,7 +231,7 @@ func Test_UpdateScan(t *testing.T) {
 		}
 		require.NoError(t, dao.UpdateScan(ctx, updatedScan))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_ID: originalScan.ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_ID: originalScan.ID})
 		record, err := dao.GetScan(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Equal(t, originalScan.ID, record.ID)                     // No change
@@ -272,7 +271,7 @@ func Test_DeleteScans(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID}
 		require.NoError(t, dao.CreateScan(ctx, scan))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_ID: scan.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_ID: scan.ID})
 		require.Nil(t, dao.DeleteScans(ctx, opts))
 
 		records, err := dao.ListScans(ctx, opts)
@@ -289,7 +288,7 @@ func Test_DeleteScans(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID}
 		require.NoError(t, dao.CreateScan(ctx, scan))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_ID: "non-existent"})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_ID: "non-existent"})
 		require.Nil(t, dao.DeleteScans(ctx, opts))
 
 		records, err := dao.ListScans(ctx, nil)
@@ -324,7 +323,7 @@ func Test_DeleteScans(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID}
 		require.NoError(t, dao.CreateScan(ctx, scan))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
 		require.Nil(t, dao.DeleteCourses(ctx, dbOpts))
 
 		records, err := dao.ListScans(ctx, nil)

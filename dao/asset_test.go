@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/pagination"
@@ -111,7 +110,7 @@ func Test_GetAsset(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: asset.ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: asset.ID})
 		record, err := dao.GetAsset(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Equal(t, asset.ID, record.ID)
@@ -164,7 +163,7 @@ func Test_GetAsset(t *testing.T) {
 		require.NoError(t, dao.CreateAssetMetadata(ctx, meta))
 
 		// With progress
-		dbOpts := database.NewOptions().
+		dbOpts := NewOptions().
 			WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: asset.ID}).
 			WithUserProgress()
 
@@ -266,7 +265,7 @@ func Test_GetAsset(t *testing.T) {
 	t.Run("missing principal", func(t *testing.T) {
 		dao, _ := setup(t)
 
-		dbOpts := database.NewOptions().WithUserProgress()
+		dbOpts := NewOptions().WithUserProgress()
 		record, err := dao.GetAsset(context.Background(), dbOpts)
 		require.ErrorIs(t, err, utils.ErrPrincipal)
 		require.Nil(t, record)
@@ -370,7 +369,7 @@ func Test_ListAssets(t *testing.T) {
 		}
 
 		// List with progress
-		dbOpts := database.NewOptions().WithUserProgress()
+		dbOpts := NewOptions().WithUserProgress()
 
 		records, err := dao.ListAssets(ctx, dbOpts)
 		require.Nil(t, err)
@@ -531,7 +530,7 @@ func Test_ListAssets(t *testing.T) {
 		}
 
 		// Descending order by created_at
-		opts := database.NewOptions().WithOrderBy(models.ASSET_TABLE_CREATED_AT + " DESC")
+		opts := NewOptions().WithOrderBy(models.ASSET_TABLE_CREATED_AT + " DESC")
 		records, err := dao.ListAssets(ctx, opts)
 		require.Nil(t, err)
 		require.Len(t, records, 3)
@@ -541,7 +540,7 @@ func Test_ListAssets(t *testing.T) {
 		}
 
 		// Ascending order by created_at
-		opts = database.NewOptions().WithOrderBy(models.ASSET_TABLE_CREATED_AT + " ASC")
+		opts = NewOptions().WithOrderBy(models.ASSET_TABLE_CREATED_AT + " ASC")
 		records, err = dao.ListAssets(ctx, opts)
 		require.Nil(t, err)
 		require.Len(t, records, 3)
@@ -576,7 +575,7 @@ func Test_ListAssets(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: asset.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: asset.ID})
 		records, err := dao.ListAssets(ctx, opts)
 		require.Nil(t, err)
 		require.Len(t, records, 1)
@@ -616,7 +615,7 @@ func Test_ListAssets(t *testing.T) {
 		}
 
 		// First page with 10 records
-		p := database.NewOptions().WithPagination(pagination.New(1, 10))
+		p := NewOptions().WithPagination(pagination.New(1, 10))
 		records, err := dao.ListAssets(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 10)
@@ -624,7 +623,7 @@ func Test_ListAssets(t *testing.T) {
 		require.Equal(t, assets[9].ID, records[9].ID)
 
 		// Second page with remaining 7 records
-		p = database.NewOptions().WithPagination(pagination.New(2, 10))
+		p = NewOptions().WithPagination(pagination.New(2, 10))
 		records, err = dao.ListAssets(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 7)
@@ -689,7 +688,7 @@ func Test_UpdateAsset(t *testing.T) {
 		}
 		require.NoError(t, dao.UpdateAsset(ctx, updatedAsset))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: originalAsset.ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: originalAsset.ID})
 		record, err := dao.GetAsset(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Equal(t, originalAsset.ID, record.ID)                    // No change
@@ -780,7 +779,7 @@ func Test_DeleteAsset(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: asset.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: asset.ID})
 		require.Nil(t, dao.DeleteAssets(ctx, opts))
 
 		records, err := dao.ListAssets(ctx, opts)
@@ -813,7 +812,7 @@ func Test_DeleteAsset(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: "non-existent"})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: "non-existent"})
 		require.Nil(t, dao.DeleteAssets(ctx, opts))
 
 		records, err := dao.ListAssets(ctx, nil)
@@ -880,7 +879,7 @@ func Test_DeleteAsset(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateAsset(ctx, asset))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
 		require.Nil(t, dao.DeleteCourses(ctx, dbOpts))
 
 		records, err := dao.ListAssets(ctx, nil)

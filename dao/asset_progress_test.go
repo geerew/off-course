@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/pagination"
@@ -73,7 +72,7 @@ func Test_UpsertAssetProgress(t *testing.T) {
 		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
 		// Read back (by ID assigned during upsert)
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: assetProgress.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: assetProgress.ID})
 		record, err := dao.GetAssetProgress(ctx, opts)
 		require.NoError(t, err)
 		require.NotNil(t, record)
@@ -131,7 +130,7 @@ func Test_UpsertAssetProgress(t *testing.T) {
 		}
 		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: assetProgress.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: assetProgress.ID})
 		record, err := dao.GetAssetProgress(ctx, opts)
 		require.NoError(t, err)
 		require.NotNil(t, record)
@@ -217,7 +216,7 @@ func Test_UpsertAssetProgress(t *testing.T) {
 		require.NoError(t, dao.UpsertAssetProgress(ctx, dp))
 
 		// Verify v1
-		r1, err := dao.GetAssetProgress(ctx, database.NewOptions().WithWhere(
+		r1, err := dao.GetAssetProgress(ctx, NewOptions().WithWhere(
 			squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: v1p.ID},
 		))
 		require.NoError(t, err)
@@ -225,7 +224,7 @@ func Test_UpsertAssetProgress(t *testing.T) {
 		require.InDelta(t, 0.5, r1.ProgressFrac, 1e-9)
 
 		// Verify v2
-		r2, err := dao.GetAssetProgress(ctx, database.NewOptions().WithWhere(
+		r2, err := dao.GetAssetProgress(ctx, NewOptions().WithWhere(
 			squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: v2p.ID},
 		))
 		require.NoError(t, err)
@@ -233,7 +232,7 @@ func Test_UpsertAssetProgress(t *testing.T) {
 		require.InDelta(t, 0.5, r2.ProgressFrac, 1e-9)
 
 		// Verify doc
-		rd, err := dao.GetAssetProgress(ctx, database.NewOptions().WithWhere(
+		rd, err := dao.GetAssetProgress(ctx, NewOptions().WithWhere(
 			squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: dp.ID},
 		))
 		require.NoError(t, err)
@@ -291,7 +290,7 @@ func Test_GetAssetProgress(t *testing.T) {
 		}
 		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: assetProgress.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: assetProgress.ID})
 		record, err := dao.GetAssetProgress(ctx, opts)
 		require.NoError(t, err)
 		require.Equal(t, assetProgress.ID, record.ID)
@@ -407,7 +406,7 @@ func Test_ListAssetProgress(t *testing.T) {
 		}
 
 		// Descending order by created_at
-		opts := database.NewOptions().WithOrderBy(models.ASSET_PROGRESS_TABLE_CREATED_AT + " DESC")
+		opts := NewOptions().WithOrderBy(models.ASSET_PROGRESS_TABLE_CREATED_AT + " DESC")
 
 		records, err := dao.ListAssetProgress(ctx, opts)
 		require.Nil(t, err)
@@ -418,7 +417,7 @@ func Test_ListAssetProgress(t *testing.T) {
 		}
 
 		// Ascending order by created_at
-		opts = database.NewOptions().WithOrderBy(models.ASSET_PROGRESS_TABLE_CREATED_AT + " ASC")
+		opts = NewOptions().WithOrderBy(models.ASSET_PROGRESS_TABLE_CREATED_AT + " ASC")
 
 		records, err = dao.ListAssetProgress(ctx, opts)
 		require.Nil(t, err)
@@ -464,7 +463,7 @@ func Test_ListAssetProgress(t *testing.T) {
 		}
 		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: assetProgress.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: assetProgress.ID})
 		records, err := dao.ListAssetProgress(ctx, opts)
 		require.Nil(t, err)
 		require.Len(t, records, 1)
@@ -512,7 +511,7 @@ func Test_ListAssetProgress(t *testing.T) {
 		}
 
 		// First page with 10 records
-		p := database.NewOptions().WithPagination(pagination.New(1, 10))
+		p := NewOptions().WithPagination(pagination.New(1, 10))
 		records, err := dao.ListAssetProgress(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 10)
@@ -520,7 +519,7 @@ func Test_ListAssetProgress(t *testing.T) {
 		require.Equal(t, assetProgresses[9].ID, records[9].ID)
 
 		// Second page with remaining 7 records
-		p = database.NewOptions().WithPagination(pagination.New(2, 10))
+		p = NewOptions().WithPagination(pagination.New(2, 10))
 		records, err = dao.ListAssetProgress(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 7)
@@ -567,7 +566,7 @@ func Test_DeleteAssetProgress(t *testing.T) {
 		}
 		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: assetProgress.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: assetProgress.ID})
 		require.Nil(t, dao.DeleteAssetProgress(ctx, opts))
 
 		records, err := dao.ListAssetProgress(ctx, opts)
@@ -610,7 +609,7 @@ func Test_DeleteAssetProgress(t *testing.T) {
 		}
 		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: "non-existent"})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.ASSET_PROGRESS_TABLE_ID: "non-existent"})
 		require.Nil(t, dao.DeleteAssetProgress(ctx, opts))
 
 		records, err := dao.ListAssetProgress(ctx, nil)
@@ -697,7 +696,7 @@ func Test_DeleteAssetProgress(t *testing.T) {
 		}
 		require.NoError(t, dao.UpsertAssetProgress(ctx, assetProgress))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
 		require.Nil(t, dao.DeleteCourses(ctx, dbOpts))
 
 		records, err := dao.ListAssetProgress(ctx, nil)

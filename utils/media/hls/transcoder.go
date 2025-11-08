@@ -7,7 +7,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/dao"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/appfs"
@@ -88,7 +87,7 @@ func (t *Transcoder) newStreamWrapper(ctx context.Context, path string, assetID 
 	}
 
 	// Get asset with metadata from database
-	asset, err := t.config.Dao.GetAsset(ctx, database.NewOptions().
+	asset, err := t.config.Dao.GetAsset(ctx, dao.NewOptions().
 		WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assetID}).
 		WithAssetMetadata())
 	if err != nil {

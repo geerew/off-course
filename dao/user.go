@@ -51,7 +51,7 @@ func (dao *DAO) CreateUser(ctx context.Context, user *models.User) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // CountUsers counts the number of user records
-func (dao *DAO) CountUsers(ctx context.Context, dbOpts *database.Options) (int, error) {
+func (dao *DAO) CountUsers(ctx context.Context, dbOpts *Options) (int, error) {
 	builderOpts := newBuilderOptions(models.USER_TABLE).SetDbOpts(dbOpts)
 	return countGeneric(ctx, dao, *builderOpts)
 }
@@ -60,7 +60,7 @@ func (dao *DAO) CountUsers(ctx context.Context, dbOpts *database.Options) (int, 
 
 // GetUser gets a record from the user table based upon the where clause in the options. If
 // there is no where clause, it will return the first record in the table
-func (dao *DAO) GetUser(ctx context.Context, dbOpts *database.Options) (*models.User, error) {
+func (dao *DAO) GetUser(ctx context.Context, dbOpts *Options) (*models.User, error) {
 	builderOpts := newBuilderOptions(models.USER_TABLE).
 		WithColumns(models.UserColumns()...).
 		SetDbOpts(dbOpts).
@@ -73,7 +73,7 @@ func (dao *DAO) GetUser(ctx context.Context, dbOpts *database.Options) (*models.
 
 // ListUsers gets all records from the user table based upon the where clause and pagination
 // in the options
-func (dao *DAO) ListUsers(ctx context.Context, dbOpts *database.Options) ([]*models.User, error) {
+func (dao *DAO) ListUsers(ctx context.Context, dbOpts *Options) ([]*models.User, error) {
 	builderOpts := newBuilderOptions(models.USER_TABLE).
 		WithColumns(models.UserColumns()...).
 		SetDbOpts(dbOpts)
@@ -99,7 +99,7 @@ func (dao *DAO) UpdateUser(ctx context.Context, user *models.User) error {
 
 	user.RefreshUpdatedAt()
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: user.ID})
+	dbOpts := NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: user.ID})
 
 	builderOpts := newBuilderOptions(models.USER_TABLE).
 		WithData(
@@ -121,7 +121,7 @@ func (dao *DAO) UpdateUser(ctx context.Context, user *models.User) error {
 // DeleteUsers deletes records from the user table
 //
 // Errors when a where clause is not provided
-func (dao *DAO) DeleteUsers(ctx context.Context, dbOpts *database.Options) error {
+func (dao *DAO) DeleteUsers(ctx context.Context, dbOpts *Options) error {
 	if dbOpts == nil || dbOpts.Where == nil {
 		return utils.ErrWhere
 	}

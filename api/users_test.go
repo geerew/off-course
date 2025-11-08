@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
+	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/auth"
 	"github.com/geerew/off-course/utils/pagination"
@@ -27,7 +27,7 @@ func TestUsers_GetUsers(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		// Remove the admin user
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: "admin"})
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: "admin"})
 		require.NoError(t, router.appDao.DeleteUsers(ctx, dbOpts))
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/", nil))
@@ -43,7 +43,7 @@ func TestUsers_GetUsers(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		// Remove the admin user
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: "admin"})
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: "admin"})
 		require.NoError(t, router.appDao.DeleteUsers(ctx, dbOpts))
 
 		for i := range 5 {
@@ -69,7 +69,7 @@ func TestUsers_GetUsers(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		// Remove the admin user
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: "admin"})
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: "admin"})
 		require.NoError(t, router.appDao.DeleteUsers(ctx, dbOpts))
 
 		users := []*models.User{}
@@ -112,7 +112,7 @@ func TestUsers_GetUsers(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		// Remove the admin user
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: "admin"})
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: "admin"})
 		require.NoError(t, router.appDao.DeleteUsers(ctx, dbOpts))
 
 		users := []*models.User{}
@@ -165,7 +165,7 @@ func TestUsers_GetUsers(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		// Remove the admin user
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: "admin"})
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: "admin"})
 		require.NoError(t, router.appDao.DeleteUsers(ctx, dbOpts))
 
 		defaultSort := " sort:\"" + models.USER_TABLE_USERNAME + " asc\""
@@ -367,7 +367,7 @@ func TestUsers_UpdateUser(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: user.ID})
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: user.ID})
 		record, err := router.appDao.GetUser(ctx, dbOpts)
 		require.NoError(t, err)
 		require.Equal(t, "Bob", record.DisplayName)
@@ -474,7 +474,7 @@ func TestUsers_DeleteUser(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, status)
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: users[1].ID})
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: users[1].ID})
 		record, err := router.appDao.GetUser(ctx, dbOpts)
 		require.NoError(t, err)
 		require.Nil(t, record)

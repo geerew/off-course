@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/pagination"
@@ -136,7 +135,7 @@ func Test_GetLesson(t *testing.T) {
 
 		_, allGroups, allAssets, allAttachments := helper_createLessons(t, ctx, dao, 1)
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.LESSON_TABLE_ID: allGroups[0].ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.LESSON_TABLE_ID: allGroups[0].ID})
 		record, err := dao.GetLesson(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Equal(t, allGroups[0].ID, record.ID)
@@ -173,7 +172,7 @@ func Test_GetLesson(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
-		dbOpts := database.NewOptions().WithUserProgress()
+		dbOpts := NewOptions().WithUserProgress()
 		record, err := dao.GetLesson(context.Background(), dbOpts)
 		require.ErrorIs(t, err, utils.ErrPrincipal)
 		require.Nil(t, record)
@@ -210,7 +209,7 @@ func Test_ListLessons(t *testing.T) {
 
 		courses, lessons, _, _ := helper_createLessons(t, ctx, dao, 3)
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: courses[1].ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: courses[1].ID})
 		records, err := dao.ListLessons(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Len(t, records, 3)
@@ -239,7 +238,7 @@ func Test_ListLessons(t *testing.T) {
 		}
 
 		// First page with 10 records
-		p := database.NewOptions().WithPagination(pagination.New(1, 10))
+		p := NewOptions().WithPagination(pagination.New(1, 10))
 		records, err := dao.ListLessons(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 10)
@@ -247,7 +246,7 @@ func Test_ListLessons(t *testing.T) {
 		require.Equal(t, lessons[9].ID, records[9].ID)
 
 		// Second page with remaining 7 records
-		p = database.NewOptions().WithPagination(pagination.New(2, 10))
+		p = NewOptions().WithPagination(pagination.New(2, 10))
 		records, err = dao.ListLessons(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 7)
@@ -284,7 +283,7 @@ func Test_UpdateLesson(t *testing.T) {
 		}
 		require.NoError(t, dao.UpdateLesson(ctx, updatedLesson))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.LESSON_TABLE_ID: originalLesson.ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.LESSON_TABLE_ID: originalLesson.ID})
 		record, err := dao.GetLesson(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Equal(t, originalLesson.ID, record.ID)                    // No change
@@ -341,7 +340,7 @@ func Test_DeleteLesson(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.LESSON_TABLE_ID: lesson.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.LESSON_TABLE_ID: lesson.ID})
 		require.Nil(t, dao.DeleteLessons(ctx, opts))
 
 		// TODO add list when supported
@@ -364,7 +363,7 @@ func Test_DeleteLesson(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.LESSON_TABLE_ID: "non-existent"})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.LESSON_TABLE_ID: "non-existent"})
 		require.Nil(t, dao.DeleteLessons(ctx, opts))
 
 		// records, err := dao.ListLessons(ctx, nil)
@@ -409,7 +408,7 @@ func Test_DeleteLesson(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateLesson(ctx, lesson))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
 		require.Nil(t, dao.DeleteCourses(ctx, dbOpts))
 
 		// records, err := dao.ListLessons(ctx, nil)

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/pagination"
@@ -378,8 +377,7 @@ func Test_ListAssetMetadata(t *testing.T) {
 		assets, _ := helper_createAssetMetadata(t, ctx, dao, 3)
 
 		// Video created_at ascending
-		opts := database.
-			NewOptions().
+		opts := NewOptions().
 			WithOrderBy(models.MEDIA_VIDEO_TABLE_CREATED_AT + " ASC")
 
 		records, err := dao.ListAssetMetadata(ctx, opts)
@@ -392,8 +390,7 @@ func Test_ListAssetMetadata(t *testing.T) {
 		require.Equal(t, assets[2].ID, records[2].AssetID)
 
 		// Video created_at DESC
-		opts = database.
-			NewOptions().
+		opts = NewOptions().
 			WithOrderBy(models.MEDIA_VIDEO_TABLE_CREATED_AT + " DESC")
 
 		records, err = dao.ListAssetMetadata(ctx, opts)
@@ -411,8 +408,7 @@ func Test_ListAssetMetadata(t *testing.T) {
 
 		assets, _ := helper_createAssetMetadata(t, ctx, dao, 3)
 
-		opts := database.
-			NewOptions().
+		opts := NewOptions().
 			WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assets[1].ID})
 
 		records, err := dao.ListAssetMetadata(ctx, opts)
@@ -428,8 +424,7 @@ func Test_ListAssetMetadata(t *testing.T) {
 		assets, _ := helper_createAssetMetadata(t, ctx, dao, 17)
 
 		// Make ordering deterministic for test
-		opts := database.
-			NewOptions().
+		opts := NewOptions().
 			WithOrderBy(models.ASSET_TABLE_CREATED_AT + " ASC").
 			WithPagination(pagination.New(1, 10))
 
@@ -442,8 +437,7 @@ func Test_ListAssetMetadata(t *testing.T) {
 		require.Equal(t, assets[9].ID, page1[9].AssetID)
 
 		// Page 2
-		opts = database.
-			NewOptions().
+		opts = NewOptions().
 			WithOrderBy(models.ASSET_TABLE_CREATED_AT + " ASC").
 			WithPagination(pagination.New(2, 10))
 
@@ -749,7 +743,7 @@ func Test_DeleteAssetMetadataByAssetIDs(t *testing.T) {
 		assets, _ := helper_createAssetMetadata(t, ctx, dao, 1)
 		asset := assets[0]
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{"id": asset.ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{"id": asset.ID})
 		require.NoError(t, dao.DeleteAssets(ctx, dbOpts))
 
 		record, err := dao.GetAssetMetadata(ctx, asset.ID)

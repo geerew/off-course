@@ -46,7 +46,7 @@ func (dao *DAO) CreateOrReplaceSession(ctx context.Context, session *models.Sess
 
 // GetSession gets a record from the sessions table based upon the where clause in the options. If
 // there is no where clause, it will return the first record in the table
-func (dao *DAO) GetSession(ctx context.Context, dbOpts *database.Options) (*models.Session, error) {
+func (dao *DAO) GetSession(ctx context.Context, dbOpts *Options) (*models.Session, error) {
 	builderOpts := newBuilderOptions(models.SESSION_TABLE).
 		WithColumns(models.SessionColumns()...).
 		SetDbOpts(dbOpts).
@@ -59,7 +59,7 @@ func (dao *DAO) GetSession(ctx context.Context, dbOpts *database.Options) (*mode
 
 // ListSessions gets all records from the sessions table based upon the where clause and pagination
 // in the options
-func (dao *DAO) ListSessions(ctx context.Context, dbOpts *database.Options) ([]*models.Session, error) {
+func (dao *DAO) ListSessions(ctx context.Context, dbOpts *Options) ([]*models.Session, error) {
 	builderOpts := newBuilderOptions(models.SESSION_TABLE).
 		WithColumns(models.SessionColumns()...).
 		SetDbOpts(dbOpts)
@@ -79,7 +79,7 @@ func (dao *DAO) UpdateSession(ctx context.Context, session *models.Session) erro
 		return utils.ErrId
 	}
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: session.ID})
+	dbOpts := NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: session.ID})
 
 	builderOpts := newBuilderOptions(models.SESSION_TABLE).
 		WithData(
@@ -102,7 +102,7 @@ func (dao *DAO) UpdateSessionRoleForUser(ctx context.Context, userID string, new
 		return utils.ErrUserId
 	}
 
-	opts := database.NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_USER_ID: userID})
+	opts := NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_USER_ID: userID})
 
 	sessions, err := dao.ListSessions(ctx, opts)
 	if err != nil {
@@ -144,7 +144,7 @@ func (dao *DAO) UpdateSessionRoleForUser(ctx context.Context, userID string, new
 // DeleteSessions deletes records from the sessions table
 //
 // Errors when a where clause is not provided
-func (dao *DAO) DeleteSessions(ctx context.Context, dbOpts *database.Options) error {
+func (dao *DAO) DeleteSessions(ctx context.Context, dbOpts *Options) error {
 	if dbOpts == nil || dbOpts.Where == nil {
 		return utils.ErrWhere
 	}

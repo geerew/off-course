@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/pagination"
@@ -88,7 +87,7 @@ func Test_GetCourseTag(t *testing.T) {
 		courseTag := &models.CourseTag{CourseID: course.ID, Tag: "Tag 1"}
 		require.NoError(t, dao.CreateCourseTag(ctx, courseTag))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: courseTag.ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: courseTag.ID})
 		record, err := dao.GetCourseTag(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Equal(t, courseTag.ID, record.ID)
@@ -155,7 +154,7 @@ func Test_ListCourseTags(t *testing.T) {
 		}
 
 		// Descending order by created_at
-		opts := database.NewOptions().WithOrderBy(models.COURSE_TAG_TABLE_CREATED_AT + " DESC")
+		opts := NewOptions().WithOrderBy(models.COURSE_TAG_TABLE_CREATED_AT + " DESC")
 
 		records, err := dao.ListCourseTags(ctx, opts)
 		require.Nil(t, err)
@@ -167,7 +166,7 @@ func Test_ListCourseTags(t *testing.T) {
 		}
 
 		// Ascending order by created_at
-		opts = database.NewOptions().WithOrderBy(models.COURSE_TAG_TABLE_CREATED_AT + " ASC")
+		opts = NewOptions().WithOrderBy(models.COURSE_TAG_TABLE_CREATED_AT + " ASC")
 
 		records, err = dao.ListCourseTags(ctx, opts)
 		require.Nil(t, err)
@@ -188,7 +187,7 @@ func Test_ListCourseTags(t *testing.T) {
 		courseTag := &models.CourseTag{CourseID: course.ID, Tag: "Tag 1"}
 		require.NoError(t, dao.CreateCourseTag(ctx, courseTag))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: courseTag.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: courseTag.ID})
 		records, err := dao.ListCourseTags(ctx, opts)
 		require.Nil(t, err)
 		require.Len(t, records, 1)
@@ -210,7 +209,7 @@ func Test_ListCourseTags(t *testing.T) {
 		}
 
 		// First page with 10 records
-		p := database.NewOptions().WithPagination(pagination.New(1, 10))
+		p := NewOptions().WithPagination(pagination.New(1, 10))
 		records, err := dao.ListCourseTags(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 10)
@@ -218,7 +217,7 @@ func Test_ListCourseTags(t *testing.T) {
 		require.Equal(t, courseTags[9].ID, records[9].ID)
 
 		// Second page with remaining 7 records
-		p = database.NewOptions().WithPagination(pagination.New(2, 10))
+		p = NewOptions().WithPagination(pagination.New(2, 10))
 		records, err = dao.ListCourseTags(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 7)
@@ -239,7 +238,7 @@ func Test_DeleteCourseTags(t *testing.T) {
 		courseTag := &models.CourseTag{CourseID: course.ID, Tag: "Tag 1"}
 		require.NoError(t, dao.CreateCourseTag(ctx, courseTag))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: courseTag.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: courseTag.ID})
 		require.Nil(t, dao.DeleteCourseTags(ctx, opts))
 
 		records, err := dao.ListCourseTags(ctx, opts)
@@ -256,7 +255,7 @@ func Test_DeleteCourseTags(t *testing.T) {
 		courseTag := &models.CourseTag{CourseID: course.ID, Tag: "Tag 1"}
 		require.NoError(t, dao.CreateCourseTag(ctx, courseTag))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: "non-existent"})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: "non-existent"})
 		require.Nil(t, dao.DeleteCourseTags(ctx, opts))
 
 		records, err := dao.ListCourseTags(ctx, nil)
@@ -292,7 +291,7 @@ func Test_DeleteCourseTags(t *testing.T) {
 		course1Tag := &models.CourseTag{CourseID: course1.ID, Tag: "Tag 1"}
 		require.NoError(t, dao.CreateCourseTag(ctx, course1Tag))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course1.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course1.ID})
 		require.Nil(t, dao.DeleteCourses(ctx, opts))
 
 		records, err := dao.ListCourseTags(ctx, nil)
@@ -306,7 +305,7 @@ func Test_DeleteCourseTags(t *testing.T) {
 		course2Tag := &models.CourseTag{CourseID: course2.ID, Tag: "Tag 2"}
 		require.NoError(t, dao.CreateCourseTag(ctx, course2Tag))
 
-		opts = database.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: course2Tag.TagID})
+		opts = NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: course2Tag.TagID})
 		require.Nil(t, dao.DeleteTags(ctx, opts))
 
 		records, err = dao.ListCourseTags(ctx, nil)

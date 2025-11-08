@@ -62,7 +62,7 @@ func New(config *CourseScanConfig) *CourseScan {
 // Add inserts a course scan job into the db
 func (s *CourseScan) Add(ctx context.Context, courseId string) (*models.Scan, error) {
 	// Look up the course
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: courseId})
+	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: courseId})
 	course, err := s.dao.GetCourse(ctx, dbOpts)
 	if err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func (s *CourseScan) Add(ctx context.Context, courseId string) (*models.Scan, er
 	}
 
 	// Get the scan from the db and return that
-	dbOpts = database.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_COURSE_ID: courseId})
+	dbOpts = dao.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_COURSE_ID: courseId})
 	scan, err := s.dao.GetScan(ctx, dbOpts)
 	if err != nil {
 		return nil, err
@@ -162,7 +162,7 @@ func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessor
 			}
 
 			// Cleanup
-			dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_ID: nextScan.ID})
+			dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_ID: nextScan.ID})
 			if err := s.dao.DeleteScans(ctx, dbOpts); err != nil {
 				s.logger.Error().
 					Err(err).

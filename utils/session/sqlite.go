@@ -43,7 +43,7 @@ func (s *SqliteStorage) Get(key string) ([]byte, error) {
 		return nil, nil
 	}
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_ID: key})
+	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_ID: key})
 	session, err := s.dao.GetSession(context.Background(), dbOpts)
 	if err != nil {
 		return nil, err
@@ -94,7 +94,7 @@ func (s *SqliteStorage) Delete(key string) error {
 		return nil
 	}
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_ID: key})
+	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_ID: key})
 	return s.dao.DeleteSessions(context.Background(), dbOpts)
 }
 
@@ -106,7 +106,7 @@ func (s *SqliteStorage) DeleteUser(id string) error {
 		return nil
 	}
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_USER_ID: id})
+	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.SESSION_TABLE_USER_ID: id})
 	return s.dao.DeleteSessions(context.Background(), dbOpts)
 }
 
@@ -133,7 +133,7 @@ func (s *SqliteStorage) gcTicker() {
 	defer ticker.Stop()
 
 	for t := range ticker.C {
-		dbOpts := database.NewOptions().
+		dbOpts := dao.NewOptions().
 			WithWhere(squirrel.And{
 				squirrel.LtOrEq{models.SESSION_TABLE_EXPIRES: t.Unix()},
 				squirrel.NotEq{models.SESSION_TABLE_EXPIRES: 0},

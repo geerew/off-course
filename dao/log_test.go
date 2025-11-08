@@ -72,7 +72,7 @@ func Test_GetLog(t *testing.T) {
 		log := &models.Log{Data: map[string]any{}, Level: 0, Message: fmt.Sprintf("log %d", 1)}
 		require.NoError(t, dao.CreateLog(ctx, log))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.LOG_TABLE_ID: log.ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.LOG_TABLE_ID: log.ID})
 		record, err := dao.GetLog(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Equal(t, log.ID, record.ID)
@@ -131,7 +131,7 @@ func Test_ListLogs(t *testing.T) {
 		}
 
 		// Descending order by created_at
-		opts := database.NewOptions().WithOrderBy(models.LOG_TABLE_CREATED_AT + " DESC")
+		opts := NewOptions().WithOrderBy(models.LOG_TABLE_CREATED_AT + " DESC")
 
 		records, err := dao.ListLogs(ctx, opts)
 		require.Nil(t, err)
@@ -142,7 +142,7 @@ func Test_ListLogs(t *testing.T) {
 		}
 
 		// Ascending order by created_at
-		opts = database.NewOptions().WithOrderBy(models.LOG_TABLE_CREATED_AT + " ASC")
+		opts = NewOptions().WithOrderBy(models.LOG_TABLE_CREATED_AT + " ASC")
 
 		records, err = dao.ListLogs(ctx, opts)
 		require.Nil(t, err)
@@ -159,7 +159,7 @@ func Test_ListLogs(t *testing.T) {
 		log := &models.Log{Data: map[string]any{}, Level: 0, Message: fmt.Sprintf("log %d", 1)}
 		require.NoError(t, dao.CreateLog(ctx, log))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.LOG_TABLE_ID: log.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.LOG_TABLE_ID: log.ID})
 		records, err := dao.ListLogs(ctx, opts)
 		require.Nil(t, err)
 		require.Len(t, records, 1)
@@ -178,7 +178,7 @@ func Test_ListLogs(t *testing.T) {
 		}
 
 		// First page with 10 records
-		p := database.NewOptions().WithPagination(pagination.New(1, 10))
+		p := NewOptions().WithPagination(pagination.New(1, 10))
 		records, err := dao.ListLogs(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 10)
@@ -186,7 +186,7 @@ func Test_ListLogs(t *testing.T) {
 		require.Equal(t, logs[9].ID, records[9].ID)
 
 		// Second page with remaining 7 records
-		p = database.NewOptions().WithPagination(pagination.New(2, 10))
+		p = NewOptions().WithPagination(pagination.New(2, 10))
 		records, err = dao.ListLogs(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 7)

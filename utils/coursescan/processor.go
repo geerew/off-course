@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
+	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/logger"
@@ -130,7 +130,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		Msg("Found lessons")
 
 	// List the assets that already exist in the database for this course
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_COURSE_ID: course.ID})
+	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.ASSET_COURSE_ID: course.ID})
 	existingGroups, err := s.dao.ListLessons(ctx, dbOpts)
 	if err != nil {
 		s.logger.Error().
@@ -322,7 +322,7 @@ func countOperations(groupOps, assetOps, attachmentOps []Op) operationCounts {
 
 // fetchCourse retrieves the course from the database
 func fetchCourse(ctx context.Context, s *CourseScan, courseID string) (*models.Course, error) {
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: courseID})
+	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: courseID})
 	course, err := s.dao.GetCourse(ctx, dbOpts)
 	if err != nil {
 		return nil, err
@@ -804,7 +804,7 @@ func applyLessonDeleteOps(
 
 		case DeleteLessonOp:
 			// Delete an existing lesson
-			dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.LESSON_TABLE_ID: v.Deleted.ID})
+			dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.LESSON_TABLE_ID: v.Deleted.ID})
 			if err := s.dao.DeleteLessons(ctx, dbOpts); err != nil {
 				return false, err
 			}
@@ -914,7 +914,7 @@ func applyAssetOps(
 
 			// fmt.Println("[Replace Asset]", v.Existing.Path, v.Existing.LessonID, "->", v.New.Path, v.New.LessonID)
 
-			dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: v.Existing.ID})
+			dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: v.Existing.ID})
 			if err := s.dao.DeleteAssets(ctx, dbOpts); err != nil {
 				return false, err
 			}
@@ -951,7 +951,7 @@ func applyAssetOps(
 
 			// fmt.Println("Overwrite Asset", v.Existing.Path, v.Existing.LessonID, "->", v.Renamed.Path, v.Deleted.LessonID)
 
-			dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: v.Deleted.ID})
+			dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: v.Deleted.ID})
 			if err := s.dao.DeleteAssets(ctx, dbOpts); err != nil {
 				return false, err
 			}
@@ -974,7 +974,7 @@ func applyAssetOps(
 			// fmt.Println("Swap Asset", v.ExistingA.Path, "<->", v.ExistingB.Path)
 
 			for _, existing := range []*models.Asset{v.ExistingA, v.ExistingB} {
-				dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: existing.ID})
+				dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: existing.ID})
 				if err := s.dao.DeleteAssets(ctx, dbOpts); err != nil {
 					return false, err
 				}
@@ -1010,7 +1010,7 @@ func applyAssetOps(
 
 			// fmt.Println("Delete Asset", v.Deleted.Path)
 
-			dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: v.Deleted.ID})
+			dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: v.Deleted.ID})
 			if err := s.dao.DeleteAssets(ctx, dbOpts); err != nil {
 				return false, err
 			}
@@ -1045,7 +1045,7 @@ func applyAttachmentOps(
 				return false, err
 			}
 		case DeleteAttachmentOp:
-			dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ATTACHMENT_TABLE_ID: v.Deleted.ID})
+			dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.ATTACHMENT_TABLE_ID: v.Deleted.ID})
 			if err := s.dao.DeleteAttachments(ctx, dbOpts); err != nil {
 				return false, err
 			}

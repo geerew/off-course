@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
+	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/pagination"
 	"github.com/geerew/off-course/utils/security"
@@ -488,7 +488,7 @@ func TestCourses_DeleteCourse(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, status)
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: courses[1].ID})
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: courses[1].ID})
 		course, err := router.appDao.GetCourse(ctx, dbOpts)
 		require.NoError(t, err)
 		require.Nil(t, course)
@@ -2111,7 +2111,7 @@ func TestCourses_UpdateAssetProgress(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, status)
 
-		dbOpts := database.NewOptions().WithUserProgress().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: asset.ID})
+		dbOpts := dao.NewOptions().WithUserProgress().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: asset.ID})
 		assetResult, err := router.appDao.GetAsset(ctx, dbOpts)
 		require.NoError(t, err)
 		require.NotNil(t, assetResult)
@@ -2417,7 +2417,7 @@ func TestCourses_DeleteTag(t *testing.T) {
 			}
 		}
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courses[1].ID})
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courses[1].ID})
 		records, err := router.appDao.ListCourseTags(ctx, dbOpts)
 		require.NoError(t, err)
 		require.Len(t, records, 3)
@@ -2458,12 +2458,12 @@ func TestCourses_DeleteTag(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, status)
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: tag1.ID})
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: tag1.ID})
 		record, err := router.appDao.GetCourseTag(ctx, dbOpts)
 		require.NoError(t, err)
 		require.NotNil(t, record)
 
-		dbOpts = database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: tag2.ID})
+		dbOpts = dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: tag2.ID})
 		record, err = router.appDao.GetCourseTag(ctx, dbOpts)
 		require.NoError(t, err)
 		require.NotNil(t, record)

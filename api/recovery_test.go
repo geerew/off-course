@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
+	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/auth"
 	"github.com/geerew/off-course/utils/security"
@@ -56,7 +56,7 @@ func TestRecovery_ResetPassword(t *testing.T) {
 		require.Equal(t, "testadmin", response["username"])
 
 		// Verify password was updated
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "testadmin"})
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "testadmin"})
 		updatedUser, err := router.appDao.GetUser(ctx, dbOpts)
 		require.NoError(t, err)
 		require.True(t, auth.ComparePassword(updatedUser.PasswordHash, "newpassword123"))

@@ -53,7 +53,7 @@ func (dao *DAO) CreateAsset(ctx context.Context, asset *models.Asset) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // CountAssets counts the number of asset records
-func (dao *DAO) CountAssets(ctx context.Context, dbOpts *database.Options) (int, error) {
+func (dao *DAO) CountAssets(ctx context.Context, dbOpts *Options) (int, error) {
 	builderOpts := newBuilderOptions(models.ASSET_TABLE).SetDbOpts(dbOpts)
 	return countGeneric(ctx, dao, *builderOpts)
 }
@@ -65,7 +65,7 @@ func (dao *DAO) CountAssets(ctx context.Context, dbOpts *database.Options) (int,
 //
 // By default, progress is not included. Use `WithUserProgress()` on the options to include it
 // By default, video metadata is not included. Use `WithAssetVideoMetadata()` on the options to include it
-func (dao *DAO) GetAsset(ctx context.Context, dbOpts *database.Options) (*models.Asset, error) {
+func (dao *DAO) GetAsset(ctx context.Context, dbOpts *Options) (*models.Asset, error) {
 	builderOpts := newBuilderOptions(models.ASSET_TABLE).
 		WithColumns(models.AssetColumns()...).
 		SetDbOpts(dbOpts).
@@ -147,7 +147,7 @@ func (dao *DAO) GetAsset(ctx context.Context, dbOpts *database.Options) (*models
 //
 // By default, progress is not included. Use `WithUserProgress()` on the options to include it
 // By default, video metadata is not included. Use `WithAssetVideoMetadata()` on the options to include it
-func (dao *DAO) ListAssets(ctx context.Context, dbOpts *database.Options) ([]*models.Asset, error) {
+func (dao *DAO) ListAssets(ctx context.Context, dbOpts *Options) ([]*models.Asset, error) {
 	builderOpts := newBuilderOptions(models.ASSET_TABLE).
 		WithColumns(models.AssetColumns()...).
 		SetDbOpts(dbOpts)
@@ -239,7 +239,7 @@ func (dao *DAO) UpdateAsset(ctx context.Context, asset *models.Asset) error {
 
 	asset.RefreshUpdatedAt()
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: asset.ID})
+	dbOpts := NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: asset.ID})
 
 	builderOpts := newBuilderOptions(models.ASSET_TABLE).
 		WithData(
@@ -269,7 +269,7 @@ func (dao *DAO) UpdateAsset(ctx context.Context, asset *models.Asset) error {
 // DeleteAssets deletes records from the assets table
 //
 // Errors when a where clause is not provided
-func (dao *DAO) DeleteAssets(ctx context.Context, dbOpts *database.Options) error {
+func (dao *DAO) DeleteAssets(ctx context.Context, dbOpts *Options) error {
 	if dbOpts == nil || dbOpts.Where == nil {
 		return utils.ErrWhere
 	}

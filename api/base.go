@@ -12,7 +12,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/app"
 	"github.com/geerew/off-course/dao"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/session"
@@ -129,7 +128,7 @@ func (r *Router) createSessionStore() {
 // InitBootstrap determines if the app is bootstrapped by checking if there is
 // an admin user
 func (r *Router) InitBootstrap() {
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ROLE: types.UserRoleAdmin})
+	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ROLE: types.UserRoleAdmin})
 	count, err := r.appDao.CountUsers(context.Background(), dbOpts)
 	if err != nil {
 		r.logger.Error().Err(err).Msg("Failed to count users")

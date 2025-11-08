@@ -51,7 +51,7 @@ func (dao *DAO) CreateAttachment(ctx context.Context, attachment *models.Attachm
 
 // GetAttachment gets a record from the attachments table based upon the where clause in the options. If
 // there is no where clause, it will return the first record in the table
-func (dao *DAO) GetAttachment(ctx context.Context, dbOpts *database.Options) (*models.Attachment, error) {
+func (dao *DAO) GetAttachment(ctx context.Context, dbOpts *Options) (*models.Attachment, error) {
 	builderOpts := newBuilderOptions(models.ATTACHMENT_TABLE).
 		WithColumns(models.AttachmentColumns()...).
 		SetDbOpts(dbOpts).
@@ -78,7 +78,7 @@ func (dao *DAO) GetAttachment(ctx context.Context, dbOpts *database.Options) (*m
 
 // ListAttachments gets all records from the attachments table based upon the where clause and pagination
 // in the options
-func (dao *DAO) ListAttachments(ctx context.Context, dbOpts *database.Options) ([]*models.Attachment, error) {
+func (dao *DAO) ListAttachments(ctx context.Context, dbOpts *Options) ([]*models.Attachment, error) {
 	builderOpts := newBuilderOptions(models.ATTACHMENT_TABLE).
 		WithColumns(models.AttachmentColumns()...).
 		SetDbOpts(dbOpts)
@@ -122,7 +122,7 @@ func (dao *DAO) UpdateAttachment(ctx context.Context, attachment *models.Attachm
 
 	attachment.RefreshUpdatedAt()
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: attachment.ID})
+	dbOpts := NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: attachment.ID})
 
 	builderOpts := newBuilderOptions(models.ATTACHMENT_TABLE).
 		WithData(
@@ -143,7 +143,7 @@ func (dao *DAO) UpdateAttachment(ctx context.Context, attachment *models.Attachm
 // DeleteAttachments deletes records from the attachments table
 //
 // Errors when a where clause is not provided
-func (dao *DAO) DeleteAttachments(ctx context.Context, dbOpts *database.Options) error {
+func (dao *DAO) DeleteAttachments(ctx context.Context, dbOpts *Options) error {
 	if dbOpts == nil || dbOpts.Where == nil {
 		return utils.ErrWhere
 	}

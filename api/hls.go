@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
+	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/media/hls"
 	"github.com/gofiber/fiber/v2"
@@ -368,7 +368,7 @@ func (api *hlsAPI) GetQualities(c *fiber.Ctx) error {
 // getAssetWithMetadataAndCourse retrieves an asset with its metadata by asset ID
 // and verifies it belongs to a course
 func (api *hlsAPI) getAssetWithMetadataAndCourse(ctx context.Context, assetID string) (*models.Asset, error) {
-	dbOpts := database.NewOptions().
+	dbOpts := dao.NewOptions().
 		WithCourse().
 		WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assetID}).
 		WithAssetMetadata()

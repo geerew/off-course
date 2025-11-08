@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/pagination"
@@ -55,7 +54,7 @@ func Test_GetParam(t *testing.T) {
 		param := &models.Param{Key: "param 1", Value: "value 1"}
 		require.NoError(t, dao.CreateParam(ctx, param))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.PARAM_TABLE_KEY: param.Key})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.PARAM_TABLE_KEY: param.Key})
 		record, err := dao.GetParam(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Equal(t, param.ID, record.ID)
@@ -114,7 +113,7 @@ func Test_ListParams(t *testing.T) {
 		}
 
 		// Descending order by created_at
-		opts := database.NewOptions().WithOrderBy(models.PARAM_TABLE_CREATED_AT + " DESC")
+		opts := NewOptions().WithOrderBy(models.PARAM_TABLE_CREATED_AT + " DESC")
 
 		records, err := dao.ListParams(ctx, opts)
 		require.Nil(t, err)
@@ -125,7 +124,7 @@ func Test_ListParams(t *testing.T) {
 		}
 
 		// Ascending order by created_at
-		opts = database.NewOptions().WithOrderBy(models.PARAM_TABLE_CREATED_AT + " ASC")
+		opts = NewOptions().WithOrderBy(models.PARAM_TABLE_CREATED_AT + " ASC")
 
 		records, err = dao.ListParams(ctx, opts)
 		require.Nil(t, err)
@@ -142,7 +141,7 @@ func Test_ListParams(t *testing.T) {
 		param := &models.Param{Key: "param 1", Value: "value 1"}
 		require.NoError(t, dao.CreateParam(ctx, param))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.PARAM_TABLE_ID: param.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.PARAM_TABLE_ID: param.ID})
 		records, err := dao.ListParams(ctx, opts)
 		require.Nil(t, err)
 		require.Len(t, records, 1)
@@ -161,7 +160,7 @@ func Test_ListParams(t *testing.T) {
 		}
 
 		// First page with 10 records
-		p := database.NewOptions().WithPagination(pagination.New(1, 10))
+		p := NewOptions().WithPagination(pagination.New(1, 10))
 		records, err := dao.ListParams(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 10)
@@ -169,7 +168,7 @@ func Test_ListParams(t *testing.T) {
 		require.Equal(t, params[9].ID, records[9].ID)
 
 		// Second page with remaining 7 records
-		p = database.NewOptions().WithPagination(pagination.New(2, 10))
+		p = NewOptions().WithPagination(pagination.New(2, 10))
 		records, err = dao.ListParams(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 7)
@@ -199,7 +198,7 @@ func Test_UpdateParam(t *testing.T) {
 		time.Sleep(1 * time.Millisecond)
 		require.NoError(t, dao.UpdateParam(ctx, updatedParam))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.PARAM_TABLE_ID: originalParam.ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.PARAM_TABLE_ID: originalParam.ID})
 		record, err := dao.GetParam(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Equal(t, originalParam.ID, record.ID)                     // No change
@@ -236,7 +235,7 @@ func Test_DeleteParams(t *testing.T) {
 		param := &models.Param{Key: "param 1", Value: "value 1"}
 		require.NoError(t, dao.CreateParam(ctx, param))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.PARAM_TABLE_ID: param.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.PARAM_TABLE_ID: param.ID})
 		require.Nil(t, dao.DeleteParams(ctx, opts))
 
 		records, err := dao.ListParams(ctx, opts)
@@ -250,7 +249,7 @@ func Test_DeleteParams(t *testing.T) {
 		param := &models.Param{Key: "param 1", Value: "value 1"}
 		require.NoError(t, dao.CreateParam(ctx, param))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.PARAM_TABLE_ID: "non-existent"})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.PARAM_TABLE_ID: "non-existent"})
 		require.Nil(t, dao.DeleteParams(ctx, opts))
 
 		records, err := dao.ListParams(ctx, nil)

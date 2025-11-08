@@ -2,7 +2,7 @@ package api
 
 import (
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
+	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/queryparser"
 	"github.com/gofiber/fiber/v2"
@@ -61,8 +61,8 @@ func (api *logsAPI) getLogs(c *fiber.Ctx) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// tagsAfterParseHook builds the database.Options.Where based on the query expression
-func logsAfterParseHook(parsed *queryparser.QueryResult, options *database.Options, _ string) {
+// tagsAfterParseHook builds the dao.Options.Where based on the query expression
+func logsAfterParseHook(parsed *queryparser.QueryResult, options *dao.Options, _ string) {
 	options.Where = logsWhereBuilder(parsed.Expr)
 }
 

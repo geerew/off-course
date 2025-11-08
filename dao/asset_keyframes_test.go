@@ -326,7 +326,7 @@ func TestDAO_ListAssetKeyframes(t *testing.T) {
 	})
 
 	t.Run("with where clause", func(t *testing.T) {
-		opts := &database.Options{
+		opts := &Options{
 			Where: squirrel.Eq{models.KEYFRAMES_IS_COMPLETE: true},
 		}
 
@@ -338,7 +338,7 @@ func TestDAO_ListAssetKeyframes(t *testing.T) {
 
 	t.Run("with limit", func(t *testing.T) {
 		p := pagination.New(1, 1)
-		opts := &database.Options{
+		opts := &Options{
 			Pagination: p,
 		}
 
@@ -433,7 +433,7 @@ func TestDAO_GetAssetKeyframesCount(t *testing.T) {
 	})
 
 	t.Run("filtered count", func(t *testing.T) {
-		opts := &database.Options{
+		opts := &Options{
 			Where: squirrel.Eq{models.KEYFRAMES_IS_COMPLETE: true},
 		}
 

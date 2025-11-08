@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
+	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/spf13/afero"
@@ -69,7 +69,7 @@ func TestScanner_Processor(t *testing.T) {
 		err := Processor(ctx, scanner, scan)
 		require.NoError(t, err)
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
 		record, err := scanner.dao.GetCourse(ctx, dbOpts)
 		require.NoError(t, err)
 		require.True(t, record.Available)
@@ -84,7 +84,7 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
 
 		// Add card at the root
 		{
@@ -165,7 +165,7 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		dbOpts := database.NewOptions().
+		dbOpts := dao.NewOptions().
 			WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: course.ID}).
 			WithOrderBy(models.LESSON_TABLE_MODULE+" asc", models.LESSON_TABLE_PREFIX+" asc")
 
@@ -392,7 +392,7 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		dbOpts := database.NewOptions().
+		dbOpts := dao.NewOptions().
 			WithOrderBy(models.LESSON_TABLE_MODULE+" asc", models.LESSON_TABLE_PREFIX+" asc").
 			WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: course.ID})
 
@@ -480,7 +480,7 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		dbOpts := database.NewOptions().
+		dbOpts := dao.NewOptions().
 			WithOrderBy(models.LESSON_TABLE_MODULE+" asc", models.LESSON_TABLE_PREFIX+" asc").
 			WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: course.ID})
 
@@ -615,7 +615,7 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		dbOpts := database.NewOptions().
+		dbOpts := dao.NewOptions().
 			WithOrderBy(models.LESSON_TABLE_MODULE+" asc", models.LESSON_TABLE_PREFIX+" asc").
 			WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: course.ID})
 
@@ -750,7 +750,7 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		dbOpts := database.NewOptions().
+		dbOpts := dao.NewOptions().
 			WithOrderBy(models.LESSON_TABLE_MODULE+" asc", models.LESSON_TABLE_PREFIX+" asc").
 			WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: course.ID})
 

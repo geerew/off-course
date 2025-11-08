@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/pagination"
@@ -62,7 +61,7 @@ func Test_GetTag(t *testing.T) {
 		tag := &models.Tag{Tag: "Tag 1"}
 		require.NoError(t, dao.CreateTag(ctx, tag))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: tag.ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: tag.ID})
 		record, err := dao.GetTag(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Equal(t, tag.ID, record.ID)
@@ -93,7 +92,7 @@ func Test_ListTags(t *testing.T) {
 			time.Sleep(1 * time.Millisecond)
 		}
 
-		dbOpts := database.NewOptions().WithOrderBy(models.TAG_TABLE_CREATED_AT + " ASC")
+		dbOpts := NewOptions().WithOrderBy(models.TAG_TABLE_CREATED_AT + " ASC")
 		records, err := dao.ListTags(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Len(t, records, 3)
@@ -123,7 +122,7 @@ func Test_ListTags(t *testing.T) {
 		}
 
 		// Descending order by created_at
-		opts := database.NewOptions().WithOrderBy(models.TAG_TABLE_CREATED_AT + " DESC")
+		opts := NewOptions().WithOrderBy(models.TAG_TABLE_CREATED_AT + " DESC")
 
 		records, err := dao.ListTags(ctx, opts)
 		require.Nil(t, err)
@@ -134,7 +133,7 @@ func Test_ListTags(t *testing.T) {
 		}
 
 		// Ascending order by created_at
-		opts = database.NewOptions().WithOrderBy(models.TAG_TABLE_CREATED_AT + " ASC")
+		opts = NewOptions().WithOrderBy(models.TAG_TABLE_CREATED_AT + " ASC")
 
 		records, err = dao.ListTags(ctx, opts)
 		require.Nil(t, err)
@@ -151,7 +150,7 @@ func Test_ListTags(t *testing.T) {
 		tag := &models.Tag{Tag: "Tag 1"}
 		require.NoError(t, dao.CreateTag(ctx, tag))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: tag.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: tag.ID})
 		records, err := dao.ListTags(ctx, opts)
 		require.Nil(t, err)
 		require.Len(t, records, 1)
@@ -171,7 +170,7 @@ func Test_ListTags(t *testing.T) {
 		}
 
 		// First page with 10 records
-		dbOpts := database.NewOptions().
+		dbOpts := NewOptions().
 			WithOrderBy(models.TAG_TABLE_CREATED_AT + " ASC").
 			WithPagination(pagination.New(1, 10))
 		records, err := dao.ListTags(ctx, dbOpts)
@@ -181,7 +180,7 @@ func Test_ListTags(t *testing.T) {
 		require.Equal(t, tags[9].ID, records[9].ID)
 
 		// Second page with remaining 7 records
-		dbOpts = database.NewOptions().
+		dbOpts = NewOptions().
 			WithOrderBy(models.TAG_TABLE_CREATED_AT + " ASC").
 			WithPagination(pagination.New(2, 10))
 		records, err = dao.ListTags(ctx, dbOpts)
@@ -209,7 +208,7 @@ func Test_UpdateTag(t *testing.T) {
 		time.Sleep(1 * time.Millisecond)
 		require.NoError(t, dao.UpdateTag(ctx, updatedTag))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: originalTag.ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: originalTag.ID})
 		record, err := dao.GetTag(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Equal(t, originalTag.ID, record.ID)                     // No change
@@ -245,7 +244,7 @@ func Test_DeleteTags(t *testing.T) {
 		tag := &models.Tag{Tag: "Tag 1"}
 		require.NoError(t, dao.CreateTag(ctx, tag))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: tag.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: tag.ID})
 		require.Nil(t, dao.DeleteTags(ctx, opts))
 
 		records, err := dao.ListTags(ctx, opts)
@@ -259,7 +258,7 @@ func Test_DeleteTags(t *testing.T) {
 		tag := &models.Tag{Tag: "Tag 1"}
 		require.NoError(t, dao.CreateTag(ctx, tag))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: "non-existent"})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: "non-existent"})
 		require.Nil(t, dao.DeleteTags(ctx, opts))
 
 		records, err := dao.ListTags(ctx, nil)
