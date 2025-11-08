@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -225,7 +226,7 @@ func TestTags_GetTags(t *testing.T) {
 		router, _ := setupAdmin(t)
 
 		// Drop the courses table
-		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.TAG_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/", nil))
@@ -379,7 +380,7 @@ func TestTags_GetTagNames(t *testing.T) {
 		router, _ := setupAdmin(t)
 
 		// Drop the courses table
-		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.TAG_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/names", nil))
@@ -449,7 +450,7 @@ func TestTags_GetTag(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.TAG_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/test", nil))
@@ -522,7 +523,7 @@ func TestTags_CreateTag(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.TAG_TABLE)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/tags/", strings.NewReader(`{"tag": "test"}`))
@@ -628,7 +629,7 @@ func TestTags_UpdateTag(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.TAG_TABLE)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodPut, "/api/tags/test", strings.NewReader(`{"id": "1234567"}`))
@@ -673,7 +674,7 @@ func TestTags_DeleteTag(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.TAG_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/tags/test", nil))

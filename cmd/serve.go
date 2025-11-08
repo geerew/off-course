@@ -106,7 +106,7 @@ var serveCmd = &cobra.Command{
 		}
 
 		// Delete all scans
-		_, err = application.DbManager.DataDb.Exec("DELETE FROM " + models.SCAN_TABLE)
+		_, err = application.DbManager.DataDb.ExecContext(context.Background(), "DELETE FROM "+models.SCAN_TABLE)
 		if err != nil {
 			appLogger.Error().Err(err).Msg("Failed to delete scans")
 		}

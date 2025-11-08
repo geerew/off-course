@@ -244,7 +244,7 @@ func (dao *DAO) ClassifyCoursePaths(ctx context.Context, paths []string) (map[st
 		ToSql()
 
 	q := database.QuerierFromContext(ctx, dao.db)
-	rows, err := q.Query(query, args...)
+	rows, err := q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

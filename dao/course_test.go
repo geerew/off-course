@@ -612,7 +612,7 @@ func Test_ClassifyCoursePaths(t *testing.T) {
 	t.Run("db error", func(t *testing.T) {
 		dao, ctx := setup(t)
 
-		_, err := dao.db.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
+		_, err := dao.db.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.Nil(t, err)
 
 		result, err := dao.ClassifyCoursePaths(ctx, []string{"/"})

@@ -29,7 +29,8 @@ func setupSqliteDB(t *testing.T) *DatabaseManager {
 	require.NotNil(t, dbManager)
 
 	// Test table
-	_, err = dbManager.DataDb.Exec("CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)")
+	ctx := context.Background()
+	_, err = dbManager.DataDb.ExecContext(ctx, "CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)")
 	require.NoError(t, err)
 
 	return dbManager
@@ -42,7 +43,7 @@ func TestSqliteDb_Bootstrap(t *testing.T) {
 
 		appFs := appfs.New(afero.NewMemMapFs())
 
-		db, err := newSqliteDb(&databaseConfig{
+		db, err := newSqliteDb(&sqliteConfig{
 			DataDir:    "./oc_data",
 			DSN:        "data.db",
 			MigrateDir: "data",
@@ -58,7 +59,7 @@ func TestSqliteDb_Bootstrap(t *testing.T) {
 	t.Run("error creating data.db", func(t *testing.T) {
 		appFs := appfs.New(afero.NewReadOnlyFs(afero.NewMemMapFs()))
 
-		db, err := newSqliteDb(&databaseConfig{
+		db, err := newSqliteDb(&sqliteConfig{
 			DataDir:    "./oc_data",
 			DSN:        "data.db",
 			MigrateDir: "data",
@@ -74,7 +75,7 @@ func TestSqliteDb_Bootstrap(t *testing.T) {
 	t.Run("invalid migration", func(t *testing.T) {
 		appFs := appfs.New(afero.NewMemMapFs())
 
-		db, err := newSqliteDb(&databaseConfig{
+		db, err := newSqliteDb(&sqliteConfig{
 			DataDir:    "./oc_data",
 			DSN:        "data.db",
 			MigrateDir: "test",
@@ -83,7 +84,8 @@ func TestSqliteDb_Bootstrap(t *testing.T) {
 		})
 
 		require.NotNil(t, err)
-		require.EqualError(t, err, "test directory does not exist")
+		require.Contains(t, err.Error(), "failed to run migrations in test")
+		require.Contains(t, err.Error(), "test directory does not exist")
 		require.Nil(t, db)
 	})
 }
@@ -153,7 +155,7 @@ func TestSqliteDb_RunInTransaction(t *testing.T) {
 		ctx := context.Background()
 		err := dbManager.DataDb.RunInTransaction(ctx, func(txCtx context.Context) error {
 			q := QuerierFromContext(txCtx, dbManager.DataDb)
-			_, err := q.Exec("INSERT INTO test (name) VALUES ('test')")
+			_, err := q.ExecContext(txCtx, "INSERT INTO test (name) VALUES ('test')")
 			if err != nil {
 				return err
 			}
@@ -169,7 +171,7 @@ func TestSqliteDb_RunInTransaction(t *testing.T) {
 		require.Error(t, err)
 
 		var count int
-		err = dbManager.DataDb.QueryRow("SELECT COUNT(*) FROM test").Scan(&count)
+		err = dbManager.DataDb.QueryRowContext(ctx, "SELECT COUNT(*) FROM test").Scan(&count)
 		require.NoError(t, err)
 		require.Equal(t, 0, count)
 	})
@@ -180,7 +182,7 @@ func TestSqliteDb_RunInTransaction(t *testing.T) {
 		ctx := context.Background()
 		err := dbManager.DataDb.RunInTransaction(ctx, func(txCtx context.Context) error {
 			q := QuerierFromContext(txCtx, dbManager.DataDb)
-			_, err := q.Exec("INSERT INTO test (name) VALUES ('test')")
+			_, err := q.ExecContext(txCtx, "INSERT INTO test (name) VALUES ('test')")
 			if err != nil {
 				return err
 			}
@@ -191,7 +193,7 @@ func TestSqliteDb_RunInTransaction(t *testing.T) {
 		require.NoError(t, err)
 
 		var count int
-		err = dbManager.DataDb.QueryRow("SELECT COUNT(*) FROM test").Scan(&count)
+		err = dbManager.DataDb.QueryRowContext(ctx, "SELECT COUNT(*) FROM test").Scan(&count)
 		require.NoError(t, err)
 		require.Equal(t, 1, count)
 	})

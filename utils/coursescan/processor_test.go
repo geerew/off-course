@@ -1,6 +1,7 @@
 package coursescan
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -33,7 +34,7 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		_, err := scanner.db.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
+		_, err := scanner.db.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)
 
 		err = Processor(ctx, scanner, scan)

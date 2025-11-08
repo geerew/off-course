@@ -36,15 +36,6 @@ func QuerierFromContext(ctx context.Context, defaultQuerier Querier) Querier {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Defines the sql functions
-type (
-	ExecFn     = func(query string, args ...interface{}) (sql.Result, error)
-	QueryFn    = func(query string, args ...interface{}) (*sql.Rows, error)
-	QueryRowFn = func(query string, args ...interface{}) *sql.Row
-)
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 // Database defines the interface for a database
 type Database interface {
 	Querier
@@ -56,11 +47,6 @@ type Database interface {
 
 // Querier defines the interface for a DB querier
 type Querier interface {
-	// TODO Remove these methods in favor of the context-aware methods
-	Exec(query string, args ...any) (sql.Result, error)
-	Query(query string, args ...any) (*sql.Rows, error)
-	QueryRow(query string, args ...any) *sql.Row
-
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
@@ -92,30 +78,4 @@ type DatabaseManagerConfig struct {
 
 	// The logger to use for the database
 	Logger *slog.Logger
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// databaseConfig defines the configuration for a database
-type databaseConfig struct {
-	// The directory where the database files are stored
-	DataDir string
-
-	// The name of the database file (ie data.db or logs.db)
-	DSN string
-
-	// The directory where the migration files are stored
-	MigrateDir string
-
-	// The application file system
-	AppFs *appfs.AppFs
-
-	// The logger to use for the database
-	Logger *slog.Logger
-
-	// The database mode (ie read-only or read-write)
-	Mode string
-
-	// Whether to use an in-memory database (this is only used for testing)
-	Testing bool
 }

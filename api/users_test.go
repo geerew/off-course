@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -246,7 +247,7 @@ func TestUsers_GetUsers(t *testing.T) {
 		router, _ := setupAdmin(t)
 
 		// Drop the users table
-		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.USER_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.USER_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/users/", nil))
@@ -332,7 +333,7 @@ func TestUsers_CreateUser(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.USER_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.USER_TABLE)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/users/", strings.NewReader(`{"username": "admin", "password": "password123"}`))
@@ -439,7 +440,7 @@ func TestUsers_UpdateUser(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.USER_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.USER_TABLE)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodPut, "/api/users/invalid", strings.NewReader(`{"username": "admin", "password": "password123"}`))
@@ -500,7 +501,7 @@ func TestUsers_DeleteUser(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.USER_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.USER_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/users/invalid", nil))
