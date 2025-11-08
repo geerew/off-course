@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/geerew/off-course/migrations"
@@ -16,6 +17,23 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pressly/goose/v3"
+)
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+const (
+	migrateDirData = "data"
+	migrateDirLogs = "logs"
+	modeReadWrite  = "rwc"
+	modeReadOnly   = "ro"
+	dsnData        = "data.db"
+	dsnLogs        = "logs.db"
+)
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+var (
+	gooseSetupOnce sync.Once
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -50,34 +68,25 @@ type sqliteConfig struct {
 func NewSQLiteManager(config *DatabaseManagerConfig) (*DatabaseManager, error) {
 	manager := &DatabaseManager{}
 
-	// When testing, pick a unique name
-	dsnName := "data.db"
-	if config.Testing {
-		dsnName = fmt.Sprintf("data_memdb_%s", security.PseudorandomString(8))
-	}
+	dsnName := getDSNName(dsnData, config.Testing)
 
-	// Data DB (writer)
 	writeCfg := &sqliteConfig{
 		DataDir:    config.DataDir,
 		DSN:        dsnName,
-		MigrateDir: "data",
+		MigrateDir: migrateDirData,
 		AppFs:      config.AppFs,
 		Testing:    config.Testing,
 		Logger:     config.Logger,
-		Mode:       "rwc",
+		Mode:       modeReadWrite,
 	}
 
 	writeDb, err := newSqliteDb(writeCfg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create write database: %w", err)
 	}
 
-	writeDb.DB().SetMaxOpenConns(1)
-	writeDb.DB().SetMaxIdleConns(1)
-	writeDb.DB().SetConnMaxLifetime(time.Hour)
-	writeDb.DB().SetConnMaxIdleTime(10 * time.Minute)
+	configureConnectionPool(writeDb, 1, 1)
 
-	// Data DB (reader)
 	readCfg := &sqliteConfig{
 		DataDir:    config.DataDir,
 		DSN:        dsnName,
@@ -85,49 +94,39 @@ func NewSQLiteManager(config *DatabaseManagerConfig) (*DatabaseManager, error) {
 		AppFs:      config.AppFs,
 		Testing:    config.Testing,
 		Logger:     config.Logger,
-		Mode:       "ro",
+		Mode:       modeReadOnly,
 	}
 
 	readDb, err := newSqliteDb(readCfg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create read database: %w", err)
 	}
 
-	readDb.DB().SetMaxOpenConns(10)
-	readDb.DB().SetMaxIdleConns(5)
-	readDb.DB().SetConnMaxLifetime(time.Hour)
-	readDb.DB().SetConnMaxIdleTime(10 * time.Minute)
+	configureConnectionPool(readDb, 10, 5)
 
 	manager.DataDb = &sqliteCompositeDb{
 		read:  readDb,
 		write: writeDb,
 	}
 
-	// Log DB
-	dsnName = "logs.db"
-	if config.Testing {
-		dsnName = fmt.Sprintf("logs_memdb_%s", security.PseudorandomString(8))
-	}
+	dsnName = getDSNName(dsnLogs, config.Testing)
 
 	logsCfg := &sqliteConfig{
 		DataDir:    config.DataDir,
 		DSN:        dsnName,
-		MigrateDir: "logs",
+		MigrateDir: migrateDirLogs,
 		AppFs:      config.AppFs,
 		Testing:    config.Testing,
 		Logger:     nil,
-		Mode:       "rwc",
+		Mode:       modeReadWrite,
 	}
 
 	logsDb, err := newSqliteDb(logsCfg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create logs database: %w", err)
 	}
 
-	logsDb.DB().SetMaxOpenConns(1)
-	logsDb.DB().SetMaxIdleConns(1)
-	logsDb.DB().SetConnMaxLifetime(time.Hour)
-	logsDb.DB().SetConnMaxIdleTime(10 * time.Minute)
+	configureConnectionPool(logsDb, 1, 1)
 
 	manager.LogsDb = logsDb
 
@@ -254,7 +253,7 @@ func (c *sqliteCompositeDb) DB() *sqlx.DB {
 // sqliteTx - Transaction wrapper
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// sqliteDb is a sqlite-specific transaction wrapper
+// sqliteTx is a sqlite-specific transaction wrapper
 type sqliteTx struct {
 	tx *sqlx.Tx
 	db *sqliteDb
@@ -319,19 +318,19 @@ type sqliteDb struct {
 
 // newSqliteDb creates a new sqliteDb
 func newSqliteDb(config *sqliteConfig) (*sqliteDb, error) {
-	sqliteDb := &sqliteDb{
+	db := &sqliteDb{
 		config: config,
 	}
 
-	if err := sqliteDb.bootstrap(); err != nil {
+	if err := db.bootstrap(); err != nil {
 		return nil, err
 	}
 
-	if err := sqliteDb.migrate(); err != nil {
+	if err := db.migrate(); err != nil {
 		return nil, err
 	}
 
-	return sqliteDb, nil
+	return db, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -460,11 +459,9 @@ func (db *sqliteDb) bootstrap() error {
 		return err
 	}
 
-	// Connection pool settings (will be overridden for read/write pools in NewSQLiteManager)
 	conn.SetMaxIdleConns(1)
 	conn.SetMaxOpenConns(1)
 
-	// Verify connection health
 	if err := conn.Ping(); err != nil {
 		conn.Close()
 		return fmt.Errorf("failed to ping database: %w", err)
@@ -483,12 +480,13 @@ func (db *sqliteDb) migrate() error {
 		return nil
 	}
 
-	goose.SetLogger(goose.NopLogger())
-	goose.SetBaseFS(migrations.EmbedMigrations)
-
-	if err := goose.SetDialect("sqlite3"); err != nil {
-		return err
-	}
+	gooseSetupOnce.Do(func() {
+		goose.SetLogger(goose.NopLogger())
+		goose.SetBaseFS(migrations.EmbedMigrations)
+		if err := goose.SetDialect("sqlite3"); err != nil {
+			panic(fmt.Errorf("failed to set goose dialect: %w", err))
+		}
+	})
 
 	if err := goose.Up(db.sqlx.DB, db.config.MigrateDir); err != nil {
 		return fmt.Errorf("failed to run migrations in %s: %w", db.config.MigrateDir, err)
@@ -537,4 +535,22 @@ func getRetryInterval(attempt int) time.Duration {
 		return defaultRetryIntervals[len(defaultRetryIntervals)-1]
 	}
 	return defaultRetryIntervals[attempt]
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func getDSNName(baseName string, testing bool) string {
+	if testing {
+		return fmt.Sprintf("%s_memdb_%s", strings.TrimSuffix(baseName, ".db"), security.PseudorandomString(8))
+	}
+	return baseName
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func configureConnectionPool(db *sqliteDb, maxOpen, maxIdle int) {
+	db.DB().SetMaxOpenConns(maxOpen)
+	db.DB().SetMaxIdleConns(maxIdle)
+	db.DB().SetConnMaxLifetime(time.Hour)
+	db.DB().SetConnMaxIdleTime(10 * time.Minute)
 }

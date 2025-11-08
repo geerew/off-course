@@ -24,8 +24,7 @@ func WithQuerier(ctx context.Context, querier Querier) context.Context {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// QuerierFromContext returns the querier from the context, defaulting to a defaulted querier if
-// not found
+// QuerierFromContext returns the querier from the context, or defaultQuerier if not found
 func QuerierFromContext(ctx context.Context, defaultQuerier Querier) Querier {
 	if querier, ok := ctx.Value(querierKey).(Querier); ok && querier != nil {
 		return querier
@@ -57,14 +56,6 @@ type Querier interface {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// DatabaseManager manages the database connections
-type DatabaseManager struct {
-	DataDb Database
-	LogsDb Database
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 // DatabaseManagerConfig holds only the settings needed to create a new DatabaseManager
 type DatabaseManagerConfig struct {
 	// Where to write data.db & logs.db
@@ -78,4 +69,12 @@ type DatabaseManagerConfig struct {
 
 	// The logger to use for the database
 	Logger *slog.Logger
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// DatabaseManager manages the database connections
+type DatabaseManager struct {
+	DataDb Database
+	LogsDb Database
 }

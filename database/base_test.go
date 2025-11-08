@@ -35,7 +35,8 @@ func Test_NewSQLiteManager(t *testing.T) {
 		})
 
 		require.NotNil(t, err)
-		require.EqualError(t, err, "operation not permitted")
+		require.Contains(t, err.Error(), "failed to create write database")
+		require.Contains(t, err.Error(), "operation not permitted")
 		require.Nil(t, dbManager)
 	})
 }
