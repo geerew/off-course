@@ -172,6 +172,7 @@ CREATE TABLE scans (
 	id         TEXT PRIMARY KEY NOT NULL,
 	course_id  TEXT UNIQUE NOT NULL,
     status     TEXT NOT NULL DEFAULT 'waiting',
+	message    TEXT NOT NULL DEFAULT '',
 	created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 	--

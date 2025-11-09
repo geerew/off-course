@@ -452,6 +452,7 @@ type scanResponse struct {
 	CourseID   string               `json:"courseId"`
 	CoursePath string               `json:"coursePath,omitempty"`
 	Status     types.ScanStatusType `json:"status"`
+	Message    string               `json:"message"`
 	CreatedAt  types.DateTime       `json:"createdAt"`
 	UpdatedAt  types.DateTime       `json:"updatedAt"`
 }
@@ -465,6 +466,7 @@ func scanResponseHelper(scans []*models.Scan, isAdmin bool) []*scanResponse {
 			ID:        scan.ID,
 			CourseID:  scan.CourseID,
 			Status:    scan.Status,
+			Message:   scan.Message,
 			CreatedAt: scan.CreatedAt,
 			UpdatedAt: scan.UpdatedAt,
 		}

@@ -36,6 +36,7 @@ func (dao *DAO) CreateScan(ctx context.Context, scan *models.Scan) error {
 				models.BASE_ID:         scan.ID,
 				models.SCAN_COURSE_ID:  scan.CourseID,
 				models.SCAN_STATUS:     scan.Status,
+				models.SCAN_MESSAGE:    scan.Message,
 				models.BASE_CREATED_AT: scan.CreatedAt,
 				models.BASE_UPDATED_AT: scan.UpdatedAt,
 			},
@@ -99,6 +100,7 @@ func (dao *DAO) UpdateScan(ctx context.Context, scan *models.Scan) error {
 		WithData(
 			map[string]interface{}{
 				models.SCAN_STATUS:     scan.Status,
+				models.SCAN_MESSAGE:    scan.Message,
 				models.BASE_UPDATED_AT: scan.UpdatedAt,
 			},
 		).
