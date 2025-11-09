@@ -2,12 +2,12 @@
 <!-- TODO store selection state in localstorage -->
 <script lang="ts">
 	import { GetScans } from '$lib/api/scan-api';
-	import { NiceDate, Pagination, SortMenu } from '$lib/components';
+	import { Pagination, SortMenu } from '$lib/components';
 	import { RightChevronIcon, WarningIcon } from '$lib/components/icons';
 	import RowActionMenu from '$lib/components/pages/admin/scans/row-action-menu.svelte';
 	import TableActionMenu from '$lib/components/pages/admin/scans/table-action-menu.svelte';
 	import Spinner from '$lib/components/spinner.svelte';
-	import { Button, Checkbox } from '$lib/components/ui';
+	import { Badge, Button, Checkbox } from '$lib/components/ui';
 	import * as Table from '$lib/components/ui/table';
 	import type { ScanModel, ScansModel } from '$lib/models/scan-model';
 	import { scanMonitor } from '$lib/scans.svelte';
@@ -32,9 +32,7 @@
 
 	let sortColumns = [
 		{ label: 'Course Path', column: 'courses.path', asc: 'Ascending', desc: 'Descending' },
-		{ label: 'Status', column: 'scans.status', asc: 'Ascending', desc: 'Descending' },
-		{ label: 'Added', column: 'scans.created_at', asc: 'Oldest', desc: 'Newest' },
-		{ label: 'Updated', column: 'scans.updated_at', asc: 'Oldest', desc: 'Newest' }
+		{ label: 'Status', column: 'scans.status', asc: 'Ascending', desc: 'Descending' }
 	] as const satisfies SortColumns;
 
 	type PersistedState = {
@@ -45,7 +43,7 @@
 	};
 
 	const persistedState = new PersistedState<PersistedState>('admin_scans', {
-		sort: { column: 'scans.created_at', direction: 'desc' }
+		sort: { column: 'scans.status', direction: 'desc' }
 	});
 
 	let selectedSortColumn = $state(persistedState.current.sort.column);
@@ -236,7 +234,7 @@
 					<Table.Root
 						class={smallTable
 							? 'grid-cols-[2.5rem_2.5rem_1fr_3.5rem]'
-							: 'grid-cols-[3.5rem_1fr_auto_auto_auto_3.5rem]'}
+							: 'grid-cols-[3.5rem_1fr_auto_auto_3.5rem]'}
 					>
 						<Table.Thead>
 							<Table.Tr class="text-xs font-semibold uppercase">
@@ -259,11 +257,8 @@
 								<!-- Status (large screens) -->
 								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Status</Table.Th>
 
-								<!-- Added (large screens) -->
-								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Added</Table.Th>
-
-								<!-- Updated (large screens) -->
-								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Updated</Table.Th>
+								<!-- Message (large screens) -->
+								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Progress</Table.Th>
 
 								<!-- Row action menu -->
 								<Table.Th></Table.Th>
@@ -294,7 +289,7 @@
 									>
 										<div
 											class={cn(
-												'absolute top-1/2 left-1 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
+												'absolute left-1 top-1/2 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
 												scan.status === 'processing'
 													? 'bg-background-primary'
 													: 'bg-background-alt-4',
@@ -324,7 +319,7 @@
 									<Table.Td class="group-hover:bg-background-alt-1 relative">
 										<div
 											class={cn(
-												'absolute top-1/2 left-1 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
+												'absolute left-1 top-1/2 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
 												scan.status === 'processing'
 													? 'bg-background-primary'
 													: 'bg-background-alt-4',
@@ -359,28 +354,30 @@
 										)}
 									>
 										<div class="flex w-full place-content-center">
-											{scan.status}
+											<Badge
+												class={scan.status === 'processing'
+													? 'bg-background-success text-foreground'
+													: 'bg-background-alt-4 text-foreground-alt-1'}
+											>
+												{scan.status}
+											</Badge>
 										</div>
 									</Table.Td>
 
-									<!-- Added (large screens) -->
+									<!-- Message (large screens) -->
 									<Table.Td
 										class={cn(
-											'group-hover:bg-background-alt-1 px-4 whitespace-nowrap',
+											'group-hover:bg-background-alt-1 px-4',
 											smallTable ? 'hidden' : 'visible'
 										)}
 									>
-										<NiceDate date={scan.createdAt} />
-									</Table.Td>
-
-									<!-- Updated (large screens) -->
-									<Table.Td
-										class={cn(
-											'group-hover:bg-background-alt-1 px-4 whitespace-nowrap',
-											smallTable ? 'hidden' : 'visible'
-										)}
-									>
-										<NiceDate date={scan.updatedAt} />
+										<div class="flex w-full justify-start">
+											{#if scan.message}
+												<span class="text-foreground-alt-1">{scan.message}</span>
+											{:else}
+												<span class="text-foreground-alt-3">—</span>
+											{/if}
+										</div>
 									</Table.Td>
 
 									<!-- Row action menu -->
@@ -405,29 +402,30 @@
 											inTransitionParams={{ duration: 200 }}
 											outTransition={slide}
 											outTransitionParams={{ duration: 150 }}
-											class="bg-background-alt-2/30 col-span-full justify-start pr-4 pl-14"
+											class="bg-background-alt-2/30 col-span-full justify-start pl-14 pr-4"
 										>
 											<div class="flex flex-col gap-2 py-3 text-sm">
 												<div class="grid grid-cols-[8rem_1fr]">
 													<span class="text-foreground-alt-3 font-medium">STATUS</span>
 													<span class="text-foreground-alt-1">
-														{scan.status}
+														<Badge
+															class={scan.status === 'processing'
+																? 'bg-background-success text-foreground'
+																: 'bg-background-alt-4 text-foreground-alt-1'}
+														>
+															{scan.status}
+														</Badge>
 													</span>
 												</div>
 
-												<div class="grid grid-cols-[8rem_1fr]">
-													<span class="text-foreground-alt-3 font-medium">ADDED</span>
-													<span class="text-foreground-alt-1">
-														<NiceDate date={scan.createdAt} />
-													</span>
-												</div>
-
-												<div class="grid grid-cols-[8rem_1fr]">
-													<span class="text-foreground-alt-3 font-medium">UPDATED</span>
-													<span class="text-foreground-alt-1">
-														<NiceDate date={scan.updatedAt} />
-													</span>
-												</div>
+												{#if scan.message}
+													<div class="grid grid-cols-[8rem_1fr]">
+														<span class="text-foreground-alt-3 font-medium">PROGRESS</span>
+														<span class="text-foreground-alt-1">
+															{scan.message}
+														</span>
+													</div>
+												{/if}
 											</div>
 										</Table.Td>
 									</Table.Tr>

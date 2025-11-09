@@ -2,17 +2,16 @@ import { toast } from 'svelte-sonner';
 import { SvelteMap } from 'svelte/reactivity';
 import type { APIError } from './api-error.svelte';
 import { GetCourse } from './api/course-api';
-import { GetAllScans } from './api/scan-api';
+import { subscribeToScans, type ScanUpdateEvent } from './api/scan-api';
 import type { CourseModel } from './models/course-model';
 import type { ScanModel, ScansModel, ScanStatus } from './models/scan-model';
 
 class ScanMonitor {
-	#isFetching = false;
 	#scans = $state<Record<string, ScanStatus>>({});
 	#scansRo = $derived(this.#scans);
 
-	#timeoutId = $state<number | null>(null);
-	#isRunning = $derived(this.#timeoutId !== null);
+	#sseClose: (() => void) | null = null;
+	#isRunning = $derived(this.#sseClose !== null);
 
 	// Course tracking
 	#trackedCourses = new SvelteMap<string, CourseModel>();
@@ -47,9 +46,9 @@ class ScanMonitor {
 				added = true;
 			}
 		}
-		// if we just added the very first thing to watch, fire the poller
-		if (added && !this.#isFetching && !this.#isRunning) {
-			this.#fetch();
+		// if we just added the very first thing to watch, start SSE connection
+		if (added && !this.#isRunning) {
+			this.#startSSE();
 		}
 	}
 
@@ -76,8 +75,8 @@ class ScanMonitor {
 				added = true;
 			}
 		}
-		if (added && !this.#isFetching && !this.#isRunning) {
-			this.#fetch();
+		if (added && !this.#isRunning) {
+			this.#startSSE();
 		}
 	}
 
@@ -124,78 +123,82 @@ class ScanMonitor {
 		this.#scans = {};
 	}
 
-	// Fetches the scan status for all courses and determines which ones have changed
-	// If a course is no longer in the scan list, it will be updated with the latest data
-	// from the backend. It is called 3 seconds after the last fetch until there are no
-	// more courses to track
+	// Starts the SSE connection to receive real-time scan updates
 	//
 	// This function is private and should not be called directly
-	async #fetch(): Promise<void> {
-		if (this.#isFetching) return;
-
+	#startSSE(): void {
 		if (this.#trackingCount === 0) {
-			this.#stop();
 			return;
 		}
 
-		this.#isFetching = true;
-		try {
-			const allScans = await GetAllScans();
-			const newStatus: Record<string, ScanStatus> = {};
-			const seenIds = new Set<string>();
-
-			for (const scan of allScans) {
-				newStatus[scan.courseId] = scan.status;
-				seenIds.add(scan.courseId);
-
-				// update any tracked ScanModel in-place
-				const sModel = this.#trackedScans.get(scan.courseId);
-				if (sModel) Object.assign(sModel, scan);
-
-				// remember for both courses & scans
-				this.#lastSeenScanIds.add(scan.courseId);
-				this.#lastSeenCourseIds.add(scan.courseId);
-			}
-
-			// prune scans that disappeared
-			for (const id of Array.from(this.#lastSeenScanIds)) {
-				if (!seenIds.has(id)) {
-					this.untrackScan(id);
-					this.#lastSeenScanIds.delete(id);
-				}
-			}
-
-			// prune courses that disappeared (and update them)
-			for (const id of Array.from(this.#lastSeenCourseIds)) {
-				if (!seenIds.has(id)) {
-					await this.#updateCourse(id);
-					this.#lastSeenCourseIds.delete(id);
-				}
-			}
-
-			// Update all tracked scan arrays to match what's on the backend
-			this.#trackedScanArrays.forEach((scansArray) => {
-				// Filter out scans that no longer exist on backend
-				const stillExistingScans = scansArray.filter((scan) => seenIds.has(scan.courseId));
-
-				// Replace the array contents while maintaining the reference
-				scansArray.length = 0;
-				scansArray.push(...stillExistingScans);
-			});
-
-			this.#scans = newStatus;
-		} catch (e) {
-			toast.error((e as APIError).message);
-		} finally {
-			this.#isFetching = false;
-
-			// if any watchers remain, schedule the next round
-			if (this.#trackingCount > 0) {
-				this.#timeoutId = window.setTimeout(() => this.#fetch(), 3000);
-			} else {
-				this.#stop();
-			}
+		if (this.#sseClose) {
+			// Already connected
+			return;
 		}
+
+		this.#sseClose = subscribeToScans({
+			onUpdate: (event: ScanUpdateEvent) => {
+				if (event.type === 'scan_update') {
+					const scan = event.data as ScanModel;
+					this.#scans[scan.courseId] = scan.status;
+
+					// Update tracked ScanModel in-place
+					const sModel = this.#trackedScans.get(scan.courseId);
+					if (sModel) {
+						Object.assign(sModel, scan);
+					}
+
+					// Update tracked scan arrays
+					this.#trackedScanArrays.forEach((scansArray) => {
+						const index = scansArray.findIndex((s) => s.courseId === scan.courseId);
+						if (index !== -1) {
+							Object.assign(scansArray[index], scan);
+						}
+					});
+
+					// Remember for courses & scans
+					this.#lastSeenScanIds.add(scan.courseId);
+					this.#lastSeenCourseIds.add(scan.courseId);
+				} else if (event.type === 'scan_deleted') {
+					const deletedId = (event.data as { id: string }).id;
+					// Find courseId from tracked scans
+					for (const [courseId, scan] of this.#trackedScans.entries()) {
+						if (scan.id === deletedId) {
+							delete this.#scans[courseId];
+							this.untrackScan(courseId);
+							this.#lastSeenScanIds.delete(courseId);
+
+							// Update tracked scan arrays
+							this.#trackedScanArrays.forEach((scansArray) => {
+								const index = scansArray.findIndex((s) => s.courseId === courseId);
+								if (index !== -1) {
+									scansArray.splice(index, 1);
+								}
+							});
+
+							// Check if course should be updated
+							if (this.#lastSeenCourseIds.has(courseId)) {
+								this.#updateCourse(courseId);
+								this.#lastSeenCourseIds.delete(courseId);
+							}
+							break;
+						}
+					}
+				} else if (event.type === 'error') {
+					toast.error((event.data as { message: string }).message || 'Scan update error');
+				}
+			},
+			onError: (error: Error) => {
+				toast.error(error.message);
+			},
+			onClose: () => {
+				this.#sseClose = null;
+				// Auto-reconnect if there are still tracked items
+				if (this.#trackingCount > 0) {
+					setTimeout(() => this.#startSSE(), 1000);
+				}
+			}
+		});
 	}
 
 	// Updates the course with the latest data from the backend
@@ -216,15 +219,14 @@ class ScanMonitor {
 		}
 	}
 
-	// Stops the scan monitor and clears the timeout
+	// Stops the scan monitor and closes SSE connection
 	//
 	// This function is private and should not be called directly
 	#stop(): void {
-		if (this.#timeoutId) {
-			clearTimeout(this.#timeoutId);
-			this.#timeoutId = null;
+		if (this.#sseClose) {
+			this.#sseClose();
+			this.#sseClose = null;
 		}
-		this.#isFetching = false;
 	}
 
 	get scans() {

@@ -23,7 +23,8 @@ export const ScanSchema = object({
 	...BaseSchema.entries,
 	courseId: string(),
 	coursePath: optional(string()),
-	status: ScanStatusSchema
+	status: ScanStatusSchema,
+	message: optional(string())
 });
 
 export type ScanModel = InferOutput<typeof ScanSchema>;

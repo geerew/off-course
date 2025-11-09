@@ -88,3 +88,46 @@ export async function DeleteScan(id: string): Promise<void> {
 		throw new APIError(response.status, data.message || 'Unknown error');
 	}
 }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+export type ScanUpdateEvent = {
+	type: 'scan_update' | 'scan_deleted' | 'error';
+	data: ScanModel | { id: string } | { message: string };
+};
+
+export type ScanSubscriptionCallbacks = {
+	onUpdate?: (event: ScanUpdateEvent) => void;
+	onError?: (error: Error) => void;
+	onClose?: () => void;
+};
+
+// Subscribe to scan updates via Server-Sent Events
+export function subscribeToScans(callbacks: ScanSubscriptionCallbacks): () => void {
+	const eventSource = new EventSource('/api/scans/stream');
+	let isClosed = false;
+
+	const close = () => {
+		if (!isClosed) {
+			isClosed = true;
+			eventSource.close();
+			callbacks.onClose?.();
+		}
+	};
+
+	eventSource.onmessage = (event) => {
+		try {
+			const data = JSON.parse(event.data) as ScanUpdateEvent;
+			callbacks.onUpdate?.(data);
+		} catch (error) {
+			callbacks.onError?.(error as Error);
+		}
+	};
+
+	eventSource.onerror = (error) => {
+		callbacks.onError?.(new Error('SSE connection error'));
+		// Auto-reconnect on error (EventSource handles this automatically)
+	};
+
+	return close;
+}
