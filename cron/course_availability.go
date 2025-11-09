@@ -50,7 +50,7 @@ func (ca *courseAvailability) run() error {
 
 	for page <= totalPages {
 		p := pagination.New(page, perPage)
-		dbOpts := database.NewOptions().WithPagination(p)
+		dbOpts := dao.NewOptions().WithPagination(p)
 
 		// Fetch a batch of courses
 		courses, err := ca.dao.ListCourses(ctx, dbOpts)

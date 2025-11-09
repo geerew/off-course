@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/pagination"
@@ -66,7 +65,7 @@ func Test_GetCourse(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
 		record, err := dao.GetCourse(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Equal(t, course.ID, record.ID)
@@ -81,7 +80,7 @@ func Test_GetCourse(t *testing.T) {
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
 		// Read course (no progress yet) for default user (principal from setup)
-		dbOpts := database.NewOptions().
+		dbOpts := NewOptions().
 			WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID}).
 			WithUserProgress()
 
@@ -109,7 +108,7 @@ func Test_GetCourse(t *testing.T) {
 			Title:    "Asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
-			Type:     *types.NewAsset("mp4"),
+			Type:     types.MustAsset("mp4"),
 			Path:     "/course-1/01 asset.mp4",
 			FileSize: 1024,
 			ModTime:  time.Now().Format(time.RFC3339Nano),
@@ -198,7 +197,7 @@ func Test_GetCourse(t *testing.T) {
 	t.Run("missing principal", func(t *testing.T) {
 		dao, _ := setup(t)
 
-		dbOpts := database.NewOptions().WithUserProgress()
+		dbOpts := NewOptions().WithUserProgress()
 		record, err := dao.GetCourse(context.Background(), dbOpts)
 		require.ErrorIs(t, err, utils.ErrPrincipal)
 		require.Nil(t, record)
@@ -240,7 +239,7 @@ func Test_ListCourses(t *testing.T) {
 			time.Sleep(1 * time.Millisecond)
 		}
 
-		dbOpts := database.NewOptions().WithUserProgress()
+		dbOpts := NewOptions().WithUserProgress()
 
 		records, err := dao.ListCourses(ctx, dbOpts)
 		require.Nil(t, err)
@@ -274,7 +273,7 @@ func Test_ListCourses(t *testing.T) {
 				Title:    "Asset 1",
 				Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 				Module:   "Module 1",
-				Type:     *types.NewAsset("mp4"),
+				Type:     types.MustAsset("mp4"),
 				Path:     fmt.Sprintf("/course-%d/01 asset.mp4", i),
 				FileSize: 1024,
 				ModTime:  time.Now().Format(time.RFC3339Nano),
@@ -384,7 +383,7 @@ func Test_ListCourses(t *testing.T) {
 		}
 
 		// Descending order by created_at
-		opts := database.NewOptions().WithOrderBy(models.COURSE_TABLE_CREATED_AT + " DESC")
+		opts := NewOptions().WithOrderBy(models.COURSE_TABLE_CREATED_AT + " DESC")
 		records, err := dao.ListCourses(ctx, opts)
 		require.Nil(t, err)
 		require.Len(t, records, 3)
@@ -394,7 +393,7 @@ func Test_ListCourses(t *testing.T) {
 		}
 
 		// Ascending order by created_at
-		opts = database.NewOptions().WithOrderBy(models.COURSE_TABLE_CREATED_AT + " ASC")
+		opts = NewOptions().WithOrderBy(models.COURSE_TABLE_CREATED_AT + " ASC")
 		records, err = dao.ListCourses(ctx, opts)
 		require.Nil(t, err)
 		require.Len(t, records, 3)
@@ -410,7 +409,7 @@ func Test_ListCourses(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
 		records, err := dao.ListCourses(ctx, opts)
 		require.Nil(t, err)
 		require.Len(t, records, 1)
@@ -429,7 +428,7 @@ func Test_ListCourses(t *testing.T) {
 		}
 
 		// First page with 10 records
-		p := database.NewOptions().WithPagination(pagination.New(1, 10))
+		p := NewOptions().WithPagination(pagination.New(1, 10))
 		records, err := dao.ListCourses(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 10)
@@ -437,7 +436,7 @@ func Test_ListCourses(t *testing.T) {
 		require.Equal(t, courses[9].ID, records[9].ID)
 
 		// Second page with remaining 7 records
-		p = database.NewOptions().WithPagination(pagination.New(2, 10))
+		p = NewOptions().WithPagination(pagination.New(2, 10))
 		records, err = dao.ListCourses(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 7)
@@ -477,7 +476,7 @@ func Test_UpdateCourse(t *testing.T) {
 		}
 		require.NoError(t, dao.UpdateCourse(ctx, updatedCourse))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: originalCourse.ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: originalCourse.ID})
 		record, err := dao.GetCourse(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Equal(t, originalCourse.ID, record.ID)                    // No change
@@ -526,7 +525,7 @@ func Test_DeleteCourses(t *testing.T) {
 		course := &models.Course{Title: "Course", Path: "/course"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
 		require.Nil(t, dao.DeleteCourses(ctx, opts))
 
 		records, err := dao.ListCourses(ctx, opts)
@@ -540,7 +539,7 @@ func Test_DeleteCourses(t *testing.T) {
 		course := &models.Course{Title: "Course", Path: "/course"}
 		require.NoError(t, dao.CreateCourse(ctx, course))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: "non-existent"})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: "non-existent"})
 		require.Nil(t, dao.DeleteCourses(ctx, opts))
 
 		records, err := dao.ListCourses(ctx, nil)
@@ -613,7 +612,7 @@ func Test_ClassifyCoursePaths(t *testing.T) {
 	t.Run("db error", func(t *testing.T) {
 		dao, ctx := setup(t)
 
-		_, err := dao.db.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
+		_, err := dao.db.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.Nil(t, err)
 
 		result, err := dao.ClassifyCoursePaths(ctx, []string{"/"})

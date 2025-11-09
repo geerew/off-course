@@ -108,12 +108,12 @@ func verifyAdminUser(username, dataDir string) error {
 		return fmt.Errorf("failed to create database manager: %w", err)
 	}
 
-	dao := dao.New(dbManager.DataDb)
-	options := &database.Options{
+	appDao := dao.New(dbManager.DataDb)
+	options := &dao.Options{
 		Where: squirrel.Eq{models.USER_TABLE_USERNAME: username},
 	}
 
-	user, err := dao.GetUser(ctx, options)
+	user, err := appDao.GetUser(ctx, options)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return fmt.Errorf("user '%s' not found", username)

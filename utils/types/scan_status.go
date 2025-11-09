@@ -10,12 +10,7 @@ import (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-type ScanStatus struct {
-	s ScanStatusType
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+// ScanStatusType defines the type of scan status
 type ScanStatusType string
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -27,94 +22,95 @@ const (
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// NewScanStatusWaiting creates a ScanStatus type with the status of
-// waiting
-func NewScanStatusWaiting() ScanStatus {
-	return ScanStatus{s: ScanStatusWaiting}
+// NewScanStatusWaiting creates a ScanStatusType with the status of waiting
+func NewScanStatusWaiting() ScanStatusType {
+	return ScanStatusWaiting
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// NewScanStatusProcessing creates a ScanStatus type with the status of
-// processing
-func NewScanStatusProcessing() ScanStatus {
-	return ScanStatus{s: ScanStatusProcessing}
+// NewScanStatusProcessing creates a ScanStatusType with the status of processing
+func NewScanStatusProcessing() ScanStatusType {
+	return ScanStatusProcessing
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// SetWaiting updates the state to waiting
-func (ss *ScanStatus) SetWaiting() {
-	ss.s = ScanStatusWaiting
+// IsValid checks if the scan status is valid
+func (s ScanStatusType) IsValid() bool {
+	switch s {
+	case ScanStatusWaiting, ScanStatusProcessing:
+		return true
+	}
+	return false
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// SetProcessing updates the state to processing
-func (ss *ScanStatus) SetProcessing() {
-	ss.s = ScanStatusProcessing
+// IsWaiting returns true if the status is waiting
+func (s ScanStatusType) IsWaiting() bool {
+	return s == ScanStatusWaiting
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// IsWaiting returns true is the status is waiting
-func (ss ScanStatus) IsWaiting() bool {
-	return ss.s == ScanStatusWaiting
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// IsProcessing returns true is the status is process
-func (ss ScanStatus) IsProcessing() bool {
-	return ss.s == ScanStatusProcessing
+// IsProcessing returns true if the status is processing
+func (s ScanStatusType) IsProcessing() bool {
+	return s == ScanStatusProcessing
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // String implements the `Stringer` interface
-func (ss ScanStatus) String() string {
-	return fmt.Sprint(ss.s)
+func (s ScanStatusType) String() string {
+	return string(s)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // MarshalJSON implements the `json.Marshaler` interface
-func (ss ScanStatus) MarshalJSON() ([]byte, error) {
-	return []byte(`"` + ss.s + `"`), nil
+func (s ScanStatusType) MarshalJSON() ([]byte, error) {
+	if !s.IsValid() {
+		return nil, fmt.Errorf("invalid scan status: %s", s)
+	}
+	return []byte(`"` + string(s) + `"`), nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // UnmarshalJSON implements the `json.Unmarshaler` interface
-func (ss *ScanStatus) UnmarshalJSON(b []byte) error {
+func (s *ScanStatusType) UnmarshalJSON(b []byte) error {
 	var raw string
 	if err := json.Unmarshal(b, &raw); err != nil {
 		return err
 	}
 
-	return ss.Scan(raw)
+	return s.Scan(raw)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Value implements the `driver.Valuer` interface
-func (ss ScanStatus) Value() (driver.Value, error) {
-	return ss.String(), nil
+func (s ScanStatusType) Value() (driver.Value, error) {
+	if !s.IsValid() {
+		return nil, fmt.Errorf("invalid scan status: %s", s)
+	}
+	return string(s), nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Scan implements `sql.Scanner` interface
-func (ss *ScanStatus) Scan(value any) error {
+func (s *ScanStatusType) Scan(value any) error {
 	vv := cast.ToString(value)
 
 	switch vv {
 	case string(ScanStatusWaiting):
-		ss.s = ScanStatusWaiting
+		*s = ScanStatusWaiting
 	case string(ScanStatusProcessing):
-		ss.s = ScanStatusProcessing
+		*s = ScanStatusProcessing
 	default:
-		ss.s = ""
+		return fmt.Errorf("invalid scan status: %s", vv)
 	}
 
 	return nil

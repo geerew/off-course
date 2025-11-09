@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
+	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/auth"
 	"github.com/geerew/off-course/utils/types"
@@ -31,7 +31,7 @@ func TestAuth_Register(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusCreated, status)
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test"})
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test"})
 		record, err := router.appDao.GetUser(ctx, dbOpts)
 		require.NoError(t, err)
 		require.NotEqual(t, "password", record.PasswordHash)
@@ -72,7 +72,7 @@ func TestAuth_Register(t *testing.T) {
 		require.Contains(t, string(body), "Username and/or password cannot be empty")
 
 		// Missing username
-		req = httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(`{"password": "test"}`))
+		req = httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(`{"password": "password123"}`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 
 		status, body, err = requestHelper(t, router, req)
@@ -124,7 +124,7 @@ func TestAuth_Bootstrap(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		// Clear the admin user to make it unbootstrapped
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "admin"})
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "admin"})
 		err := router.appDao.DeleteUsers(ctx, dbOpts)
 		require.NoError(t, err)
 		router.InitBootstrap()
@@ -141,7 +141,7 @@ func TestAuth_Bootstrap(t *testing.T) {
 		require.NoError(t, err2)
 		require.Equal(t, http.StatusCreated, status)
 
-		dbOpts2 := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test"})
+		dbOpts2 := dao.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test"})
 		record, err3 := router.appDao.GetUser(ctx, dbOpts2)
 		require.NoError(t, err3)
 		require.NotEqual(t, "password", record.PasswordHash)
@@ -153,7 +153,7 @@ func TestAuth_Bootstrap(t *testing.T) {
 		router, _ := setupAdmin(t)
 
 		// Clear the admin user to make it unbootstrapped
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "admin"})
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "admin"})
 		err := router.appDao.DeleteUsers(context.Background(), dbOpts)
 		require.NoError(t, err)
 		router.InitBootstrap()
@@ -196,7 +196,7 @@ func TestAuth_Login(t *testing.T) {
 		}
 		require.NoError(t, router.appDao.CreateUser(ctx, user))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: user.ID})
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: user.ID})
 		_, err := router.appDao.GetUser(ctx, dbOpts)
 		require.NoError(t, err)
 
@@ -242,7 +242,7 @@ func TestAuth_Login(t *testing.T) {
 		require.Contains(t, string(body), "Username and/or password cannot be empty")
 
 		// Missing username
-		req = httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"password": "test"}`))
+		req = httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"password": "password123"}`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 
 		status, body, err = requestHelper(t, router, req)
@@ -291,7 +291,7 @@ func TestAuth_Login(t *testing.T) {
 		}
 		require.NoError(t, router.appDao.CreateUser(ctx, user))
 
-		req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"username": "test", "password": "invalid" }`))
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"username": "test", "password": "wrongpass123" }`))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
 
 		status, body, err := requestHelper(t, router, req)

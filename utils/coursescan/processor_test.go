@@ -1,13 +1,14 @@
 package coursescan
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
+	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/spf13/afero"
@@ -33,7 +34,7 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		_, err := scanner.db.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
+		_, err := scanner.db.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)
 
 		err = Processor(ctx, scanner, scan)
@@ -69,7 +70,7 @@ func TestScanner_Processor(t *testing.T) {
 		err := Processor(ctx, scanner, scan)
 		require.NoError(t, err)
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
 		record, err := scanner.dao.GetCourse(ctx, dbOpts)
 		require.NoError(t, err)
 		require.True(t, record.Available)
@@ -84,7 +85,7 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
 
 		// Add card at the root
 		{
@@ -165,7 +166,7 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		dbOpts := database.NewOptions().
+		dbOpts := dao.NewOptions().
 			WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: course.ID}).
 			WithOrderBy(models.LESSON_TABLE_MODULE+" asc", models.LESSON_TABLE_PREFIX+" asc")
 
@@ -392,7 +393,7 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		dbOpts := database.NewOptions().
+		dbOpts := dao.NewOptions().
 			WithOrderBy(models.LESSON_TABLE_MODULE+" asc", models.LESSON_TABLE_PREFIX+" asc").
 			WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: course.ID})
 
@@ -480,7 +481,7 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		dbOpts := database.NewOptions().
+		dbOpts := dao.NewOptions().
 			WithOrderBy(models.LESSON_TABLE_MODULE+" asc", models.LESSON_TABLE_PREFIX+" asc").
 			WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: course.ID})
 
@@ -615,7 +616,7 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		dbOpts := database.NewOptions().
+		dbOpts := dao.NewOptions().
 			WithOrderBy(models.LESSON_TABLE_MODULE+" asc", models.LESSON_TABLE_PREFIX+" asc").
 			WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: course.ID})
 
@@ -750,7 +751,7 @@ func TestScanner_Processor(t *testing.T) {
 		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
 		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
 
-		dbOpts := database.NewOptions().
+		dbOpts := dao.NewOptions().
 			WithOrderBy(models.LESSON_TABLE_MODULE+" asc", models.LESSON_TABLE_PREFIX+" asc").
 			WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: course.ID})
 
@@ -809,30 +810,30 @@ func TestScanner_ParseFilename(t *testing.T) {
 			expected *parsedFile
 		}{
 			// Video (varied)
-			{"0    file 0.avi", &parsedFile{Prefix: 0, Title: "file 0", SubPrefix: nil, SubTitle: "", Ext: "avi", AssetType: types.NewAsset("avi"), IsCard: false, Original: "0    file 0.avi", NormalizedPath: "0    file 0.avi"}},
-			{"001 file 1.mp4", &parsedFile{Prefix: 1, Title: "file 1", SubPrefix: nil, SubTitle: "", Ext: "mp4", AssetType: types.NewAsset("mp4"), IsCard: false, Original: "001 file 1.mp4", NormalizedPath: "001 file 1.mp4"}},
-			{"1-file.ogg", &parsedFile{Prefix: 1, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "ogg", AssetType: types.NewAsset("ogg"), IsCard: false, Original: "1-file.ogg", NormalizedPath: "1-file.ogg"}},
-			{"2 - file.webm", &parsedFile{Prefix: 2, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "webm", AssetType: types.NewAsset("webm"), IsCard: false, Original: "2 - file.webm", NormalizedPath: "2 - file.webm"}},
-			{"3 -file.m4a", &parsedFile{Prefix: 3, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "m4a", AssetType: types.NewAsset("m4a"), IsCard: false, Original: "3 -file.m4a", NormalizedPath: "3 -file.m4a"}},
-			{"4- file.opus", &parsedFile{Prefix: 4, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "opus", AssetType: types.NewAsset("opus"), IsCard: false, Original: "4- file.opus", NormalizedPath: "4- file.opus"}},
-			{"5000 --- file.wav", &parsedFile{Prefix: 5000, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "wav", AssetType: types.NewAsset("wav"), IsCard: false, Original: "5000 --- file.wav", NormalizedPath: "5000 --- file.wav"}},
-			{"0100 file.mp3", &parsedFile{Prefix: 100, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "mp3", AssetType: types.NewAsset("mp3"), IsCard: false, Original: "0100 file.mp3", NormalizedPath: "0100 file.mp3"}},
+			{"0    file 0.avi", &parsedFile{Prefix: 0, Title: "file 0", SubPrefix: nil, SubTitle: "", Ext: "avi", AssetType: types.MustAsset("avi"), IsCard: false, Original: "0    file 0.avi", NormalizedPath: "0    file 0.avi"}},
+			{"001 file 1.mp4", &parsedFile{Prefix: 1, Title: "file 1", SubPrefix: nil, SubTitle: "", Ext: "mp4", AssetType: types.MustAsset("mp4"), IsCard: false, Original: "001 file 1.mp4", NormalizedPath: "001 file 1.mp4"}},
+			{"1-file.ogg", &parsedFile{Prefix: 1, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "ogg", AssetType: types.MustAsset("ogg"), IsCard: false, Original: "1-file.ogg", NormalizedPath: "1-file.ogg"}},
+			{"2 - file.webm", &parsedFile{Prefix: 2, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "webm", AssetType: types.MustAsset("webm"), IsCard: false, Original: "2 - file.webm", NormalizedPath: "2 - file.webm"}},
+			{"3 -file.m4a", &parsedFile{Prefix: 3, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "m4a", AssetType: types.MustAsset("m4a"), IsCard: false, Original: "3 -file.m4a", NormalizedPath: "3 -file.m4a"}},
+			{"4- file.opus", &parsedFile{Prefix: 4, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "opus", AssetType: types.MustAsset("opus"), IsCard: false, Original: "4- file.opus", NormalizedPath: "4- file.opus"}},
+			{"5000 --- file.wav", &parsedFile{Prefix: 5000, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "wav", AssetType: types.MustAsset("wav"), IsCard: false, Original: "5000 --- file.wav", NormalizedPath: "5000 --- file.wav"}},
+			{"0100 file.mp3", &parsedFile{Prefix: 100, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "mp3", AssetType: types.MustAsset("mp3"), IsCard: false, Original: "0100 file.mp3", NormalizedPath: "0100 file.mp3"}},
 			// PDF (including mixed case)
-			{"1 - doc.pdf", &parsedFile{Prefix: 1, Title: "doc", SubPrefix: nil, SubTitle: "", Ext: "pdf", AssetType: types.NewAsset("pdf"), IsCard: false, Original: "1 - doc.pdf", NormalizedPath: "1 - doc.pdf"}},
-			{"2 - REPORT.PDF", &parsedFile{Prefix: 2, Title: "REPORT", SubPrefix: nil, SubTitle: "", Ext: "pdf", AssetType: types.NewAsset("pdf"), IsCard: false, Original: "2 - REPORT.PDF", NormalizedPath: "2 - REPORT.PDF"}},
+			{"1 - doc.pdf", &parsedFile{Prefix: 1, Title: "doc", SubPrefix: nil, SubTitle: "", Ext: "pdf", AssetType: types.MustAsset("pdf"), IsCard: false, Original: "1 - doc.pdf", NormalizedPath: "1 - doc.pdf"}},
+			{"2 - REPORT.PDF", &parsedFile{Prefix: 2, Title: "REPORT", SubPrefix: nil, SubTitle: "", Ext: "pdf", AssetType: types.MustAsset("pdf"), IsCard: false, Original: "2 - REPORT.PDF", NormalizedPath: "2 - REPORT.PDF"}},
 			// Markdown
-			{"5 notes.md", &parsedFile{Prefix: 5, Title: "notes", SubPrefix: nil, SubTitle: "", Ext: "md", AssetType: types.NewAsset("md"), IsCard: false, Original: "5 notes.md", NormalizedPath: "5 notes.md"}},
+			{"5 notes.md", &parsedFile{Prefix: 5, Title: "notes", SubPrefix: nil, SubTitle: "", Ext: "md", AssetType: types.MustAsset("md"), IsCard: false, Original: "5 notes.md", NormalizedPath: "5 notes.md"}},
 			// Text
-			{"6 readme.txt", &parsedFile{Prefix: 6, Title: "readme", SubPrefix: nil, SubTitle: "", Ext: "txt", AssetType: types.NewAsset("txt"), IsCard: false, Original: "6 readme.txt", NormalizedPath: "6 readme.txt"}},
+			{"6 readme.txt", &parsedFile{Prefix: 6, Title: "readme", SubPrefix: nil, SubTitle: "", Ext: "txt", AssetType: types.MustAsset("txt"), IsCard: false, Original: "6 readme.txt", NormalizedPath: "6 readme.txt"}},
 			// With sub-prefix but no subtitle
-			{"01 file 0 {1}.avi", &parsedFile{Prefix: 1, Title: "file 0", SubPrefix: intPtr(1), SubTitle: "", Ext: "avi", AssetType: types.NewAsset("avi"), IsCard: false, Original: "01 file 0 {1}.avi", NormalizedPath: "01 file 0 {1}.avi"}},
+			{"01 file 0 {1}.avi", &parsedFile{Prefix: 1, Title: "file 0", SubPrefix: intPtr(1), SubTitle: "", Ext: "avi", AssetType: types.MustAsset("avi"), IsCard: false, Original: "01 file 0 {1}.avi", NormalizedPath: "01 file 0 {1}.avi"}},
 			// With sub-prefix and subtitle
-			{"01 file 0 {1 Part 1}.avi", &parsedFile{Prefix: 1, Title: "file 0", SubPrefix: intPtr(1), SubTitle: "Part 1", Ext: "avi", AssetType: types.NewAsset("avi"), IsCard: false, Original: "01 file 0 {1 Part 1}.avi", NormalizedPath: "01 file 0 {1 Part 1}.avi"}},
-			{"01 file 0 {2 -   Part 2}.mp4", &parsedFile{Prefix: 1, Title: "file 0", SubPrefix: intPtr(2), SubTitle: "Part 2", Ext: "mp4", AssetType: types.NewAsset("mp4"), IsCard: false, Original: "01 file 0 {2 -   Part 2}.mp4", NormalizedPath: "01 file 0 {2 -   Part 2}.mp4"}},
-			{"01 file 0 {}.mp4", &parsedFile{Prefix: 1, Title: "file 0", SubPrefix: nil, SubTitle: "", Ext: "mp4", AssetType: types.NewAsset("mp4"), IsCard: false, Original: "01 file 0 {}.mp4", NormalizedPath: "01 file 0 {}.mp4"}},
+			{"01 file 0 {1 Part 1}.avi", &parsedFile{Prefix: 1, Title: "file 0", SubPrefix: intPtr(1), SubTitle: "Part 1", Ext: "avi", AssetType: types.MustAsset("avi"), IsCard: false, Original: "01 file 0 {1 Part 1}.avi", NormalizedPath: "01 file 0 {1 Part 1}.avi"}},
+			{"01 file 0 {2 -   Part 2}.mp4", &parsedFile{Prefix: 1, Title: "file 0", SubPrefix: intPtr(2), SubTitle: "Part 2", Ext: "mp4", AssetType: types.MustAsset("mp4"), IsCard: false, Original: "01 file 0 {2 -   Part 2}.mp4", NormalizedPath: "01 file 0 {2 -   Part 2}.mp4"}},
+			{"01 file 0 {}.mp4", &parsedFile{Prefix: 1, Title: "file 0", SubPrefix: nil, SubTitle: "", Ext: "mp4", AssetType: types.MustAsset("mp4"), IsCard: false, Original: "01 file 0 {}.mp4", NormalizedPath: "01 file 0 {}.mp4"}},
 			// Description-like filenames
-			{"01 description.md", &parsedFile{Prefix: 1, Title: "description", SubPrefix: nil, SubTitle: "", Ext: "md", AssetType: types.NewAsset("md"), IsCard: false, Original: "01 description.md", NormalizedPath: "01 description.md"}},
-			{"02 Description.TXT", &parsedFile{Prefix: 2, Title: "Description", SubPrefix: nil, SubTitle: "", Ext: "txt", AssetType: types.NewAsset("txt"), IsCard: false, Original: "02 Description.TXT", NormalizedPath: "02 Description.TXT"}},
+			{"01 description.md", &parsedFile{Prefix: 1, Title: "description", SubPrefix: nil, SubTitle: "", Ext: "md", AssetType: types.MustAsset("md"), IsCard: false, Original: "01 description.md", NormalizedPath: "01 description.md"}},
+			{"02 Description.TXT", &parsedFile{Prefix: 2, Title: "Description", SubPrefix: nil, SubTitle: "", Ext: "txt", AssetType: types.MustAsset("txt"), IsCard: false, Original: "02 Description.TXT", NormalizedPath: "02 Description.TXT"}},
 		}
 
 		for _, tt := range tests {
@@ -847,9 +848,9 @@ func TestScanner_ParseFilename(t *testing.T) {
 			in       string
 			expected *parsedFile
 		}{
-			{"card.jpg", &parsedFile{Prefix: 0, Title: "card", SubPrefix: nil, SubTitle: "", Ext: "jpg", AssetType: nil, IsCard: true, Original: "card.jpg", NormalizedPath: "card.jpg"}},
-			{"card.jpeg", &parsedFile{Prefix: 0, Title: "card", SubPrefix: nil, SubTitle: "", Ext: "jpeg", AssetType: nil, IsCard: true, Original: "card.jpeg", NormalizedPath: "card.jpeg"}},
-			{"card.png", &parsedFile{Prefix: 0, Title: "card", SubPrefix: nil, SubTitle: "", Ext: "png", AssetType: nil, IsCard: true, Original: "card.png", NormalizedPath: "card.png"}},
+			{"card.jpg", &parsedFile{Prefix: 0, Title: "card", SubPrefix: nil, SubTitle: "", Ext: "jpg", AssetType: types.AssetType(""), IsCard: true, Original: "card.jpg", NormalizedPath: "card.jpg"}},
+			{"card.jpeg", &parsedFile{Prefix: 0, Title: "card", SubPrefix: nil, SubTitle: "", Ext: "jpeg", AssetType: types.AssetType(""), IsCard: true, Original: "card.jpeg", NormalizedPath: "card.jpeg"}},
+			{"card.png", &parsedFile{Prefix: 0, Title: "card", SubPrefix: nil, SubTitle: "", Ext: "png", AssetType: types.AssetType(""), IsCard: true, Original: "card.png", NormalizedPath: "card.png"}},
 		}
 
 		for _, tt := range tests {
@@ -864,20 +865,20 @@ func TestScanner_ParseFilename(t *testing.T) {
 			expected *parsedFile
 		}{
 			// No title
-			{"01", &parsedFile{Prefix: 1, Title: "", SubPrefix: nil, SubTitle: "", Ext: "", AssetType: nil, IsCard: false, Original: "01", NormalizedPath: "01"}},
-			{"200.pdf", &parsedFile{Prefix: 200, Title: "", SubPrefix: nil, SubTitle: "", Ext: "pdf", AssetType: types.NewAsset("pdf"), IsCard: false, Original: "200.pdf", NormalizedPath: "200.pdf"}},
-			{"1 -.txt", &parsedFile{Prefix: 1, Title: "", SubPrefix: nil, SubTitle: "", Ext: "txt", AssetType: types.NewAsset("txt"), IsCard: false, Original: "1 -.txt", NormalizedPath: "1 -.txt"}},
-			{"1 - .txt", &parsedFile{Prefix: 1, Title: "", SubPrefix: nil, SubTitle: "", Ext: "txt", AssetType: types.NewAsset("txt"), IsCard: false, Original: "1 - .txt", NormalizedPath: "1 - .txt"}},
-			{"1 .txt", &parsedFile{Prefix: 1, Title: "", SubPrefix: nil, SubTitle: "", Ext: "txt", AssetType: types.NewAsset("txt"), IsCard: false, Original: "1 .txt", NormalizedPath: "1 .txt"}},
-			{"1     .pdf", &parsedFile{Prefix: 1, Title: "", SubPrefix: nil, SubTitle: "", Ext: "pdf", AssetType: types.NewAsset("pdf"), IsCard: false, Original: "1     .pdf", NormalizedPath: "1     .pdf"}},
+			{"01", &parsedFile{Prefix: 1, Title: "", SubPrefix: nil, SubTitle: "", Ext: "", AssetType: types.AssetType(""), IsCard: false, Original: "01", NormalizedPath: "01"}},
+			{"200.pdf", &parsedFile{Prefix: 200, Title: "", SubPrefix: nil, SubTitle: "", Ext: "pdf", AssetType: types.MustAsset("pdf"), IsCard: false, Original: "200.pdf", NormalizedPath: "200.pdf"}},
+			{"1 -.txt", &parsedFile{Prefix: 1, Title: "", SubPrefix: nil, SubTitle: "", Ext: "txt", AssetType: types.MustAsset("txt"), IsCard: false, Original: "1 -.txt", NormalizedPath: "1 -.txt"}},
+			{"1 - .txt", &parsedFile{Prefix: 1, Title: "", SubPrefix: nil, SubTitle: "", Ext: "txt", AssetType: types.MustAsset("txt"), IsCard: false, Original: "1 - .txt", NormalizedPath: "1 - .txt"}},
+			{"1 .txt", &parsedFile{Prefix: 1, Title: "", SubPrefix: nil, SubTitle: "", Ext: "txt", AssetType: types.MustAsset("txt"), IsCard: false, Original: "1 .txt", NormalizedPath: "1 .txt"}},
+			{"1     .pdf", &parsedFile{Prefix: 1, Title: "", SubPrefix: nil, SubTitle: "", Ext: "pdf", AssetType: types.MustAsset("pdf"), IsCard: false, Original: "1     .pdf", NormalizedPath: "1     .pdf"}},
 			// No extension
-			{"1 - file", &parsedFile{Prefix: 1, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "", AssetType: nil, IsCard: false, Original: "1 - file", NormalizedPath: "1 - file"}},
-			{"2 file", &parsedFile{Prefix: 2, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "", AssetType: nil, IsCard: false, Original: "2 file", NormalizedPath: "2 file"}},
-			{"3-file", &parsedFile{Prefix: 3, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "", AssetType: nil, IsCard: false, Original: "3-file", NormalizedPath: "3-file"}},
-			{"4 file", &parsedFile{Prefix: 4, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "", AssetType: nil, IsCard: false, Original: "4 file", NormalizedPath: "4 file"}},
-			{"6 --- file", &parsedFile{Prefix: 6, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "", AssetType: nil, IsCard: false, Original: "6 --- file", NormalizedPath: "6 --- file"}},
-			// Non-asset extensions
-			{"1 - file.exe", &parsedFile{Prefix: 1, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "exe", AssetType: types.NewAsset("exe"), IsCard: false, Original: "1 - file.exe", NormalizedPath: "1 - file.exe"}},
+			{"1 - file", &parsedFile{Prefix: 1, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "", AssetType: types.AssetType(""), IsCard: false, Original: "1 - file", NormalizedPath: "1 - file"}},
+			{"2 file", &parsedFile{Prefix: 2, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "", AssetType: types.AssetType(""), IsCard: false, Original: "2 file", NormalizedPath: "2 file"}},
+			{"3-file", &parsedFile{Prefix: 3, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "", AssetType: types.AssetType(""), IsCard: false, Original: "3-file", NormalizedPath: "3-file"}},
+			{"4 file", &parsedFile{Prefix: 4, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "", AssetType: types.AssetType(""), IsCard: false, Original: "4 file", NormalizedPath: "4 file"}},
+			{"6 --- file", &parsedFile{Prefix: 6, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "", AssetType: types.AssetType(""), IsCard: false, Original: "6 --- file", NormalizedPath: "6 --- file"}},
+			// Non-asset extensions (will be empty since NewAsset returns error)
+			{"1 - file.exe", &parsedFile{Prefix: 1, Title: "file", SubPrefix: nil, SubTitle: "", Ext: "exe", AssetType: types.AssetType(""), IsCard: false, Original: "1 - file.exe", NormalizedPath: "1 - file.exe"}},
 		}
 
 		for _, tt := range tests {

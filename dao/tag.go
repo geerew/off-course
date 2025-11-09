@@ -45,7 +45,7 @@ func (dao *DAO) CreateTag(ctx context.Context, tag *models.Tag) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // CountTags counts the number of tag records
-func (dao *DAO) CountTags(ctx context.Context, dbOpts *database.Options) (int, error) {
+func (dao *DAO) CountTags(ctx context.Context, dbOpts *Options) (int, error) {
 	builderOpts := newBuilderOptions(models.TAG_TABLE).SetDbOpts(dbOpts)
 	return countGeneric(ctx, dao, *builderOpts)
 }
@@ -54,7 +54,7 @@ func (dao *DAO) CountTags(ctx context.Context, dbOpts *database.Options) (int, e
 
 // GetTag gets a record from the tags table based upon the where clause in the options. If
 // there is no where clause, it will return the first record in the table
-func (dao *DAO) GetTag(ctx context.Context, dbOpts *database.Options) (*models.Tag, error) {
+func (dao *DAO) GetTag(ctx context.Context, dbOpts *Options) (*models.Tag, error) {
 	builderOpts := newBuilderOptions(models.TAG_TABLE).
 		WithColumns(models.TagColumns()...).
 		WithLeftJoin(models.COURSE_TAG_TABLE, fmt.Sprintf("%s = %s", models.COURSE_TAG_TABLE_TAG_ID, models.TAG_TABLE_ID)).
@@ -69,7 +69,7 @@ func (dao *DAO) GetTag(ctx context.Context, dbOpts *database.Options) (*models.T
 
 // ListTags gets all records from the tags table based upon the where clause and pagination
 // in the options
-func (dao *DAO) ListTags(ctx context.Context, dbOpts *database.Options) ([]*models.Tag, error) {
+func (dao *DAO) ListTags(ctx context.Context, dbOpts *Options) ([]*models.Tag, error) {
 	builderOpts := newBuilderOptions(models.TAG_TABLE).
 		WithColumns(models.TagColumns()...).
 		WithLeftJoin(models.COURSE_TAG_TABLE, fmt.Sprintf("%s = %s", models.COURSE_TAG_TABLE_TAG_ID, models.TAG_TABLE_ID)).
@@ -84,7 +84,7 @@ func (dao *DAO) ListTags(ctx context.Context, dbOpts *database.Options) ([]*mode
 // ListTagNames returns just the tag names as a []string
 //
 // TODO add tests
-func (dao *DAO) ListTagNames(ctx context.Context, dbOpts *database.Options) ([]string, error) {
+func (dao *DAO) ListTagNames(ctx context.Context, dbOpts *Options) ([]string, error) {
 	builderOpts := newBuilderOptions(models.TAG_TABLE).
 		WithColumns(models.TAG_TABLE + "." + models.TAG_TAG).
 		SetDbOpts(dbOpts)
@@ -110,7 +110,7 @@ func (dao *DAO) UpdateTag(ctx context.Context, tag *models.Tag) error {
 
 	tag.RefreshUpdatedAt()
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: tag.ID})
+	dbOpts := NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: tag.ID})
 
 	builderOpts := newBuilderOptions(models.TAG_TABLE).
 		WithData(
@@ -130,7 +130,7 @@ func (dao *DAO) UpdateTag(ctx context.Context, tag *models.Tag) error {
 // DeleteTags deletes records from the tags table
 //
 // Errors when a where clause is not provided
-func (dao *DAO) DeleteTags(ctx context.Context, dbOpts *database.Options) error {
+func (dao *DAO) DeleteTags(ctx context.Context, dbOpts *Options) error {
 	if dbOpts == nil || dbOpts.Where == nil {
 		return utils.ErrWhere
 	}

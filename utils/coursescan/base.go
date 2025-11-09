@@ -23,13 +23,12 @@ type CourseScanProcessorFn func(context.Context, *CourseScan, *models.Scan) erro
 
 // CourseScan scans a course and finds assets and attachments
 type CourseScan struct {
-	appFs              *appfs.AppFs
-	db                 database.Database
-	dao                *dao.DAO
-	logger             *logger.Logger
-	ffmpeg             *media.FFmpeg
-	jobSignal          chan struct{}
-	extractedKeyframes map[string][]float64 // path -> keyframes
+	appFs     *appfs.AppFs
+	db        database.Database
+	dao       *dao.DAO
+	logger    *logger.Logger
+	ffmpeg    *media.FFmpeg
+	jobSignal chan struct{}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -47,13 +46,12 @@ type CourseScanConfig struct {
 // New creates a new CourseScan
 func New(config *CourseScanConfig) *CourseScan {
 	return &CourseScan{
-		appFs:              config.AppFs,
-		db:                 config.Db,
-		dao:                dao.New(config.Db),
-		logger:             config.Logger,
-		ffmpeg:             config.FFmpeg,
-		jobSignal:          make(chan struct{}, 1),
-		extractedKeyframes: make(map[string][]float64),
+		appFs:     config.AppFs,
+		db:        config.Db,
+		dao:       dao.New(config.Db),
+		logger:    config.Logger,
+		ffmpeg:    config.FFmpeg,
+		jobSignal: make(chan struct{}, 1),
 	}
 }
 
@@ -62,7 +60,7 @@ func New(config *CourseScanConfig) *CourseScan {
 // Add inserts a course scan job into the db
 func (s *CourseScan) Add(ctx context.Context, courseId string) (*models.Scan, error) {
 	// Look up the course
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: courseId})
+	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: courseId})
 	course, err := s.dao.GetCourse(ctx, dbOpts)
 	if err != nil {
 		return nil, err
@@ -73,7 +71,7 @@ func (s *CourseScan) Add(ctx context.Context, courseId string) (*models.Scan, er
 	}
 
 	// Get the scan from the db and return that
-	dbOpts = database.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_COURSE_ID: courseId})
+	dbOpts = dao.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_COURSE_ID: courseId})
 	scan, err := s.dao.GetScan(ctx, dbOpts)
 	if err != nil {
 		return nil, err
@@ -162,7 +160,7 @@ func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessor
 			}
 
 			// Cleanup
-			dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_ID: nextScan.ID})
+			dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_ID: nextScan.ID})
 			if err := s.dao.DeleteScans(ctx, dbOpts); err != nil {
 				s.logger.Error().
 					Err(err).

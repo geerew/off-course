@@ -1,12 +1,12 @@
 package cron
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/dao"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/mocks"
@@ -20,18 +20,18 @@ func TestCourseAvailability_Run(t *testing.T) {
 	t.Run("update", func(t *testing.T) {
 		app, ctx := setup(t)
 
-		dao := dao.New(app.DbManager.DataDb)
+		appDao := dao.New(app.DbManager.DataDb)
 
 		courses := []*models.Course{}
 		for i := range 3 {
 			course := &models.Course{Title: fmt.Sprintf("course %d", i), Path: fmt.Sprintf("/course-%d", i), Available: false}
-			require.NoError(t, dao.CreateCourse(ctx, course))
+			require.NoError(t, appDao.CreateCourse(ctx, course))
 			courses = append(courses, course)
 		}
 
 		ca := &courseAvailability{
 			db:        app.DbManager.DataDb,
-			dao:       dao,
+			dao:       appDao,
 			appFs:     app.AppFs,
 			logger:    app.Logger.WithCron(),
 			batchSize: 2,
@@ -48,8 +48,8 @@ func TestCourseAvailability_Run(t *testing.T) {
 		require.NoError(t, err)
 
 		for _, course := range courses {
-			dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
-			course, err := dao.GetCourse(ctx, dbOpts)
+			dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
+			course, err := ca.dao.GetCourse(ctx, dbOpts)
 			require.NoError(t, err)
 			require.True(t, course.Available)
 		}
@@ -58,10 +58,10 @@ func TestCourseAvailability_Run(t *testing.T) {
 	t.Run("stat error", func(t *testing.T) {
 		app, ctx := setup(t)
 
-		dao := dao.New(app.DbManager.DataDb)
+		appDao := dao.New(app.DbManager.DataDb)
 
 		course := &models.Course{Title: "course 1", Path: "/course-1", Available: false}
-		require.NoError(t, dao.CreateCourse(ctx, course))
+		require.NoError(t, appDao.CreateCourse(ctx, course))
 
 		fsWithError := &mocks.MockFsWithError{
 			Fs:          afero.NewMemMapFs(),
@@ -70,7 +70,7 @@ func TestCourseAvailability_Run(t *testing.T) {
 
 		ca := &courseAvailability{
 			db:        app.DbManager.DataDb,
-			dao:       dao,
+			dao:       appDao,
 			appFs:     appfs.New(fsWithError),
 			logger:    app.Logger.WithCron(),
 			batchSize: 1,
@@ -86,7 +86,7 @@ func TestCourseAvailability_Run(t *testing.T) {
 		app, _ := setup(t)
 
 		db := app.DbManager.DataDb
-		_, err := db.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
+		_, err := db.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)
 
 		ca := &courseAvailability{

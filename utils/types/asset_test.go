@@ -37,74 +37,91 @@ func TestAsset_NewAsset(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		a := NewAsset(tt.ext)
-		require.Equal(t, tt.expected, a.s)
+		a, err := NewAsset(tt.ext)
+		require.NoError(t, err)
+		require.Equal(t, tt.expected, a)
 	}
 
 	// Invalid
-	a := NewAsset("test")
-	require.Nil(t, a)
+	_, err := NewAsset("test")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid asset extension")
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func TestAsset_Set(t *testing.T) {
-	a := NewAsset("mp4")
-	require.Equal(t, AssetVideo, a.s)
+func TestAsset_MustAsset(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		tests := []struct {
+			ext      string
+			expected AssetType
+		}{
+			{"mp4", AssetVideo},
+			{"pdf", AssetPDF},
+			{"md", AssetMarkdown},
+			{"txt", AssetText},
+		}
 
-	// Set to PDF
-	a.SetPDF()
-	require.Equal(t, AssetPDF, a.s)
+		for _, tt := range tests {
+			t.Run(tt.ext, func(t *testing.T) {
+				result := MustAsset(tt.ext)
+				require.Equal(t, tt.expected, result)
+			})
+		}
+	})
 
-	a.SetVideo()
-	require.Equal(t, AssetVideo, a.s)
+	t.Run("panic on invalid", func(t *testing.T) {
+		require.Panics(t, func() {
+			MustAsset("invalid")
+		}, "MustAsset should panic on invalid extension")
 
-	// Set to Markdown
-	a.SetMarkdown()
-	require.Equal(t, AssetMarkdown, a.s)
-
-	// Set to Text
-	a.SetText()
-	require.Equal(t, AssetText, a.s)
+		require.Panics(t, func() {
+			MustAsset("")
+		}, "MustAsset should panic on empty extension")
+	})
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func TestAsset_Is(t *testing.T) {
 	// Is video
-	a := NewAsset("mp4")
+	a, _ := NewAsset("mp4")
 	require.True(t, a.IsVideo())
+	require.True(t, a.IsValid())
 
 	// Is PDF
-	a = NewAsset("pdf")
+	a, _ = NewAsset("pdf")
 	require.True(t, a.IsPDF())
+	require.True(t, a.IsValid())
 
 	// Is Markdown
-	a = NewAsset("md")
+	a, _ = NewAsset("md")
 	require.True(t, a.IsMarkdown())
+	require.True(t, a.IsValid())
 
 	// Is Text
-	a = NewAsset("txt")
+	a, _ = NewAsset("txt")
 	require.True(t, a.IsText())
+	require.True(t, a.IsValid())
 
 	// Is invalid
-	a = NewAsset("test")
-	require.Nil(t, a)
+	invalid := AssetType("invalid")
+	require.False(t, invalid.IsValid())
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func TestAsset_String(t *testing.T) {
-	a := NewAsset("mp4")
+	a, _ := NewAsset("mp4")
 	require.Equal(t, "video", a.String())
 
-	a = NewAsset("pdf")
+	a, _ = NewAsset("pdf")
 	require.Equal(t, "pdf", a.String())
 
-	a = NewAsset("md")
+	a, _ = NewAsset("md")
 	require.Equal(t, "markdown", a.String())
 
-	a = NewAsset("txt")
+	a, _ = NewAsset("txt")
 	require.Equal(t, "text", a.String())
 }
 
@@ -114,21 +131,31 @@ func TestAsset_MarshalJSON(t *testing.T) {
 	tests := []struct {
 		input    string
 		expected string
+		hasError bool
 	}{
-		{"mp4", `"video"`},
-		{"pdf", `"pdf"`},
-		{"md", `"markdown"`},
-		{"txt", `"text"`},
+		{"mp4", `"video"`, false},
+		{"pdf", `"pdf"`, false},
+		{"md", `"markdown"`, false},
+		{"txt", `"text"`, false},
 	}
 
 	for _, tt := range tests {
-		a := NewAsset(tt.input)
-		require.NotNil(t, a)
+		a, err := NewAsset(tt.input)
+		require.NoError(t, err)
 
 		res, err := a.MarshalJSON()
-		require.NoError(t, err)
-		require.Equal(t, tt.expected, string(res))
+		if tt.hasError {
+			require.Error(t, err)
+		} else {
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, string(res))
+		}
 	}
+
+	// Invalid asset type
+	invalid := AssetType("invalid")
+	_, err := invalid.MarshalJSON()
+	require.Error(t, err)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -153,13 +180,15 @@ func TestAsset_UnmarshalJSON(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		a := Asset{}
+		var a AssetType
 		err := a.UnmarshalJSON([]byte(tt.input))
 
 		if tt.err == "" {
-			require.Equal(t, tt.expected, a.s)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, a)
 		} else {
-			require.EqualError(t, err, tt.err)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tt.err)
 		}
 	}
 }
@@ -170,27 +199,31 @@ func TestAsset_Value(t *testing.T) {
 	tests := []struct {
 		input    string
 		expected string
+		hasError bool
 	}{
-		{"mp4", "video"},
-		{"pdf", "pdf"},
-		{"md", "markdown"},
-		{"txt", "text"},
+		{"mp4", "video", false},
+		{"pdf", "pdf", false},
+		{"md", "markdown", false},
+		{"txt", "text", false},
 	}
 
 	for _, tt := range tests {
-		a := NewAsset(tt.input)
-		require.NotNil(t, a)
+		a, err := NewAsset(tt.input)
+		require.NoError(t, err)
 
 		res, err := a.Value()
-		require.NoError(t, err)
-		require.Equal(t, tt.expected, res)
+		if tt.hasError {
+			require.Error(t, err)
+		} else {
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, res)
+		}
 	}
 
-	// Nil
-	a := Asset{}
-	res, err := a.Value()
-	require.NoError(t, err)
-	require.Empty(t, res)
+	// Invalid asset type
+	invalid := AssetType("invalid")
+	_, err := invalid.Value()
+	require.Error(t, err)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -199,20 +232,20 @@ func TestAsset_Scan(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		tests := []struct {
 			value    any
-			expected string
+			expected AssetType
 		}{
-			{"video", "video"},
-			{"pdf", "pdf"},
-			{"markdown", "markdown"},
-			{"text", "text"},
+			{"video", AssetVideo},
+			{"pdf", AssetPDF},
+			{"markdown", AssetMarkdown},
+			{"text", AssetText},
 		}
 
 		for _, tt := range tests {
-			a := Asset{}
+			var a AssetType
 
 			err := a.Scan(tt.value)
 			require.NoError(t, err)
-			require.Contains(t, a.s, tt.expected)
+			require.Equal(t, tt.expected, a)
 		}
 	})
 
@@ -226,10 +259,11 @@ func TestAsset_Scan(t *testing.T) {
 		}
 
 		for _, tt := range tests {
-			a := Asset{}
+			var a AssetType
 
 			err := a.Scan(tt.value)
-			require.EqualError(t, err, "invalid asset type")
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "invalid asset type")
 		}
 	})
 }

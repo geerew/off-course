@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
+	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/auth"
 	"github.com/geerew/off-course/utils/queryparser"
@@ -82,6 +82,10 @@ func (api userAPI) createUser(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "A username and password are required", nil)
 	}
 
+	if err := validatePassword(userReq.Password); err != nil {
+		return errorResponse(c, fiber.StatusBadRequest, err.Error(), nil)
+	}
+
 	// Default the role to a user when not provided
 	if userReq.Role == "" {
 		userReq.Role = types.UserRoleUser.String()
@@ -132,7 +136,7 @@ func (api userAPI) updateUser(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: id})
+	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: id})
 	user, err := api.r.appDao.GetUser(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up user", err)
@@ -147,6 +151,9 @@ func (api userAPI) updateUser(c *fiber.Ctx) error {
 	}
 
 	if userReq.Password != "" {
+		if err := validatePassword(userReq.Password); err != nil {
+			return errorResponse(c, fiber.StatusBadRequest, err.Error(), nil)
+		}
 		user.PasswordHash = auth.GeneratePassword(userReq.Password)
 	}
 
@@ -189,7 +196,7 @@ func (api userAPI) deleteUser(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: id})
+	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: id})
 	err = api.r.appDao.DeleteUsers(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user", err)
@@ -216,8 +223,8 @@ func (api userAPI) deleteUserSession(c *fiber.Ctx) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// usersAfterParseHook builds the database.Options.Where based on the query expression
-func usersAfterParseHook(parsed *queryparser.QueryResult, options *database.Options, _ string) {
+// usersAfterParseHook builds the dao.Options.Where based on the query expression
+func usersAfterParseHook(parsed *queryparser.QueryResult, options *dao.Options, _ string) {
 	options.Where = usersWhereBuilder(parsed.Expr)
 }
 

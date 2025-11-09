@@ -3,7 +3,6 @@ package dao
 // TODO Tidy to to make this more consistent. Use the builder pattern for all options
 import (
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/utils/pagination"
 )
 
@@ -61,7 +60,7 @@ type builderOptions struct {
 	// Whether to use REPLACE INTO instead of INSERT INTO
 	Replace bool
 
-	DbOpts *database.Options
+	DbOpts *Options
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -167,9 +166,9 @@ func (o *builderOptions) WithReplace() *builderOptions {
 	return o
 }
 
-func (o *builderOptions) SetDbOpts(opts *database.Options) *builderOptions {
+func (o *builderOptions) SetDbOpts(opts *Options) *builderOptions {
 	if opts == nil {
-		o.DbOpts = database.NewOptions()
+		o.DbOpts = NewOptions()
 	} else {
 		o.DbOpts = opts
 	}

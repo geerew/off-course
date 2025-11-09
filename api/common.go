@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/geerew/off-course/database"
+	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/pagination"
@@ -55,6 +55,21 @@ func errorResponse(c *fiber.Ctx, status int, message string, err error) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// validatePassword validates a password
+func validatePassword(password string) error {
+	if len(password) < 8 {
+		return fmt.Errorf("password must be at least 8 characters")
+	}
+
+	if len(password) > 128 {
+		return fmt.Errorf("password must be no more than 128 characters")
+	}
+
+	return nil
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // builderOptions is a struct to hold the options for the optionsBuilder
 type builderOptions struct {
 	// A default order by clause to use if none is found in the query
@@ -67,14 +82,14 @@ type builderOptions struct {
 	Paginate bool
 
 	// A function to run after the query has been parsed. It will only run if the query is not nil
-	AfterParseHook func(*queryparser.QueryResult, *database.Options, string)
+	AfterParseHook func(*queryparser.QueryResult, *dao.Options, string)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// optionsBuilder builds a database.Options based on a `q` query parameter
-func optionsBuilder(c *fiber.Ctx, builderOptions builderOptions, userId string) (*database.Options, error) {
-	dbOpts := database.NewOptions()
+// optionsBuilder builds a dao.Options based on a `q` query parameter
+func optionsBuilder(c *fiber.Ctx, builderOptions builderOptions, userId string) (*dao.Options, error) {
+	dbOpts := dao.NewOptions()
 
 	orderBy := []string{models.BASE_CREATED_AT + " desc"}
 	if len(builderOptions.DefaultOrderBy) > 0 {

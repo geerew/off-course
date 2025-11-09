@@ -65,7 +65,7 @@ func (dao *DAO) CreateCourse(ctx context.Context, course *models.Course) error {
 // there is no where clause, it will return the first record in the table
 //
 // By default, progress is not included. Use `WithUserProgress()` on the options to include it
-func (dao *DAO) GetCourse(ctx context.Context, dbOpts *database.Options) (*models.Course, error) {
+func (dao *DAO) GetCourse(ctx context.Context, dbOpts *Options) (*models.Course, error) {
 	builderOpts := newBuilderOptions(models.COURSE_TABLE).
 		WithColumns(models.CourseColumns()...).
 		SetDbOpts(dbOpts).
@@ -106,7 +106,7 @@ func (dao *DAO) GetCourse(ctx context.Context, dbOpts *database.Options) (*model
 // in the options
 //
 // By default, progress is not included. Use `WithUserProgress()` on the options to include it
-func (dao *DAO) ListCourses(ctx context.Context, dbOpts *database.Options) ([]*models.Course, error) {
+func (dao *DAO) ListCourses(ctx context.Context, dbOpts *Options) ([]*models.Course, error) {
 	builderOpts := newBuilderOptions(models.COURSE_TABLE).
 		WithColumns(models.CourseColumns()...).
 		SetDbOpts(dbOpts)
@@ -168,7 +168,7 @@ func (dao *DAO) UpdateCourse(ctx context.Context, course *models.Course) error {
 
 	course.RefreshUpdatedAt()
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: course.ID})
+	dbOpts := NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: course.ID})
 
 	builderOpts := newBuilderOptions(models.COURSE_TABLE).
 		WithData(
@@ -194,7 +194,7 @@ func (dao *DAO) UpdateCourse(ctx context.Context, course *models.Course) error {
 // DeleteCourses deletes records from the courses table
 //
 // Errors when a where clause is not provided
-func (dao *DAO) DeleteCourses(ctx context.Context, dbOpts *database.Options) error {
+func (dao *DAO) DeleteCourses(ctx context.Context, dbOpts *Options) error {
 	if dbOpts == nil || dbOpts.Where == nil {
 		return utils.ErrWhere
 	}
@@ -244,7 +244,7 @@ func (dao *DAO) ClassifyCoursePaths(ctx context.Context, paths []string) (map[st
 		ToSql()
 
 	q := database.QuerierFromContext(ctx, dao.db)
-	rows, err := q.Query(query, args...)
+	rows, err := q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

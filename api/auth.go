@@ -1,10 +1,11 @@
 package api
 
 import (
+	"context"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
+	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/auth"
 	"github.com/geerew/off-course/utils/types"
@@ -61,6 +62,10 @@ func (api authAPI) register(c *fiber.Ctx) error {
 
 	if registerReq.Username == "" || registerReq.Password == "" {
 		return errorResponse(c, fiber.StatusBadRequest, "Username and/or password cannot be empty", nil)
+	}
+
+	if err := validatePassword(registerReq.Password); err != nil {
+		return errorResponse(c, fiber.StatusBadRequest, err.Error(), nil)
 	}
 
 	user := &models.User{
@@ -134,7 +139,7 @@ func (api authAPI) login(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "Username and/or password cannot be empty", nil)
 	}
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: loginReq.Username})
+	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: loginReq.Username})
 	user, err := api.r.appDao.GetUser(c.UserContext(), dbOpts)
 	if err != nil || user == nil {
 		return errorResponse(c, fiber.StatusUnauthorized, "Invalid username and/or password", nil)
@@ -169,8 +174,7 @@ func (api authAPI) getMe(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: principal.UserID})
-	user, err := api.r.appDao.GetUser(ctx, dbOpts)
+	user, err := api.getUserByPrincipal(ctx, principal)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error getting user information", err)
 	}
@@ -191,8 +195,7 @@ func (api authAPI) updateMe(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: principal.UserID})
-	user, err := api.r.appDao.GetUser(ctx, dbOpts)
+	user, err := api.getUserByPrincipal(ctx, principal)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error getting user information", err)
 	}
@@ -239,8 +242,7 @@ func (api authAPI) deleteMe(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: principal.UserID})
-	user, err := api.r.appDao.GetUser(ctx, dbOpts)
+	user, err := api.getUserByPrincipal(ctx, principal)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error getting user information", err)
 	}
@@ -256,7 +258,7 @@ func (api authAPI) deleteMe(c *fiber.Ctx) error {
 
 	if user.Role == types.UserRoleAdmin {
 		// Count the number of admin users and fail if there is only one
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ROLE: types.UserRoleAdmin})
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ROLE: types.UserRoleAdmin})
 		adminCount, err := api.r.appDao.CountUsers(ctx, dbOpts)
 		if err != nil {
 			return errorResponse(c, fiber.StatusInternalServerError, "Error counting admin users", err)
@@ -267,6 +269,7 @@ func (api authAPI) deleteMe(c *fiber.Ctx) error {
 		}
 	}
 
+	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: principal.UserID})
 	err = api.r.appDao.DeleteUsers(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting user", err)
@@ -278,4 +281,12 @@ func (api authAPI) deleteMe(c *fiber.Ctx) error {
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// getUserByPrincipal retrieves a user by the principal's user ID
+func (api authAPI) getUserByPrincipal(ctx context.Context, principal types.Principal) (*models.User, error) {
+	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: principal.UserID})
+	return api.r.appDao.GetUser(ctx, dbOpts)
 }

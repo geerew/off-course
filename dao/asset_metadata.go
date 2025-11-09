@@ -105,7 +105,7 @@ func (dao *DAO) GetAssetMetadata(ctx context.Context, assetID string) (*models.A
 		return nil, utils.ErrId
 	}
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assetID})
+	dbOpts := NewOptions().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assetID})
 
 	builderOpts := newBuilderOptions(models.ASSET_TABLE).
 		WithColumns(models.AssetMetadataRowColumns()...).
@@ -134,7 +134,7 @@ func (dao *DAO) GetAssetMetadata(ctx context.Context, assetID string) (*models.A
 
 // ListAssetMetadata gets all records asset metadata based upon the where clause and pagination
 // in the options
-func (dao *DAO) ListAssetMetadata(ctx context.Context, dbOpts *database.Options) ([]*models.AssetMetadata, error) {
+func (dao *DAO) ListAssetMetadata(ctx context.Context, dbOpts *Options) ([]*models.AssetMetadata, error) {
 	builderOpts := newBuilderOptions(models.ASSET_TABLE).
 		WithColumns(models.AssetMetadataRowColumns()...).
 		WithLeftJoin(models.MEDIA_VIDEO_TABLE, fmt.Sprintf("%s = %s", models.ASSET_TABLE_ID, models.MEDIA_VIDEO_TABLE_ASSET_ID)).
@@ -192,7 +192,7 @@ func (dao *DAO) UpdateAssetMetadata(ctx context.Context, metadata *models.AssetM
 			// bump updated_at for this subrecord
 			vm.RefreshUpdatedAt()
 
-			dbOpts := database.NewOptions().
+			dbOpts := NewOptions().
 				WithWhere(squirrel.Eq{models.MEDIA_VIDEO_TABLE_ASSET_ID: metadata.AssetID})
 
 			builder := newBuilderOptions(models.MEDIA_VIDEO_TABLE).
@@ -220,7 +220,7 @@ func (dao *DAO) UpdateAssetMetadata(ctx context.Context, metadata *models.AssetM
 		if am := metadata.AudioMetadata; am != nil {
 			am.RefreshUpdatedAt()
 
-			dbOpts := database.NewOptions().
+			dbOpts := NewOptions().
 				WithWhere(squirrel.Eq{models.MEDIA_AUDIO_TABLE_ASSET_ID: metadata.AssetID})
 
 			builder := newBuilderOptions(models.MEDIA_AUDIO_TABLE).
@@ -258,7 +258,7 @@ func (dao *DAO) DeleteAssetMetadataByAssetIDs(ctx context.Context, assetIDs ...s
 	return dao.db.RunInTransaction(ctx, func(txCtx context.Context) error {
 		q := database.QuerierFromContext(txCtx, dao.db)
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.META_ASSET_ID: ids})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.META_ASSET_ID: ids})
 
 		// Audio metadata
 		builder := newBuilderOptions(models.MEDIA_AUDIO_TABLE).SetDbOpts(dbOpts)

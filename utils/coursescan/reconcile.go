@@ -167,88 +167,140 @@ func reconcileAssets(scanned []*models.Asset, existing []*models.Asset) []Op {
 
 		// No-op: same path, same mod time and file size
 		if existingByPath != nil && existingByPath.FileSize == s.FileSize && existingByPath.ModTime == s.ModTime {
-			// fmt.Printf("[No-Op] Match on path+mod+size: %s\n", s.Path)
 			s.ID = existingByPath.ID
 			seen[existingByPath.ID] = true
 			continue
 		}
 
-		// Overwrite: content moved onto another file's path
-		if existingByHash != nil && existingByPath != nil && existingByHash.ID != existingByPath.ID {
-			if other, ok := scannedPathMap[existingByHash.Path]; ok && other.Hash == existingByPath.Hash {
-				continue
-			}
-
-			// Only overwrite if the original path is not on disk or has a different hash
-			if onDisk, ok := scannedPathMap[existingByPath.Path]; !ok || onDisk.Hash != existingByPath.Hash {
-				// fmt.Printf("[Overwrite] %s (new hash=%s) → %s\n", existingByHash.Path, s.Hash, s.Path)
-				ops = append(ops, OverwriteAssetOp{
-					Deleted:  existingByPath,
-					Existing: existingByHash,
-					Renamed:  s,
-				})
-
-				seen[existingByHash.ID] = true
-				seen[existingByPath.ID] = true
-				continue
-			}
+		// Check for overwrite operation
+		if overwriteOp := detectOverwrite(s, existingByPath, existingByHash, scannedPathMap); overwriteOp != nil {
+			op := overwriteOp.(OverwriteAssetOp)
+			ops = append(ops, op)
+			seen[op.Existing.ID] = true
+			seen[op.Deleted.ID] = true
+			continue
 		}
 
 		// Update (rename): same hash, new path
 		if existingByHash != nil && pathMap[s.Path] == nil {
-			// fmt.Printf("[Update (Rename)] %s → %s\n", existingByHash.Path, s.Path)
 			ops = append(ops, UpdateAssetOp{
 				Existing: existingByHash,
 				New:      s,
 			})
-
 			seen[existingByHash.ID] = true
 			continue
 		}
 
 		// Replace: same path, new hash
 		if existingByPath != nil && existingByHash == nil {
-			// fmt.Printf("[Replace] %s (new hash=%s)\n", s.Path, s.Hash)
 			ops = append(ops, ReplaceAssetOp{
 				Existing: existingByPath,
 				New:      s,
 			})
-
 			seen[existingByPath.ID] = true
 			continue
 		}
 
 		// Create: entirely new
 		if existingByPath == nil && existingByHash == nil {
-			// fmt.Printf("[Create] New asset: %s\n", s.Path)
 			ops = append(ops, CreateAssetOp{New: s})
 		}
 	}
 
-	// Swap: two assets exchanged names
+	// Detect swap operations
+	swapOps := detectSwaps(existing, scannedPathMap, hashMap, seen)
+	ops = append(ops, swapOps...)
+
+	// Delete: anything not seen yet
+	for _, e := range existing {
+		if !seen[e.ID] {
+			ops = append(ops, DeleteAssetOp{Deleted: e})
+		}
+	}
+
+	return ops
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// detectOverwrite detects if a scanned asset represents an overwrite operation.
+// An overwrite occurs when content from one asset (existingByHash) is moved to
+// the path of another asset (existingByPath) that no longer exists or has changed.
+func detectOverwrite(
+	scanned *models.Asset,
+	existingByPath *models.Asset,
+	existingByHash *models.Asset,
+	scannedPathMap map[string]*models.Asset,
+) Op {
+	// Overwrite requires: scanned has same hash as existingByHash, but different path
+	// and that path (existingByPath) exists but has different content
+	if existingByHash == nil || existingByPath == nil {
+		return nil
+	}
+
+	// Must be different assets
+	if existingByHash.ID == existingByPath.ID {
+		return nil
+	}
+
+	// Check if the original path of existingByHash still exists with same content
+	// If so, this might be a swap instead
+	if other, ok := scannedPathMap[existingByHash.Path]; ok && other.Hash == existingByPath.Hash {
+		return nil
+	}
+
+	// Only overwrite if the original path is not on disk or has a different hash
+	onDisk, ok := scannedPathMap[existingByPath.Path]
+	if ok && onDisk.Hash == existingByPath.Hash {
+		return nil
+	}
+
+	return OverwriteAssetOp{
+		Deleted:  existingByPath,
+		Existing: existingByHash,
+		Renamed:  scanned,
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// detectSwaps detects swap operations where two assets have exchanged paths.
+// Returns a list of swap operations found.
+func detectSwaps(
+	existing []*models.Asset,
+	scannedPathMap map[string]*models.Asset,
+	hashMap map[string]*models.Asset,
+	seen map[string]bool,
+) []Op {
+	var swapOps []Op
 	processedSwap := map[string]bool{}
+
 	for _, e1 := range existing {
+		// Skip if already processed or seen
 		if seen[e1.ID] || processedSwap[e1.ID] {
 			continue
 		}
 
+		// Check if this asset's path exists in scanned with different content
 		s1 := scannedPathMap[e1.Path]
 		if s1 == nil || s1.Hash == e1.Hash {
 			continue
 		}
 
+		// Find the asset that has the hash of what's now at e1's path
 		e2 := hashMap[s1.Hash]
 		if e2 == nil || e2.ID == e1.ID {
 			continue
 		}
 
+		// Check if e2's path now has e1's content (completing the swap)
 		s2 := scannedPathMap[e2.Path]
 		if s2 == nil || s2.Hash != e1.Hash {
 			continue
 		}
 
-		// fmt.Printf("[Swap] %s <=> %s\n", e1.Path, e2.Path)
-		ops = append(ops, SwapAssetOp{
+		// Found a swap!
+		swapOps = append(swapOps, SwapAssetOp{
 			ExistingA: e1,
 			ExistingB: e2,
 			NewA:      s2,
@@ -261,15 +313,7 @@ func reconcileAssets(scanned []*models.Asset, existing []*models.Asset) []Op {
 		seen[e2.ID] = true
 	}
 
-	// Delete: anything not seen yet
-	for _, e := range existing {
-		if !seen[e.ID] {
-			// fmt.Printf("[Delete] Removed asset: %s\n", e.Path)
-			ops = append(ops, DeleteAssetOp{Deleted: e})
-		}
-	}
-
-	return ops
+	return swapOps
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

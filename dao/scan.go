@@ -27,7 +27,7 @@ func (dao *DAO) CreateScan(ctx context.Context, scan *models.Scan) error {
 	scan.RefreshUpdatedAt()
 
 	if !scan.Status.IsWaiting() {
-		scan.Status.SetWaiting()
+		scan.Status = types.ScanStatusWaiting
 	}
 
 	builderOpts := newBuilderOptions(models.SCAN_TABLE).
@@ -47,7 +47,7 @@ func (dao *DAO) CreateScan(ctx context.Context, scan *models.Scan) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // CountScans counts the number of scan records
-func (dao *DAO) CountScans(ctx context.Context, dbOpts *database.Options) (int, error) {
+func (dao *DAO) CountScans(ctx context.Context, dbOpts *Options) (int, error) {
 	builderOpts := newBuilderOptions(models.SCAN_TABLE).SetDbOpts(dbOpts)
 	return countGeneric(ctx, dao, *builderOpts)
 }
@@ -56,7 +56,7 @@ func (dao *DAO) CountScans(ctx context.Context, dbOpts *database.Options) (int, 
 
 // GetScan gets a record from the scans table based upon the where clause in the options. If
 // there is no where clause, it will return the first record in the table
-func (dao *DAO) GetScan(ctx context.Context, dbOpts *database.Options) (*models.Scan, error) {
+func (dao *DAO) GetScan(ctx context.Context, dbOpts *Options) (*models.Scan, error) {
 	builderOpts := newBuilderOptions(models.SCAN_TABLE).
 		WithColumns(models.ScanColumns()...).
 		WithJoin(models.COURSE_TABLE, fmt.Sprintf("%s = %s", models.COURSE_TABLE_ID, models.SCAN_TABLE_COURSE_ID)).
@@ -70,7 +70,7 @@ func (dao *DAO) GetScan(ctx context.Context, dbOpts *database.Options) (*models.
 
 // ListScans gets all records from the scans table based upon the where clause and pagination
 // in the options
-func (dao *DAO) ListScans(ctx context.Context, dbOpts *database.Options) ([]*models.Scan, error) {
+func (dao *DAO) ListScans(ctx context.Context, dbOpts *Options) ([]*models.Scan, error) {
 	builderOpts := newBuilderOptions(models.SCAN_TABLE).
 		WithColumns(models.ScanColumns()...).
 		WithJoin(models.COURSE_TABLE, fmt.Sprintf("%s = %s", models.COURSE_TABLE_ID, models.SCAN_TABLE_COURSE_ID)).
@@ -93,7 +93,7 @@ func (dao *DAO) UpdateScan(ctx context.Context, scan *models.Scan) error {
 
 	scan.RefreshUpdatedAt()
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: scan.ID})
+	dbOpts := NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: scan.ID})
 
 	builderOpts := newBuilderOptions(models.SCAN_TABLE).
 		WithData(
@@ -113,7 +113,7 @@ func (dao *DAO) UpdateScan(ctx context.Context, scan *models.Scan) error {
 // DeleteScans deletes records from the scans table
 //
 // Errors when a where clause is not provided
-func (dao *DAO) DeleteScans(ctx context.Context, dbOpts *database.Options) error {
+func (dao *DAO) DeleteScans(ctx context.Context, dbOpts *Options) error {
 	if dbOpts == nil || dbOpts.Where == nil {
 		return utils.ErrWhere
 	}
@@ -130,7 +130,7 @@ func (dao *DAO) DeleteScans(ctx context.Context, dbOpts *database.Options) error
 
 // NextWaitingScan gets the next scan whose status is `waiting“ based upon the created_at column
 func (dao *DAO) NextWaitingScan(ctx context.Context) (*models.Scan, error) {
-	dbOpts := database.NewOptions().
+	dbOpts := NewOptions().
 		WithWhere(squirrel.Eq{models.SCAN_TABLE_STATUS: types.ScanStatusWaiting}).
 		WithOrderBy(models.SCAN_TABLE_CREATED_AT + " ASC")
 

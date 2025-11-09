@@ -86,6 +86,10 @@ func TestFsPath(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t, http.StatusBadRequest, status)
-		require.Equal(t, "failed to decode path", string(body))
+
+		var respData map[string]string
+		err = json.Unmarshal(body, &respData)
+		require.NoError(t, err)
+		require.Contains(t, respData["message"], "Invalid path encoding")
 	})
 }

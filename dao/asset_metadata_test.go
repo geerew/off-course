@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/pagination"
@@ -45,7 +44,7 @@ func helper_createAssetMetadata(t *testing.T, ctx context.Context, dao *DAO, cou
 			Title:    fmt.Sprintf("Asset %d", i+1),
 			Prefix:   sql.NullInt16{Int16: int16(i + 1), Valid: true},
 			Module:   "Module 1",
-			Type:     *types.NewAsset("mp4"),
+			Type:     types.MustAsset("mp4"),
 			Path:     fmt.Sprintf("/course-1/0%d asset.mp4", i+1),
 			FileSize: 1024,
 			ModTime:  time.Now().Format(time.RFC3339Nano),
@@ -115,7 +114,7 @@ func Test_CreateVideoMetadata(t *testing.T) {
 			Title:    "Asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
-			Type:     *types.NewAsset("mp4"),
+			Type:     types.MustAsset("mp4"),
 			Path:     filepath.ToSlash("/course-1/01 asset.mp4"),
 			FileSize: 1024,
 			ModTime:  time.Now().Format(time.RFC3339Nano),
@@ -176,7 +175,7 @@ func Test_CreateVideoMetadata(t *testing.T) {
 			Title:    "Asset 2",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 2",
-			Type:     *types.NewAsset("mp4"),
+			Type:     types.MustAsset("mp4"),
 			Path:     filepath.ToSlash("/course-2/02 asset.mp4"),
 			FileSize: 2048,
 			ModTime:  time.Now().Format(time.RFC3339Nano),
@@ -247,7 +246,7 @@ func Test_CreateVideoMetadata(t *testing.T) {
 			Title:    "Asset 3",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 3",
-			Type:     *types.NewAsset("md"),
+			Type:     types.MustAsset("md"),
 			Path:     filepath.ToSlash("/course-3/03 asset.md"),
 			FileSize: 100,
 			ModTime:  time.Now().Format(time.RFC3339Nano),
@@ -314,7 +313,7 @@ func Test_GetAssetMetadata(t *testing.T) {
 			Title:    "Asset NM",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module NM",
-			Type:     *types.NewAsset("md"),
+			Type:     types.MustAsset("md"),
 			Path:     filepath.ToSlash("/course-nm/01 asset.md"),
 			FileSize: 100,
 			ModTime:  time.Now().Format(time.RFC3339Nano),
@@ -378,8 +377,7 @@ func Test_ListAssetMetadata(t *testing.T) {
 		assets, _ := helper_createAssetMetadata(t, ctx, dao, 3)
 
 		// Video created_at ascending
-		opts := database.
-			NewOptions().
+		opts := NewOptions().
 			WithOrderBy(models.MEDIA_VIDEO_TABLE_CREATED_AT + " ASC")
 
 		records, err := dao.ListAssetMetadata(ctx, opts)
@@ -392,8 +390,7 @@ func Test_ListAssetMetadata(t *testing.T) {
 		require.Equal(t, assets[2].ID, records[2].AssetID)
 
 		// Video created_at DESC
-		opts = database.
-			NewOptions().
+		opts = NewOptions().
 			WithOrderBy(models.MEDIA_VIDEO_TABLE_CREATED_AT + " DESC")
 
 		records, err = dao.ListAssetMetadata(ctx, opts)
@@ -411,8 +408,7 @@ func Test_ListAssetMetadata(t *testing.T) {
 
 		assets, _ := helper_createAssetMetadata(t, ctx, dao, 3)
 
-		opts := database.
-			NewOptions().
+		opts := NewOptions().
 			WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: assets[1].ID})
 
 		records, err := dao.ListAssetMetadata(ctx, opts)
@@ -428,8 +424,7 @@ func Test_ListAssetMetadata(t *testing.T) {
 		assets, _ := helper_createAssetMetadata(t, ctx, dao, 17)
 
 		// Make ordering deterministic for test
-		opts := database.
-			NewOptions().
+		opts := NewOptions().
 			WithOrderBy(models.ASSET_TABLE_CREATED_AT + " ASC").
 			WithPagination(pagination.New(1, 10))
 
@@ -442,8 +437,7 @@ func Test_ListAssetMetadata(t *testing.T) {
 		require.Equal(t, assets[9].ID, page1[9].AssetID)
 
 		// Page 2
-		opts = database.
-			NewOptions().
+		opts = NewOptions().
 			WithOrderBy(models.ASSET_TABLE_CREATED_AT + " ASC").
 			WithPagination(pagination.New(2, 10))
 
@@ -749,7 +743,7 @@ func Test_DeleteAssetMetadataByAssetIDs(t *testing.T) {
 		assets, _ := helper_createAssetMetadata(t, ctx, dao, 1)
 		asset := assets[0]
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{"id": asset.ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{"id": asset.ID})
 		require.NoError(t, dao.DeleteAssets(ctx, dbOpts))
 
 		record, err := dao.GetAssetMetadata(ctx, asset.ID)

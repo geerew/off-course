@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/pagination"
@@ -107,7 +106,7 @@ func Test_GetAttachment(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateAttachment(ctx, attachment))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachment.ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachment.ID})
 		record, err := dao.GetAttachment(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Equal(t, attachment.ID, record.ID)
@@ -195,7 +194,7 @@ func Test_ListAttachments(t *testing.T) {
 		}
 
 		// Descending order by created_at
-		opts := database.NewOptions().WithOrderBy(models.ATTACHMENT_TABLE_CREATED_AT + " DESC")
+		opts := NewOptions().WithOrderBy(models.ATTACHMENT_TABLE_CREATED_AT + " DESC")
 
 		records, err := dao.ListAttachments(ctx, opts)
 		require.Nil(t, err)
@@ -206,7 +205,7 @@ func Test_ListAttachments(t *testing.T) {
 		}
 
 		// Ascending order by created_at
-		opts = database.NewOptions().WithOrderBy(models.ATTACHMENT_TABLE_CREATED_AT + " ASC")
+		opts = NewOptions().WithOrderBy(models.ATTACHMENT_TABLE_CREATED_AT + " ASC")
 
 		records, err = dao.ListAttachments(ctx, opts)
 		require.Nil(t, err)
@@ -238,7 +237,7 @@ func Test_ListAttachments(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateAttachment(ctx, attachment))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachment.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachment.ID})
 		records, err := dao.ListAttachments(ctx, opts)
 		require.Nil(t, err)
 		require.Len(t, records, 1)
@@ -272,7 +271,7 @@ func Test_ListAttachments(t *testing.T) {
 		}
 
 		// First page with 10 records
-		p := database.NewOptions().WithPagination(pagination.New(1, 10))
+		p := NewOptions().WithPagination(pagination.New(1, 10))
 		records, err := dao.ListAttachments(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 10)
@@ -280,7 +279,7 @@ func Test_ListAttachments(t *testing.T) {
 		require.Equal(t, attachments[9].ID, records[9].ID)
 
 		// Second page with remaining 7 records
-		p = database.NewOptions().WithPagination(pagination.New(2, 10))
+		p = NewOptions().WithPagination(pagination.New(2, 10))
 		records, err = dao.ListAttachments(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 7)
@@ -323,7 +322,7 @@ func Test_UpdateAttachment(t *testing.T) {
 		}
 		require.NoError(t, dao.UpdateAttachment(ctx, updatedAttachment))
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.ATTACHMENT_TABLE_ID: originalAttachment.ID})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.ATTACHMENT_TABLE_ID: originalAttachment.ID})
 		record, err := dao.GetAttachment(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Equal(t, originalAttachment.ID, record.ID)                     // No change
@@ -396,7 +395,7 @@ func Test_DeleteAttachments(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateAttachment(ctx, attachment))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachment.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.ATTACHMENT_TABLE_ID: attachment.ID})
 		require.Nil(t, dao.DeleteAttachments(ctx, opts))
 
 		records, err := dao.ListAttachments(ctx, opts)
@@ -425,7 +424,7 @@ func Test_DeleteAttachments(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateAttachment(ctx, attachment))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.ATTACHMENT_TABLE_ID: "non-existent"})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.ATTACHMENT_TABLE_ID: "non-existent"})
 		require.Nil(t, dao.DeleteAttachments(ctx, opts))
 
 		records, err := dao.ListAttachments(ctx, nil)
@@ -484,7 +483,7 @@ func Test_DeleteAttachments(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateAttachment(ctx, attachment))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
 		require.Nil(t, dao.DeleteCourses(ctx, opts))
 
 		records, err := dao.ListAttachments(ctx, nil)

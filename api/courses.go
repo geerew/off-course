@@ -10,7 +10,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/dao"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/queryparser"
@@ -126,6 +125,8 @@ func (api coursesAPI) getCourses(c *fiber.Ctx) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // TODO add tests when initial scan is false
 func (api coursesAPI) getCourse(c *fiber.Ctx) error {
 	id := c.Params("id")
@@ -135,15 +136,16 @@ func (api coursesAPI) getCourse(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: id})
-
+	var courseOpts []func(*dao.Options)
 	if raw := c.Query("withUserProgress"); raw != "" {
 		if v, err := strconv.ParseBool(raw); err == nil && v {
-			dbOpts.WithUserProgress()
+			courseOpts = append(courseOpts, func(opts *dao.Options) {
+				opts.WithUserProgress()
+			})
 		}
 	}
 
-	course, err := api.r.appDao.GetCourse(ctx, dbOpts)
+	course, err := api.getCourseByID(ctx, id, courseOpts...)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up course", err)
 	}
@@ -211,7 +213,7 @@ func (api coursesAPI) deleteCourse(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: id})
+	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: id})
 	if err := api.r.appDao.DeleteCourses(ctx, dbOpts); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting course", err)
 	}
@@ -231,7 +233,7 @@ func (api coursesAPI) deleteCourseProgress(c *fiber.Ctx) error {
 
 	err = dao.RunInTransaction(ctx, api.r.appDao, func(txCtx context.Context) error {
 		// Delete the course progress for this user
-		dbOpts := database.NewOptions().WithWhere(squirrel.And{
+		dbOpts := dao.NewOptions().WithWhere(squirrel.And{
 			squirrel.Eq{models.COURSE_PROGRESS_COURSE_ID: courseId},
 			squirrel.Eq{models.COURSE_PROGRESS_USER_ID: principal.UserID},
 		},
@@ -265,8 +267,7 @@ func (api coursesAPI) getCard(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: id})
-	course, err := api.r.appDao.GetCourse(ctx, dbOpts)
+	course, err := api.getCourseByID(ctx, id)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up course", err)
 	}
@@ -337,7 +338,7 @@ func (api coursesAPI) getLesson(c *fiber.Ctx) error {
 	id := c.Params("id")
 	lessonId := c.Params("lesson")
 
-	dbOpts := database.NewOptions().
+	dbOpts := dao.NewOptions().
 		WithAssetMetadata().
 		WithWhere(squirrel.And{
 			squirrel.Eq{models.LESSON_TABLE_ID: lessonId},
@@ -456,7 +457,7 @@ func (api coursesAPI) getAttachment(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := database.NewOptions().
+	dbOpts := dao.NewOptions().
 		WithCourse().
 		WithLesson().
 		WithWhere(squirrel.And{
@@ -489,7 +490,7 @@ func (api coursesAPI) serveAttachment(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := database.NewOptions().
+	dbOpts := dao.NewOptions().
 		WithCourse().
 		WithLesson().
 		WithWhere(squirrel.And{
@@ -523,7 +524,7 @@ func (api coursesAPI) serveAsset(c *fiber.Ctx) error {
 	lessonId := c.Params("lesson")
 	assetId := c.Params("asset")
 
-	dbOpts := database.NewOptions().
+	dbOpts := dao.NewOptions().
 		WithCourse().
 		WithLesson().
 		WithWhere(squirrel.And{
@@ -563,11 +564,32 @@ func (api coursesAPI) serveAsset(c *fiber.Ctx) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api coursesAPI) updateAssetProgress(c *fiber.Ctx) error {
+	courseId := c.Params("id")
 	assetId := c.Params("asset")
 
 	req := &assetProgressRequest{}
 	if err := c.BodyParser(req); err != nil {
 		return errorResponse(c, fiber.StatusBadRequest, "Error parsing data", err)
+	}
+
+	_, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	// First, verify the asset belongs to the specified course
+	asset, err := api.r.appDao.GetAsset(ctx, dao.NewOptions().
+		WithWhere(squirrel.And{
+			squirrel.Eq{models.ASSET_TABLE_ID: assetId},
+			squirrel.Eq{models.ASSET_TABLE_COURSE_ID: courseId},
+		}))
+
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up asset", err)
+	}
+
+	if asset == nil {
+		return errorResponse(c, fiber.StatusNotFound, "Asset not found for this course", nil)
 	}
 
 	assetProgress := &models.AssetProgress{
@@ -576,16 +598,11 @@ func (api coursesAPI) updateAssetProgress(c *fiber.Ctx) error {
 		Completed: req.Completed,
 	}
 
-	_, ctx, err := principalCtx(c)
-	if err != nil {
-		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
-	}
-
 	if err := api.r.appDao.UpsertAssetProgress(ctx, assetProgress); err != nil {
 		if err == sql.ErrNoRows {
 			return errorResponse(c, fiber.StatusNotFound, "Asset not found", nil)
 		}
-		return errorResponse(c, fiber.StatusInternalServerError, "Error updating asset", err)
+		return errorResponse(c, fiber.StatusInternalServerError, "Error updating asset progress", err)
 	}
 
 	return c.Status(fiber.StatusNoContent).Send(nil)
@@ -604,7 +621,7 @@ func (api coursesAPI) deleteAssetProgress(c *fiber.Ctx) error {
 	}
 
 	// First, verify the asset belongs to the specified course
-	asset, err := api.r.appDao.GetAsset(ctx, database.NewOptions().
+	asset, err := api.r.appDao.GetAsset(ctx, dao.NewOptions().
 		WithWhere(squirrel.And{
 			squirrel.Eq{models.ASSET_TABLE_ID: assetId},
 			squirrel.Eq{models.ASSET_TABLE_COURSE_ID: courseId},
@@ -618,7 +635,7 @@ func (api coursesAPI) deleteAssetProgress(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusNotFound, "Asset not found for this course", nil)
 	}
 
-	dbOpts := database.NewOptions().
+	dbOpts := dao.NewOptions().
 		WithWhere(squirrel.And{
 			squirrel.Eq{models.ASSET_PROGRESS_ASSET_ID: assetId},
 			squirrel.Eq{models.ASSET_PROGRESS_USER_ID: principal.UserID},
@@ -641,7 +658,7 @@ func (api coursesAPI) getTags(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := database.NewOptions().
+	dbOpts := dao.NewOptions().
 		WithOrderBy(defaultTagsOrderBy...).
 		WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: id})
 
@@ -699,7 +716,7 @@ func (api coursesAPI) deleteTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := database.NewOptions().
+	dbOpts := dao.NewOptions().
 		WithWhere(squirrel.And{
 			squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courseId},
 			squirrel.Eq{models.COURSE_TAG_TABLE_ID: tagId},
@@ -716,7 +733,7 @@ func (api coursesAPI) deleteTag(c *fiber.Ctx) error {
 
 // coursesAfterParseHook runs after parsing the query expression and is used to build the
 // WHERE/JOIN clauses
-func coursesAfterParseHook(parsed *queryparser.QueryResult, dbOpts *database.Options, userID string) {
+func coursesAfterParseHook(parsed *queryparser.QueryResult, dbOpts *dao.Options, userID string) {
 	dbOpts.WithWhere(coursesWhereBuilder(parsed.Expr))
 
 	// if foundProgress, ok := parsed.FoundFilters["progress"]; ok && foundProgress {
@@ -845,4 +862,15 @@ func courseTagsBuilder(tags []string) squirrel.Sqlizer {
 	}
 
 	return squirrel.Expr("EXISTS (?)", baseQuery)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// getCourseByID retrieves a course by its ID with optional database options
+func (api coursesAPI) getCourseByID(ctx context.Context, courseID string, opts ...func(*dao.Options)) (*models.Course, error) {
+	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: courseID})
+	for _, opt := range opts {
+		opt(dbOpts)
+	}
+	return api.r.appDao.GetCourse(ctx, dbOpts)
 }

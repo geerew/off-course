@@ -1,4 +1,4 @@
-package database
+package dao
 
 // TODO Tidy to to make this more consistent. Use the builder pattern for all options
 import (
@@ -115,3 +115,4 @@ func (o *Options) WithAssetMetadata() *Options {
 	o.IncludeAssetMetadata = true
 	return o
 }
+

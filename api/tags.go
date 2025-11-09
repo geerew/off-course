@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
+	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/queryparser"
 	"github.com/gofiber/fiber/v2"
@@ -112,7 +112,7 @@ func (api *tagsAPI) getTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_TAG: name})
+	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_TAG: name})
 
 	tag, err := api.r.appDao.GetTag(ctx, dbOpts)
 	if err != nil {
@@ -169,7 +169,7 @@ func (api *tagsAPI) updateTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: id})
+	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: id})
 	tag, err := api.r.appDao.GetTag(ctx, dbOpts)
 	if err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tag", err)
@@ -201,7 +201,7 @@ func (api *tagsAPI) deleteTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: id})
+	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: id})
 	if err = api.r.appDao.DeleteTags(ctx, dbOpts); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting tag", err)
 	}
@@ -210,8 +210,8 @@ func (api *tagsAPI) deleteTag(c *fiber.Ctx) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// tagsAfterParseHook builds the database.Options.Where based on the query expression
-func tagsAfterParseHook(parsed *queryparser.QueryResult, options *database.Options, _ string) {
+// tagsAfterParseHook builds the dao.Options.Where based on the query expression
+func tagsAfterParseHook(parsed *queryparser.QueryResult, options *dao.Options, _ string) {
 	if len(parsed.FreeText) == 0 {
 		return
 	}

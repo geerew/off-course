@@ -47,7 +47,7 @@ func (dao *DAO) CreateLog(ctx context.Context, log *models.Log) error {
 
 // GetLog gets a record from the logs table based upon the where clause in the options. If
 // there is no where clause, it will return the first record in the table
-func (dao *DAO) GetLog(ctx context.Context, dbOpts *database.Options) (*models.Log, error) {
+func (dao *DAO) GetLog(ctx context.Context, dbOpts *Options) (*models.Log, error) {
 	builderOpts := newBuilderOptions(models.LOG_TABLE).
 		WithColumns(models.LogColumns()...).
 		SetDbOpts(dbOpts).
@@ -60,7 +60,7 @@ func (dao *DAO) GetLog(ctx context.Context, dbOpts *database.Options) (*models.L
 
 // ListLogs gets all records from the logs table based upon the where clause and pagination
 // in the options
-func (dao *DAO) ListLogs(ctx context.Context, dbOpts *database.Options) ([]*models.Log, error) {
+func (dao *DAO) ListLogs(ctx context.Context, dbOpts *Options) ([]*models.Log, error) {
 	builderOpts := newBuilderOptions(models.LOG_TABLE).
 		WithColumns(models.LogColumns()...).
 		SetDbOpts(dbOpts)

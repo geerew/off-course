@@ -86,13 +86,13 @@ func TestDateTime_Equal(t *testing.T) {
 		{NowDateTime(), NowDateTime(), false}, // Different current times
 		{NowDateTime(), NowDateTime(), false}, // Another set of different times
 		{
-			dt1:      DateTime{t: time.Date(2022, 1, 1, 11, 23, 45, 678000000, time.UTC)},
-			dt2:      DateTime{t: time.Date(2022, 1, 1, 11, 23, 45, 678000000, time.UTC)},
+			dt1:      DateTime(time.Date(2022, 1, 1, 11, 23, 45, 678000000, time.UTC)),
+			dt2:      DateTime(time.Date(2022, 1, 1, 11, 23, 45, 678000000, time.UTC)),
 			expected: true, // Matching times
 		},
 		{
-			dt1:      DateTime{t: time.Date(2022, 1, 1, 11, 23, 45, 0, time.UTC)},
-			dt2:      DateTime{t: time.Date(2022, 1, 1, 11, 23, 46, 0, time.UTC)},
+			dt1:      DateTime(time.Date(2022, 1, 1, 11, 23, 45, 0, time.UTC)),
+			dt2:      DateTime(time.Date(2022, 1, 1, 11, 23, 46, 0, time.UTC)),
 			expected: false, // Different times
 		},
 	}
@@ -150,7 +150,7 @@ func TestDateTime_UnmarshalJSON(t *testing.T) {
 	}
 
 	for i, s := range scenarios {
-		dt := DateTime{}
+		var dt DateTime
 		dt.UnmarshalJSON([]byte(s.date))
 		require.Equal(t, s.expected, dt.String(), "(%d) Expected %q, got %q", i, s.expected, dt.String())
 	}
@@ -198,7 +198,7 @@ func TestDateTime_Scan(t *testing.T) {
 	}
 
 	for i, s := range scenarios {
-		dt := DateTime{}
+		var dt DateTime
 
 		err := dt.Scan(s.value)
 		require.Nil(t, err, "(%d) %v", i, err)

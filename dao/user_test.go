@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/pagination"
@@ -28,7 +27,7 @@ func Test_CreateUser(t *testing.T) {
 		dao, ctx := setup(t)
 
 		// Remove the existing admin user
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
 		require.NoError(t, dao.DeleteUsers(ctx, dbOpts))
 
 		user := &models.User{Username: "test-user", DisplayName: "Test User", PasswordHash: "password", Role: types.UserRoleUser}
@@ -64,13 +63,13 @@ func Test_GetUser(t *testing.T) {
 		dao, ctx := setup(t)
 
 		// Remove the existing admin user
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
 		require.NoError(t, dao.DeleteUsers(ctx, dbOpts))
 
 		user := &models.User{Username: "admin", DisplayName: "Admin", PasswordHash: "password", Role: types.UserRoleAdmin}
 		require.NoError(t, dao.CreateUser(ctx, user))
 
-		dbOpts = database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: user.ID})
+		dbOpts = NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: user.ID})
 		record, err := dao.GetUser(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Equal(t, user.ID, record.ID)
@@ -80,7 +79,7 @@ func Test_GetUser(t *testing.T) {
 		dao, ctx := setup(t)
 
 		// Remove the existing admin user
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
 		require.NoError(t, dao.DeleteUsers(ctx, dbOpts))
 
 		record, err := dao.GetUser(ctx, nil)
@@ -96,7 +95,7 @@ func Test_ListUsers(t *testing.T) {
 		dao, ctx := setup(t)
 
 		// Remove the existing admin user
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
 		require.NoError(t, dao.DeleteUsers(ctx, dbOpts))
 
 		users := []*models.User{}
@@ -127,7 +126,7 @@ func Test_ListUsers(t *testing.T) {
 		dao, ctx := setup(t)
 
 		// Remove the existing admin user
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
 		require.NoError(t, dao.DeleteUsers(ctx, dbOpts))
 
 		records, err := dao.ListUsers(ctx, nil)
@@ -139,7 +138,7 @@ func Test_ListUsers(t *testing.T) {
 		dao, ctx := setup(t)
 
 		// Remove the existing admin user
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
 		require.NoError(t, dao.DeleteUsers(ctx, dbOpts))
 
 		users := []*models.User{}
@@ -156,7 +155,7 @@ func Test_ListUsers(t *testing.T) {
 		}
 
 		// Descending order by created_at
-		opts := database.NewOptions().WithOrderBy(models.USER_TABLE_CREATED_AT + " DESC")
+		opts := NewOptions().WithOrderBy(models.USER_TABLE_CREATED_AT + " DESC")
 
 		records, err := dao.ListUsers(ctx, opts)
 		require.Nil(t, err)
@@ -167,7 +166,7 @@ func Test_ListUsers(t *testing.T) {
 		}
 
 		// Ascending order by created_at
-		opts = database.NewOptions().WithOrderBy(models.USER_TABLE_CREATED_AT + " ASC")
+		opts = NewOptions().WithOrderBy(models.USER_TABLE_CREATED_AT + " ASC")
 
 		records, err = dao.ListUsers(ctx, opts)
 		require.Nil(t, err)
@@ -182,7 +181,7 @@ func Test_ListUsers(t *testing.T) {
 		dao, ctx := setup(t)
 
 		// Remove the existing admin user
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
 		require.NoError(t, dao.DeleteUsers(ctx, dbOpts))
 
 		user := &models.User{
@@ -193,7 +192,7 @@ func Test_ListUsers(t *testing.T) {
 		}
 		require.NoError(t, dao.CreateUser(ctx, user))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: user.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: user.ID})
 		records, err := dao.ListUsers(ctx, opts)
 		require.Nil(t, err)
 		require.Len(t, records, 1)
@@ -204,7 +203,7 @@ func Test_ListUsers(t *testing.T) {
 		dao, ctx := setup(t)
 
 		// Remove the existing admin user
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
 		require.NoError(t, dao.DeleteUsers(ctx, dbOpts))
 
 		users := []*models.User{}
@@ -221,7 +220,7 @@ func Test_ListUsers(t *testing.T) {
 		}
 
 		// First page with 10 records
-		p := database.NewOptions().WithPagination(pagination.New(1, 10))
+		p := NewOptions().WithPagination(pagination.New(1, 10))
 		records, err := dao.ListUsers(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 10)
@@ -229,7 +228,7 @@ func Test_ListUsers(t *testing.T) {
 		require.Equal(t, users[9].ID, records[9].ID)
 
 		// Second page with remaining 7 records
-		p = database.NewOptions().WithPagination(pagination.New(2, 10))
+		p = NewOptions().WithPagination(pagination.New(2, 10))
 		records, err = dao.ListUsers(ctx, p)
 		require.Nil(t, err)
 		require.Len(t, records, 7)
@@ -245,7 +244,7 @@ func Test_UpdateUser(t *testing.T) {
 		dao, ctx := setup(t)
 
 		// Remove the existing admin user
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
 		require.NoError(t, dao.DeleteUsers(ctx, dbOpts))
 
 		OriginalUser := &models.User{Username: "Admin", DisplayName: "Michael", Role: types.UserRoleAdmin, PasswordHash: "password"}
@@ -262,7 +261,7 @@ func Test_UpdateUser(t *testing.T) {
 		}
 		require.NoError(t, dao.UpdateUser(ctx, updatedUser))
 
-		dbOpts = database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: OriginalUser.ID})
+		dbOpts = NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: OriginalUser.ID})
 		record, err := dao.GetUser(ctx, dbOpts)
 		require.Nil(t, err)
 		require.Equal(t, OriginalUser.ID, record.ID)                     // No change
@@ -296,13 +295,13 @@ func Test_DeleteUsers(t *testing.T) {
 		dao, ctx := setup(t)
 
 		// Remove the existing admin user
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
 		require.NoError(t, dao.DeleteUsers(ctx, dbOpts))
 
 		user := &models.User{Username: "test-user", DisplayName: "Test User", PasswordHash: "password", Role: types.UserRoleUser}
 		require.NoError(t, dao.CreateUser(ctx, user))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: user.ID})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: user.ID})
 		require.Nil(t, dao.DeleteUsers(ctx, opts))
 
 		records, err := dao.ListUsers(ctx, opts)
@@ -314,13 +313,13 @@ func Test_DeleteUsers(t *testing.T) {
 		dao, ctx := setup(t)
 
 		// Remove the existing admin user
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
 		require.NoError(t, dao.DeleteUsers(ctx, dbOpts))
 
 		user := &models.User{Username: "test-user", DisplayName: "Test User", PasswordHash: "password", Role: types.UserRoleUser}
 		require.NoError(t, dao.CreateUser(ctx, user))
 
-		opts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: "non-existent"})
+		opts := NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_ID: "non-existent"})
 		require.Nil(t, dao.DeleteUsers(ctx, opts))
 
 		records, err := dao.ListUsers(ctx, nil)
@@ -333,7 +332,7 @@ func Test_DeleteUsers(t *testing.T) {
 		dao, ctx := setup(t)
 
 		// Remove the existing admin user
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
+		dbOpts := NewOptions().WithWhere(squirrel.Eq{models.USER_TABLE_USERNAME: "test-user"})
 		require.NoError(t, dao.DeleteUsers(ctx, dbOpts))
 
 		user := &models.User{Username: "test-user", DisplayName: "Test User", PasswordHash: "password", Role: types.UserRoleUser}

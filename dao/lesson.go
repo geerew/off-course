@@ -41,7 +41,7 @@ func (dao *DAO) CreateLesson(ctx context.Context, lesson *models.Lesson) error {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // GetLesson gets a record from the lessons table based upon the where clause in the options. If
 // there is no where clause, it will return the first record in the table
-func (dao *DAO) GetLesson(ctx context.Context, dbOpts *database.Options) (*models.Lesson, error) {
+func (dao *DAO) GetLesson(ctx context.Context, dbOpts *Options) (*models.Lesson, error) {
 	// Fetch lesson
 	builderOpts := newBuilderOptions(models.LESSON_TABLE).
 		WithColumns(models.LessonColumns()...).
@@ -58,7 +58,7 @@ func (dao *DAO) GetLesson(ctx context.Context, dbOpts *database.Options) (*model
 	}
 
 	// Fetch attachments (ordered by title)
-	attachmentOpts := database.NewOptions().
+	attachmentOpts := NewOptions().
 		WithWhere(squirrel.Eq{models.ATTACHMENT_LESSON_ID: lesson.ID}).
 		WithOrderBy(models.ATTACHMENT_TABLE_TITLE + " ASC")
 
@@ -69,7 +69,7 @@ func (dao *DAO) GetLesson(ctx context.Context, dbOpts *database.Options) (*model
 	lesson.Attachments = attachments
 
 	// Fetch assets (ordered by prefix + sub_prefix)
-	assetDbOpts := database.NewOptions().
+	assetDbOpts := NewOptions().
 		WithWhere(squirrel.Eq{models.ASSET_LESSON_ID: lesson.ID}).
 		WithOrderBy(models.ASSET_TABLE_PREFIX + " ASC, " + models.ASSET_TABLE_SUB_PREFIX + " ASC")
 
@@ -91,7 +91,7 @@ func (dao *DAO) GetLesson(ctx context.Context, dbOpts *database.Options) (*model
 
 // ListLessons gets all records from the lessons table based upon the where clause and pagination
 // in the options
-func (dao *DAO) ListLessons(ctx context.Context, dbOpts *database.Options) ([]*models.Lesson, error) {
+func (dao *DAO) ListLessons(ctx context.Context, dbOpts *Options) ([]*models.Lesson, error) {
 	// Fetch lessons
 	builderOpts := newBuilderOptions(models.LESSON_TABLE).
 		WithColumns(models.LessonColumns()...).
@@ -115,7 +115,7 @@ func (dao *DAO) ListLessons(ctx context.Context, dbOpts *database.Options) ([]*m
 	}
 
 	// Fetch attachments for all lessons, ordering by title
-	attachmentDbOpts := database.NewOptions().
+	attachmentDbOpts := NewOptions().
 		WithWhere(squirrel.Eq{models.ATTACHMENT_LESSON_ID: ids}).
 		WithOrderBy(
 			models.ATTACHMENT_TABLE_LESSON_ID+" ASC",
@@ -133,7 +133,7 @@ func (dao *DAO) ListLessons(ctx context.Context, dbOpts *database.Options) ([]*m
 	}
 
 	// Fetch assets for all lessons
-	assetDbOpts := database.NewOptions().
+	assetDbOpts := NewOptions().
 		WithWhere(squirrel.Eq{models.ASSET_LESSON_ID: ids}).
 		WithOrderBy(
 			models.ASSET_TABLE_LESSON_ID+" ASC ",
@@ -179,7 +179,7 @@ func (dao *DAO) UpdateLesson(ctx context.Context, lesson *models.Lesson) error {
 
 	lesson.RefreshUpdatedAt()
 
-	dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: lesson.ID})
+	dbOpts := NewOptions().WithWhere(squirrel.Eq{models.BASE_ID: lesson.ID})
 
 	builderOpts := newBuilderOptions(models.LESSON_TABLE).
 		WithData(map[string]interface{}{
@@ -199,7 +199,7 @@ func (dao *DAO) UpdateLesson(ctx context.Context, lesson *models.Lesson) error {
 // DeleteLessons deletes records from the LESSONs table
 //
 // Errors when a WHERE clause is not provided.
-func (dao *DAO) DeleteLessons(ctx context.Context, dbOpts *database.Options) error {
+func (dao *DAO) DeleteLessons(ctx context.Context, dbOpts *Options) error {
 	if dbOpts == nil || dbOpts.Where == nil {
 		return utils.ErrWhere
 	}

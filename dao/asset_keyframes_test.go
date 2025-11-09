@@ -326,7 +326,7 @@ func TestDAO_ListAssetKeyframes(t *testing.T) {
 	})
 
 	t.Run("with where clause", func(t *testing.T) {
-		opts := &database.Options{
+		opts := &Options{
 			Where: squirrel.Eq{models.KEYFRAMES_IS_COMPLETE: true},
 		}
 
@@ -338,7 +338,7 @@ func TestDAO_ListAssetKeyframes(t *testing.T) {
 
 	t.Run("with limit", func(t *testing.T) {
 		p := pagination.New(1, 1)
-		opts := &database.Options{
+		opts := &Options{
 			Pagination: p,
 		}
 
@@ -433,7 +433,7 @@ func TestDAO_GetAssetKeyframesCount(t *testing.T) {
 	})
 
 	t.Run("filtered count", func(t *testing.T) {
-		opts := &database.Options{
+		opts := &Options{
 			Where: squirrel.Eq{models.KEYFRAMES_IS_COMPLETE: true},
 		}
 
@@ -606,8 +606,7 @@ func createTestAsset(t *testing.T, ctx context.Context, dao *DAO, title string) 
 	err = dao.db.QueryRowContext(ctx, "SELECT id FROM lessons LIMIT 1").Scan(&lessonID)
 	require.NoError(t, err)
 
-	assetType := &types.Asset{}
-	assetType.SetVideo()
+	assetType := types.AssetVideo
 
 	asset := &models.Asset{
 		CourseID: courseID,
@@ -617,7 +616,7 @@ func createTestAsset(t *testing.T, ctx context.Context, dao *DAO, title string) 
 		Hash:     "hash-" + title,
 		Weight:   1,
 		Prefix:   sql.NullInt16{Int16: 1, Valid: true},
-		Type:     *assetType,
+		Type:     assetType,
 	}
 	asset.RefreshId()
 	asset.RefreshCreatedAt()

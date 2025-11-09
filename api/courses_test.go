@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -14,7 +15,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/database"
+	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/pagination"
 	"github.com/geerew/off-course/utils/security"
@@ -179,7 +180,7 @@ func TestCourses_GetCourses(t *testing.T) {
 				Title:    "asset 1",
 				Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 				Module:   "Module 1",
-				Type:     *types.NewAsset("mp4"),
+				Type:     types.MustAsset("mp4"),
 				Path:     fmt.Sprintf("/course %d/chapter 1/01 asset 1.mp4", i+1),
 				FileSize: 1024,
 				ModTime:  time.Now().Format(time.RFC3339Nano),
@@ -299,7 +300,7 @@ func TestCourses_GetCourses(t *testing.T) {
 		router, _ := setupAdmin(t)
 
 		// Drop the courses table
-		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/", nil))
@@ -342,7 +343,7 @@ func TestCourses_GetCourse(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/invalid", nil))
@@ -439,7 +440,7 @@ func TestCourses_CreateCourse(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)
 
 		router.app.AppFs.Fs.MkdirAll("/course 1", os.ModePerm)
@@ -456,7 +457,7 @@ func TestCourses_CreateCourse(t *testing.T) {
 	t.Run("500 (scan error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.SCAN_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.SCAN_TABLE)
 		require.NoError(t, err)
 
 		router.app.AppFs.Fs.MkdirAll("/course 1", os.ModePerm)
@@ -488,7 +489,7 @@ func TestCourses_DeleteCourse(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, status)
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: courses[1].ID})
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: courses[1].ID})
 		course, err := router.appDao.GetCourse(ctx, dbOpts)
 		require.NoError(t, err)
 		require.Nil(t, course)
@@ -505,7 +506,7 @@ func TestCourses_DeleteCourse(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/courses/invalid", nil))
@@ -579,7 +580,7 @@ func TestCourses_GetCard(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.COURSE_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/invalid/card", nil))
@@ -651,7 +652,7 @@ func TestCourses_GetLessons(t *testing.T) {
 						Title:    fmt.Sprintf("asset %d", k+1),
 						Prefix:   sql.NullInt16{Int16: int16(k + 1), Valid: true},
 						Module:   fmt.Sprintf("Chapter %d", k+1),
-						Type:     *types.NewAsset("mp4"),
+						Type:     types.MustAsset("mp4"),
 						Path:     fmt.Sprintf("/%s/asset %d", security.RandomString(4), k+1),
 						FileSize: 1024,
 						ModTime:  time.Now().Format(time.RFC3339Nano),
@@ -737,7 +738,7 @@ func TestCourses_GetLessons(t *testing.T) {
 						Title:    fmt.Sprintf("asset %d", k+1),
 						Prefix:   sql.NullInt16{Int16: int16(k + 1), Valid: true},
 						Module:   fmt.Sprintf("Chapter %d", k+1),
-						Type:     *types.NewAsset("mp4"),
+						Type:     types.MustAsset("mp4"),
 						Path:     fmt.Sprintf("/%s/asset %d", security.RandomString(4), k+1),
 						FileSize: 1024,
 						ModTime:  time.Now().Format(time.RFC3339Nano),
@@ -895,7 +896,7 @@ func TestCourses_GetLessons(t *testing.T) {
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
-		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.LESSON_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.LESSON_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/lessons/", nil))
@@ -945,7 +946,7 @@ func TestCourses_GetLesson(t *testing.T) {
 					Prefix:    sql.NullInt16{Int16: ag.Prefix.Int16, Valid: true},
 					SubPrefix: sql.NullInt16{Int16: int16(j + 1), Valid: true},
 					Module:    ag.Module,
-					Type:      *types.NewAsset("mp4"),
+					Type:      types.MustAsset("mp4"),
 					Path:      fmt.Sprintf("/course-1/%02d video %d {%02d}.mp4", ag.Prefix.Int16, j+1, j+1),
 				}
 				require.NoError(t, router.appDao.CreateAsset(ctx, asset))
@@ -1012,7 +1013,7 @@ func TestCourses_GetLesson(t *testing.T) {
 					Prefix:    sql.NullInt16{Int16: ag.Prefix.Int16, Valid: true},
 					SubPrefix: sql.NullInt16{Int16: int16(j + 1), Valid: true},
 					Module:    ag.Module,
-					Type:      *types.NewAsset("mp4"),
+					Type:      types.MustAsset("mp4"),
 					Path:      fmt.Sprintf("/course-1/%02d video %d {%02d}.mp4", ag.Prefix.Int16, j+1, j+1),
 				}
 				require.NoError(t, router.appDao.CreateAsset(ctx, asset))
@@ -1121,7 +1122,7 @@ func TestCourses_GetLesson(t *testing.T) {
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
-		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.LESSON_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.LESSON_TABLE)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/lessons/invalid", nil)
@@ -1194,7 +1195,7 @@ func TestCourses_GetModules(t *testing.T) {
 					Title:    "asset 1",
 					Prefix:   sql.NullInt16{Int16: int16(1), Valid: true},
 					Module:   fmt.Sprintf("%d Chapter %d", j+1, j+1),
-					Type:     *types.NewAsset("mp4"),
+					Type:     types.MustAsset("mp4"),
 					Path:     fmt.Sprintf("%s/%d Chapter %d/asset 1", c.Path, j+1, j+1),
 					FileSize: 1024,
 					ModTime:  time.Now().Format(time.RFC3339Nano),
@@ -1274,7 +1275,7 @@ func TestCourses_GetModules(t *testing.T) {
 					Title:    "asset 1",
 					Prefix:   sql.NullInt16{Int16: int16(1), Valid: true},
 					Module:   fmt.Sprintf("%d Chapter %d", j+1, j+1),
-					Type:     *types.NewAsset("mp4"),
+					Type:     types.MustAsset("mp4"),
 					Path:     fmt.Sprintf("%s/%d Chapter %d/asset 1", c.Path, j+1, j+1),
 					FileSize: 1024,
 					ModTime:  time.Now().Format(time.RFC3339Nano),
@@ -1321,7 +1322,7 @@ func TestCourses_GetModules(t *testing.T) {
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
-		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.LESSON_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.LESSON_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/modules/", nil))
@@ -1868,7 +1869,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 			Title:    "asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
-			Type:     *types.NewAsset("mp4"),
+			Type:     types.MustAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
 			FileSize: 1024,
 			ModTime:  time.Now().Format(time.RFC3339Nano),
@@ -1906,7 +1907,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 			Title:    "asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
-			Type:     *types.NewAsset("mp4"),
+			Type:     types.MustAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
 			FileSize: 1024,
 			ModTime:  time.Now().Format(time.RFC3339Nano),
@@ -1946,7 +1947,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 			Title:    "asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
-			Type:     *types.NewAsset("mp4"),
+			Type:     types.MustAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
 			FileSize: 1024,
 			ModTime:  time.Now().Format(time.RFC3339Nano),
@@ -1981,7 +1982,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 			Title:    "asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
-			Type:     *types.NewAsset("mp4"),
+			Type:     types.MustAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
 			FileSize: 1024,
 			ModTime:  time.Now().Format(time.RFC3339Nano),
@@ -2024,7 +2025,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 			Title:    "asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
-			Type:     *types.NewAsset("mp4"),
+			Type:     types.MustAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
 			FileSize: 1024,
 			ModTime:  time.Now().Format(time.RFC3339Nano),
@@ -2052,7 +2053,7 @@ func TestCourses_ServeAsset(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.ASSET_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.ASSET_TABLE)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/api/courses/invalid/lessons/invalid/assets/invalid/serve", nil)
@@ -2088,7 +2089,7 @@ func TestCourses_UpdateAssetProgress(t *testing.T) {
 			Title:    "asset 1",
 			Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 			Module:   "Module 1",
-			Type:     *types.NewAsset("mp4"),
+			Type:     types.MustAsset("mp4"),
 			Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
 			FileSize: 1024,
 			ModTime:  time.Now().Format(time.RFC3339Nano),
@@ -2111,7 +2112,7 @@ func TestCourses_UpdateAssetProgress(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, status)
 
-		dbOpts := database.NewOptions().WithUserProgress().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: asset.ID})
+		dbOpts := dao.NewOptions().WithUserProgress().WithWhere(squirrel.Eq{models.ASSET_TABLE_ID: asset.ID})
 		assetResult, err := router.appDao.GetAsset(ctx, dbOpts)
 		require.NoError(t, err)
 		require.NotNil(t, assetResult)
@@ -2212,7 +2213,7 @@ func TestCourses_UpdateAssetProgress(t *testing.T) {
 	// 		Title:    "asset 1",
 	// 		Prefix:   sql.NullInt16{Int16: 1, Valid: true},
 	// 		Module:   "Module 1",
-	// 		Type:     *types.NewAsset("mp4"),
+	// 		Type:     types.MustAsset("mp4"),
 	// 		Path:     fmt.Sprintf("/%s/asset 1", security.RandomString(4)),
 	// 		FileSize: 1024,
 	// 		ModTime:  time.Now().Format(time.RFC3339Nano),
@@ -2301,7 +2302,7 @@ func TestCourses_GetTags(t *testing.T) {
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
-		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.COURSE_TAG_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/tags/", nil))
@@ -2386,7 +2387,7 @@ func TestCourses_CreateTag(t *testing.T) {
 		course := &models.Course{Title: "course 1", Path: "/course 1"}
 		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
-		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.COURSE_TAG_TABLE)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/courses/"+course.ID+"/tags", strings.NewReader(`{"tag": "Go"}`))
@@ -2417,7 +2418,7 @@ func TestCourses_DeleteTag(t *testing.T) {
 			}
 		}
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courses[1].ID})
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courses[1].ID})
 		records, err := router.appDao.ListCourseTags(ctx, dbOpts)
 		require.NoError(t, err)
 		require.Len(t, records, 3)
@@ -2458,12 +2459,12 @@ func TestCourses_DeleteTag(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, status)
 
-		dbOpts := database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: tag1.ID})
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: tag1.ID})
 		record, err := router.appDao.GetCourseTag(ctx, dbOpts)
 		require.NoError(t, err)
 		require.NotNil(t, record)
 
-		dbOpts = database.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: tag2.ID})
+		dbOpts = dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: tag2.ID})
 		record, err = router.appDao.GetCourseTag(ctx, dbOpts)
 		require.NoError(t, err)
 		require.NotNil(t, record)
@@ -2472,7 +2473,7 @@ func TestCourses_DeleteTag(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.app.DbManager.DataDb.Exec("DROP TABLE IF EXISTS " + models.COURSE_TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.COURSE_TAG_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/courses/invalid/tags/invalid", nil))

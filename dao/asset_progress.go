@@ -56,7 +56,7 @@ func (dao *DAO) UpsertAssetProgress(ctx context.Context, assetProgress *models.A
 		WithSuffix(upsertAssetProgressSuffix())
 
 	// Build the progress fraction update query. This will always update the progress_frac column
-	dbOpts := database.NewOptions().WithWhere(squirrel.And{
+	dbOpts := NewOptions().WithWhere(squirrel.And{
 		squirrel.Eq{models.ASSET_PROGRESS_ASSET_ID: assetProgress.AssetID},
 		squirrel.Eq{models.ASSET_PROGRESS_USER_ID: assetProgress.UserID},
 	})
@@ -92,7 +92,7 @@ func (dao *DAO) UpsertAssetProgress(ctx context.Context, assetProgress *models.A
 
 // GetAssetProgress gets a record from the asset progress table based upon the where clause in the options. If
 // there is no where clause, it will return the first record in the table
-func (dao *DAO) GetAssetProgress(ctx context.Context, dbOpts *database.Options) (*models.AssetProgress, error) {
+func (dao *DAO) GetAssetProgress(ctx context.Context, dbOpts *Options) (*models.AssetProgress, error) {
 	builderOpts := newBuilderOptions(models.ASSET_PROGRESS_TABLE).
 		WithColumns(models.AssetProgressColumns()...).
 		SetDbOpts(dbOpts).
@@ -105,7 +105,7 @@ func (dao *DAO) GetAssetProgress(ctx context.Context, dbOpts *database.Options) 
 
 // ListAssetProgress gets all records from the asset progress table based upon the where clause and pagination
 // in the options
-func (dao *DAO) ListAssetProgress(ctx context.Context, dbOpts *database.Options) ([]*models.AssetProgress, error) {
+func (dao *DAO) ListAssetProgress(ctx context.Context, dbOpts *Options) ([]*models.AssetProgress, error) {
 	builderOpts := newBuilderOptions(models.ASSET_PROGRESS_TABLE).
 		WithColumns(models.AssetProgressColumns()...).
 		SetDbOpts(dbOpts)
@@ -117,7 +117,7 @@ func (dao *DAO) ListAssetProgress(ctx context.Context, dbOpts *database.Options)
 // ListAssetProgressIDs returns just the asset progress IDs as a []string
 //
 // TODO add tests
-func (dao *DAO) ListAssetProgressIDs(ctx context.Context, dbOpts *database.Options) ([]string, error) {
+func (dao *DAO) ListAssetProgressIDs(ctx context.Context, dbOpts *Options) ([]string, error) {
 	builderOpts := newBuilderOptions(models.ASSET_PROGRESS_TABLE).
 		WithColumns(models.ASSET_PROGRESS_TABLE_ID).
 		SetDbOpts(dbOpts)
@@ -130,7 +130,7 @@ func (dao *DAO) ListAssetProgressIDs(ctx context.Context, dbOpts *database.Optio
 // DeleteAssetProgress deletes records from the asset progress table
 //
 // Errors when a where clause is not provided
-func (dao *DAO) DeleteAssetProgress(ctx context.Context, dbOpts *database.Options) error {
+func (dao *DAO) DeleteAssetProgress(ctx context.Context, dbOpts *Options) error {
 	if dbOpts == nil || dbOpts.Where == nil {
 		return utils.ErrWhere
 	}
@@ -166,7 +166,7 @@ func (dao *DAO) DeleteAssetProgressForCourse(ctx context.Context, courseID, user
 		),
 	}
 
-	dbOpts := database.NewOptions().WithWhere(where)
+	dbOpts := NewOptions().WithWhere(where)
 
 	return dao.DeleteAssetProgress(ctx, dbOpts)
 }

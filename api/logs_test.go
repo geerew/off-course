@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -94,7 +95,7 @@ func TestLogs_GetLogs(t *testing.T) {
 		router, _ := setupAdmin(t)
 
 		// Drop the courses table
-		_, err := router.app.DbManager.LogsDb.Exec("DROP TABLE IF EXISTS " + models.LOG_TABLE)
+		_, err := router.app.DbManager.LogsDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS "+models.LOG_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/logs/", nil))
