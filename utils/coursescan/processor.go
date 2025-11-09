@@ -137,7 +137,10 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		Msg("Found lessons")
 
 	// List the assets that already exist in the database for this course
-	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.ASSET_COURSE_ID: course.ID})
+	// Include asset metadata so we can calculate course duration correctly when deleting lessons
+	dbOpts := dao.NewOptions().
+		WithWhere(squirrel.Eq{models.ASSET_COURSE_ID: course.ID}).
+		WithAssetMetadata()
 	existingGroups, err := s.dao.ListLessons(ctx, dbOpts)
 	if err != nil {
 		s.logger.Error().
@@ -152,7 +155,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	existingAttachments, existingAssets := flatAttachmentsAndAssets(existingGroups)
 
 	// Populate hashes of assets that have changed
-	if err := populateHashesIfChanged(s.appFs.Fs, scannedAssets, existingAssets, course, s.logger); err != nil {
+	if err := populateHashesIfChanged(ctx, s.appFs.Fs, scannedAssets, existingAssets, course, s.logger); err != nil {
 		s.logger.Error().
 			Err(err).
 			Str("course_id", courseID).
@@ -184,7 +187,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		Msg("Generated reconciliation operations")
 
 	// FFprobe only assets that need it
-	assetMetadataByPath := probeVideos(s, assetOps, course, extractedKeyframes)
+	assetMetadataByPath := probeVideos(ctx, s, assetOps, course, extractedKeyframes)
 
 	updatedCourse := course.CardPath != scanned.cardPath
 	if updatedCourse {
@@ -221,13 +224,23 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 			updatedCourse = true
 		}
 
-		if updated, err := applyLessonDeleteOps(txCtx, s, groupOps); err != nil {
+		if updated, err := applyLessonDeleteOps(txCtx, s, groupOps, course); err != nil {
 			return err
 		} else if updated {
 			updatedCourse = true
 		}
 
 		if updatedCourse {
+			// Ensure duration doesn't go negative (safety check)
+			if course.Duration < 0 {
+				s.logger.Warn().
+					Str("course_id", courseID).
+					Str("course_path", coursePath).
+					Int("negative_duration", course.Duration).
+					Msg("Course duration became negative, resetting to 0")
+				course.Duration = 0
+			}
+
 			course.InitialScan = true
 			s.logger.Debug().
 				Str("course_id", courseID).
@@ -671,7 +684,7 @@ func flatAttachmentsAndAssets(lessons []*models.Lesson) ([]*models.Attachment, [
 
 // probeVideos probes videos assets that match the operations create, replace, or swap
 // extractedKeyframes is a map scoped to the current scan operation to store extracted keyframes
-func probeVideos(s *CourseScan, ops []Op, course *models.Course, extractedKeyframes map[string][]float64) map[string]*models.AssetMetadata {
+func probeVideos(ctx context.Context, s *CourseScan, ops []Op, course *models.Course, extractedKeyframes map[string][]float64) map[string]*models.AssetMetadata {
 	var targets []*models.Asset
 	for _, op := range ops {
 		switch v := op.(type) {
@@ -714,11 +727,13 @@ func probeVideos(s *CourseScan, ops []Op, course *models.Course, extractedKeyfra
 		numWorkers = 1
 	}
 
-	return probeVideosParallel(s, targets, course, extractedKeyframes, numWorkers)
+	return probeVideosParallel(ctx, s, targets, course, extractedKeyframes, numWorkers)
 }
 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // probeVideosParallel probes videos in parallel using a worker pool
-func probeVideosParallel(s *CourseScan, targets []*models.Asset, course *models.Course, extractedKeyframes map[string][]float64, numWorkers int) map[string]*models.AssetMetadata {
+func probeVideosParallel(ctx context.Context, s *CourseScan, targets []*models.Asset, course *models.Course, extractedKeyframes map[string][]float64, numWorkers int) map[string]*models.AssetMetadata {
 	if len(targets) == 0 {
 		return map[string]*models.AssetMetadata{}
 	}
@@ -746,6 +761,18 @@ func probeVideosParallel(s *CourseScan, targets []*models.Asset, course *models.
 		go func() {
 			defer wg.Done()
 			for asset := range workChan {
+				// Check for context cancellation
+				select {
+				case <-ctx.Done():
+					s.logger.Warn().
+						Err(ctx.Err()).
+						Str("course_id", course.ID).
+						Str("course_path", course.Path).
+						Msg("Video probing cancelled due to context cancellation")
+					return
+				default:
+				}
+
 				// Probe video
 				info, err := mediaProbe.ProbeVideo(asset.Path)
 				if err != nil {
@@ -905,6 +932,7 @@ func applyLessonDeleteOps(
 	ctx context.Context,
 	s *CourseScan,
 	ops []Op,
+	course *models.Course,
 ) (bool, error) {
 	if len(ops) == 0 {
 		return false, nil
@@ -914,6 +942,13 @@ func applyLessonDeleteOps(
 		switch v := op.(type) {
 
 		case DeleteLessonOp:
+			// Subtract durations of all video assets in the deleted lesson
+			for _, asset := range v.Deleted.Assets {
+				if asset.AssetMetadata != nil && asset.AssetMetadata.VideoMetadata != nil {
+					course.Duration -= asset.AssetMetadata.VideoMetadata.DurationSec
+				}
+			}
+
 			// Delete an existing lesson
 			dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.LESSON_TABLE_ID: v.Deleted.ID})
 			if err := s.dao.DeleteLessons(ctx, dbOpts); err != nil {
@@ -1021,7 +1056,7 @@ func applyAssetOps(
 				return false, err
 			}
 
-			if v.Existing.AssetMetadata != nil {
+			if v.Existing.AssetMetadata != nil && v.Existing.AssetMetadata.VideoMetadata != nil {
 				course.Duration -= v.Existing.AssetMetadata.VideoMetadata.DurationSec
 			}
 
@@ -1055,6 +1090,11 @@ func applyAssetOps(
 				return false, err
 			}
 
+			// Subtract the deleted asset's duration if it was a video
+			if v.Deleted.AssetMetadata != nil && v.Deleted.AssetMetadata.VideoMetadata != nil {
+				course.Duration -= v.Deleted.AssetMetadata.VideoMetadata.DurationSec
+			}
+
 			v.Renamed.ID = v.Existing.ID
 			v.Renamed.LessonID = v.Deleted.LessonID
 
@@ -1075,7 +1115,7 @@ func applyAssetOps(
 					return false, err
 				}
 
-				if existing.AssetMetadata != nil {
+				if existing.AssetMetadata != nil && existing.AssetMetadata.VideoMetadata != nil {
 					course.Duration -= existing.AssetMetadata.VideoMetadata.DurationSec
 				}
 			}
@@ -1108,7 +1148,7 @@ func applyAssetOps(
 				return false, err
 			}
 
-			if v.Deleted.AssetMetadata != nil {
+			if v.Deleted.AssetMetadata != nil && v.Deleted.AssetMetadata.VideoMetadata != nil {
 				course.Duration -= v.Deleted.AssetMetadata.VideoMetadata.DurationSec
 			}
 		}
@@ -1240,7 +1280,7 @@ func isCard(filename string) bool {
 
 // populateHashesIfChanged populates the hashes of the scanned assets if they have changed
 // Uses parallel processing with a worker pool to improve performance
-func populateHashesIfChanged(fs afero.Fs, scanned []*models.Asset, existing []*models.Asset, course *models.Course, logger *logger.Logger) error {
+func populateHashesIfChanged(ctx context.Context, fs afero.Fs, scanned []*models.Asset, existing []*models.Asset, course *models.Course, logger *logger.Logger) error {
 	logger.Info().
 		Str("course_id", course.ID).
 		Str("course_path", course.Path).
@@ -1267,13 +1307,13 @@ func populateHashesIfChanged(fs afero.Fs, scanned []*models.Asset, existing []*m
 
 	// Use parallel hashing with worker pool
 	const numWorkers = 4 // Limit concurrency to avoid overwhelming I/O
-	return populateHashesParallel(fs, toHash, course, logger, numWorkers)
+	return populateHashesParallel(ctx, fs, toHash, course, logger, numWorkers)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // populateHashesParallel hashes assets in parallel using a worker pool
-func populateHashesParallel(fs afero.Fs, assets []*models.Asset, course *models.Course, logger *logger.Logger, numWorkers int) error {
+func populateHashesParallel(ctx context.Context, fs afero.Fs, assets []*models.Asset, course *models.Course, logger *logger.Logger, numWorkers int) error {
 	if len(assets) == 0 {
 		return nil
 	}
@@ -1300,6 +1340,18 @@ func populateHashesParallel(fs afero.Fs, assets []*models.Asset, course *models.
 		go func() {
 			defer wg.Done()
 			for asset := range workChan {
+				// Check for context cancellation
+				select {
+				case <-ctx.Done():
+					mu.Lock()
+					if firstError == nil {
+						firstError = ctx.Err()
+					}
+					mu.Unlock()
+					return
+				default:
+				}
+
 				hash, err := hashFilePartial(fs, asset.Path, 1024*1024)
 				if err != nil {
 					mu.Lock()
