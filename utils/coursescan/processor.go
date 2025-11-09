@@ -112,6 +112,23 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		return err
 	}
 
+	// Validate course path is accessible before scanning
+	if _, err := s.appFs.Fs.Stat(course.Path); err != nil {
+		if os.IsNotExist(err) {
+			s.logger.Warn().
+				Str("course_id", courseID).
+				Str("course_path", coursePath).
+				Msg("Course path does not exist, skipping scan")
+			return nil
+		}
+		s.logger.Error().
+			Err(err).
+			Str("course_id", courseID).
+			Str("course_path", coursePath).
+			Msg("Failed to access course path")
+		return fmt.Errorf("failed to access course path %s: %w", course.Path, err)
+	}
+
 	// Scan the course directory for files and populate assets and attachments. Also check if there is
 	// a course card
 	scanned, err := scanFiles(s, course)
@@ -231,6 +248,20 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		}
 
 		if updatedCourse {
+			// Recalculate course duration from scratch to ensure accuracy
+			// This prevents accumulation errors from incremental updates
+			recalculatedDuration, err := recalculateCourseDuration(txCtx, s, course.ID)
+			if err != nil {
+				s.logger.Warn().
+					Err(err).
+					Str("course_id", courseID).
+					Str("course_path", coursePath).
+					Msg("Failed to recalculate course duration, using existing value")
+				// Continue with existing duration if recalculation fails
+			} else {
+				course.Duration = recalculatedDuration
+			}
+
 			// Ensure duration doesn't go negative (safety check)
 			if course.Duration < 0 {
 				s.logger.Warn().
@@ -245,6 +276,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 			s.logger.Debug().
 				Str("course_id", courseID).
 				Str("course_path", coursePath).
+				Int("duration", course.Duration).
 				Msg("Updating course metadata")
 			return s.dao.UpdateCourse(txCtx, course)
 		}
@@ -682,7 +714,7 @@ func flatAttachmentsAndAssets(lessons []*models.Lesson) ([]*models.Attachment, [
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// probeVideos probes videos assets that match the operations create, replace, or swap
+// probeVideos probes videos assets that match the operations create, replace, swap, or overwrite
 // extractedKeyframes is a map scoped to the current scan operation to store extracted keyframes
 func probeVideos(ctx context.Context, s *CourseScan, ops []Op, course *models.Course, extractedKeyframes map[string][]float64) map[string]*models.AssetMetadata {
 	var targets []*models.Asset
@@ -702,6 +734,11 @@ func probeVideos(ctx context.Context, s *CourseScan, ops []Op, course *models.Co
 			}
 			if v.NewB.Type.IsVideo() {
 				targets = append(targets, v.NewB)
+			}
+		case OverwriteAssetOp:
+			// Probe the renamed asset if it's a video (it takes the place of the deleted asset)
+			if v.Renamed.Type.IsVideo() {
+				targets = append(targets, v.Renamed)
 			}
 		}
 	}
@@ -1095,11 +1132,49 @@ func applyAssetOps(
 				course.Duration -= v.Deleted.AssetMetadata.VideoMetadata.DurationSec
 			}
 
+			// Subtract the existing asset's duration if it was a video (we're replacing it)
+			if v.Existing.AssetMetadata != nil && v.Existing.AssetMetadata.VideoMetadata != nil {
+				course.Duration -= v.Existing.AssetMetadata.VideoMetadata.DurationSec
+			}
+
 			v.Renamed.ID = v.Existing.ID
 			v.Renamed.LessonID = v.Deleted.LessonID
 
 			if err := s.dao.UpdateAsset(ctx, v.Renamed); err != nil {
 				return false, err
+			}
+
+			// If the renamed asset is a video, create/update video metadata
+			if metadata := assetMetadataByPath[v.Renamed.Path]; metadata != nil && v.Renamed.Type.IsVideo() {
+				metadata.AssetID = v.Renamed.ID
+
+				if err := s.dao.CreateAssetMetadata(ctx, metadata); err != nil {
+					return false, err
+				}
+
+				// Store keyframes if they were extracted
+				if keyframes, exists := extractedKeyframes[v.Renamed.Path]; exists {
+					if len(keyframes) > 0 {
+						assetKeyframes := &models.AssetKeyframes{
+							AssetID:    v.Renamed.ID,
+							Keyframes:  keyframes,
+							IsComplete: true,
+						}
+
+						if err := s.dao.CreateAssetKeyframes(ctx, assetKeyframes); err != nil {
+							s.logger.Error().
+								Err(err).
+								Str("course_id", course.ID).
+								Str("course_path", course.Path).
+								Str("asset_id", v.Renamed.ID).
+								Str("asset_path", v.Renamed.Path).
+								Msg("Failed to store keyframes for overwritten asset")
+						}
+					}
+					delete(extractedKeyframes, v.Renamed.Path)
+				}
+
+				course.Duration += metadata.VideoMetadata.DurationSec
 			}
 
 		case SwapAssetOp:
@@ -1155,6 +1230,31 @@ func applyAssetOps(
 	}
 
 	return true, nil
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// recalculateCourseDuration recalculates the course duration by summing all video asset durations
+// from the database. This ensures accuracy after all operations have been applied.
+func recalculateCourseDuration(ctx context.Context, s *CourseScan, courseID string) (int, error) {
+	// List all assets for this course with video metadata
+	dbOpts := dao.NewOptions().
+		WithWhere(squirrel.Eq{models.ASSET_COURSE_ID: courseID}).
+		WithAssetMetadata()
+
+	assets, err := s.dao.ListAssets(ctx, dbOpts)
+	if err != nil {
+		return 0, fmt.Errorf("failed to list assets for duration calculation: %w", err)
+	}
+
+	totalDuration := 0
+	for _, asset := range assets {
+		if asset.AssetMetadata != nil && asset.AssetMetadata.VideoMetadata != nil {
+			totalDuration += asset.AssetMetadata.VideoMetadata.DurationSec
+		}
+	}
+
+	return totalDuration, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
