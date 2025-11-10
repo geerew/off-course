@@ -227,7 +227,7 @@
 					<Table.Root
 						class={smallTable
 							? 'grid-cols-[2.5rem_2.5rem_1fr_3.5rem]'
-							: 'grid-cols-[3.5rem_1fr_7rem_22rem_3.5rem]'}
+							: 'grid-cols-[3.5rem_1fr_22rem_3.5rem]'}
 					>
 						<Table.Thead>
 							<Table.Tr class="text-xs font-semibold uppercase">
@@ -246,9 +246,6 @@
 
 								<!-- Course -->
 								<Table.Th class="justify-start">Course</Table.Th>
-
-								<!-- Status (large screens) -->
-								<Table.Th class={cn('w-28', smallTable ? 'hidden' : 'visible')}>Status</Table.Th>
 
 								<!-- Message (large screens) -->
 								<Table.Th class={cn('w-88', smallTable ? 'hidden' : 'visible')}>Progress</Table.Th>
@@ -339,24 +336,6 @@
 										<span>{scan.courseTitle}</span>
 									</Table.Td>
 
-									<!-- Status (large screens) -->
-									<Table.Td
-										class={cn(
-											'group-hover:bg-background-alt-1 w-28 px-4',
-											smallTable ? 'hidden' : 'visible'
-										)}
-									>
-										<div class="flex w-full place-content-center">
-											<Badge
-												class={scan.status === 'processing'
-													? 'bg-background-success text-foreground'
-													: 'bg-background-alt-4 text-foreground-alt-1'}
-											>
-												{scan.status}
-											</Badge>
-										</div>
-									</Table.Td>
-
 									<!-- Message (large screens) -->
 									<Table.Td
 										class={cn(
@@ -364,7 +343,7 @@
 											smallTable ? 'hidden' : 'visible'
 										)}
 									>
-										<div class="flex w-full min-w-0 justify-start">
+										<div class="flex w-full min-w-0 justify-center">
 											{#if scan.message}
 												<span class="text-foreground-alt-1 truncate">{scan.message}</span>
 											{:else}
