@@ -166,19 +166,6 @@ CREATE TABLE asset_keyframes (
   FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE
 );
 
--- Scans holds the status of background scans for each course. As course is added or 
--- updated, this table will be updated to reflect the current state of the scan
-CREATE TABLE scans (
-	id         TEXT PRIMARY KEY NOT NULL,
-	course_id  TEXT UNIQUE NOT NULL,
-    status     TEXT NOT NULL DEFAULT 'waiting',
-	message    TEXT NOT NULL DEFAULT '',
-	created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
-	updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
-	--
-	FOREIGN KEY (course_id) REFERENCES courses (id) ON DELETE CASCADE
-);
-
 -- Tags holds case insensitive unique tags that can be associated with courses
 CREATE TABLE tags (
 	id         TEXT PRIMARY KEY NOT NULL,

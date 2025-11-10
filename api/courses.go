@@ -213,6 +213,9 @@ func (api coursesAPI) deleteCourse(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
+	// Cancel and remove any ongoing scans for this course
+	api.r.app.CourseScan.CancelAndRemoveScansByCourseID(id)
+
 	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: id})
 	if err := api.r.appDao.DeleteCourses(ctx, dbOpts); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting course", err)

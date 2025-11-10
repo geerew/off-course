@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/geerew/off-course/models"
+	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/types"
 )
 
@@ -448,31 +449,31 @@ type ScanRequest struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 type scanResponse struct {
-	ID         string               `json:"id"`
-	CourseID   string               `json:"courseId"`
-	CoursePath string               `json:"coursePath,omitempty"`
-	Status     types.ScanStatusType `json:"status"`
-	Message    string               `json:"message"`
-	CreatedAt  types.DateTime       `json:"createdAt"`
-	UpdatedAt  types.DateTime       `json:"updatedAt"`
+	ID          string               `json:"id"`
+	CourseID    string               `json:"courseId"`
+	CourseTitle string               `json:"courseTitle"`
+	CoursePath  string               `json:"coursePath,omitempty"`
+	Status      types.ScanStatusType `json:"status"`
+	Message     string               `json:"message"`
+	CreatedAt   types.DateTime       `json:"createdAt"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-func scanResponseHelper(scans []*models.Scan, isAdmin bool) []*scanResponse {
+func scanResponseHelper(scanStates []*coursescan.ScanState, isAdmin bool) []*scanResponse {
 	responses := []*scanResponse{}
-	for _, scan := range scans {
+	for _, scanState := range scanStates {
 		response := &scanResponse{
-			ID:        scan.ID,
-			CourseID:  scan.CourseID,
-			Status:    scan.Status,
-			Message:   scan.Message,
-			CreatedAt: scan.CreatedAt,
-			UpdatedAt: scan.UpdatedAt,
+			ID:          scanState.ID,
+			CourseID:    scanState.CourseID,
+			CourseTitle: scanState.CourseTitle,
+			Status:      scanState.GetStatus(),
+			Message:     scanState.GetMessage(),
+			CreatedAt:   types.DateTime(scanState.CreatedAt),
 		}
 
 		if isAdmin {
-			response.CoursePath = scan.CoursePath
+			response.CoursePath = scanState.CoursePath
 		}
 
 		responses = append(responses, response)

@@ -135,8 +135,8 @@ func TestScanner_Worker(t *testing.T) {
 			courses = append(courses, course)
 		}
 
-		var processingDone = make(chan bool, 1)
-		go scanner.Worker(ctx, func(context.Context, *CourseScan, *models.Scan) error {
+		var processingDone = make(chan bool, 3) // Buffer for 3 scans
+		go scanner.Worker(ctx, func(context.Context, *CourseScan, *ScanState) error {
 			time.Sleep(100 * time.Millisecond)
 			return nil
 		}, processingDone)
@@ -148,11 +148,17 @@ func TestScanner_Worker(t *testing.T) {
 			require.Equal(t, scan.CourseID, courses[i].ID)
 		}
 
-		<-processingDone
+		// Wait for all scans to be processed
+		for i := 0; i < 3; i++ {
+			<-processingDone
+		}
 
-		count, err := scanner.dao.CountScans(ctx, nil)
-		require.NoError(t, err)
-		require.Zero(t, count)
+		// Give a small delay to ensure cleanup
+		time.Sleep(50 * time.Millisecond)
+
+		// Verify scans were removed after processing
+		allScans := scanner.GetAllScans()
+		require.Zero(t, len(allScans))
 
 		// Note: Log assertions removed as we no longer have access to log entries in the new logger system
 
@@ -163,11 +169,17 @@ func TestScanner_Worker(t *testing.T) {
 			require.Equal(t, scan.CourseID, courses[i].ID)
 		}
 
-		<-processingDone
+		// Wait for all scans to be processed
+		for i := 0; i < 2; i++ {
+			<-processingDone
+		}
 
-		count, err = scanner.dao.CountScans(ctx, nil)
-		require.NoError(t, err)
-		require.Zero(t, count)
+		// Give a small delay to ensure cleanup
+		time.Sleep(50 * time.Millisecond)
+
+		// Verify scans were removed after processing
+		allScans = scanner.GetAllScans()
+		require.Zero(t, len(allScans))
 
 		// Note: Log assertions removed as we no longer have access to log entries in the new logger system
 	})
@@ -179,7 +191,7 @@ func TestScanner_Worker(t *testing.T) {
 		require.NoError(t, scanner.dao.CreateCourse(ctx, course))
 
 		var processingDone = make(chan bool, 1)
-		go scanner.Worker(ctx, func(context.Context, *CourseScan, *models.Scan) error {
+		go scanner.Worker(ctx, func(context.Context, *CourseScan, *ScanState) error {
 			time.Sleep(1 * time.Millisecond)
 			return errors.New("processing error")
 		}, processingDone)

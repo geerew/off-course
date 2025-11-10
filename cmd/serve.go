@@ -12,7 +12,6 @@ import (
 	"github.com/geerew/off-course/api"
 	"github.com/geerew/off-course/app"
 	"github.com/geerew/off-course/cron"
-	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils/auth"
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/spf13/cobra"
@@ -105,11 +104,6 @@ var serveCmd = &cobra.Command{
 			appLogger.Error().Err(err).Msg("Failed to close application resources")
 		}
 
-		// Delete all scans
-		_, err = application.DbManager.DataDb.ExecContext(context.Background(), "DELETE FROM "+models.SCAN_TABLE)
-		if err != nil {
-			appLogger.Error().Err(err).Msg("Failed to delete scans")
-		}
 	},
 }
 

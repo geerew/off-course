@@ -39,8 +39,8 @@ type AttachmentsByChapterPrefix map[string]map[int][]*models.Attachment
 // Processor scans a course to identify assets and attachments
 //
 // # It can be passed to coursescan.Worker
-func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
-	if scan == nil {
+func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
+	if scanState == nil {
 		return ErrNilScan
 	}
 
@@ -49,14 +49,10 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	extractedKeyframes := make(map[string][]float64)
 
 	startTime := time.Now()
-	courseID := scan.CourseID
+	courseID := scanState.CourseID
 	s.logger.Info().Str("course_id", courseID).Msg("Starting scan for course")
 
-	scan.Status = types.ScanStatusProcessing
-	scan.Message = "Initializing scan"
-	if err := s.dao.UpdateScan(ctx, scan); err != nil {
-		return err
-	}
+	scanState.UpdateStatusAndMessage(types.ScanStatusProcessing, "Initializing scan")
 
 	course, err := fetchCourse(ctx, s, courseID)
 	if err != nil {
@@ -131,10 +127,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 
 	// Scan the course directory for files and populate assets and attachments. Also check if there is
 	// a course card
-	scan.Message = "Scanning course directory"
-	if err := s.dao.UpdateScan(ctx, scan); err != nil {
-		s.logger.Warn().Err(err).Str("course_id", courseID).Msg("Failed to update scan message")
-	}
+	scanState.UpdateMessage("Scanning course directory")
 	scanned, err := scanFiles(s, course)
 	if err != nil {
 		s.logger.Error().
@@ -176,7 +169,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	existingAttachments, existingAssets := flatAttachmentsAndAssets(existingGroups)
 
 	// Populate hashes of assets that have changed
-	if err := populateHashesIfChanged(ctx, s, scannedAssets, existingAssets, course, scan); err != nil {
+	if err := populateHashesIfChanged(ctx, s, scannedAssets, existingAssets, course, scanState); err != nil {
 		s.logger.Error().
 			Err(err).
 			Str("course_id", courseID).
@@ -208,11 +201,8 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		Msg("Generated reconciliation operations")
 
 	// FFprobe only assets that need it
-	scan.Message = "Extracting video keyframes"
-	if err := s.dao.UpdateScan(ctx, scan); err != nil {
-		s.logger.Warn().Err(err).Str("course_id", courseID).Msg("Failed to update scan message")
-	}
-	assetMetadataByPath := probeVideos(ctx, s, assetOps, course, extractedKeyframes, scan)
+	scanState.UpdateMessage("Extracting video keyframes")
+	assetMetadataByPath := probeVideos(ctx, s, assetOps, course, extractedKeyframes, scanState)
 
 	updatedCourse := course.CardPath != scanned.cardPath
 	if updatedCourse {
@@ -225,10 +215,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 	// Count operations before applying
 	opCounts := countOperations(groupOps, assetOps, attachmentOps)
 
-	scan.Message = "Applying database changes"
-	if err := s.dao.UpdateScan(ctx, scan); err != nil {
-		s.logger.Warn().Err(err).Str("course_id", courseID).Msg("Failed to update scan message")
-	}
+	scanState.UpdateMessage("Applying database changes")
 	s.logger.Info().
 		Str("course_id", courseID).
 		Str("course_path", coursePath).
@@ -262,10 +249,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		if updatedCourse {
 			// Recalculate course duration from scratch to ensure accuracy
 			// This prevents accumulation errors from incremental updates
-			scan.Message = "Recalculating course duration"
-			if err := s.dao.UpdateScan(txCtx, scan); err != nil {
-				s.logger.Warn().Err(err).Str("course_id", courseID).Msg("Failed to update scan message")
-			}
+			scanState.UpdateMessage("Recalculating course duration")
 			recalculatedDuration, err := recalculateCourseDuration(txCtx, s, course.ID)
 			if err != nil {
 				s.logger.Warn().
@@ -310,10 +294,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 
 	// Final summary log with timing and operation counts
 	duration := time.Since(startTime)
-	scan.Message = "Scan complete"
-	if err := s.dao.UpdateScan(ctx, scan); err != nil {
-		s.logger.Warn().Err(err).Str("course_id", courseID).Msg("Failed to update scan message")
-	}
+	scanState.UpdateMessage("Scan complete")
 	s.logger.Info().
 		Str("course_id", courseID).
 		Str("course_path", coursePath).
@@ -736,7 +717,7 @@ func flatAttachmentsAndAssets(lessons []*models.Lesson) ([]*models.Attachment, [
 
 // probeVideos probes videos assets that match the operations create, replace, swap, or overwrite
 // extractedKeyframes is a map scoped to the current scan operation to store extracted keyframes
-func probeVideos(ctx context.Context, s *CourseScan, ops []Op, course *models.Course, extractedKeyframes map[string][]float64, scan *models.Scan) map[string]*models.AssetMetadata {
+func probeVideos(ctx context.Context, s *CourseScan, ops []Op, course *models.Course, extractedKeyframes map[string][]float64, scanState *ScanState) map[string]*models.AssetMetadata {
 	var targets []*models.Asset
 	for _, op := range ops {
 		switch v := op.(type) {
@@ -784,13 +765,13 @@ func probeVideos(ctx context.Context, s *CourseScan, ops []Op, course *models.Co
 		numWorkers = 1
 	}
 
-	return probeVideosParallel(ctx, s, targets, course, extractedKeyframes, numWorkers, scan)
+	return probeVideosParallel(ctx, s, targets, course, extractedKeyframes, numWorkers, scanState)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // probeVideosParallel probes videos in parallel using a worker pool
-func probeVideosParallel(ctx context.Context, s *CourseScan, targets []*models.Asset, course *models.Course, extractedKeyframes map[string][]float64, numWorkers int, scan *models.Scan) map[string]*models.AssetMetadata {
+func probeVideosParallel(ctx context.Context, s *CourseScan, targets []*models.Asset, course *models.Course, extractedKeyframes map[string][]float64, numWorkers int, scanState *ScanState) map[string]*models.AssetMetadata {
 	if len(targets) == 0 {
 		return map[string]*models.AssetMetadata{}
 	}
@@ -827,13 +808,7 @@ func probeVideosParallel(ctx context.Context, s *CourseScan, targets []*models.A
 					return
 				}
 				// Update scan message (non-blocking, best effort)
-				scan.Message = fmt.Sprintf("Extracting video keyframes (%d/%d)", current, totalVideos)
-				// Use a separate goroutine for the database update to avoid blocking
-				go func(msg string) {
-					if err := s.dao.UpdateScan(ctx, scan); err != nil {
-						s.logger.Warn().Err(err).Str("course_id", course.ID).Msg("Failed to update scan message")
-					}
-				}(scan.Message)
+				scanState.UpdateMessage(fmt.Sprintf("Extracting video keyframes (%d/%d)", current, totalVideos))
 				s.logger.Info().
 					Str("course_id", course.ID).
 					Str("course_path", course.Path).
@@ -1440,7 +1415,7 @@ func isCard(filename string) bool {
 
 // populateHashesIfChanged populates the hashes of the scanned assets if they have changed
 // Uses parallel processing with a worker pool to improve performance
-func populateHashesIfChanged(ctx context.Context, s *CourseScan, scanned []*models.Asset, existing []*models.Asset, course *models.Course, scan *models.Scan) error {
+func populateHashesIfChanged(ctx context.Context, s *CourseScan, scanned []*models.Asset, existing []*models.Asset, course *models.Course, scanState *ScanState) error {
 	s.logger.Info().
 		Str("course_id", course.ID).
 		Str("course_path", course.Path).
@@ -1467,13 +1442,13 @@ func populateHashesIfChanged(ctx context.Context, s *CourseScan, scanned []*mode
 
 	// Use parallel hashing with worker pool
 	const numWorkers = 4 // Limit concurrency to avoid overwhelming I/O
-	return populateHashesParallel(ctx, s, toHash, course, numWorkers, scan)
+	return populateHashesParallel(ctx, s, toHash, course, numWorkers, scanState)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // populateHashesParallel hashes assets in parallel using a worker pool
-func populateHashesParallel(ctx context.Context, s *CourseScan, assets []*models.Asset, course *models.Course, numWorkers int, scan *models.Scan) error {
+func populateHashesParallel(ctx context.Context, s *CourseScan, assets []*models.Asset, course *models.Course, numWorkers int, scanState *ScanState) error {
 	if len(assets) == 0 {
 		return nil
 	}
@@ -1509,13 +1484,7 @@ func populateHashesParallel(ctx context.Context, s *CourseScan, assets []*models
 					return
 				}
 				// Update scan message (non-blocking, best effort)
-				scan.Message = fmt.Sprintf("Calculating asset hashes (%d/%d)", current, totalToHash)
-				// Use a separate goroutine for the database update to avoid blocking
-				go func(msg string) {
-					if err := s.dao.UpdateScan(ctx, scan); err != nil {
-						s.logger.Warn().Err(err).Str("course_id", course.ID).Msg("Failed to update scan message")
-					}
-				}(scan.Message)
+				scanState.UpdateMessage(fmt.Sprintf("Calculating asset hashes (%d/%d)", current, totalToHash))
 				s.logger.Debug().
 					Str("course_id", course.ID).
 					Str("course_path", course.Path).

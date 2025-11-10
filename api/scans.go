@@ -6,10 +6,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/dao"
-	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
+	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
 	"github.com/valyala/fasthttp"
@@ -41,32 +39,16 @@ func (r *Router) initScanRoutes() {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api *scansAPI) getScans(c *fiber.Ctx) error {
-	principal, ctx, err := principalCtx(c)
+	principal, _, err := principalCtx(c)
 	if err != nil {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	builderOpts := builderOptions{
-		DefaultOrderBy: defaultScansOrderBy,
-		Paginate:       true,
-	}
+	// Get all scans from CMap (ephemeral, no pagination needed)
+	scanStates := api.r.app.CourseScan.GetAllScans()
+	responses := scanResponseHelper(scanStates, principal.Role == types.UserRoleAdmin)
 
-	dbOpts, err := optionsBuilder(c, builderOpts, principal.UserID)
-	if err != nil {
-		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
-	}
-
-	scans, err := api.r.appDao.ListScans(ctx, dbOpts)
-	if err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up scan", err)
-	}
-
-	pResult, err := dbOpts.Pagination.BuildResult(scanResponseHelper(scans, principal.Role == types.UserRoleAdmin))
-	if err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error building pagination result", err)
-	}
-
-	return c.Status(fiber.StatusOK).JSON(pResult)
+	return c.Status(fiber.StatusOK).JSON(responses)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -74,22 +56,17 @@ func (api *scansAPI) getScans(c *fiber.Ctx) error {
 func (api *scansAPI) getScan(c *fiber.Ctx) error {
 	courseId := c.Params("courseId")
 
-	principal, ctx, err := principalCtx(c)
+	principal, _, err := principalCtx(c)
 	if err != nil {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_COURSE_ID: courseId})
-	scan, err := api.r.appDao.GetScan(ctx, dbOpts)
-	if err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up scan", err)
-	}
-
-	if scan == nil {
+	scanState := api.r.app.CourseScan.GetScanByCourseID(courseId)
+	if scanState == nil {
 		return errorResponse(c, fiber.StatusNotFound, "Scan not found", nil)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(scanResponseHelper([]*models.Scan{scan}, principal.Role == types.UserRoleAdmin)[0])
+	return c.Status(fiber.StatusOK).JSON(scanResponseHelper([]*coursescan.ScanState{scanState}, principal.Role == types.UserRoleAdmin)[0])
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -109,7 +86,7 @@ func (api *scansAPI) createScan(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	scan, err := api.r.app.CourseScan.Add(ctx, req.CourseID)
+	scanState, err := api.r.app.CourseScan.Add(ctx, req.CourseID)
 	if err != nil {
 		if err == utils.ErrCourseNotFound {
 			return errorResponse(c, fiber.StatusBadRequest, "Invalid course ID", nil)
@@ -117,7 +94,7 @@ func (api *scansAPI) createScan(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error creating scan job", err)
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(scanResponseHelper([]*models.Scan{scan}, principal.Role == types.UserRoleAdmin)[0])
+	return c.Status(fiber.StatusCreated).JSON(scanResponseHelper([]*coursescan.ScanState{scanState}, principal.Role == types.UserRoleAdmin)[0])
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -125,15 +102,16 @@ func (api *scansAPI) createScan(c *fiber.Ctx) error {
 func (api scansAPI) deleteScan(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	_, ctx, err := principalCtx(c)
+	_, _, err := principalCtx(c)
 	if err != nil {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_ID: id})
-	if err := api.r.appDao.DeleteScans(ctx, dbOpts); err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting scan", err)
+	// Cancel and remove scan from CMap
+	if !api.r.app.CourseScan.CancelAndRemoveScan(id) {
+		return errorResponse(c, fiber.StatusNotFound, "Scan not found", nil)
 	}
+
 	return c.Status(fiber.StatusNoContent).Send(nil)
 }
 
@@ -160,7 +138,7 @@ func (api *scansAPI) streamScans(c *fiber.Ctx) error {
 	c.Context().SetBodyStreamWriter(fasthttp.StreamWriter(func(w *bufio.Writer) {
 		defer cancel()
 
-		ticker := time.NewTicker(2 * time.Second)
+		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 
 		writeEvent := func(payload interface{}) error {
@@ -191,24 +169,17 @@ func (api *scansAPI) streamScans(c *fiber.Ctx) error {
 			case <-streamCtx.Done():
 				return
 			case <-ticker.C:
-				dbOpts := dao.NewOptions()
-				scans, err := api.r.appDao.ListScans(streamCtx, dbOpts)
-				if err != nil {
-					_ = writeEvent(map[string]interface{}{
-						"type":    "error",
-						"message": "Failed to fetch scans",
-					})
-					continue
-				}
+				// Get all scans from CMap
+				scanStates := api.r.app.CourseScan.GetAllScans()
+				scanResponses := scanResponseHelper(scanStates, isAdmin)
 
 				updated := false
 				current := make(map[string]struct{})
-				scanResponses := scanResponseHelper(scans, isAdmin)
 
 				for _, scanResp := range scanResponses {
 					current[scanResp.ID] = struct{}{}
 					last, exists := lastSeen[scanResp.ID]
-					if !exists || last == nil || last.Status != scanResp.Status || last.Message != scanResp.Message || last.UpdatedAt != scanResp.UpdatedAt {
+					if !exists || last == nil || last.Status != scanResp.Status || last.Message != scanResp.Message {
 						if err := writeEvent(map[string]interface{}{
 							"type": "scan_update",
 							"data": scanResp,
