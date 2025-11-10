@@ -445,26 +445,6 @@ func enableCourseMaintenance(ctx context.Context, s *CourseScan, course *models.
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// clearCourseMaintenance clears the course from maintenance mode if it is set
-func clearCourseMaintenance(ctx context.Context, s *CourseScan, course *models.Course) error {
-	if !course.Maintenance {
-		return nil
-	}
-
-	course.Maintenance = false
-	if err := s.dao.UpdateCourse(ctx, course); err != nil {
-		return err
-	}
-
-	s.logger.Debug().
-		Str("course_id", course.ID).
-		Str("course_path", course.Path).
-		Msg("Cleared course from maintenance mode")
-	return nil
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 // clearCourseMaintenanceWithRetry attempts to clear maintenance mode with retry logic
 // This ensures the course is unlocked even if there are transient database errors
 func clearCourseMaintenanceWithRetry(ctx context.Context, s *CourseScan, courseID, coursePath string) error {

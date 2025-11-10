@@ -100,7 +100,7 @@ func (mp MediaProbe) ExtractKeyframes(ctx context.Context, videoPath string, vid
 
 	// Wait for command to complete
 	if err := cmd.Wait(); err != nil {
-		return nil, fmt.Errorf("ffprobe command failed: %w", err)
+		return nil, fmt.Errorf("failed to probe video: %w", err)
 	}
 
 	// Check for scanner errors

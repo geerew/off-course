@@ -56,15 +56,6 @@ func (s *ScanState) SetCancel(cancel context.CancelFunc) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// UpdateStatus updates the scan status
-func (s *ScanState) UpdateStatus(status types.ScanStatusType) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.Status = status
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 // UpdateMessage updates the scan progress message
 func (s *ScanState) UpdateMessage(message string) {
 	s.mu.Lock()
