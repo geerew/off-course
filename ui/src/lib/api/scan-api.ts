@@ -1,25 +1,24 @@
 import { APIError } from '$lib/api-error.svelte';
 import {
-	ScanPaginationSchema,
+	ScanSchema,
 	type ScanCreateModel,
 	type ScanModel,
-	type ScanPaginationModel,
 	type ScanReqParams
 } from '$lib/models/scan-model';
 import { buildQueryString } from '$lib/utils';
-import { safeParse } from 'valibot';
+import { array, safeParse } from 'valibot';
 import { apiFetch } from './fetch';
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Get a paginated list of scans
-export async function GetScans(params?: ScanReqParams): Promise<ScanPaginationModel> {
+// Get all scans (API returns array directly, not paginated)
+export async function GetScans(params?: ScanReqParams): Promise<ScanModel[]> {
 	const qs = params && buildQueryString(params);
 	const response = await apiFetch(`/api/scans` + (qs ? `?${qs}` : ''));
 
 	if (response.ok) {
-		const data = (await response.json()) as ScanPaginationModel;
-		const result = safeParse(ScanPaginationSchema, data);
+		const data = (await response.json()) as ScanModel[];
+		const result = safeParse(array(ScanSchema), data);
 
 		if (!result.success) throw new APIError(response.status, 'Invalid response from the server');
 		return result.output;
@@ -27,33 +26,6 @@ export async function GetScans(params?: ScanReqParams): Promise<ScanPaginationMo
 		const data = await response.json();
 		throw new APIError(response.status, data.message || 'Unknown error');
 	}
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// Get all the scans
-export async function GetAllScans(params?: ScanReqParams): Promise<ScanModel[]> {
-	let assets: ScanModel[] = [];
-	let page = 1;
-	let totalPages = 1;
-
-	do {
-		try {
-			const response = await GetScans({ ...params, page, perPage: 100 });
-
-			if (response.totalItems > 0) {
-				assets.push(...response.items);
-				totalPages = response.totalPages;
-				page++;
-			} else {
-				break;
-			}
-		} catch (error) {
-			throw error;
-		}
-	} while (page <= totalPages);
-
-	return assets;
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

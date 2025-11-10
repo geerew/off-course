@@ -2,7 +2,7 @@
 <!-- TODO store selection state in localstorage -->
 <script lang="ts">
 	import { GetScans } from '$lib/api/scan-api';
-	import { Pagination, SortMenu } from '$lib/components';
+	import { Pagination } from '$lib/components';
 	import { RightChevronIcon, WarningIcon } from '$lib/components/icons';
 	import RowActionMenu from '$lib/components/pages/admin/scans/row-action-menu.svelte';
 	import TableActionMenu from '$lib/components/pages/admin/scans/table-action-menu.svelte';
@@ -11,10 +11,8 @@
 	import * as Table from '$lib/components/ui/table';
 	import type { ScanModel, ScansModel } from '$lib/models/scan-model';
 	import { scanMonitor } from '$lib/scans.svelte';
-	import type { SortColumns, SortDirection } from '$lib/types/sort';
 	import { cn, remCalc } from '$lib/utils';
-	import { ElementSize, PersistedState } from 'runed';
-	import { tick } from 'svelte';
+	import { ElementSize } from 'runed';
 	import { toast } from 'svelte-sonner';
 	import { slide } from 'svelte/transition';
 	import theme from 'tailwindcss/defaultTheme';
@@ -29,25 +27,6 @@
 
 	let selectedScans: Record<string, ScanModel> = $state({});
 	let selectedScansCount = $derived(Object.keys(selectedScans).length);
-
-	let sortColumns = [
-		{ label: 'Course Path', column: 'courses.path', asc: 'Ascending', desc: 'Descending' },
-		{ label: 'Status', column: 'scans.status', asc: 'Ascending', desc: 'Descending' }
-	] as const satisfies SortColumns;
-
-	type PersistedState = {
-		sort: {
-			column: (typeof sortColumns)[number]['column'];
-			direction: SortDirection;
-		};
-	};
-
-	const persistedState = new PersistedState<PersistedState>('admin_scans', {
-		sort: { column: 'scans.status', direction: 'desc' }
-	});
-
-	let selectedSortColumn = $state(persistedState.current.sort.column);
-	let selectedSortDirection = $state(persistedState.current.sort.direction);
 
 	let paginationPage = $state(1);
 	let paginationPerPage = $state(10);
@@ -69,16 +48,16 @@
 		try {
 			scanMonitor.clearAll();
 
-			const sort = `sort:"${selectedSortColumn} ${selectedSortDirection}"`;
-			const q = filterValue ? `${filterValue} ${sort}` : sort;
+			// API returns array directly, sorted by backend:
+			// - Processing scans first (sorted by createdAt)
+			// - Then waiting scans (sorted by createdAt)
+			const allScans = await GetScans();
 
-			const data = await GetScans({
-				q,
-				page: paginationPage,
-				perPage: paginationPerPage
-			});
-			paginationTotal = data.totalItems;
-			scans = data.items;
+			// Apply pagination
+			const start = (paginationPage - 1) * paginationPerPage;
+			const end = start + paginationPerPage;
+			paginationTotal = allScans.length;
+			scans = allScans.slice(start, end);
 			expandedScans = {};
 
 			scanMonitor.trackScansArray(scans);
@@ -200,27 +179,6 @@
 						}}
 					/>
 				</div>
-
-				<div class="flex h-10 items-center gap-3 rounded-lg">
-					<SortMenu
-						columns={sortColumns}
-						bind:selectedColumn={selectedSortColumn}
-						bind:selectedDirection={selectedSortDirection}
-						onUpdate={async () => {
-							await tick();
-
-							persistedState.current = {
-								...persistedState.current,
-								sort: {
-									column: selectedSortColumn,
-									direction: selectedSortDirection
-								}
-							};
-
-							loadPromise = fetchScans();
-						}}
-					/>
-				</div>
 			</div>
 		</div>
 
@@ -234,7 +192,7 @@
 					<Table.Root
 						class={smallTable
 							? 'grid-cols-[2.5rem_2.5rem_1fr_3.5rem]'
-							: 'grid-cols-[3.5rem_1fr_auto_auto_3.5rem]'}
+							: 'grid-cols-[3.5rem_1fr_7rem_22rem_3.5rem]'}
 					>
 						<Table.Thead>
 							<Table.Tr class="text-xs font-semibold uppercase">
@@ -251,14 +209,14 @@
 									/>
 								</Table.Th>
 
-								<!-- Course path -->
-								<Table.Th class="justify-start">Course Path</Table.Th>
+								<!-- Course title -->
+								<Table.Th class="justify-start">Course Title</Table.Th>
 
 								<!-- Status (large screens) -->
-								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Status</Table.Th>
+								<Table.Th class={cn('w-28', smallTable ? 'hidden' : 'visible')}>Status</Table.Th>
 
 								<!-- Message (large screens) -->
-								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Progress</Table.Th>
+								<Table.Th class={cn('w-88', smallTable ? 'hidden' : 'visible')}>Progress</Table.Th>
 
 								<!-- Row action menu -->
 								<Table.Th></Table.Th>
@@ -341,15 +299,15 @@
 										/>
 									</Table.Td>
 
-									<!-- Course path -->
+									<!-- Course title -->
 									<Table.Td class="group-hover:bg-background-alt-1 relative justify-start px-4">
-										<span>{scan.coursePath}</span>
+										<span>{scan.courseTitle}</span>
 									</Table.Td>
 
 									<!-- Status (large screens) -->
 									<Table.Td
 										class={cn(
-											'group-hover:bg-background-alt-1 px-4',
+											'group-hover:bg-background-alt-1 w-28 px-4',
 											smallTable ? 'hidden' : 'visible'
 										)}
 									>
@@ -367,13 +325,13 @@
 									<!-- Message (large screens) -->
 									<Table.Td
 										class={cn(
-											'group-hover:bg-background-alt-1 px-4',
+											'group-hover:bg-background-alt-1 w-88 min-w-0 px-4',
 											smallTable ? 'hidden' : 'visible'
 										)}
 									>
-										<div class="flex w-full justify-start">
+										<div class="flex w-full min-w-0 justify-start">
 											{#if scan.message}
-												<span class="text-foreground-alt-1">{scan.message}</span>
+												<span class="text-foreground-alt-1 truncate">{scan.message}</span>
 											{:else}
 												<span class="text-foreground-alt-3">—</span>
 											{/if}

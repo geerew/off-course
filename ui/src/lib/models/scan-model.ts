@@ -19,9 +19,12 @@ export type ScanCreateModel = InferOutput<typeof ScanCreateSchema>;
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Scan schema
+// Note: Scans don't have updatedAt since they're ephemeral
 export const ScanSchema = object({
-	...BaseSchema.entries,
+	id: string(),
+	createdAt: string(),
 	courseId: string(),
+	courseTitle: string(),
 	coursePath: optional(string()),
 	status: ScanStatusSchema,
 	message: optional(string())
