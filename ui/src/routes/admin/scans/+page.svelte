@@ -39,6 +39,7 @@
 	const mainSize = new ElementSize(() => mainEl);
 	let smallTable = $state(false);
 
+	let allScans: ScansModel = $state([]);
 	let loadPromise = $state(fetchScans());
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -48,17 +49,10 @@
 		try {
 			scanMonitor.clearAll();
 
-			// API returns array directly, sorted by backend:
-			// - Processing scans first (sorted by createdAt)
-			// - Then waiting scans (sorted by createdAt)
-			const allScans = await GetScans();
+			allScans = await GetScans();
 
-			// Apply pagination
-			const start = (paginationPage - 1) * paginationPerPage;
-			const end = start + paginationPerPage;
-			paginationTotal = allScans.length;
-			scans = allScans.slice(start, end);
-			expandedScans = {};
+			// Update pagination based on current total
+			updatePagination();
 
 			scanMonitor.trackScansArray(scans);
 		} catch (error) {
@@ -68,16 +62,30 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	async function onRowDelete(numDeleted: number) {
-		const remainingTotal = paginationTotal - numDeleted;
-		const totalPages = Math.max(1, Math.ceil(remainingTotal / paginationPerPage));
+	// Update pagination and current page based on total scans
+	function updatePagination() {
+		paginationTotal = allScans.length;
 
+		// Calculate total pages
+		const totalPages = Math.max(1, Math.ceil(paginationTotal / paginationPerPage));
+
+		// If current page is beyond available pages, move back
 		if (paginationPage > totalPages && totalPages > 0) {
 			paginationPage = totalPages;
-		} else if (remainingTotal === 0) {
+		} else if (paginationTotal === 0) {
 			paginationPage = 1;
 		}
 
+		// Apply pagination to current page
+		const start = (paginationPage - 1) * paginationPerPage;
+		const end = start + paginationPerPage;
+		scans = allScans.slice(start, end);
+		expandedScans = {};
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	async function onRowDelete(numDeleted: number) {
 		loadPromise = fetchScans();
 	}
 
@@ -129,20 +137,47 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	// Stop the scan monitor when the component is destroyed
+	// Watch for scan deletions and update pagination accordingly
+	// When scans finish processing, they're removed from the backend.
+	// We poll periodically when there are processing scans to detect when they finish.
 	$effect(() => {
-		return () => scanMonitor.clearAll();
+		// Check if there are any processing scans
+		// Use optional chaining to handle case where allScans might be empty initially
+		const hasProcessingScans =
+			scans.some((s) => s.status === 'processing') ||
+			(allScans.length > 0 && allScans.some((s) => s.status === 'processing'));
+
+		if (!hasProcessingScans) {
+			// No processing scans, no need to poll
+			return;
+		}
+
+		// Poll every second to check for completed scans
+		const pollInterval = setInterval(async () => {
+			try {
+				const freshScans = await GetScans();
+
+				// Only update if the total count changed
+				if (freshScans.length !== paginationTotal) {
+					allScans = freshScans;
+					updatePagination();
+					scanMonitor.trackScansArray(scans);
+				}
+			} catch (error) {
+				// Silently fail - will retry on next poll
+			}
+		}, 1000); // Poll every second
+
+		return () => {
+			clearInterval(pollInterval);
+		};
 	});
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	// Update the page when the scans array is empty and the current page is greater than 1.
-	// This is to prevent the user from being stuck on an empty page
+	// Stop the scan monitor when the component is destroyed
 	$effect(() => {
-		if (scans.length === 0 && paginationPage > 1) {
-			paginationPage -= 1;
-			loadPromise = fetchScans();
-		}
+		return () => scanMonitor.clearAll();
 	});
 </script>
 
@@ -411,8 +446,12 @@
 							count={paginationTotal}
 							bind:perPage={paginationPerPage}
 							bind:page={paginationPage}
-							onPageChange={() => fetchScans()}
-							onPerPageChange={() => fetchScans()}
+							onPageChange={() => {
+								updatePagination();
+							}}
+							onPerPageChange={() => {
+								updatePagination();
+							}}
 						/>
 					{/if}
 				</div>
