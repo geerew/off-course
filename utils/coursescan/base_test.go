@@ -135,11 +135,10 @@ func TestScanner_Worker(t *testing.T) {
 			courses = append(courses, course)
 		}
 
-		var processingDone = make(chan bool, 3) // Buffer for 3 scans
 		go scanner.Worker(ctx, func(context.Context, *CourseScan, *ScanState) error {
 			time.Sleep(100 * time.Millisecond)
 			return nil
-		}, processingDone)
+		})
 
 		// Add the courses
 		for i := range 3 {
@@ -148,19 +147,10 @@ func TestScanner_Worker(t *testing.T) {
 			require.Equal(t, scan.CourseID, courses[i].ID)
 		}
 
-		// Wait for all scans to be processed
-		for i := 0; i < 3; i++ {
-			<-processingDone
-		}
-
-		// Give a small delay to ensure cleanup
-		time.Sleep(50 * time.Millisecond)
-
-		// Verify scans were removed after processing
-		allScans := scanner.GetAllScans()
-		require.Zero(t, len(allScans))
-
-		// Note: Log assertions removed as we no longer have access to log entries in the new logger system
+		// Poll until all scans are processed
+		require.Eventually(t, func() bool {
+			return len(scanner.GetAllScans()) == 0
+		}, 2*time.Second, 50*time.Millisecond, "Scans should be processed and removed")
 
 		// Add the first 2 courses (again)
 		for i := range 2 {
@@ -169,19 +159,10 @@ func TestScanner_Worker(t *testing.T) {
 			require.Equal(t, scan.CourseID, courses[i].ID)
 		}
 
-		// Wait for all scans to be processed
-		for i := 0; i < 2; i++ {
-			<-processingDone
-		}
-
-		// Give a small delay to ensure cleanup
-		time.Sleep(50 * time.Millisecond)
-
-		// Verify scans were removed after processing
-		allScans = scanner.GetAllScans()
-		require.Zero(t, len(allScans))
-
-		// Note: Log assertions removed as we no longer have access to log entries in the new logger system
+		// Poll until all scans are processed again
+		require.Eventually(t, func() bool {
+			return len(scanner.GetAllScans()) == 0
+		}, 2*time.Second, 50*time.Millisecond, "Scans should be processed and removed")
 	})
 
 	t.Run("error processing", func(t *testing.T) {
@@ -190,18 +171,18 @@ func TestScanner_Worker(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, scanner.dao.CreateCourse(ctx, course))
 
-		var processingDone = make(chan bool, 1)
 		go scanner.Worker(ctx, func(context.Context, *CourseScan, *ScanState) error {
 			time.Sleep(1 * time.Millisecond)
 			return errors.New("processing error")
-		}, processingDone)
+		})
 
 		scan, err := scanner.Add(ctx, course.ID)
 		require.NoError(t, err)
 		require.Equal(t, scan.CourseID, course.ID)
 
-		<-processingDone
-
-		// Note: Log assertions removed as we no longer have access to log entries in the new logger system
+		// Poll until scan is processed (even if it errors, it should be removed)
+		require.Eventually(t, func() bool {
+			return len(scanner.GetAllScans()) == 0
+		}, 2*time.Second, 50*time.Millisecond, "Scan should be processed and removed even on error")
 	})
 }

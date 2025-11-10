@@ -49,7 +49,7 @@ var serveCmd = &cobra.Command{
 		appLogger := application.Logger.WithApp()
 
 		// Start the course scan worker
-		go application.CourseScan.Worker(ctx, coursescan.Processor, nil)
+		go application.CourseScan.Worker(ctx, coursescan.Processor)
 
 		// Start cron
 		cron.StartCron(application)

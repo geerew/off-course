@@ -199,7 +199,7 @@ func (s *CourseScan) CancelAndRemoveScansByCourseID(courseID string) {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Worker polls the CMap for waiting scans and processes them sequentially
-func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessorFn, processingDone chan bool) {
+func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessorFn) {
 	s.logger.Debug().Msg("Started course scanner worker")
 
 	ticker := time.NewTicker(scanPollInterval)
@@ -245,14 +245,6 @@ func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessor
 
 				// Cleanup: remove scan from CMap
 				s.scans.Remove(scanState.ID)
-
-				// Signal that processing is done (if channel provided)
-				if processingDone != nil {
-					select {
-					case processingDone <- true:
-					default:
-					}
-				}
 			}
 		}
 	}
