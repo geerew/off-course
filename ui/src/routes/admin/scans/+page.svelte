@@ -209,8 +209,8 @@
 									/>
 								</Table.Th>
 
-								<!-- Course title -->
-								<Table.Th class="justify-start">Course Title</Table.Th>
+								<!-- Course -->
+								<Table.Th class="justify-start">Course</Table.Th>
 
 								<!-- Status (large screens) -->
 								<Table.Th class={cn('w-28', smallTable ? 'hidden' : 'visible')}>Status</Table.Th>
@@ -299,7 +299,7 @@
 										/>
 									</Table.Td>
 
-									<!-- Course title -->
+									<!-- Course -->
 									<Table.Td class="group-hover:bg-background-alt-1 relative justify-start px-4">
 										<span>{scan.courseTitle}</span>
 									</Table.Td>
