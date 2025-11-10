@@ -21,9 +21,10 @@ type ScanState struct {
 	CreatedAt   time.Time
 
 	// Mutable fields (protected by mu)
-	mu      sync.RWMutex
-	Status  types.ScanStatusType
-	Message string
+	mu        sync.RWMutex
+	Status    types.ScanStatusType
+	Message   string
+	cancelled bool
 
 	// Cancellation
 	cancel context.CancelFunc
@@ -83,13 +84,23 @@ func (s *ScanState) UpdateStatusAndMessage(status types.ScanStatusType, message 
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Cancel cancels the scan's context if it exists
+// Cancel cancels the scan's context if it exists and marks the scan as cancelled
 func (s *ScanState) Cancel() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.cancelled = true
 	if s.cancel != nil {
 		s.cancel()
 	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// IsCancelled returns whether the scan has been cancelled (thread-safe read)
+func (s *ScanState) IsCancelled() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.cancelled
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

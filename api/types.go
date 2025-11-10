@@ -452,7 +452,6 @@ type scanResponse struct {
 	ID          string               `json:"id"`
 	CourseID    string               `json:"courseId"`
 	CourseTitle string               `json:"courseTitle"`
-	CoursePath  string               `json:"coursePath,omitempty"`
 	Status      types.ScanStatusType `json:"status"`
 	Message     string               `json:"message"`
 	CreatedAt   types.DateTime       `json:"createdAt"`
@@ -470,10 +469,6 @@ func scanResponseHelper(scanStates []*coursescan.ScanState, isAdmin bool) []*sca
 			Status:      scanState.GetStatus(),
 			Message:     scanState.GetMessage(),
 			CreatedAt:   types.DateTime(scanState.CreatedAt),
-		}
-
-		if isAdmin {
-			response.CoursePath = scanState.CoursePath
 		}
 
 		responses = append(responses, response)

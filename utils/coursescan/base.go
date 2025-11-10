@@ -2,6 +2,7 @@ package coursescan
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -132,13 +133,17 @@ func (s *CourseScan) GetScan(scanID string) (*ScanState, bool) {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// GetAllScans returns all scans in the CMap
+// GetAllScans returns all scans in the CMap, sorted by status (processing first) then by createdAt (oldest first)
+// This ensures deterministic ordering for the frontend
 func (s *CourseScan) GetAllScans() []*ScanState {
 	var allScans []*ScanState
 	s.scans.Range(func(scanID string, scanState *ScanState) bool {
 		allScans = append(allScans, scanState)
 		return true // Continue iteration
 	})
+
+	sortScans(allScans)
+
 	return allScans
 }
 
@@ -221,11 +226,47 @@ func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessor
 				return true
 			})
 
+			// Sort scans to ensure deterministic processing order
+			// Processing scans first, then by createdAt (oldest first)
+			// Since we're filtering to waiting scans, they'll all be waiting, but this ensures consistent ordering
+			sortScans(waitingScans)
+
 			// Process each waiting scan
 			for _, scanState := range waitingScans {
+				// Check if scan was cancelled or removed before processing
+				if scanState.IsCancelled() {
+					s.logger.Debug().
+						Str("course_id", scanState.CourseID).
+						Str("scan_id", scanState.ID).
+						Msg("Skipping cancelled scan")
+					// Remove from CMap if it still exists
+					s.scans.Remove(scanState.ID)
+					continue
+				}
+
+				// Double-check scan still exists in CMap (could have been deleted)
+				if _, exists := s.scans.Get(scanState.ID); !exists {
+					s.logger.Debug().
+						Str("course_id", scanState.CourseID).
+						Str("scan_id", scanState.ID).
+						Msg("Skipping scan that was removed from CMap")
+					continue
+				}
+
 				// Create a cancellable context for this scan
 				scanCtx, cancel := context.WithCancel(ctx)
 				scanState.SetCancel(cancel)
+
+				// Check cancellation one more time after setting cancel function
+				if scanState.IsCancelled() {
+					cancel() // Cancel the context we just created
+					s.logger.Debug().
+						Str("course_id", scanState.CourseID).
+						Str("scan_id", scanState.ID).
+						Msg("Skipping scan cancelled after context creation")
+					s.scans.Remove(scanState.ID)
+					continue
+				}
 
 				s.logger.Info().
 					Str("course_id", scanState.CourseID).
@@ -248,4 +289,36 @@ func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessor
 			}
 		}
 	}
+}
+
+// sortScans sorts scans by status (processing first) then by createdAt (oldest first), then by ID
+// This ensures deterministic ordering for both Worker and GetAllScans
+// If multiple scans have the same status and createdAt, they're sorted by ID (lexicographic) as a tiebreaker
+func sortScans(scans []*ScanState) {
+	sort.Slice(scans, func(i, j int) bool {
+		iStatus := scans[i].GetStatus()
+		jStatus := scans[j].GetStatus()
+
+		// Processing scans come first
+		iProcessing := iStatus == types.ScanStatusProcessing
+		jProcessing := jStatus == types.ScanStatusProcessing
+
+		if iProcessing && !jProcessing {
+			return true // i comes first
+		}
+		if !iProcessing && jProcessing {
+			return false // j comes first
+		}
+
+		// Same status - sort by createdAt (oldest first)
+		if scans[i].CreatedAt.Before(scans[j].CreatedAt) {
+			return true
+		}
+		if scans[j].CreatedAt.Before(scans[i].CreatedAt) {
+			return false
+		}
+
+		// Same status and createdAt - use ID as tiebreaker for deterministic ordering
+		return scans[i].ID < scans[j].ID
+	})
 }

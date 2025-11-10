@@ -38,7 +38,7 @@ type AttachmentsByChapterPrefix map[string]map[int][]*models.Attachment
 
 // Processor scans a course to identify assets and attachments
 //
-// # It can be passed to coursescan.Worker
+// It can be passed to coursescan.Worker
 func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 	if scanState == nil {
 		return ErrNilScan
@@ -74,8 +74,11 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 
 	// Clear the maintenance mode at the end of the scan with retry logic
 	// This ensures the course is unlocked even if there are transient errors
+	// Use background context for cleanup to ensure it runs even if scan is cancelled
 	defer func() {
-		if err := clearCourseMaintenanceWithRetry(ctx, s, courseID, coursePath); err != nil {
+		// Use background context for cleanup - we must unlock the course even if scan was cancelled
+		cleanupCtx := context.Background()
+		if err := clearCourseMaintenanceWithRetry(cleanupCtx, s, courseID, coursePath); err != nil {
 			s.logger.Error().
 				Err(err).
 				Str("course_id", courseID).
@@ -138,6 +141,18 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 		return err
 	}
 
+	// Check for cancellation after scanning files
+	select {
+	case <-ctx.Done():
+		s.logger.Warn().
+			Err(ctx.Err()).
+			Str("course_id", courseID).
+			Str("course_path", coursePath).
+			Msg("Scan cancelled after scanning files")
+		return ctx.Err()
+	default:
+	}
+
 	// Flatten the found lessons into attachments and assets
 	scannedAttachments, scannedAssets := flatAttachmentsAndAssets(scanned.lessons)
 
@@ -178,6 +193,18 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 		return err
 	}
 
+	// Check for cancellation after populating hashes
+	select {
+	case <-ctx.Done():
+		s.logger.Warn().
+			Err(ctx.Err()).
+			Str("course_id", courseID).
+			Str("course_path", coursePath).
+			Msg("Scan cancelled after populating hashes")
+		return ctx.Err()
+	default:
+	}
+
 	// Reconcile what to do
 	s.logger.Info().
 		Str("course_id", courseID).
@@ -204,6 +231,18 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 	scanState.UpdateMessage("Extracting video keyframes")
 	assetMetadataByPath := probeVideos(ctx, s, assetOps, course, extractedKeyframes, scanState)
 
+	// Check for cancellation after video probing
+	select {
+	case <-ctx.Done():
+		s.logger.Warn().
+			Err(ctx.Err()).
+			Str("course_id", courseID).
+			Str("course_path", coursePath).
+			Msg("Scan cancelled after video probing")
+		return ctx.Err()
+	default:
+	}
+
 	updatedCourse := course.CardPath != scanned.cardPath
 	if updatedCourse {
 		course.CardPath = scanned.cardPath
@@ -221,11 +260,37 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 		Str("course_path", coursePath).
 		Msg("Applying database changes in transaction")
 
+	// Check for cancellation before starting the transaction
+	select {
+	case <-ctx.Done():
+		s.logger.Warn().
+			Err(ctx.Err()).
+			Str("course_id", courseID).
+			Str("course_path", coursePath).
+			Msg("Scan cancelled before database transaction")
+		return ctx.Err()
+	default:
+	}
+
 	err = s.db.RunInTransaction(ctx, func(txCtx context.Context) error {
+		// Check cancellation before each major operation
+		select {
+		case <-txCtx.Done():
+			return txCtx.Err()
+		default:
+		}
+
 		if updated, err := applyLessonCreateUpdateOps(txCtx, s, groupOps); err != nil {
 			return err
 		} else if updated {
 			updatedCourse = true
+		}
+
+		// Check cancellation between operations
+		select {
+		case <-txCtx.Done():
+			return txCtx.Err()
+		default:
 		}
 
 		if updated, err := applyAttachmentOps(txCtx, s, attachmentOps); err != nil {
@@ -234,10 +299,24 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 			updatedCourse = true
 		}
 
+		// Check cancellation between operations
+		select {
+		case <-txCtx.Done():
+			return txCtx.Err()
+		default:
+		}
+
 		if updated, err := applyAssetOps(txCtx, s, course, assetOps, assetMetadataByPath, extractedKeyframes); err != nil {
 			return err
 		} else if updated {
 			updatedCourse = true
+		}
+
+		// Check cancellation between operations
+		select {
+		case <-txCtx.Done():
+			return txCtx.Err()
+		default:
 		}
 
 		if updated, err := applyLessonDeleteOps(txCtx, s, groupOps, course); err != nil {
@@ -247,6 +326,13 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 		}
 
 		if updatedCourse {
+			// Check cancellation before recalculating duration
+			select {
+			case <-txCtx.Done():
+				return txCtx.Err()
+			default:
+			}
+
 			// Recalculate course duration from scratch to ensure accuracy
 			// This prevents accumulation errors from incremental updates
 			scanState.UpdateMessage("Recalculating course duration")
@@ -278,6 +364,14 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 				Str("course_path", coursePath).
 				Int("duration", course.Duration).
 				Msg("Updating course metadata")
+
+			// Check cancellation before final update
+			select {
+			case <-txCtx.Done():
+				return txCtx.Err()
+			default:
+			}
+
 			return s.dao.UpdateCourse(txCtx, course)
 		}
 
@@ -840,6 +934,20 @@ func probeVideosParallel(ctx context.Context, s *CourseScan, targets []*models.A
 
 				// Probe video
 				info, err := mediaProbe.ProbeVideo(asset.Path)
+
+				// Check cancellation after probe (FFmpeg operations can't be interrupted mid-process)
+				select {
+				case <-ctx.Done():
+					s.logger.Warn().
+						Err(ctx.Err()).
+						Str("course_id", course.ID).
+						Str("course_path", course.Path).
+						Str("video_path", asset.Path).
+						Msg("Video probing cancelled after probe")
+					return
+				default:
+				}
+
 				if err != nil {
 					// Log video probe failure but don't fail the scan
 					s.logger.Warn().
@@ -867,6 +975,19 @@ func probeVideosParallel(ctx context.Context, s *CourseScan, targets []*models.A
 							Str("course_path", course.Path).
 							Str("video_path", asset.Path).
 							Msg("Failed to extract keyframes for video")
+					}
+
+					// Check cancellation after keyframe extraction before storing results
+					select {
+					case <-ctx.Done():
+						s.logger.Warn().
+							Err(ctx.Err()).
+							Str("course_id", course.ID).
+							Str("course_path", course.Path).
+							Str("video_path", asset.Path).
+							Msg("Video probing cancelled after keyframe extraction")
+						return
+					default:
 					}
 
 					// Store metadata and keyframes
@@ -948,6 +1069,13 @@ func applyLessonCreateUpdateOps(
 	}
 
 	for _, op := range ops {
+		// Check for cancellation before processing each operation
+		select {
+		case <-ctx.Done():
+			return false, ctx.Err()
+		default:
+		}
+
 		switch v := op.(type) {
 		case CreateLessonOp:
 			// Create a new lesson
@@ -1011,6 +1139,13 @@ func applyLessonDeleteOps(
 	}
 
 	for _, op := range ops {
+		// Check for cancellation before processing each operation
+		select {
+		case <-ctx.Done():
+			return false, ctx.Err()
+		default:
+		}
+
 		switch v := op.(type) {
 
 		case DeleteLessonOp:
@@ -1050,6 +1185,13 @@ func applyAssetOps(
 	}
 
 	for _, op := range ops {
+		// Check for cancellation before processing each operation
+		select {
+		case <-ctx.Done():
+			return false, ctx.Err()
+		default:
+		}
+
 		switch v := op.(type) {
 		case CreateAssetOp:
 			// Create an asset that was found on disk and does not exist in the database
@@ -1307,6 +1449,13 @@ func applyAttachmentOps(
 	}
 
 	for _, op := range ops {
+		// Check for cancellation before processing each operation
+		select {
+		case <-ctx.Done():
+			return false, ctx.Err()
+		default:
+		}
+
 		switch v := op.(type) {
 		case CreateAttachmentOp:
 			if err := s.dao.CreateAttachment(ctx, v.New); err != nil {
@@ -1483,6 +1632,7 @@ func populateHashesParallel(ctx context.Context, s *CourseScan, assets []*models
 				if !ok {
 					return
 				}
+
 				// Update scan message (non-blocking, best effort)
 				scanState.UpdateMessage(fmt.Sprintf("Calculating asset hashes (%d/%d)", current, totalToHash))
 				s.logger.Debug().
