@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -141,18 +140,6 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 		return err
 	}
 
-	// Check for cancellation after scanning files
-	select {
-	case <-ctx.Done():
-		s.logger.Warn().
-			Err(ctx.Err()).
-			Str("course_id", courseID).
-			Str("course_path", coursePath).
-			Msg("Scan cancelled after scanning files")
-		return ctx.Err()
-	default:
-	}
-
 	// Flatten the found lessons into attachments and assets
 	scannedAttachments, scannedAssets := flatAttachmentsAndAssets(scanned.lessons)
 
@@ -193,18 +180,6 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 		return err
 	}
 
-	// Check for cancellation after populating hashes
-	select {
-	case <-ctx.Done():
-		s.logger.Warn().
-			Err(ctx.Err()).
-			Str("course_id", courseID).
-			Str("course_path", coursePath).
-			Msg("Scan cancelled after populating hashes")
-		return ctx.Err()
-	default:
-	}
-
 	// Reconcile what to do
 	s.logger.Info().
 		Str("course_id", courseID).
@@ -228,20 +203,7 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 		Msg("Generated reconciliation operations")
 
 	// FFprobe only assets that need it
-	scanState.UpdateMessage("Extracting video keyframes")
 	assetMetadataByPath := probeVideos(ctx, s, assetOps, course, extractedKeyframes, scanState)
-
-	// Check for cancellation after video probing
-	select {
-	case <-ctx.Done():
-		s.logger.Warn().
-			Err(ctx.Err()).
-			Str("course_id", courseID).
-			Str("course_path", coursePath).
-			Msg("Scan cancelled after video probing")
-		return ctx.Err()
-	default:
-	}
 
 	updatedCourse := course.CardPath != scanned.cardPath
 	if updatedCourse {
@@ -260,37 +222,11 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 		Str("course_path", coursePath).
 		Msg("Applying database changes in transaction")
 
-	// Check for cancellation before starting the transaction
-	select {
-	case <-ctx.Done():
-		s.logger.Warn().
-			Err(ctx.Err()).
-			Str("course_id", courseID).
-			Str("course_path", coursePath).
-			Msg("Scan cancelled before database transaction")
-		return ctx.Err()
-	default:
-	}
-
 	err = s.db.RunInTransaction(ctx, func(txCtx context.Context) error {
-		// Check cancellation before each major operation
-		select {
-		case <-txCtx.Done():
-			return txCtx.Err()
-		default:
-		}
-
 		if updated, err := applyLessonCreateUpdateOps(txCtx, s, groupOps); err != nil {
 			return err
 		} else if updated {
 			updatedCourse = true
-		}
-
-		// Check cancellation between operations
-		select {
-		case <-txCtx.Done():
-			return txCtx.Err()
-		default:
 		}
 
 		if updated, err := applyAttachmentOps(txCtx, s, attachmentOps); err != nil {
@@ -299,24 +235,10 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 			updatedCourse = true
 		}
 
-		// Check cancellation between operations
-		select {
-		case <-txCtx.Done():
-			return txCtx.Err()
-		default:
-		}
-
 		if updated, err := applyAssetOps(txCtx, s, course, assetOps, assetMetadataByPath, extractedKeyframes); err != nil {
 			return err
 		} else if updated {
 			updatedCourse = true
-		}
-
-		// Check cancellation between operations
-		select {
-		case <-txCtx.Done():
-			return txCtx.Err()
-		default:
 		}
 
 		if updated, err := applyLessonDeleteOps(txCtx, s, groupOps, course); err != nil {
@@ -326,13 +248,6 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 		}
 
 		if updatedCourse {
-			// Check cancellation before recalculating duration
-			select {
-			case <-txCtx.Done():
-				return txCtx.Err()
-			default:
-			}
-
 			// Recalculate course duration from scratch to ensure accuracy
 			// This prevents accumulation errors from incremental updates
 			scanState.UpdateMessage("Recalculating course duration")
@@ -364,13 +279,6 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 				Str("course_path", coursePath).
 				Int("duration", course.Duration).
 				Msg("Updating course metadata")
-
-			// Check cancellation before final update
-			select {
-			case <-txCtx.Done():
-				return txCtx.Err()
-			default:
-			}
 
 			return s.dao.UpdateCourse(txCtx, course)
 		}
@@ -811,6 +719,7 @@ func flatAttachmentsAndAssets(lessons []*models.Lesson) ([]*models.Attachment, [
 
 // probeVideos probes videos assets that match the operations create, replace, swap, or overwrite
 // extractedKeyframes is a map scoped to the current scan operation to store extracted keyframes
+// Processes videos sequentially (one at a time) for simplicity and to allow immediate cancellation
 func probeVideos(ctx context.Context, s *CourseScan, ops []Op, course *models.Course, extractedKeyframes map[string][]float64, scanState *ScanState) map[string]*models.AssetMetadata {
 	var targets []*models.Asset
 	for _, op := range ops {
@@ -848,207 +757,92 @@ func probeVideos(ctx context.Context, s *CourseScan, ops []Op, course *models.Co
 		Int("video_assets_count", len(targets)).
 		Msg("Starting video probing and keyframe extraction")
 
-	// Use parallel processing with worker pool
-	// Limit concurrency based on CPU cores, but cap at reasonable number for FFmpeg
-	numWorkers := runtime.NumCPU()
-	if numWorkers > 4 {
-		numWorkers = 4 // Cap at 4 to avoid overwhelming system with FFmpeg processes
-	}
+	scanState.UpdateMessage("Extracting video keyframes")
+	mediaProbe := probe.MediaProbe{FFmpeg: s.ffmpeg}
+	assetMetadataByPath := make(map[string]*models.AssetMetadata)
+	totalVideos := len(targets)
 
-	if numWorkers < 1 {
-		numWorkers = 1
-	}
-
-	return probeVideosParallel(ctx, s, targets, course, extractedKeyframes, numWorkers, scanState)
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// probeVideosParallel probes videos in parallel using a worker pool
-func probeVideosParallel(ctx context.Context, s *CourseScan, targets []*models.Asset, course *models.Course, extractedKeyframes map[string][]float64, numWorkers int, scanState *ScanState) map[string]*models.AssetMetadata {
-	if len(targets) == 0 {
-		return map[string]*models.AssetMetadata{}
-	}
-
-	// Create work channel
-	workChan := make(chan *models.Asset, len(targets))
-	for _, asset := range targets {
-		workChan <- asset
-	}
-	close(workChan)
-
-	// Track results and progress
-	var (
-		wg                  sync.WaitGroup
-		mu                  sync.Mutex
-		assetMetadataByPath = make(map[string]*models.AssetMetadata)
-		processedCount      int
-		totalVideos         = len(targets)
-		mediaProbe          = probe.MediaProbe{FFmpeg: s.ffmpeg}
-	)
-
-	// Channel to serialize scan updates (avoid database contention)
-	// Use buffered channel with size 1 to allow one pending update
-	updateChan := make(chan int, 1)
-	updateDone := make(chan struct{})
-
-	// Single goroutine to handle scan updates
-	go func() {
-		defer close(updateDone)
-		for {
-			select {
-			case current, ok := <-updateChan:
-				if !ok {
-					return
-				}
-				// Update scan message (non-blocking, best effort)
-				scanState.UpdateMessage(fmt.Sprintf("Extracting video keyframes (%d/%d)", current, totalVideos))
-				s.logger.Info().
-					Str("course_id", course.ID).
-					Str("course_path", course.Path).
-					Str("progress", fmt.Sprintf("%d of %d", current, totalVideos)).
-					Msg("Video probing and keyframe extraction progress")
-			case <-ctx.Done():
-				return
-			}
+	// Process videos sequentially
+	for i, asset := range targets {
+		// Check for cancellation
+		if ctx.Err() != nil {
+			s.logger.Warn().
+				Err(ctx.Err()).
+				Str("course_id", course.ID).
+				Str("course_path", course.Path).
+				Msg("Video probing cancelled")
+			break
 		}
-	}()
 
-	// Start workers
-	for i := 0; i < numWorkers && i < totalVideos; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for asset := range workChan {
-				// Check for context cancellation
-				select {
-				case <-ctx.Done():
-					s.logger.Warn().
-						Err(ctx.Err()).
-						Str("course_id", course.ID).
-						Str("course_path", course.Path).
-						Msg("Video probing cancelled due to context cancellation")
-					return
-				default:
-				}
+		// Update progress
+		scanState.UpdateMessage(fmt.Sprintf("Extracting video keyframes (%d/%d)", i+1, totalVideos))
 
-				// Probe video
-				info, err := mediaProbe.ProbeVideo(asset.Path)
+		// Probe video
+		info, _, err := mediaProbe.ProbeVideo(ctx, asset.Path)
+		if err != nil {
+			// Log video probe failure but don't fail the scan
+			s.logger.Warn().
+				Err(err).
+				Str("course_id", course.ID).
+				Str("course_path", course.Path).
+				Str("video_path", asset.Path).
+				Msg("Failed to probe video file")
+			continue
+		}
 
-				// Check cancellation after probe (FFmpeg operations can't be interrupted mid-process)
-				select {
-				case <-ctx.Done():
-					s.logger.Warn().
-						Err(ctx.Err()).
-						Str("course_id", course.ID).
-						Str("course_path", course.Path).
-						Str("video_path", asset.Path).
-						Msg("Video probing cancelled after probe")
-					return
-				default:
-				}
+		// Extract keyframes for HLS transcoding
+		var keyframes []float64
+		if kf, err := mediaProbe.ExtractKeyframesForVideo(ctx, asset.Path); err == nil {
+			keyframes = kf
+			s.logger.Debug().
+				Str("course_id", course.ID).
+				Str("course_path", course.Path).
+				Int("keyframes_count", len(keyframes)).
+				Str("video_path", asset.Path).
+				Msg("Extracted keyframes for video")
+		} else {
+			// Log keyframe extraction failure but don't fail the scan
+			s.logger.Warn().
+				Err(err).
+				Str("course_id", course.ID).
+				Str("course_path", course.Path).
+				Str("video_path", asset.Path).
+				Msg("Failed to extract keyframes for video")
+		}
 
-				if err != nil {
-					// Log video probe failure but don't fail the scan
-					s.logger.Warn().
-						Err(err).
-						Str("course_id", course.ID).
-						Str("course_path", course.Path).
-						Str("video_path", asset.Path).
-						Msg("Failed to probe video file")
-				} else {
-					// Extract keyframes for HLS transcoding
-					var keyframes []float64
-					if kf, err := mediaProbe.ExtractKeyframesForVideo(asset.Path); err == nil {
-						keyframes = kf
-						s.logger.Debug().
-							Str("course_id", course.ID).
-							Str("course_path", course.Path).
-							Int("keyframes_count", len(keyframes)).
-							Str("video_path", asset.Path).
-							Msg("Extracted keyframes for video")
-					} else {
-						// Log keyframe extraction failure but don't fail the scan
-						s.logger.Warn().
-							Err(err).
-							Str("course_id", course.ID).
-							Str("course_path", course.Path).
-							Str("video_path", asset.Path).
-							Msg("Failed to extract keyframes for video")
-					}
-
-					// Check cancellation after keyframe extraction before storing results
-					select {
-					case <-ctx.Done():
-						s.logger.Warn().
-							Err(ctx.Err()).
-							Str("course_id", course.ID).
-							Str("course_path", course.Path).
-							Str("video_path", asset.Path).
-							Msg("Video probing cancelled after keyframe extraction")
-						return
-					default:
-					}
-
-					// Store metadata and keyframes
-					mu.Lock()
-					assetMetadataByPath[asset.Path] = &models.AssetMetadata{
-						VideoMetadata: &models.VideoMetadata{
-							DurationSec: info.DurationSec,
-							Container:   info.File.Container,
-							MIMEType:    info.File.MIMEType,
-							SizeBytes:   info.File.SizeBytes,
-							OverallBPS:  info.File.OverallBPS,
-							VideoCodec:  info.Video.Codec,
-							Width:       info.Video.Width,
-							Height:      info.Video.Height,
-							FPSNum:      info.Video.FPSNum,
-							FPSDen:      info.Video.FPSDen,
-						},
-						AudioMetadata: &models.AudioMetadata{
-							Language:      info.Audio.Language,
-							Codec:         info.Audio.Codec,
-							Profile:       info.Audio.Profile,
-							Channels:      info.Audio.Channels,
-							ChannelLayout: info.Audio.ChannelLayout,
-							SampleRate:    info.Audio.SampleRate,
-							BitRate:       info.Audio.BitRate,
-						},
-					}
-					if len(keyframes) > 0 {
-						extractedKeyframes[asset.Path] = keyframes
-					}
-					processedCount++
-					current := processedCount
-					shouldUpdate := current%5 == 0 || current == totalVideos
-					mu.Unlock()
-
-					// Send update request to serialized update goroutine (non-blocking)
-					if shouldUpdate {
-						select {
-						case updateChan <- current:
-						case <-ctx.Done():
-							return
-						default:
-							// Skip update if channel is busy (prevents blocking)
-						}
-					}
-				}
-			}
-		}()
+		// Store metadata and keyframes
+		assetMetadataByPath[asset.Path] = &models.AssetMetadata{
+			VideoMetadata: &models.VideoMetadata{
+				DurationSec: info.DurationSec,
+				Container:   info.File.Container,
+				MIMEType:    info.File.MIMEType,
+				SizeBytes:   info.File.SizeBytes,
+				OverallBPS:  info.File.OverallBPS,
+				VideoCodec:  info.Video.Codec,
+				Width:       info.Video.Width,
+				Height:      info.Video.Height,
+				FPSNum:      info.Video.FPSNum,
+				FPSDen:      info.Video.FPSDen,
+			},
+			AudioMetadata: &models.AudioMetadata{
+				Language:      info.Audio.Language,
+				Codec:         info.Audio.Codec,
+				Profile:       info.Audio.Profile,
+				Channels:      info.Audio.Channels,
+				ChannelLayout: info.Audio.ChannelLayout,
+				SampleRate:    info.Audio.SampleRate,
+				BitRate:       info.Audio.BitRate,
+			},
+		}
+		if len(keyframes) > 0 {
+			extractedKeyframes[asset.Path] = keyframes
+		}
 	}
-
-	// Wait for all workers to complete
-	wg.Wait()
-
-	// Close update channel and wait for final update
-	close(updateChan)
-	<-updateDone
 
 	s.logger.Info().
 		Str("course_id", course.ID).
 		Str("course_path", course.Path).
-		Int("videos_processed", processedCount).
+		Int("videos_processed", len(assetMetadataByPath)).
 		Int("total_videos", totalVideos).
 		Msg("Completed video probing and keyframe extraction")
 
@@ -1069,13 +863,6 @@ func applyLessonCreateUpdateOps(
 	}
 
 	for _, op := range ops {
-		// Check for cancellation before processing each operation
-		select {
-		case <-ctx.Done():
-			return false, ctx.Err()
-		default:
-		}
-
 		switch v := op.(type) {
 		case CreateLessonOp:
 			// Create a new lesson
@@ -1139,13 +926,6 @@ func applyLessonDeleteOps(
 	}
 
 	for _, op := range ops {
-		// Check for cancellation before processing each operation
-		select {
-		case <-ctx.Done():
-			return false, ctx.Err()
-		default:
-		}
-
 		switch v := op.(type) {
 
 		case DeleteLessonOp:
@@ -1185,13 +965,6 @@ func applyAssetOps(
 	}
 
 	for _, op := range ops {
-		// Check for cancellation before processing each operation
-		select {
-		case <-ctx.Done():
-			return false, ctx.Err()
-		default:
-		}
-
 		switch v := op.(type) {
 		case CreateAssetOp:
 			// Create an asset that was found on disk and does not exist in the database
@@ -1449,13 +1222,6 @@ func applyAttachmentOps(
 	}
 
 	for _, op := range ops {
-		// Check for cancellation before processing each operation
-		select {
-		case <-ctx.Done():
-			return false, ctx.Err()
-		default:
-		}
-
 		switch v := op.(type) {
 		case CreateAttachmentOp:
 			if err := s.dao.CreateAttachment(ctx, v.New); err != nil {
@@ -1618,34 +1384,6 @@ func populateHashesParallel(ctx context.Context, s *CourseScan, assets []*models
 		totalToHash = len(assets)
 	)
 
-	// Channel to serialize scan updates (avoid database contention)
-	// Use buffered channel with size 1 to allow one pending update
-	updateChan := make(chan int, 1)
-	updateDone := make(chan struct{})
-
-	// Single goroutine to handle scan updates
-	go func() {
-		defer close(updateDone)
-		for {
-			select {
-			case current, ok := <-updateChan:
-				if !ok {
-					return
-				}
-
-				// Update scan message (non-blocking, best effort)
-				scanState.UpdateMessage(fmt.Sprintf("Calculating asset hashes (%d/%d)", current, totalToHash))
-				s.logger.Debug().
-					Str("course_id", course.ID).
-					Str("course_path", course.Path).
-					Str("progress", fmt.Sprintf("%d of %d", current, totalToHash)).
-					Msg("Hashing assets progress")
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
 	// Start workers
 	for i := 0; i < numWorkers && i < totalToHash; i++ {
 		wg.Add(1)
@@ -1653,15 +1391,13 @@ func populateHashesParallel(ctx context.Context, s *CourseScan, assets []*models
 			defer wg.Done()
 			for asset := range workChan {
 				// Check for context cancellation
-				select {
-				case <-ctx.Done():
+				if ctx.Err() != nil {
 					mu.Lock()
 					if firstError == nil {
 						firstError = ctx.Err()
 					}
 					mu.Unlock()
 					return
-				default:
 				}
 
 				hash, err := hashFilePartial(s.appFs.Fs, asset.Path, 1024*1024)
@@ -1684,29 +1420,16 @@ func populateHashesParallel(ctx context.Context, s *CourseScan, assets []*models
 				asset.Hash = hash
 				hashedCount++
 				current := hashedCount
-				shouldUpdate := current%10 == 0 || current == totalToHash
 				mu.Unlock()
 
-				// Send update request to serialized update goroutine (non-blocking)
-				if shouldUpdate {
-					select {
-					case updateChan <- current:
-					case <-ctx.Done():
-						return
-					default:
-						// Skip update if channel is busy (prevents blocking)
-					}
-				}
+				// Update status directly (thread-safe via mutex in ScanState)
+				scanState.UpdateMessage(fmt.Sprintf("Calculating asset hashes (%d/%d)", current, totalToHash))
 			}
 		}()
 	}
 
 	// Wait for all workers to complete
 	wg.Wait()
-
-	// Close update channel and wait for update goroutine to finish
-	close(updateChan)
-	<-updateDone
 
 	if firstError != nil {
 		return fmt.Errorf("failed to hash one or more assets: %w", firstError)

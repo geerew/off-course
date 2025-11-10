@@ -1,6 +1,7 @@
 package probe
 
 import (
+	"context"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -32,9 +33,10 @@ func TestProbeVideo(t *testing.T) {
 		require.NoError(t, err)
 
 		mp := MediaProbe{FFmpeg: ffmpeg}
-		info, err := mp.ProbeVideo(testVideo)
+		info, videoIdx, err := mp.ProbeVideo(context.Background(), testVideo)
 		require.NoError(t, err)
 		require.NotNil(t, info)
+		require.GreaterOrEqual(t, videoIdx, 0)
 
 		// Duration: we generated a 5s sample
 		require.Equal(t, 5, info.DurationSec)
@@ -63,7 +65,7 @@ func TestProbeVideo(t *testing.T) {
 		require.NoError(t, err)
 
 		mp := MediaProbe{FFmpeg: ffmpeg}
-		_, err = mp.ProbeVideo("testdata/does_not_exist.mp4")
+		_, _, err = mp.ProbeVideo(context.Background(), "testdata/does_not_exist.mp4")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "error running ffprobe")
 	})

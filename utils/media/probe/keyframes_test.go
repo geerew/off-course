@@ -1,6 +1,7 @@
 package probe
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -22,7 +23,7 @@ func TestExtractKeyframes(t *testing.T) {
 		// Use the existing test video
 		videoPath := "testdata/sample.mp4"
 
-		keyframes, err := mp.ExtractKeyframesForVideo(videoPath)
+		keyframes, err := mp.ExtractKeyframesForVideo(context.Background(), videoPath)
 
 		// The sample video might not have enough keyframes, which is OK for testing
 		if err != nil && strings.Contains(err.Error(), "insufficient keyframes") {
@@ -50,7 +51,7 @@ func TestExtractKeyframes(t *testing.T) {
 	})
 
 	t.Run("invalid video path", func(t *testing.T) {
-		keyframes, err := mp.ExtractKeyframesForVideo("nonexistent.mp4")
+		keyframes, err := mp.ExtractKeyframesForVideo(context.Background(), "nonexistent.mp4")
 		require.Error(t, err)
 		assert.Nil(t, keyframes)
 		assert.Contains(t, err.Error(), "failed to probe video")
@@ -59,7 +60,7 @@ func TestExtractKeyframes(t *testing.T) {
 	t.Run("nil ffmpeg", func(t *testing.T) {
 		mp := MediaProbe{FFmpeg: nil}
 
-		keyframes, err := mp.ExtractKeyframesForVideo("testdata/sample.mp4")
+		keyframes, err := mp.ExtractKeyframesForVideo(context.Background(), "testdata/sample.mp4")
 		require.Error(t, err)
 		assert.Nil(t, keyframes)
 		assert.Contains(t, err.Error(), "ffprobe unavailable")
