@@ -1,7 +1,7 @@
 <!-- TODO have a columns dropdown to hide show columns -->
 <!-- TODO store selection state in localstorage -->
 <script lang="ts">
-	import { GetScans } from '$lib/api/scan-api';
+	import { subscribeToScans, type ScanUpdateEvent } from '$lib/api/scan-api';
 	import { Pagination } from '$lib/components';
 	import { RightChevronIcon, WarningIcon } from '$lib/components/icons';
 	import RowActionMenu from '$lib/components/pages/admin/scans/row-action-menu.svelte';
@@ -10,7 +10,6 @@
 	import { Badge, Button, Checkbox } from '$lib/components/ui';
 	import * as Table from '$lib/components/ui/table';
 	import type { ScanModel, ScansModel } from '$lib/models/scan-model';
-	import { scanMonitor } from '$lib/scans.svelte';
 	import { cn, remCalc } from '$lib/utils';
 	import { ElementSize } from 'runed';
 	import { toast } from 'svelte-sonner';
@@ -40,25 +39,9 @@
 	let smallTable = $state(false);
 
 	let allScans: ScansModel = $state([]);
-	let loadPromise = $state(fetchScans());
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	// Fetch scans
-	async function fetchScans(): Promise<void> {
-		try {
-			scanMonitor.clearAll();
-
-			allScans = await GetScans();
-
-			// Update pagination based on current total
-			updatePagination();
-
-			scanMonitor.trackScansArray(scans);
-		} catch (error) {
-			throw error;
-		}
-	}
+	let isLoading = $state(true);
+	let loadError = $state<Error | null>(null);
+	let sseClose: (() => void) | null = null;
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -86,7 +69,8 @@
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function onRowDelete(numDeleted: number) {
-		loadPromise = fetchScans();
+		// Scans will be updated via SSE, no need to refetch
+		updatePagination();
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -137,47 +121,51 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	// Watch for scan deletions and update pagination accordingly
-	// When scans finish processing, they're removed from the backend.
-	// We poll periodically when there are processing scans to detect when they finish.
+	// Subscribe to scan updates via SSE
 	$effect(() => {
-		// Check if there are any processing scans
-		// Use optional chaining to handle case where allScans might be empty initially
-		const hasProcessingScans =
-			scans.some((s) => s.status === 'processing') ||
-			(allScans.length > 0 && allScans.some((s) => s.status === 'processing'));
+		isLoading = true;
+		loadError = null;
 
-		if (!hasProcessingScans) {
-			// No processing scans, no need to poll
-			return;
-		}
-
-		// Poll every second to check for completed scans
-		const pollInterval = setInterval(async () => {
-			try {
-				const freshScans = await GetScans();
-
-				// Only update if the total count changed
-				if (freshScans.length !== paginationTotal) {
-					allScans = freshScans;
+		sseClose = subscribeToScans({
+			onUpdate: (event: ScanUpdateEvent) => {
+				if (event.type === 'all_scans') {
+					// Initial load - populate all scans
+					const initialScans = event.data as ScanModel[];
+					allScans = initialScans;
 					updatePagination();
-					scanMonitor.trackScansArray(scans);
+					isLoading = false;
+				} else if (event.type === 'scan_update') {
+					const scan = event.data as ScanModel;
+					// Find and update existing scan, or add new one
+					const index = allScans.findIndex((s) => s.id === scan.id);
+					if (index !== -1) {
+						// Update existing scan
+						allScans[index] = scan;
+					} else {
+						// Add new scan
+						allScans = [...allScans, scan];
+					}
+					updatePagination();
+				} else if (event.type === 'scan_deleted') {
+					const deletedId = (event.data as { id: string }).id;
+					// Remove scan from array
+					allScans = allScans.filter((s) => s.id !== deletedId);
+					updatePagination();
 				}
-			} catch (error) {
-				// Silently fail - will retry on next poll
+			},
+			onError: (error: Error) => {
+				loadError = error;
+				isLoading = false;
 			}
-		}, 1000); // Poll every second
+		});
 
+		// Cleanup on unmount
 		return () => {
-			clearInterval(pollInterval);
+			if (sseClose) {
+				sseClose();
+				sseClose = null;
+			}
 		};
-	});
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	// Stop the scan monitor when the component is destroyed
-	$effect(() => {
-		return () => scanMonitor.clearAll();
 	});
 </script>
 
@@ -204,10 +192,6 @@
 					<TableActionMenu
 						bind:scans={selectedScans}
 						onDelete={() => {
-							Object.values(selectedScans).forEach((scan) => {
-								scanMonitor.untrackScan(scan.courseId);
-							});
-
 							const numDeleted = Object.keys(selectedScans).length;
 							selectedScans = {};
 							onRowDelete(numDeleted);
@@ -218,11 +202,16 @@
 		</div>
 
 		<div class="flex w-full place-content-center">
-			{#await loadPromise}
+			{#if isLoading}
 				<div class="flex justify-center pt-10">
 					<Spinner class="bg-foreground-alt-3 size-4" />
 				</div>
-			{:then _}
+			{:else if loadError}
+				<div class="flex w-full flex-col items-center gap-2 pt-10">
+					<WarningIcon class="text-foreground-error size-10" />
+					<span class="text-lg">Failed to fetch scans: {loadError.message}</span>
+				</div>
+			{:else}
 				<div class="flex w-full flex-col gap-8">
 					<Table.Root
 						class={smallTable
@@ -279,7 +268,7 @@
 									>
 										<div
 											class={cn(
-												'absolute top-1/2 left-1 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
+												'absolute left-1 top-1/2 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
 												scan.status === 'processing'
 													? 'bg-background-primary'
 													: 'bg-background-alt-4',
@@ -309,7 +298,7 @@
 									<Table.Td class="group-hover:bg-background-alt-1 relative">
 										<div
 											class={cn(
-												'absolute top-1/2 left-1 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
+												'absolute left-1 top-1/2 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
 												scan.status === 'processing'
 													? 'bg-background-primary'
 													: 'bg-background-alt-4',
@@ -357,7 +346,6 @@
 										<RowActionMenu
 											{scan}
 											onDelete={async () => {
-												scanMonitor.untrackScan(scan.courseId);
 												await onRowDelete(1);
 												if (selectedScans[scan.id] !== undefined) {
 													delete selectedScans[scan.id];
@@ -374,7 +362,7 @@
 											inTransitionParams={{ duration: 200 }}
 											outTransition={slide}
 											outTransitionParams={{ duration: 150 }}
-											class="bg-background-alt-2/30 col-span-full justify-start pr-4 pl-14"
+											class="bg-background-alt-2/30 col-span-full justify-start pl-14 pr-4"
 										>
 											<div class="flex flex-col gap-2 py-3 text-sm">
 												<div class="grid grid-cols-[8rem_1fr]">
@@ -434,12 +422,7 @@
 						/>
 					{/if}
 				</div>
-			{:catch error}
-				<div class="flex w-full flex-col items-center gap-2 pt-10">
-					<WarningIcon class="text-foreground-error size-10" />
-					<span class="text-lg">Failed to fetch scans: {error.message}</span>
-				</div>
-			{/await}
+			{/if}
 		</div>
 	</div>
 </div>

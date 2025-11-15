@@ -1,32 +1,6 @@
 import { APIError } from '$lib/api-error.svelte';
-import {
-	ScanSchema,
-	type ScanCreateModel,
-	type ScanModel,
-	type ScanReqParams
-} from '$lib/models/scan-model';
-import { buildQueryString } from '$lib/utils';
-import { array, safeParse } from 'valibot';
+import type { ScanCreateModel, ScanModel } from '$lib/models/scan-model';
 import { apiFetch } from './fetch';
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// Get all scans (API returns array directly, not paginated)
-export async function GetScans(params?: ScanReqParams): Promise<ScanModel[]> {
-	const qs = params && buildQueryString(params);
-	const response = await apiFetch(`/api/scans` + (qs ? `?${qs}` : ''));
-
-	if (response.ok) {
-		const data = (await response.json()) as ScanModel[];
-		const result = safeParse(array(ScanSchema), data);
-
-		if (!result.success) throw new APIError(response.status, 'Invalid response from the server');
-		return result.output;
-	} else {
-		const data = await response.json();
-		throw new APIError(response.status, data.message || 'Unknown error');
-	}
-}
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -64,8 +38,8 @@ export async function DeleteScan(id: string): Promise<void> {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export type ScanUpdateEvent = {
-	type: 'scan_update' | 'scan_deleted' | 'error';
-	data: ScanModel | { id: string } | { message: string };
+	type: 'all_scans' | 'scan_update' | 'scan_deleted' | 'error';
+	data: ScanModel[] | ScanModel | { id: string } | { message: string };
 };
 
 export type ScanSubscriptionCallbacks = {

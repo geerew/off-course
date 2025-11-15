@@ -1,6 +1,7 @@
 <!-- TODO have a columns dropdown to hide show columns -->
 <script lang="ts">
-	import { GetCourses } from '$lib/api/course-api';
+	import { GetCourses, GetCourse } from '$lib/api/course-api';
+	import { subscribeToScans, type ScanUpdateEvent } from '$lib/api/scan-api';
 	import { FilterBar, NiceDate, Pagination, SortMenu } from '$lib/components';
 	import { AddCoursesDialog } from '$lib/components/dialogs';
 	import { RightChevronIcon, TickIcon, WarningIcon, XIcon } from '$lib/components/icons';
@@ -10,7 +11,7 @@
 	import { Button, Checkbox } from '$lib/components/ui';
 	import * as Table from '$lib/components/ui/table';
 	import type { CourseModel, CoursesModel } from '$lib/models/course-model';
-	import { scanMonitor } from '$lib/scans.svelte';
+	import type { ScanModel, ScanStatus } from '$lib/models/scan-model';
 	import type { SortColumns, SortDirection } from '$lib/types/sort';
 	import { cn, remCalc } from '$lib/utils';
 	import { ElementSize, PersistedState } from 'runed';
@@ -71,13 +72,16 @@
 
 	let loadPromise = $state(fetchCourses());
 
+	// Scan state - map courseId to scan status
+	let scans = $state<Record<string, ScanStatus>>({});
+	let scanIdToCourseId = $state<Map<string, string>>(new Map());
+	let sseClose: (() => void) | null = null;
+
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Fetch courses
 	async function fetchCourses(): Promise<void> {
 		try {
-			scanMonitor.clearAll();
-
 			const sort = `sort:"${selectedSortColumn} ${selectedSortDirection}"`;
 			const q = filterValue ? `${filterValue} ${sort}` : sort;
 
@@ -89,10 +93,6 @@
 			paginationTotal = data.totalItems;
 			courses = data.items;
 			expandedCourses = {};
-
-			const coursesToTrack = courses.filter((course) => course.maintenance);
-
-			scanMonitor.trackCourses(coursesToTrack);
 		} catch (error) {
 			throw error;
 		}
@@ -161,9 +161,57 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	// Stop the scan monitor when the component is destroyed
+	// Subscribe to scan updates via SSE
 	$effect(() => {
-		return () => scanMonitor.clearAll();
+		sseClose = subscribeToScans({
+			onUpdate: (event: ScanUpdateEvent) => {
+				if (event.type === 'all_scans') {
+					// Initial load - update all scans
+					const initialScans = event.data as ScanModel[];
+					for (const scan of initialScans) {
+						scans[scan.courseId] = scan.status;
+						scanIdToCourseId.set(scan.id, scan.courseId);
+					}
+				} else if (event.type === 'scan_update') {
+					const scan = event.data as ScanModel;
+					scans[scan.courseId] = scan.status;
+					scanIdToCourseId.set(scan.id, scan.courseId);
+				} else if (event.type === 'scan_deleted') {
+					const deletedId = (event.data as { id: string }).id;
+					const courseId = scanIdToCourseId.get(deletedId);
+					if (courseId) {
+						// Remove scan status
+						delete scans[courseId];
+						scanIdToCourseId.delete(deletedId);
+
+						// Refresh the course if it's in the current list
+						const courseIndex = courses.findIndex((c) => c.id === courseId);
+						if (courseIndex !== -1) {
+							GetCourse(courseId)
+								.then((updatedCourse) => {
+									courses[courseIndex] = updatedCourse;
+								})
+								.catch(() => {
+									// Silently fail - course will be refreshed on next page load
+								});
+						}
+					}
+				}
+			},
+			onError: () => {
+				// On error, clear scans - will be repopulated on reconnect
+				scans = {};
+				scanIdToCourseId.clear();
+			}
+		});
+
+		// Cleanup on unmount
+		return () => {
+			if (sseClose) {
+				sseClose();
+				sseClose = null;
+			}
+		};
 	});
 </script>
 
@@ -201,10 +249,6 @@
 							selectedCourses = {};
 						}}
 						onDelete={() => {
-							Object.values(selectedCourses).forEach((course) => {
-								scanMonitor.untrackCourse(course.id);
-							});
-
 							const numDeleted = Object.keys(selectedCourses).length;
 							selectedCourses = {};
 							onRowDelete(numDeleted);
@@ -304,11 +348,11 @@
 											smallTable ? 'visible' : 'hidden'
 										)}
 									>
-										{#if scanMonitor.scans[course.id] !== undefined}
+										{#if scans[course.id] !== undefined}
 											<div
 												class={cn(
-													'absolute top-1/2 left-1 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
-													scanMonitor.scans[course.id] === 'processing'
+													'absolute left-1 top-1/2 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
+													scans[course.id] === 'processing'
 														? 'bg-background-primary'
 														: 'bg-background-alt-4',
 													smallTable ? 'visible' : 'hidden'
@@ -336,11 +380,11 @@
 
 									<!-- Checkbox -->
 									<Table.Td class="group-hover:bg-background-alt-1 relative">
-										{#if scanMonitor.scans[course.id] !== undefined}
+										{#if scans[course.id] !== undefined}
 											<div
 												class={cn(
-													'absolute top-1/2 left-1 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
-													scanMonitor.scans[course.id] === 'processing'
+													'absolute left-1 top-1/2 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
+													scans[course.id] === 'processing'
 														? 'bg-background-primary'
 														: 'bg-background-alt-4',
 													smallTable ? 'hidden' : 'visible'
@@ -410,7 +454,7 @@
 									<!-- Added (large screens) -->
 									<Table.Td
 										class={cn(
-											'group-hover:bg-background-alt-1 px-4 whitespace-nowrap',
+											'group-hover:bg-background-alt-1 whitespace-nowrap px-4',
 											smallTable ? 'hidden' : 'visible'
 										)}
 									>
@@ -420,7 +464,7 @@
 									<!-- Updated (large screens) -->
 									<Table.Td
 										class={cn(
-											'group-hover:bg-background-alt-1 px-4 whitespace-nowrap',
+											'group-hover:bg-background-alt-1 whitespace-nowrap px-4',
 											smallTable ? 'hidden' : 'visible'
 										)}
 									>
@@ -432,7 +476,6 @@
 										<RowActionMenu
 											{course}
 											onDelete={async () => {
-												scanMonitor.untrackCourse(course.id);
 												await onRowDelete(1);
 												if (selectedCourses[course.id] !== undefined) {
 													delete selectedCourses[course.id];
@@ -449,7 +492,7 @@
 											inTransitionParams={{ duration: 200 }}
 											outTransition={slide}
 											outTransitionParams={{ duration: 150 }}
-											class="bg-background-alt-2/30 col-span-full justify-start pr-4 pl-14"
+											class="bg-background-alt-2/30 col-span-full justify-start pl-14 pr-4"
 										>
 											<div class="flex flex-col gap-2 py-3 text-sm">
 												<div class="grid grid-cols-[8rem_1fr]">

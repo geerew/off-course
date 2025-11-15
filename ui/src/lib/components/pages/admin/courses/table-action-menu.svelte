@@ -13,7 +13,6 @@
 	import { Dropdown } from '$lib/components/ui';
 	import type { CourseModel } from '$lib/models/course-model';
 	import type { ScanCreateModel } from '$lib/models/scan-model';
-	import { scanMonitor } from '$lib/scans.svelte';
 	import { toast } from 'svelte-sonner';
 
 	type Props = {
@@ -35,7 +34,6 @@
 			await Promise.all(
 				coursesToScan.map((c) => StartScan({ courseId: c.id } satisfies ScanCreateModel))
 			);
-			scanMonitor.trackCourses(coursesToScan);
 			toast.success('Scanning started for selected courses');
 			onScan();
 		} catch (error) {
@@ -58,7 +56,7 @@
 
 	<Dropdown.Content class="w-42">
 		<Dropdown.Item
-			class="text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-2 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none"
+			class="text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-2 inline-flex w-full cursor-pointer select-none items-center gap-2.5 rounded-md px-1 py-1 duration-200"
 			onclick={() => {
 				courses = {};
 			}}
@@ -68,7 +66,7 @@
 		</Dropdown.Item>
 
 		<Dropdown.Item
-			class="text-foreground-alt-1 hover:text-foreground data-disabled:text-foreground-alt-3 hover:bg-background-alt-2 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none disabled:opacity-50 data-disabled:cursor-default data-disabled:hover:bg-transparent"
+			class="text-foreground-alt-1 hover:text-foreground data-disabled:text-foreground-alt-3 hover:bg-background-alt-2 data-disabled:cursor-default data-disabled:hover:bg-transparent inline-flex w-full cursor-pointer select-none items-center gap-2.5 rounded-md px-1 py-1 duration-200 disabled:opacity-50"
 			onclick={async () => {
 				doScan();
 			}}
@@ -78,7 +76,7 @@
 		</Dropdown.Item>
 
 		<Dropdown.Item
-			class="text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-2 inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 duration-200 select-none"
+			class="text-foreground-alt-1 hover:text-foreground hover:bg-background-alt-2 inline-flex w-full cursor-pointer select-none items-center gap-2.5 rounded-md px-1 py-1 duration-200"
 			onclick={() => {
 				tagsDialogOpen = true;
 			}}

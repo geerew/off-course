@@ -5,7 +5,6 @@
 	import Spinner from '$lib/components/spinner.svelte';
 	import { Badge, Button } from '$lib/components/ui';
 	import type { CourseReqParams, CoursesModel } from '$lib/models/course-model';
-	import { scanMonitor } from '$lib/scans.svelte';
 	import { cn, remCalc } from '$lib/utils';
 	import { Avatar } from 'bits-ui';
 	import { tick } from 'svelte';
@@ -27,11 +26,6 @@
 	let loadPromise = $state(fetcher(false));
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	// Stop the scan monitor when the component is destroyed
-	$effect(() => {
-		return () => scanMonitor.clearAll();
-	});
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -179,7 +173,7 @@
 									<Button
 										href={`/course/${course.id}`}
 										variant="ghost"
-										class="group border-background-alt-3 flex h-full flex-col items-stretch gap-3 overflow-hidden rounded-lg border p-0 pb-2 text-start whitespace-normal"
+										class="border-background-alt-3 group flex h-full flex-col items-stretch gap-3 overflow-hidden whitespace-normal rounded-lg border p-0 pb-2 text-start"
 									>
 										<!-- Card -->
 										<div class="relative aspect-[16/9] max-h-40 w-full overflow-hidden">
