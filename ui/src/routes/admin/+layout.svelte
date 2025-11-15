@@ -118,7 +118,7 @@
 				/>
 
 				<Dialog.Content
-					class="border-foreground-alt-4 bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left fixed left-0 top-0 z-50 h-full w-[--settings-menu-width] border-r pl-4 pt-4"
+					class="border-foreground-alt-4 bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left w-70 fixed left-0 top-0 z-50 h-full border-r pl-4 pt-4"
 				>
 					<nav class="flex h-full w-full flex-col gap-3 overflow-y-auto overflow-x-hidden pb-8">
 						{@render menuContents(true)}

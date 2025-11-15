@@ -1,10 +1,12 @@
 <script lang="ts">
-	import { GetCourses } from '$lib/api/course-api';
+	import { GetCourses, GetCourse } from '$lib/api/course-api';
+	import { auth } from '$lib/auth.svelte';
 	import { NiceDate } from '$lib/components';
 	import { LogoIcon, RightChevronIcon, WarningIcon } from '$lib/components/icons';
 	import Spinner from '$lib/components/spinner.svelte';
 	import { Badge, Button } from '$lib/components/ui';
 	import type { CourseReqParams, CoursesModel } from '$lib/models/course-model';
+	import { scanStore } from '$lib/scanStore.svelte';
 	import { cn, remCalc } from '$lib/utils';
 	import { Avatar } from 'bits-ui';
 	import theme from 'tailwindcss/defaultTheme';
@@ -14,6 +16,10 @@
 	let ongoingCourses: CoursesModel = $state([]);
 	let newestCourses: CoursesModel = $state([]);
 
+	// Track which courses have active scans
+	let coursesWithScans = $state<Set<string>>(new Set());
+	let previousCourseIdsStr = $state('');
+
 	let courseLinks: Record<courseType, string> = {
 		ongoing: '/courses/?filter=started',
 		newest: '/courses/?filter=newest'
@@ -22,6 +28,63 @@
 	let paginationPerPage = $state<number>();
 
 	let loadPromise = $state(fetcher());
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Register with scanStore (always)
+	$effect(() => {
+		return scanStore.register();
+	});
+
+	// Watch for scan updates and refresh courses when scans finish
+	$effect(() => {
+		const scans = scanStore.scans;
+		const currentCourseIdsStr = Object.keys(scans).sort().join(',');
+
+		// If course IDs changed, check which scans finished
+		if (currentCourseIdsStr !== previousCourseIdsStr) {
+			const currentCourseIds = new Set(Object.keys(scans));
+
+			// Find courses that had scans but no longer do (scan finished)
+			for (const courseId of coursesWithScans) {
+				if (!currentCourseIds.has(courseId)) {
+					// Scan finished - refresh this course
+					refreshCourse(courseId);
+				}
+			}
+
+			// Update tracked courses
+			coursesWithScans = new Set(currentCourseIds);
+			previousCourseIdsStr = currentCourseIdsStr;
+		}
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	async function refreshCourse(courseId: string) {
+		try {
+			const course = await GetCourse(courseId, { withUserProgress: true });
+
+			// Update in ongoingCourses
+			const ongoingIndex = ongoingCourses.findIndex((c) => c.id === courseId);
+			if (ongoingIndex !== -1) {
+				ongoingCourses[ongoingIndex] = course;
+			}
+
+			// Update in newestCourses
+			const newestIndex = newestCourses.findIndex((c) => c.id === courseId);
+			if (newestIndex !== -1) {
+				newestCourses[newestIndex] = course;
+			}
+		} catch (error) {
+			console.error('Failed to refresh course:', error);
+		}
+	}
+
+	// Helper to get scan status for a course
+	function getScanStatus(courseId: string) {
+		return scanStore.getScanStatus(courseId);
+	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -95,7 +158,7 @@
 
 		{#if courses.length === 0}
 			<div
-				class="border-background-alt-3 relative flex h-50 w-full flex-col items-center justify-center gap-2 rounded-md border border-dashed"
+				class="border-background-alt-3 h-50 relative flex w-full flex-col items-center justify-center gap-2 rounded-md border border-dashed"
 			>
 				<span class="text-foreground-alt-3 z-1 text-lg">No Courses</span>
 				<svg fill="none" class="stroke-background-alt-2 absolute h-full w-full">
@@ -126,7 +189,7 @@
 						<Button
 							href={`/course/${course.id}`}
 							variant="ghost"
-							class="group border-background-alt-3 flex h-full flex-col items-stretch gap-3 overflow-hidden rounded-lg border p-0 pb-2 text-start whitespace-normal"
+							class="border-background-alt-3 group flex h-full flex-col items-stretch gap-3 overflow-hidden whitespace-normal rounded-lg border p-0 pb-2 text-start"
 						>
 							<!-- Card -->
 							<div class="relative aspect-[16/9] max-h-40 w-full overflow-hidden">
@@ -185,13 +248,42 @@
 									</div>
 
 									<div class="flex gap-2 font-medium">
-										{#if course.initialScan !== undefined && !course.initialScan}
-											<Badge class="bg-background-warning text-foreground-alt-1">Initial Scan</Badge
-											>
-										{:else if course.maintenance}
-											<Badge class="bg-background-warning text-foreground-alt-1">Maintenance</Badge>
-										{:else if !course.available}
-											<Badge class="bg-background-error text-foreground-alt-1">Unavailable</Badge>
+										{#if auth.isAdmin}
+											{@const scanStatus = getScanStatus(course.id)}
+											{@const isScanning = scanStatus === 'processing' || scanStatus === 'waiting'}
+											{#if isScanning && course.initialScan === false}
+												<Badge class="bg-background-warning text-foreground-alt-1"
+													>Initial Scan</Badge
+												>
+											{:else if isScanning}
+												<Badge class="bg-background-warning text-foreground-alt-1"
+													>Maintenance</Badge
+												>
+											{:else if course.initialScan === false}
+												<Badge class="bg-background-warning text-foreground-alt-1"
+													>Initial Scan</Badge
+												>
+											{:else if course.maintenance}
+												<Badge class="bg-background-warning text-foreground-alt-1"
+													>Maintenance</Badge
+												>
+											{:else if !course.available}
+												<Badge class="bg-background-error text-foreground-alt-1">Unavailable</Badge>
+											{/if}
+										{:else}
+											{@const scanStatus = getScanStatus(course.id)}
+											{@const isScanning = scanStatus === 'processing' || scanStatus === 'waiting'}
+											{#if isScanning}
+												<Badge class="bg-background-warning text-foreground-alt-1"
+													>Maintenance</Badge
+												>
+											{:else if course.maintenance}
+												<Badge class="bg-background-warning text-foreground-alt-1"
+													>Maintenance</Badge
+												>
+											{:else if !course.available}
+												<Badge class="bg-background-error text-foreground-alt-1">Unavailable</Badge>
+											{/if}
 										{/if}
 									</div>
 								</div>
