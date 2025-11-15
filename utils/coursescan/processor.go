@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -320,17 +321,21 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 	duration := time.Since(startTime)
 
 	// Ensure minimum scan duration of 2 seconds to allow frontend monitoring time to see and update
-	const minScanDuration = 2 * time.Second
-	if duration < minScanDuration {
-		remaining := minScanDuration - duration
-		select {
-		case <-ctx.Done():
-			// If context is cancelled during the delay, return immediately
-			return ctx.Err()
-		case <-time.After(remaining):
-			// Wait for remaining time
+	// Skip this delay when running tests to speed up test execution
+	isTesting := flag.Lookup("test.v") != nil
+	if !isTesting {
+		const minScanDuration = 2 * time.Second
+		if duration < minScanDuration {
+			remaining := minScanDuration - duration
+			select {
+			case <-ctx.Done():
+				// If context is cancelled during the delay, return immediately
+				return ctx.Err()
+			case <-time.After(remaining):
+				// Wait for remaining time
+			}
+			duration = time.Since(startTime)
 		}
-		duration = time.Since(startTime)
 	}
 
 	scanState.UpdateMessage("Scan complete")
