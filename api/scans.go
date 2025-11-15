@@ -164,6 +164,20 @@ func (api *scansAPI) streamScans(c *fiber.Ctx) error {
 			return
 		}
 
+		// Send initial "all_scans" event with all current scans
+		scanStates := api.r.app.CourseScan.GetAllScans()
+		scanResponses := scanResponseHelper(scanStates, isAdmin)
+		if err := writeEvent(map[string]interface{}{
+			"type": "all_scans",
+			"data": scanResponses,
+		}); err != nil {
+			return
+		}
+		// Populate lastSeen with initial scans
+		for _, scanResp := range scanResponses {
+			lastSeen[scanResp.ID] = scanResp
+		}
+
 		for {
 			select {
 			case <-streamCtx.Done():
