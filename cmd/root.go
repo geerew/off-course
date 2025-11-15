@@ -44,7 +44,7 @@ func questionPlain(question string) string {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// questionPlain asks a question, waits for hidden text input and returns the answer
+// questionPassword asks a question, waits for hidden text input and returns the answer
 func questionPassword(question string) string {
 	c := color.New(color.Bold, color.FgGreen)
 	c.Printf(">> %s: ", question)
@@ -64,7 +64,6 @@ func questionPassword(question string) string {
 func questionPlainWithDefault(question, def string) string {
 	c := color.New(color.Bold, color.FgGreen)
 
-	// Show the default value in brackets if provided
 	if def != "" {
 		c.Printf(">> %s [%s]: ", question, def)
 	} else {

@@ -81,10 +81,8 @@ func (s *CourseScan) Add(ctx context.Context, courseId string) (*ScanState, erro
 		return nil, utils.ErrCourseNotFound
 	}
 
-	// Check if a scan already exists for this course
 	existingScan := s.GetScanByCourseID(courseId)
 	if existingScan != nil {
-		// Scan job already exists
 		s.logger.Debug().
 			Str("course_id", courseId).
 			Str("course_path", course.Path).
@@ -94,10 +92,8 @@ func (s *CourseScan) Add(ctx context.Context, courseId string) (*ScanState, erro
 		return existingScan, nil
 	}
 
-	// Create a new scan state
 	scanState := NewScanState(courseId, course.Path, course.Title)
 
-	// Add to CMap
 	s.scans.Set(scanState.ID, scanState)
 
 	s.logger.Info().
@@ -127,7 +123,6 @@ func (s *CourseScan) GetScanByCourseID(courseID string) *ScanState {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // GetAllScans returns all scans in the CMap, sorted by status (processing first) then by createdAt (oldest first)
-// This ensures deterministic ordering for the frontend
 func (s *CourseScan) GetAllScans() []*ScanState {
 	var allScans []*ScanState
 	s.scans.Range(func(scanID string, scanState *ScanState) bool {
@@ -149,10 +144,8 @@ func (s *CourseScan) CancelAndRemoveScan(scanID string) bool {
 		return false
 	}
 
-	// Cancel the scan if it's running
 	scanState.Cancel()
 
-	// Remove from CMap
 	s.scans.Remove(scanID)
 	return true
 }
@@ -160,19 +153,16 @@ func (s *CourseScan) CancelAndRemoveScan(scanID string) bool {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // CancelAndRemoveScansByCourseID cancels and removes all scans for a given course ID
-// This is used when a course is deleted to ensure any ongoing scans are stopped
 func (s *CourseScan) CancelAndRemoveScansByCourseID(courseID string) {
 	var scanIDsToRemove []string
 	s.scans.Range(func(scanID string, scanState *ScanState) bool {
 		if scanState.CourseID == courseID {
-			// Cancel the scan if it's running
 			scanState.Cancel()
 			scanIDsToRemove = append(scanIDsToRemove, scanID)
 		}
-		return true // Continue iteration
+		return true
 	})
 
-	// Remove all found scans
 	for _, scanID := range scanIDsToRemove {
 		s.scans.Remove(scanID)
 	}
@@ -193,7 +183,6 @@ func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessor
 			s.logger.Debug().Msg("Course scanner worker stopped")
 			return
 		case <-ticker.C:
-			// Poll for waiting scans
 			var waitingScans []*ScanState
 			s.scans.Range(func(scanID string, scanState *ScanState) bool {
 				if scanState.GetStatus() == types.ScanStatusWaiting {
@@ -203,16 +192,9 @@ func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessor
 				return true
 			})
 
-			// Sort scans to ensure deterministic processing order
-			// Processing scans first, then by createdAt (oldest first)
-			// Since we're filtering to waiting scans, they'll all be waiting, but this ensures consistent ordering
 			sortScans(waitingScans)
 
-			// Process each waiting scan
 			for _, scanState := range waitingScans {
-				// Get the fresh scan from CMap to ensure we have the latest state
-				// This prevents race conditions where a scan is cancelled/removed
-				// after being collected into the waitingScans slice
 				existingScan, exists := s.scans.Get(scanState.ID)
 				if !exists {
 					s.logger.Debug().
@@ -222,7 +204,6 @@ func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessor
 					continue
 				}
 
-				// Verify the scan is still waiting (could have been cancelled/removed between collection and processing)
 				if existingScan.GetStatus() != types.ScanStatusWaiting {
 					s.logger.Debug().
 						Str("course_id", scanState.CourseID).
@@ -232,23 +213,18 @@ func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessor
 					continue
 				}
 
-				// Check if scan was cancelled
 				if existingScan.IsCancelled() {
 					s.logger.Debug().
 						Str("course_id", scanState.CourseID).
 						Str("scan_id", scanState.ID).
 						Msg("Skipping cancelled scan")
-					// Remove from CMap if it still exists
 					s.scans.Remove(scanState.ID)
 					continue
 				}
 
-				// Create a cancellable context for this scan
 				scanCtx, cancel := context.WithCancel(ctx)
 				existingScan.SetCancel(cancel)
 
-				// Final check: verify scan still exists, is waiting, and not cancelled
-				// This prevents race conditions where scan is cancelled/removed between checks
 				if finalCheck, stillExists := s.scans.Get(scanState.ID); !stillExists {
 					cancel()
 
@@ -278,7 +254,6 @@ func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessor
 
 				err := processorFn(scanCtx, s, existingScan)
 				if err != nil {
-					// Check if this is a cancellation (not a real error)
 					if err == context.Canceled || err == context.DeadlineExceeded {
 						s.logger.Info().
 							Str("course_id", scanState.CourseID).
@@ -295,7 +270,6 @@ func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessor
 					}
 				}
 
-				// Cleanup: remove scan from CMap
 				s.scans.Remove(scanState.ID)
 			}
 		}
@@ -305,8 +279,6 @@ func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessor
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // sortScans sorts scans by status (processing first) then by createdAt (oldest first), then by ID
-// This ensures deterministic ordering for both Worker and GetAllScans
-// If multiple scans have the same status and createdAt, they're sorted by ID (lexicographic) as a tiebreaker
 func sortScans(scans []*ScanState) {
 	sort.Slice(scans, func(i, j int) bool {
 		iStatus := scans[i].GetStatus()

@@ -44,11 +44,9 @@ func (m *CMap[K, V]) GetOrCreate(key K, create func() V) (V, bool) {
 	}
 	m.lock.RUnlock()
 
-	// Data does not exist, create it
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	// Double-check: another goroutine might have created it
 	if ret, ok := m.data[key]; ok {
 		m.lock.RUnlock()
 		return ret, false
@@ -163,7 +161,6 @@ func (m *CMap[K, V]) Clear() {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // ForEach calls fn for each key-value pair in the map while holding the write lock
-// This is useful for operations that need to iterate and potentially modify the map
 func (m *CMap[K, V]) ForEach(fn func(K, V)) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
