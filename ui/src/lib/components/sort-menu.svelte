@@ -20,11 +20,11 @@
 		onUpdate
 	}: Props = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	selectedDirection = selectedDirection || 'asc';
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// If a selected column is not provided or the selected column is not in the list of columns,
 	// select the first column

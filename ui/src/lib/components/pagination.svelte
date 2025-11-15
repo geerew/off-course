@@ -23,7 +23,7 @@
 		onPerPageChange
 	}: Props = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let perPageValue = $state(`${perPage}`);
 

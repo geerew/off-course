@@ -31,7 +31,7 @@
 
 	let loadPromise = $state(fetcher(false));
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Register with scanStore (always)
 	$effect(() => {
@@ -61,7 +61,7 @@
 		}
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function refreshCourse(courseId: string) {
 		try {
@@ -82,7 +82,7 @@
 		return scanStore.getScanStatus(courseId);
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Set up intersection observer for infinite scrolling
 	function setupIntersectionObserver(node: HTMLElement) {
@@ -104,14 +104,14 @@
 		};
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Determine the number of courses to load base on the screen size
 	$effect(() => {
 		setPaginationPerPage(remCalc(window.innerWidth));
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Set the pagination perPage size based on the screen size
 	function setPaginationPerPage(windowWidth: number) {
@@ -123,7 +123,7 @@
 					: 8;
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Load more courses for infinite scrolling
 	async function loadMoreCourses(): Promise<void> {
@@ -145,7 +145,7 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Fetch courses
 	async function fetcher(append: boolean): Promise<void> {

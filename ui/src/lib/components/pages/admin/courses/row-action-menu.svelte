@@ -17,12 +17,12 @@
 
 	let { course, onScan, onDelete }: Props = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let tagsDialogOpen = $state(false);
 	let deleteDialogOpen = $state(false);
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function doScan() {
 		try {

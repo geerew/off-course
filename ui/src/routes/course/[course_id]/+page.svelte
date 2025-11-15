@@ -102,7 +102,7 @@
 
 	let loadPromise = $state(fetcher());
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Fetch the course, then the assets for the course, then build a chapter structure from the
 	// assets
@@ -125,7 +125,7 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Load the course image, if available
 	async function loadCourseImage(courseId: string): Promise<void> {
@@ -143,11 +143,11 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	const pad2 = (n: number) => String(n).padStart(2, '0');
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Register with scanStore
 	$effect(() => {
@@ -168,7 +168,7 @@
 		hasActiveScan = currentlyHasScan;
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Refresh course data
 	async function refreshCourse(): Promise<void> {
@@ -198,7 +198,7 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	$effect(() => {
 		return () => {

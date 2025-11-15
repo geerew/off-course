@@ -1,6 +1,6 @@
 import { boolean, number, object, string, type InferOutput } from 'valibot';
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export const MediaPreferenceDefault: MediaPreferencesModel = {
 	autoplay: false,
@@ -11,7 +11,7 @@ export const MediaPreferenceDefault: MediaPreferencesModel = {
 	quality: 'original'
 };
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 const MediaPreferences = object({
 	autoplay: boolean(),

@@ -48,7 +48,7 @@
 	let isIndeterminate = $derived(selectedScansCount > 0 && selectedScansCount < paginationTotal);
 	let isChecked = $derived(selectedScansCount !== 0 && selectedScansCount === paginationTotal);
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Update pagination page when total changes
 	function updatePaginationPage() {
@@ -88,13 +88,13 @@
 		}
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function onRowDelete() {
 		updatePaginationPage();
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	function onCheckboxClicked(e: MouseEvent) {
 		e.preventDefault();
@@ -116,13 +116,13 @@
 		toastCount();
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	function toggleRowExpansion(userId: string) {
 		expandedScans[userId] = !expandedScans[userId];
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	function toastCount() {
 		if (scans.length === 0) return;
@@ -134,13 +134,13 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Flip between table and card mode based on screen size
 	$effect(() => {
 		smallTable = remCalc(mainSize.width) <= +theme.columns['4xl'].replace('rem', '') ? true : false;
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Register with scanStore (ensures SSE connection is active)
 	$effect(() => {

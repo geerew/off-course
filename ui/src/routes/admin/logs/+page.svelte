@@ -24,7 +24,7 @@
 
 	let loadPromise = $state(fetchLogs());
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Fetch logs
 	async function fetchLogs(): Promise<void> {
@@ -60,14 +60,14 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Build level filter string from selectedLevels
 	$effect(() => {
 		levelFilter = selectedLevels.length ? selectedLevels.map((v) => `level:${v}`).join(' OR ') : '';
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Build type filter string from selectedTypes
 	$effect(() => {
@@ -76,7 +76,7 @@
 			: '';
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Fetch logs when filters change
 	$effect(() => {
@@ -92,7 +92,7 @@
 		loadPromise = fetchLogs();
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Get level display info
 	function getLevelInfo(level: number) {
@@ -110,7 +110,7 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Get component from data
 	function getComponent(data: unknown): string | null {
@@ -120,7 +120,7 @@
 		return null;
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Get prioritized data fields
 	function getPrioritizedData(
@@ -178,7 +178,7 @@
 		return [...allEntries, ...other];
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Format timestamp
 	function formatTimestamp(date: string): string {
@@ -193,7 +193,7 @@
 		});
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Check scroll position to show/hide scroll to bottom button
 	function checkScrollPosition(): void {
@@ -208,7 +208,7 @@
 		showScrollToTop = scrollTop > 50;
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Scroll to bottom
 	function scrollToBottom(): void {
@@ -218,7 +218,7 @@
 		});
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Scroll to top
 	function scrollToTop(): void {
@@ -228,7 +228,7 @@
 		});
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Set up scroll listener
 	$effect(() => {
@@ -240,7 +240,7 @@
 		};
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Update scroll position when logs change
 	$effect(() => {

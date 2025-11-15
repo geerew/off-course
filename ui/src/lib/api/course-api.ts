@@ -16,7 +16,7 @@ import { buildQueryString } from '$lib/utils';
 import { array, safeParse } from 'valibot';
 import { apiFetch } from './fetch';
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Get a course
 export async function GetCourse(courseId: string, params?: CourseReqParams): Promise<CourseModel> {
@@ -36,7 +36,7 @@ export async function GetCourse(courseId: string, params?: CourseReqParams): Pro
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Get a paginated list of courses
 export async function GetCourses(params?: CourseReqParams): Promise<CoursePaginationModel> {
@@ -56,7 +56,7 @@ export async function GetCourses(params?: CourseReqParams): Promise<CoursePagina
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Create a course
 export async function CreateCourse(data: CourseCreateModel): Promise<void> {
@@ -72,7 +72,7 @@ export async function CreateCourse(data: CourseCreateModel): Promise<void> {
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Delete a course
 export async function DeleteCourse(courseId: string): Promise<void> {
@@ -89,7 +89,7 @@ export async function DeleteCourse(courseId: string): Promise<void> {
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Delete course progress (for a specific user)
 export async function DeleteCourseProgress(courseId: string): Promise<void> {
@@ -106,7 +106,7 @@ export async function DeleteCourseProgress(courseId: string): Promise<void> {
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Get all course tags
 export async function GetCourseTags(courseId: string): Promise<CourseTagsModel> {
@@ -124,7 +124,7 @@ export async function GetCourseTags(courseId: string): Promise<CourseTagsModel> 
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Create a course tag
 export async function CreateCourseTag(courseId: string, data: CourseTagCreateModel): Promise<void> {
@@ -140,7 +140,7 @@ export async function CreateCourseTag(courseId: string, data: CourseTagCreateMod
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Delete a course tag
 export async function DeleteCourseTag(courseId: string, tag: string): Promise<void> {
@@ -157,7 +157,7 @@ export async function DeleteCourseTag(courseId: string, tag: string): Promise<vo
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Update a course assets progress
 export async function UpdateCourseAssetProgress(
@@ -183,7 +183,7 @@ export async function UpdateCourseAssetProgress(
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Serve a course asset
 export async function ServeCourseAsset(
@@ -203,7 +203,7 @@ export async function ServeCourseAsset(
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Get the structured modules (chapters/lessons) for a course
 export async function GetCourseModules(

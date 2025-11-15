@@ -79,7 +79,7 @@
 	// Track which courses have active scans (as sorted array for comparison)
 	let previousCourseIdsStr = $state('');
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Format duration in seconds to readable format
 	function formatDuration(seconds: number): string {
@@ -87,7 +87,7 @@
 		return prettyMs(seconds * 1000, { hideSeconds: true });
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Fetch courses
 	async function fetchCourses(): Promise<void> {
@@ -108,7 +108,7 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function onRowDelete(numDeleted: number) {
 		const remainingTotal = paginationTotal - numDeleted;
@@ -123,7 +123,7 @@
 		loadPromise = fetchCourses();
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	function onCheckboxClicked(e: MouseEvent) {
 		e.preventDefault();
@@ -145,13 +145,13 @@
 		toastCount();
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	function toggleRowExpansion(userId: string) {
 		expandedCourses[userId] = !expandedCourses[userId];
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	function toastCount() {
 		if (courses.length === 0) return;
@@ -163,20 +163,20 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Flip between table and card mode based on screen size
 	$effect(() => {
 		smallTable = remCalc(mainSize.width) <= +theme.columns['5xl'].replace('rem', '') ? true : false;
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Register with scanStore (ensures SSE connection is active)
 	$effect(() => {
 		return scanStore.register();
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Update courses when scans finish
 	$effect(() => {

@@ -22,7 +22,7 @@
 
 	let { open = $bindable(false), value, trigger, successFn }: Props = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let inputEl = $state<HTMLInputElement>();
 	let isPosting = $state(false);
@@ -30,7 +30,7 @@
 
 	const isArray = Array.isArray(value);
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	$effect(() => {
 		if (open) {
@@ -39,7 +39,7 @@
 		}
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function doUpdate(): Promise<void> {
 		isPosting = true;

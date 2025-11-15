@@ -11,7 +11,7 @@
 
 	let { tag = $bindable(), onDelete }: Props = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let editDialogOpen = $state(false);
 	let deleteDialogOpen = $state(false);

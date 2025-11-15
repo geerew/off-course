@@ -11,7 +11,7 @@
 
 	let { scan, onDelete }: Props = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let deleteDialogOpen = $state(false);
 </script>

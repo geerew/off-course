@@ -12,7 +12,7 @@
 	import Sort, { type SortColumn } from './sort.svelte';
 	import Tags from './tags.svelte';
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	type Props = {
 		filter?: string;
@@ -22,7 +22,7 @@
 
 	let { filter = $bindable(''), disabled = false, onApply }: Props = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let initialized = $state(false);
 
@@ -44,7 +44,7 @@
 	let progress = $state('');
 	let selectedProgress = $state<ProgressState[]>([]);
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function applyFilter() {
 		// Do nothing when the value hasn't changed
@@ -53,7 +53,7 @@
 		await onApply();
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	$effect(() => {
 		let tmpFilter = sort;
@@ -64,7 +64,7 @@
 		filter = tmpFilter;
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Set the menu popup mode based on the screen size
 	$effect(() => {
@@ -72,7 +72,7 @@
 		if (!menuPopupMode) dialogOpen = false;
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// On initial load, check for any filter query params
 	$effect(() => {
@@ -96,7 +96,7 @@
 		initialized = true;
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	$effect(() => {
 		sort =
@@ -105,7 +105,7 @@
 				: '';
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Build 'progress' from selectedProgress array
 	$effect(() => {
@@ -114,7 +114,7 @@
 			: '';
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Build 'tags' from selectedTags array
 	$effect(() => {

@@ -2,7 +2,7 @@ import { APIError } from '$lib/api-error.svelte';
 import type { ScanCreateModel, ScanModel } from '$lib/models/scan-model';
 import { apiFetch } from './fetch';
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Start a scan
 export async function StartScan(data: ScanCreateModel): Promise<void> {
@@ -18,7 +18,7 @@ export async function StartScan(data: ScanCreateModel): Promise<void> {
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Delete a scan
 export async function DeleteScan(id: string): Promise<void> {
@@ -35,7 +35,7 @@ export async function DeleteScan(id: string): Promise<void> {
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export type ScanUpdateEvent = {
 	type: 'all_scans' | 'scan_update' | 'scan_deleted' | 'error';

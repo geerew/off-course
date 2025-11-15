@@ -2,13 +2,13 @@ import { array, boolean, number, object, picklist, string, type InferOutput } fr
 import { AssetSchema } from './asset-model';
 import { AttachmentSchema } from './attachment-model';
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Description type schema
 const DescriptionTypeSchema = picklist(['markdown', 'text']);
 export type DescriptionType = InferOutput<typeof DescriptionTypeSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Lesson schema
 export const LessonSchema = object({
@@ -26,7 +26,7 @@ export const LessonSchema = object({
 
 export type LessonModel = InferOutput<typeof LessonSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Module schema
 export const ModuleSchema = object({
@@ -37,7 +37,7 @@ export const ModuleSchema = object({
 
 export type ModuleModel = InferOutput<typeof ModuleSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Modules schema
 export const ModulesSchema = object({
@@ -45,7 +45,7 @@ export const ModulesSchema = object({
 });
 export type ModulesModel = InferOutput<typeof ModulesSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export type ModulesReqParams = {
 	withUserProgress?: boolean;

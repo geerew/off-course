@@ -28,7 +28,7 @@
 	import { Accordion, Label, RadioGroup, Separator, useId } from 'bits-ui';
 	import { tick } from 'svelte';
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	type Props = {
 		type: 'dropdown' | 'accordion';
@@ -143,7 +143,6 @@
 					onApply();
 				}}
 			>
-				<!-- Each 2 for asc and desc -->
 				{#each ['asc', 'desc'] as direction}
 					{@const id = useId()}
 					<div

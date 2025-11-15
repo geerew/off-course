@@ -21,7 +21,7 @@
 	import Gestures from './ui/components/gestures.svelte';
 	import { videoStateManager } from './video-state-manager';
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	type Props = {
 		src: string;
@@ -43,7 +43,7 @@
 		useHls = false
 	}: Props = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let player: MediaPlayerElement;
 	let duration = -1;
@@ -52,14 +52,14 @@
 	let uniqueId: string;
 	let hlsQualities = $state<string[]>([]);
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Generate a unique ID for this player instance
 	$effect(() => {
 		uniqueId = playerId || `video-${Math.random().toString(36).substr(2, 9)}`;
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Handle play event - register with state manager and pause others
 	function handlePlay() {
@@ -76,7 +76,7 @@
 		videoStateManager.setCurrentPlayer(uniqueId);
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Handle pause event - clear current player if this was the active one
 	function handlePause() {
@@ -88,7 +88,7 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// SourceChange is called when the source of the player changes, allowing us to reset values and
 	// set the current time to the start time
@@ -107,7 +107,7 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// TimeChange is called when the current time of the player changes
 	function timeChange(e: MediaTimeUpdateEvent) {
@@ -138,7 +138,7 @@
 		onTimeChange(sec);
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Set the currentTime when the video can play
 	function canPlay() {
@@ -157,21 +157,21 @@
 		}, 0);
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Set the duration. This will be called when the src changes
 	function durationChange(e: MediaDurationChangeEvent) {
 		duration = e.detail;
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Update the preferences with the playback rate
 	function rateChange(e: MediaRateChangeEvent) {
 		mediaPreferences.current.playbackRate = e.detail;
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Update the preferences with the volume
 	function volumeChange(e: MediaVolumeChangeEvent) {
@@ -179,7 +179,7 @@
 		mediaPreferences.current.muted = e.detail.muted;
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	function handleProviderChange(e: MediaProviderChangeEvent) {
 		const provider = e.detail;
@@ -217,7 +217,7 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	$effect(() => {
 		if (!player) return;

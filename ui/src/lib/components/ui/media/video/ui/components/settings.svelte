@@ -39,7 +39,7 @@
 
 	let pointerType = $state<'coarse' | 'fine' | 'none'>('none');
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Detects the pointer type
 	function detectPointer() {
@@ -52,7 +52,7 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Called when the dialog/drawer open state completes
 	async function onOpenChange(open: boolean) {
@@ -73,13 +73,13 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	$effect(() => {
 		remote.changePlaybackRate(mediaPreferences.current.playbackRate);
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// When the popover is open, pause controls
 	$effect(() => {
@@ -90,7 +90,7 @@
 		}
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Get the player for the remote
 	$effect(() => {
@@ -113,7 +113,7 @@
 		};
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Keep the container sized if the user resizes text/viewport while open
 	$effect(() => {

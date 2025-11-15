@@ -22,7 +22,7 @@
 
 	let { open = $bindable(false), value, trigger, successFn }: Props = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let firstInputEl = $state<HTMLInputElement>();
 	let currentPassword = $state('');
@@ -39,7 +39,7 @@
 	const mdBreakpoint = +theme.screens.md.replace('rem', '');
 	let isDesktop = $derived(remCalc(innerWidth.current ?? 0) > mdBreakpoint);
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	$effect(() => {
 		if (open) {
@@ -50,7 +50,7 @@
 		}
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function doUpdate() {
 		isPosting = true;

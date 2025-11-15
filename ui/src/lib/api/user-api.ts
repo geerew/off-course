@@ -9,7 +9,7 @@ import { safeParse } from 'valibot';
 import { type UserCreateModel, type UserUpdateModel } from './../models/user-model';
 import { apiFetch } from './fetch';
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Get a paginated list of users
 export async function GetUsers(params?: UserReqParams): Promise<UserPaginationModel> {
@@ -30,7 +30,7 @@ export async function GetUsers(params?: UserReqParams): Promise<UserPaginationMo
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Create a new user
 export async function CreateUser(data: UserCreateModel): Promise<void> {
@@ -46,7 +46,7 @@ export async function CreateUser(data: UserCreateModel): Promise<void> {
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Update a user
 export async function UpdateUser(userId: string, data: UserUpdateModel): Promise<void> {
@@ -64,7 +64,7 @@ export async function UpdateUser(userId: string, data: UserUpdateModel): Promise
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Delete a user
 export async function DeleteUser(userId: string): Promise<void> {
@@ -81,7 +81,7 @@ export async function DeleteUser(userId: string): Promise<void> {
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Revoke all user sessions
 export async function RevokeUserSessions(userId: string): Promise<void> {

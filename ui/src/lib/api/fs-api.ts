@@ -3,7 +3,7 @@ import { FsSchema, type FsModel } from '$lib/models/fs-model';
 import { safeParse } from 'valibot';
 import { apiFetch } from './fetch';
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Get filesystem information. When the path is not provided, the backend will return the
 // available drives

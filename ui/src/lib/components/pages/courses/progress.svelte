@@ -14,7 +14,7 @@
 	import { cn } from '$lib/utils';
 	import { Accordion, Checkbox, Label, useId } from 'bits-ui';
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	type Props = {
 		type: 'dropdown' | 'accordion';

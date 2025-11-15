@@ -11,13 +11,13 @@ import {
 import { BaseSchema } from './base-model';
 import { BasePaginationSchema, type PaginationReqParams } from './pagination-model';
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Asset type schema
 const AssetTypeSchema = picklist(['video', 'pdf', 'markdown', 'text']);
 export type AssetType = InferOutput<typeof AssetTypeSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Asset progress schema
 export const AssetProgressSchema = object({
@@ -28,7 +28,7 @@ export const AssetProgressSchema = object({
 
 export type AssetProgressModel = InferOutput<typeof AssetProgressSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Asset progress update schema
 export const AssetProgressUpdateSchema = object({
@@ -38,7 +38,7 @@ export const AssetProgressUpdateSchema = object({
 
 export type AssetProgressUpdateModel = InferOutput<typeof AssetProgressUpdateSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Asset video metadata schema
 export const AssetVideoMetadataSchema = object({
@@ -56,7 +56,7 @@ export const AssetVideoMetadataSchema = object({
 
 export type AssetVideoMetadataModel = InferOutput<typeof AssetVideoMetadataSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Asset audio metadata schema
 export const AssetAudioMetadataSchema = object({
@@ -71,7 +71,7 @@ export const AssetAudioMetadataSchema = object({
 
 export type AssetAudioMetadataModel = InferOutput<typeof AssetAudioMetadataSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Asset metadata schema
 export const AssetMetadataSchema = object({
@@ -81,7 +81,7 @@ export const AssetMetadataSchema = object({
 
 export type AssetMetadataModel = InferOutput<typeof AssetMetadataSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Asset schema
 export const AssetSchema = object({
@@ -102,7 +102,7 @@ export const AssetSchema = object({
 export type AssetModel = InferOutput<typeof AssetSchema>;
 export type AssetsModel = AssetModel[];
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export const AssetPaginationSchema = object({
 	...BasePaginationSchema.entries,
@@ -111,7 +111,7 @@ export const AssetPaginationSchema = object({
 
 export type AssetPaginationModel = InferOutput<typeof AssetPaginationSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export type AssetReqParams = PaginationReqParams & {
 	q?: string;

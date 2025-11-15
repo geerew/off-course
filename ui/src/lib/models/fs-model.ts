@@ -1,6 +1,6 @@
 import { array, enum_, number, object, string, type InferOutput } from 'valibot';
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export const FsPathClassification = {
 	None: 0,
@@ -9,7 +9,7 @@ export const FsPathClassification = {
 	Descendant: 3
 } as const;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 const FsFileSchema = object({
 	title: string(),
@@ -19,7 +19,7 @@ const FsFileSchema = object({
 export type FsFileModel = InferOutput<typeof FsFileSchema>;
 export type FsFilesModel = FsFileModel[];
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 const FsDirSchema = object({
 	title: string(),
@@ -30,7 +30,7 @@ const FsDirSchema = object({
 export type FsDirModel = InferOutput<typeof FsDirSchema>;
 export type FsDirsModel = FsDirModel[];
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export const FsSchema = object({
 	count: number(),

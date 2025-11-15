@@ -11,21 +11,21 @@ import {
 import { BaseSchema } from './base-model';
 import { BasePaginationSchema, type PaginationReqParams } from './pagination-model';
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 const UserRoleSchema = picklist(['admin', 'user']);
 export type UserRole = InferOutput<typeof UserRoleSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export const SelectUserRoles = [
 	{ value: 'user', label: 'User' },
 	{ value: 'admin', label: 'Admin' }
 ];
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Course Progress
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Course progress schema
 export const CourseProgressSchema = object({
@@ -37,9 +37,9 @@ export const CourseProgressSchema = object({
 
 export type CourseProgressModel = InferOutput<typeof CourseProgressSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Course
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Course schema
 export const CourseSchema = object({
@@ -58,7 +58,7 @@ export const CourseSchema = object({
 export type CourseModel = InferOutput<typeof CourseSchema>;
 export type CoursesModel = CourseModel[];
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Course create schema
 export const CourseCreateSchema = object({
@@ -68,7 +68,7 @@ export const CourseCreateSchema = object({
 
 export type CourseCreateModel = InferOutput<typeof CourseCreateSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Paginated courses schema
 export const CoursePaginationSchema = object({
@@ -78,7 +78,7 @@ export const CoursePaginationSchema = object({
 
 export type CoursePaginationModel = InferOutput<typeof CoursePaginationSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Request parameters for courses
 export type CourseReqParams = PaginationReqParams & {
@@ -86,9 +86,9 @@ export type CourseReqParams = PaginationReqParams & {
 	withUserProgress?: boolean;
 };
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Course Tags
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Course tag create schema
 export const CreateCourseTagSchema = object({
@@ -97,7 +97,7 @@ export const CreateCourseTagSchema = object({
 
 export type CourseTagCreateModel = InferOutput<typeof CreateCourseTagSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Course tag schema
 export const CourseTagSchema = object({

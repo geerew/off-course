@@ -1,4 +1,3 @@
-<!-- Capatalize this -->
 <script lang="ts">
 	import { cn } from '$lib/utils';
 	import ago from 's-ago';
@@ -11,7 +10,7 @@
 
 	let { date, prefix = '', class: componentClass }: Props = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	const d = $derived(new Date(date));
 	const formattedDate = $derived(

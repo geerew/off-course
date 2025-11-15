@@ -1,21 +1,21 @@
 import { array, object, omit, partial, picklist, string, type InferOutput } from 'valibot';
 import { BasePaginationSchema, type PaginationReqParams } from './pagination-model';
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 const UserRoleSchema = picklist(['admin', 'user']);
 export type UserRole = InferOutput<typeof UserRoleSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export const SelectUserRoles = [
 	{ value: 'user', label: 'User' },
 	{ value: 'admin', label: 'Admin' }
 ];
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // User
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // User schema
 export const UserSchema = object({
@@ -28,7 +28,7 @@ export const UserSchema = object({
 export type UserModel = InferOutput<typeof UserSchema>;
 export type UsersModel = UserModel[];
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // User create schema
 export const UserCreateSchema = object({
@@ -40,7 +40,7 @@ export const UserCreateSchema = object({
 
 export type UserCreateModel = InferOutput<typeof UserCreateSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // User update schema
 export const UserUpdateSchema = partial(
@@ -52,9 +52,9 @@ export const UserUpdateSchema = partial(
 
 export type UserUpdateModel = InferOutput<typeof UserUpdateSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Self
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Self update schema
 export const SelfUpdateSchema = partial(
@@ -66,7 +66,7 @@ export const SelfUpdateSchema = partial(
 
 export type SelfUpdateModel = InferOutput<typeof SelfUpdateSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Self delete schema
 export const SelfDeleteSchema = object({
@@ -75,7 +75,7 @@ export const SelfDeleteSchema = object({
 
 export type SelfDeleteModel = InferOutput<typeof SelfDeleteSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export const UserPaginationSchema = object({
 	...BasePaginationSchema.entries,
@@ -84,7 +84,7 @@ export const UserPaginationSchema = object({
 
 export type UserPaginationModel = InferOutput<typeof UserPaginationSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export type UserReqParams = PaginationReqParams & {
 	q?: string;

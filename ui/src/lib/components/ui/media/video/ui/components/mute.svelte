@@ -2,7 +2,6 @@
 	import { MediaVolumeHighIcon, MediaVolumeMuteIcon } from '$lib/components/icons';
 </script>
 
-<!-- Simple mute/unmute button for mobile -->
 <media-mute-button
 	class="hover:text-secondary group relative inline-flex cursor-pointer items-center justify-center rounded-md ring-sky-400 outline-none ring-inset data-focus:ring-4"
 >

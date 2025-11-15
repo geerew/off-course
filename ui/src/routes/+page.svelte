@@ -29,7 +29,7 @@
 
 	let loadPromise = $state(fetcher());
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Register with scanStore (always)
 	$effect(() => {
@@ -59,7 +59,7 @@
 		}
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function refreshCourse(courseId: string) {
 		try {
@@ -86,14 +86,14 @@
 		return scanStore.getScanStatus(courseId);
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Determine the number of courses to load base on the screen size
 	$effect(() => {
 		setPaginationPerPage(remCalc(window.innerWidth));
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Set the pagination perPage size based on the screen size
 	function setPaginationPerPage(windowWidth: number) {
@@ -105,7 +105,7 @@
 					: 4;
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Fetch courses
 	async function fetcher(): Promise<void> {

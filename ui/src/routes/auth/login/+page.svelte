@@ -8,7 +8,7 @@
 	let signupEnabled = $state(false);
 	let loadPromise = $state(fetchSignupStatus());
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function fetchSignupStatus(): Promise<void> {
 		try {

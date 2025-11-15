@@ -30,7 +30,7 @@
 
 	let { successFn }: Props = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let open = $state(false);
 
@@ -80,7 +80,7 @@
 
 	let loadPromise = $state<Promise<void>>();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// As pathHistory changes, this will trigger
 	$effect(() => {
@@ -102,7 +102,7 @@
 		});
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// This effect triggers when the page state changes, such as the back button being
 	// clicked. It will close the modal if it is open and it shouldn't be
@@ -115,7 +115,7 @@
 		}
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	function openModal() {
 		// Only add an entry if we’re not already on the modal state
@@ -155,7 +155,7 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Load the drives or the directories of the selected path
 	async function load(path: string): Promise<void> {
@@ -171,7 +171,7 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Print the number of selected courses
 	function toastCount() {
@@ -184,7 +184,7 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Add the selected courses
 	async function addCourses(): Promise<void> {

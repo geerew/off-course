@@ -12,7 +12,7 @@ import { buildQueryString } from '$lib/utils';
 import { safeParse } from 'valibot';
 import { apiFetch } from './fetch';
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Get a paginated list of tags
 export async function GetTags(params?: TagReqParams): Promise<TagPaginationModel> {
@@ -32,7 +32,7 @@ export async function GetTags(params?: TagReqParams): Promise<TagPaginationModel
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Get a tag (by name)
 export async function GetTag(name: string): Promise<TagModel> {
@@ -50,7 +50,7 @@ export async function GetTag(name: string): Promise<TagModel> {
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Get a list of tag names
 export async function GetTagNames(params?: TagReqParams): Promise<string[]> {
@@ -67,7 +67,7 @@ export async function GetTagNames(params?: TagReqParams): Promise<string[]> {
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Create a tag
 export async function CreateTag(data: TagCreateModel): Promise<void> {
@@ -83,7 +83,7 @@ export async function CreateTag(data: TagCreateModel): Promise<void> {
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Update a tag
 export async function UpdateTag(tagId: string, data: TagUpdateModel): Promise<void> {
@@ -101,7 +101,7 @@ export async function UpdateTag(tagId: string, data: TagUpdateModel): Promise<vo
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Delete a tag
 export async function DeleteTag(tagId: string): Promise<void> {

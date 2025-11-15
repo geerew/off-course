@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { MediaMaximizeIcon, MediaMinimizeIcon } from '$lib/components/icons';
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	type Props = {
 		isMobile?: boolean;

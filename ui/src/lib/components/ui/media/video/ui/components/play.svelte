@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { MediaPauseIcon, MediaPlayIcon } from '$lib/components/icons';
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	type Props = {
 		isMobile?: boolean;

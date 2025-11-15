@@ -2,15 +2,15 @@ import { subscribeToScans, type ScanUpdateEvent } from './api/scan-api';
 import type { ScanModel, ScanStatus } from './models/scan-model';
 
 class ScanStore {
-	// Scan status by courseId (for course status indicators)
+	// Scan status by courseId
 	#scans = $state<Record<string, ScanStatus>>({});
 	#scansRo = $derived(this.#scans);
 
-	// All scans array (for scans table)
+	// All scans array
 	#allScans = $state<ScanModel[]>([]);
 	#allScansRo = $derived(this.#allScans);
 
-	// Scan count (for badge)
+	// Scan count
 	#scanCount = $state(0);
 	#scanCountRo = $derived(this.#scanCount);
 
@@ -20,14 +20,16 @@ class ScanStore {
 	// Track seen scan IDs for accurate count
 	#seenScanIds = new Set<string>();
 
-	// SSE connection management
 	#sseClose: (() => void) | null = null;
-	#connectionCount = 0; // Track how many components are using the store
+	#connectionCount = 0;
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	constructor() {
-		// Auto-start SSE connection when store is created
 		this.#startSSE();
 	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Start SSE connection
 	#startSSE(): void {
@@ -38,7 +40,6 @@ class ScanStore {
 		this.#sseClose = subscribeToScans({
 			onUpdate: (event: ScanUpdateEvent) => {
 				if (event.type === 'all_scans') {
-					// Initial load - update all state
 					const scans = event.data as ScanModel[];
 
 					// Update scans by courseId
@@ -47,10 +48,7 @@ class ScanStore {
 						this.#scanIdToCourseId.set(scan.id, scan.courseId);
 					}
 
-					// Update allScans array
 					this.#allScans = scans;
-
-					// Update scan count
 					this.#scanCount = scans.length;
 					this.#seenScanIds = new Set(scans.map((scan) => scan.id));
 				} else if (event.type === 'scan_update') {
@@ -96,7 +94,6 @@ class ScanStore {
 				}
 			},
 			onError: () => {
-				// On error, clear state - will be repopulated on reconnect
 				this.#scans = {};
 				this.#allScans = [];
 				this.#scanCount = 0;
@@ -105,7 +102,6 @@ class ScanStore {
 			},
 			onClose: () => {
 				this.#sseClose = null;
-				// Auto-reconnect after 1 second
 				setTimeout(() => {
 					if (this.#connectionCount > 0) {
 						this.#startSSE();
@@ -115,6 +111,8 @@ class ScanStore {
 		});
 	}
 
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	// Stop SSE connection
 	#stopSSE(): void {
 		if (this.#sseClose) {
@@ -122,6 +120,8 @@ class ScanStore {
 			this.#sseClose = null;
 		}
 	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Register that a component is using the store
 	// Returns cleanup function
@@ -141,6 +141,8 @@ class ScanStore {
 		};
 	}
 
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	// Get scan status for a course
 	getScanStatus(courseId: string): ScanStatus | undefined {
 		return this.#scansRo[courseId];
@@ -151,7 +153,8 @@ class ScanStore {
 		return this.#scanIdToCourseId.get(scanId);
 	}
 
-	// Getters for reactive access
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	get scans() {
 		return this.#scansRo;
 	}

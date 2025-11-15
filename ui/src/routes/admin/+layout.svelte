@@ -17,7 +17,7 @@
 
 	let { children } = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let menuPopupMode = $state(false);
 	let dialogOpen = $state(false);
@@ -60,14 +60,14 @@
 		}
 	];
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Register with scanStore
 	$effect(() => {
 		return scanStore.register();
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Set the menu popup mode based on the screen size
 	$effect(() => {

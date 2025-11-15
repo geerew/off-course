@@ -1,6 +1,6 @@
 import { number, object } from 'valibot';
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export const SelectPaginationPerPage = [
 	{ value: '10', label: '10' },
@@ -9,7 +9,7 @@ export const SelectPaginationPerPage = [
 	{ value: '100', label: '100' }
 ];
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export const BasePaginationSchema = object({
 	page: number(),
@@ -18,7 +18,7 @@ export const BasePaginationSchema = object({
 	totalItems: number()
 });
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export type PaginationReqParams = {
 	page?: number;
