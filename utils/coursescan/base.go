@@ -148,8 +148,10 @@ func (s *CourseScan) CancelAndRemoveScan(scanID string) bool {
 	if !exists {
 		return false
 	}
+
 	// Cancel the scan if it's running
 	scanState.Cancel()
+
 	// Remove from CMap
 	s.scans.Remove(scanID)
 	return true
@@ -169,6 +171,7 @@ func (s *CourseScan) CancelAndRemoveScansByCourseID(courseID string) {
 		}
 		return true // Continue iteration
 	})
+
 	// Remove all found scans
 	for _, scanID := range scanIDsToRemove {
 		s.scans.Remove(scanID)
@@ -275,12 +278,21 @@ func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessor
 
 				err := processorFn(scanCtx, s, existingScan)
 				if err != nil {
-					s.logger.Error().
-						Err(err).
-						Str("course_id", scanState.CourseID).
-						Str("course_path", scanState.CoursePath).
-						Str("scan_id", scanState.ID).
-						Msg("Failed to process scan job")
+					// Check if this is a cancellation (not a real error)
+					if err == context.Canceled || err == context.DeadlineExceeded {
+						s.logger.Info().
+							Str("course_id", scanState.CourseID).
+							Str("course_path", scanState.CoursePath).
+							Str("scan_id", scanState.ID).
+							Msg("Scan job cancelled")
+					} else {
+						s.logger.Error().
+							Err(err).
+							Str("course_id", scanState.CourseID).
+							Str("course_path", scanState.CoursePath).
+							Str("scan_id", scanState.ID).
+							Msg("Failed to process scan job")
+					}
 				}
 
 				// Cleanup: remove scan from CMap

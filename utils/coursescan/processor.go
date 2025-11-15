@@ -48,6 +48,7 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 	extractedKeyframes := make(map[string][]float64)
 
 	startTime := time.Now()
+
 	courseID := scanState.CourseID
 	s.logger.Info().Str("course_id", courseID).Msg("Starting scan for course")
 
@@ -119,6 +120,7 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 				Msg("Course path does not exist, skipping scan")
 			return nil
 		}
+
 		s.logger.Error().
 			Err(err).
 			Str("course_id", courseID).
@@ -130,6 +132,7 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 	// Scan the course directory for files and populate assets and attachments. Also check if there is
 	// a course card
 	scanState.UpdateMessage("Scanning course directory")
+
 	scanned, err := scanFiles(s, course)
 	if err != nil {
 		s.logger.Error().
@@ -172,12 +175,21 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 
 	// Populate hashes of assets that have changed
 	if err := populateHashesIfChanged(ctx, s, scannedAssets, existingAssets, course, scanState); err != nil {
+		// Check if this is a cancellation (not a real error)
+		if err == context.Canceled || err == context.DeadlineExceeded {
+			return err
+		}
 		s.logger.Error().
 			Err(err).
 			Str("course_id", courseID).
 			Str("course_path", coursePath).
 			Msg("Failed to populate asset hashes")
 		return err
+	}
+
+	// Check for cancellation after populating hashes
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
 
 	// Reconcile what to do
@@ -204,6 +216,11 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 
 	// FFprobe only assets that need it
 	assetMetadataByPath := probeVideos(ctx, s, assetOps, course, extractedKeyframes, scanState)
+
+	// Check for cancellation after video probing
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 
 	updatedCourse := course.CardPath != scanned.cardPath
 	if updatedCourse {
@@ -285,7 +302,12 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 
 		return nil
 	})
+
 	if err != nil {
+		// Check if this is a cancellation (not a real error)
+		if err == context.Canceled || err == context.DeadlineExceeded || isCancellationError(err) {
+			return err
+		}
 		s.logger.Error().
 			Err(err).
 			Str("course_id", courseID).
@@ -743,14 +765,15 @@ func probeVideos(ctx context.Context, s *CourseScan, ops []Op, course *models.Co
 	totalVideos := len(targets)
 
 	// Process videos sequentially
+	cancelled := false
 	for i, asset := range targets {
 		// Check for cancellation
 		if ctx.Err() != nil {
-			s.logger.Warn().
-				Err(ctx.Err()).
+			s.logger.Info().
 				Str("course_id", course.ID).
 				Str("course_path", course.Path).
 				Msg("Video probing cancelled")
+			cancelled = true
 			break
 		}
 
@@ -760,6 +783,12 @@ func probeVideos(ctx context.Context, s *CourseScan, ops []Op, course *models.Co
 		// Probe video
 		info, _, err := mediaProbe.ProbeVideo(ctx, asset.Path)
 		if err != nil {
+			// Check if this is a cancellation (ffprobe was killed due to context cancellation)
+			if ctx.Err() != nil || isCancellationError(err) {
+				// Don't log cancellation as an error
+				cancelled = true
+				break
+			}
 			// Log video probe failure but don't fail the scan
 			s.logger.Warn().
 				Err(err).
@@ -781,6 +810,12 @@ func probeVideos(ctx context.Context, s *CourseScan, ops []Op, course *models.Co
 				Str("video_path", asset.Path).
 				Msg("Extracted keyframes for video")
 		} else {
+			// Check if this is a cancellation (ffprobe was killed due to context cancellation)
+			if ctx.Err() != nil || isCancellationError(err) {
+				// Don't log cancellation as an error
+				cancelled = true
+				break
+			}
 			// Log keyframe extraction failure but don't fail the scan
 			s.logger.Warn().
 				Err(err).
@@ -819,14 +854,38 @@ func probeVideos(ctx context.Context, s *CourseScan, ops []Op, course *models.Co
 		}
 	}
 
-	s.logger.Info().
-		Str("course_id", course.ID).
-		Str("course_path", course.Path).
-		Int("videos_processed", len(assetMetadataByPath)).
-		Int("total_videos", totalVideos).
-		Msg("Completed video probing and keyframe extraction")
+	// Only log completion if not cancelled
+	if !cancelled {
+		s.logger.Info().
+			Str("course_id", course.ID).
+			Str("course_path", course.Path).
+			Int("videos_processed", len(assetMetadataByPath)).
+			Int("total_videos", totalVideos).
+			Msg("Completed video probing and keyframe extraction")
+	}
 
 	return assetMetadataByPath
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// isCancellationError checks if an error is related to cancellation
+// This includes context cancellation errors and "signal: killed" errors from ffprobe
+func isCancellationError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// Check for context cancellation errors
+	if err == context.Canceled || err == context.DeadlineExceeded {
+		return true
+	}
+
+	// Check if error message contains cancellation-related strings
+	errStr := err.Error()
+	return strings.Contains(errStr, "context canceled") ||
+		strings.Contains(errStr, "signal: killed") ||
+		strings.Contains(errStr, "context deadline exceeded")
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1411,7 +1470,12 @@ func populateHashesParallel(ctx context.Context, s *CourseScan, assets []*models
 	// Wait for all workers to complete
 	wg.Wait()
 
+	// Return first error encountered, if any
 	if firstError != nil {
+		// Check if this is a cancellation (not a real error)
+		if firstError == context.Canceled || firstError == context.DeadlineExceeded {
+			return firstError
+		}
 		return fmt.Errorf("failed to hash one or more assets: %w", firstError)
 	}
 
