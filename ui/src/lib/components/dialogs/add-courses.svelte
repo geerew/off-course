@@ -259,7 +259,7 @@
 {#snippet contents()}
 	<main
 		bind:this={mainEl}
-		class="flex min-h-[5rem] w-full flex-1 flex-col overflow-y-auto overflow-x-hidden"
+		class="flex min-h-20 w-full flex-1 flex-col overflow-y-auto overflow-x-hidden"
 	>
 		{#await loadPromise}
 			<div class="flex justify-center pt-10">

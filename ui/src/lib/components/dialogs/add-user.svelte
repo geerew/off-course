@@ -118,12 +118,12 @@
 
 {#snippet contents()}
 	<main
-		class="flex min-h-[5rem] w-full flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto py-5"
+		class="flex min-h-20 w-full flex-1 flex-col gap-4 overflow-y-auto overflow-x-hidden py-5"
 		data-vaul-no-drag=""
 	>
 		<!-- Username -->
 		<div class="flex place-content-center">
-			<div class="flex w-xs flex-col gap-3">
+			<div class="w-xs flex flex-col gap-3">
 				<div class="text-foreground-alt-3 text-[15px] uppercase">Username</div>
 				<Input bind:ref={usernameInputEl} bind:value={usernameValue} name="username" type="text" />
 			</div>
@@ -133,7 +133,7 @@
 
 		<!-- Display name -->
 		<div class="flex place-content-center">
-			<div class="flex w-xs flex-col gap-3">
+			<div class="w-xs flex flex-col gap-3">
 				<div class="text-foreground-alt-3 text-[15px] uppercase">Display Name</div>
 				<Input
 					bind:value={displayNameValue}
@@ -148,7 +148,7 @@
 
 		<!-- Role -->
 		<div class="flex place-content-center">
-			<div class="flex w-xs flex-col gap-3">
+			<div class="w-xs flex flex-col gap-3">
 				<div class="text-foreground-alt-3 text-[15px] uppercase">Role</div>
 				<Select
 					type="single"
@@ -165,14 +165,14 @@
 
 		<!-- Password -->
 		<div class="flex place-content-center">
-			<div class="flex w-xs flex-col gap-3">
+			<div class="w-xs flex flex-col gap-3">
 				<div class="text-foreground-alt-3 text-[15px] uppercase">Password</div>
 				<PasswordInput bind:value={passwordValue} name="new password" />
 			</div>
 		</div>
 
 		<div class="flex place-content-center">
-			<div class="flex w-xs flex-col gap-3">
+			<div class="w-xs flex flex-col gap-3">
 				<div class="text-foreground-alt-3 text-[15px] uppercase">Confirm Password</div>
 				<PasswordInput bind:value={confirmPasswordValue} name="confirm password" />
 			</div>

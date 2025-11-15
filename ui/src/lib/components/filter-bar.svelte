@@ -432,7 +432,7 @@
 					onApply?.();
 				}}
 			>
-				<XIcon class="size-4 stroke-[3]" />
+				<XIcon class="stroke-3 size-4" />
 			</Button>
 		{/if}
 	</div>
@@ -445,7 +445,7 @@
 			<div class="pt-0.5">
 				Filter contains {filterErrors.length}
 				{filterErrors.length === 1 ? 'issue' : 'issues'}:
-				<ul class="mt-1 ml-4">
+				<ul class="ml-4 mt-1">
 					{#each filterErrors as error}
 						<li class="list-disc">
 							{@html error}

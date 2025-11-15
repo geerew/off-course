@@ -8,7 +8,7 @@
 </script>
 
 <media-controls
-	class="pointer-events-none absolute inset-0 z-2 box-border flex h-full w-full flex-col opacity-0 transition-opacity duration-200 ease-out group-data-[pointer=coarse]/player:hidden data-visible:opacity-100 data-visible:ease-in"
+	class="z-2 data-visible:opacity-100 data-visible:ease-in pointer-events-none absolute inset-0 box-border flex h-full w-full flex-col opacity-0 transition-opacity duration-200 ease-out group-data-[pointer=coarse]/player:hidden"
 >
 	<div class="flex-1"></div>
 
@@ -17,7 +17,7 @@
 	</media-controls-group>
 
 	<media-controls-group
-		class="pointer-events-auto relative flex w-full items-center gap-5 rounded-md px-4 pt-1 pb-3"
+		class="pointer-events-auto relative flex w-full items-center gap-5 rounded-md px-4 pb-3 pt-1"
 	>
 		<Play />
 		<Volume />
@@ -28,6 +28,6 @@
 	</media-controls-group>
 
 	<div
-		class="pointer-events-none absolute bottom-0 left-0 z-[-1] h-[99px] w-full rounded-b-md [background-image:_url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAADGCAYAAAAT+OqFAAAAdklEQVQoz42QQQ7AIAgEF/T/D+kbq/RWAlnQyyazA4aoAB4FsBSA/bFjuF1EOL7VbrIrBuusmrt4ZZORfb6ehbWdnRHEIiITaEUKa5EJqUakRSaEYBJSCY2dEstQY7AuxahwXFrvZmWl2rh4JZ07z9dLtesfNj5q0FU3A5ObbwAAAABJRU5ErkJggg==)] bg-bottom bg-repeat-x"
+		class="pointer-events-none absolute bottom-0 left-0 z-[-1] h-[99px] w-full rounded-b-md bg-[url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAADGCAYAAAAT+OqFAAAAdklEQVQoz42QQQ7AIAgEF/T/D+kbq/RWAlnQyyazA4aoAB4FsBSA/bFjuF1EOL7VbrIrBuusmrt4ZZORfb6ehbWdnRHEIiITaEUKa5EJqUakRSaEYBJSCY2dEstQY7AuxahwXFrvZmWl2rh4JZ07z9dLtesfNj5q0FU3A5ObbwAAAABJRU5ErkJggg==)] bg-bottom bg-repeat-x"
 	></div>
 </media-controls>

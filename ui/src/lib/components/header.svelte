@@ -20,7 +20,7 @@
 </script>
 
 <header class="border-background-alt-3 bg-background fixed top-0 z-50 w-full border-b">
-	<div class="container-px flex h-[var(--header-height)] items-center justify-between py-6">
+	<div class="container-px h-(--header-height) flex items-center justify-between py-6">
 		<!-- Logo -->
 		<div class="flex flex-1">
 			<a href="/" class="-m-1.5 p-1.5">
@@ -56,7 +56,7 @@
 					</Dropdown.Trigger>
 
 					<Dropdown.Content class="w-42" portalProps={{ disabled: true }}>
-						<div class="flex flex-col select-none">
+						<div class="flex select-none flex-col">
 							<!-- Name -->
 							<div class="flex flex-row items-center gap-3 p-1.5 pb-2.5">
 								<span
