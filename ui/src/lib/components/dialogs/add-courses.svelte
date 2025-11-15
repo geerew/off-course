@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { pushState } from '$app/navigation';
+	import { goto, pushState } from '$app/navigation';
 	import { page } from '$app/state';
 	import type { APIError } from '$lib/api-error.svelte';
 	import { CreateCourse } from '$lib/api/course-api';
@@ -134,6 +134,27 @@
 		pathHistory = [];
 	}
 
+	// Handle closing the modal/drawer - removes modal state from history if present
+	function handleClose(isDrawer: boolean = false) {
+		cleanup();
+		// When closing, check if modal state is still present
+		// If it is, we're closing by clicking outside (or sliding down for drawer) → remove history entry
+		// If it's not, back button was clicked → effect already handled it → do nothing
+		const s = page.state as { modal?: 'add-courses' } | undefined;
+		if (s?.modal === 'add-courses') {
+			if (isDrawer) {
+				// Drawer: remove entry and push new state to stay on page (handles slide-down gesture)
+				history.back();
+				setTimeout(() => {
+					pushState('', {});
+				}, 0);
+			} else {
+				// Dialog: just remove the entry (clicking outside)
+				history.back();
+			}
+		}
+	}
+
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Load the drives or the directories of the selected path
@@ -238,7 +259,7 @@
 {#snippet contents()}
 	<main
 		bind:this={mainEl}
-		class="flex min-h-[5rem] w-full flex-1 flex-col overflow-x-hidden overflow-y-auto"
+		class="flex min-h-[5rem] w-full flex-1 flex-col overflow-y-auto overflow-x-hidden"
 	>
 		{#await loadPromise}
 			<div class="flex justify-center pt-10">
@@ -280,7 +301,7 @@
 				<div class="border-background-alt-3 flex flex-row items-stretch border-b">
 					<Button
 						variant="ghost"
-						class="!h-auto min-h-14 min-w-0 shrink grow basis-0 items-center justify-start rounded-none px-3 py-2 text-start break-words whitespace-normal duration-0"
+						class="h-auto! wrap-break-word min-h-14 min-w-0 shrink grow basis-0 items-center justify-start whitespace-normal rounded-none px-3 py-2 text-start duration-0"
 						disabled={isPosting ||
 							isRefreshing ||
 							isMovingBack ||
@@ -291,7 +312,7 @@
 							pathHistory.push(dir.path);
 						}}
 					>
-						<span class="block min-w-0 break-words">{dir.title}</span>
+						<span class="wrap-break-word block min-w-0">{dir.title}</span>
 					</Button>
 
 					<!-- Selection -->
@@ -466,8 +487,7 @@
 			if (open) {
 				openModal();
 			} else {
-				cleanup();
-				history.back();
+				handleClose(false);
 			}
 		}}
 	>
@@ -501,8 +521,7 @@
 			if (open) {
 				openModal();
 			} else {
-				cleanup();
-				history.back();
+				handleClose(true);
 			}
 		}}
 	>

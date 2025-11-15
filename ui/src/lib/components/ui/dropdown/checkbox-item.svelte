@@ -15,7 +15,7 @@
 	bind:ref
 	data-slot="dropdown-menu-checkbox-item"
 	class={cn(
-		'text-foreground-alt-1 hover:bg-background-alt-2 hover:text-foreground inline-flex w-full cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 text-sm duration-200 select-none',
+		'text-foreground-alt-1 hover:bg-background-alt-2 hover:text-foreground inline-flex w-full cursor-pointer select-none items-center gap-2.5 rounded-md px-1 py-1 text-sm duration-200',
 		className
 	)}
 	{...restProps}
@@ -29,7 +29,7 @@
 			{/if}
 		</span>
 
-		<div class="min-w-0 break-words">
+		<div class="wrap-break-word min-w-0">
 			{@render childrenProp?.({ checked, indeterminate })}
 		</div>
 	{/snippet}
