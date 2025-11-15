@@ -259,7 +259,7 @@
 {#snippet contents()}
 	<main
 		bind:this={mainEl}
-		class="flex min-h-20 w-full flex-1 flex-col overflow-y-auto overflow-x-hidden"
+		class="flex min-h-20 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto"
 	>
 		{#await loadPromise}
 			<div class="flex justify-center pt-10">
@@ -301,7 +301,7 @@
 				<div class="border-background-alt-3 flex flex-row items-stretch border-b">
 					<Button
 						variant="ghost"
-						class="h-auto! wrap-break-word min-h-14 min-w-0 shrink grow basis-0 items-center justify-start whitespace-normal rounded-none px-3 py-2 text-start duration-0"
+						class="h-auto! min-h-14 min-w-0 shrink grow basis-0 items-center justify-start rounded-none px-3 py-2 text-start wrap-break-word whitespace-normal duration-0"
 						disabled={isPosting ||
 							isRefreshing ||
 							isMovingBack ||
@@ -312,7 +312,7 @@
 							pathHistory.push(dir.path);
 						}}
 					>
-						<span class="wrap-break-word block min-w-0">{dir.title}</span>
+						<span class="block min-w-0 wrap-break-word">{dir.title}</span>
 					</Button>
 
 					<!-- Selection -->

@@ -67,7 +67,7 @@
 		<Accordion.Header>
 			<Accordion.Trigger
 				class={cn(
-					'data-[state=open]:border-b-background-primary-alt-1 data-[state=closed]:border-b-background-primary-alt-1 group flex w-full flex-1 select-none items-center justify-between border-b border-transparent px-2.5 py-5 font-medium transition-transform hover:cursor-pointer data-[state=closed]:border-b-2'
+					'data-[state=open]:border-b-background-primary-alt-1 data-[state=closed]:border-b-background-primary-alt-1 group flex w-full flex-1 items-center justify-between border-b border-transparent px-2.5 py-5 font-medium transition-transform select-none hover:cursor-pointer data-[state=closed]:border-b-2'
 				)}
 			>
 				<div class="flex items-center gap-1.5">
@@ -126,7 +126,7 @@
 
 						<Label.Root
 							for={id}
-							class="inline-flex w-full select-none py-1 pl-3.5 pr-1.5 text-sm hover:cursor-pointer"
+							class="inline-flex w-full py-1 pr-1.5 pl-3.5 text-sm select-none hover:cursor-pointer"
 						>
 							{column.label}
 						</Label.Root>
@@ -167,7 +167,7 @@
 
 						<Label.Root
 							for={id}
-							class="inline-flex w-full select-none gap-1.5 py-1 pl-3.5 pr-1.5 text-sm hover:cursor-pointer"
+							class="inline-flex w-full gap-1.5 py-1 pr-1.5 pl-3.5 text-sm select-none hover:cursor-pointer"
 						>
 							{#if direction === 'asc'}
 								<SortAscendingIcon class="text-foreground-alt-3 size-4" />

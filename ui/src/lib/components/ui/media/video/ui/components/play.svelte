@@ -14,26 +14,26 @@
 <div>
 	{#if isMobile}
 		<media-play-button
-			class="bg-background-primary/60 data-focus:ring-4 group relative inline-flex cursor-pointer items-center justify-center rounded-full p-3 outline-none ring-inset ring-sky-400 hover:text-white"
+			class="bg-background-primary/60 group relative inline-flex cursor-pointer items-center justify-center rounded-full p-3 ring-sky-400 outline-none ring-inset hover:text-white data-focus:ring-4"
 		>
 			<MediaPlayIcon
-				class="group-hover:fill-background-primary group-hover:stroke-background-primary group-data-paused:block hidden size-7 fill-white stroke-white"
+				class="group-hover:fill-background-primary group-hover:stroke-background-primary hidden size-7 fill-white stroke-white group-data-paused:block"
 			/>
 			<MediaPauseIcon
-				class="group-hover:fill-background-primary group-hover:stroke-background-primary group-data-paused:hidden size-7 fill-white stroke-white stroke-2"
+				class="group-hover:fill-background-primary group-hover:stroke-background-primary size-7 fill-white stroke-white stroke-2 group-data-paused:hidden"
 			/>
 		</media-play-button>
 	{:else}
 		<media-tooltip showDelay={300} class="contents">
 			<media-tooltip-trigger>
 				<media-play-button
-					class="data-focus:ring-4 group relative inline-flex cursor-pointer items-center justify-center rounded-md outline-none ring-inset ring-sky-400 hover:text-white"
+					class="group relative inline-flex cursor-pointer items-center justify-center rounded-md ring-sky-400 outline-none ring-inset hover:text-white data-focus:ring-4"
 				>
 					<MediaPlayIcon
-						class="group-hover:fill-background-primary group-hover:stroke-background-primary group-data-paused:block hidden size-7 fill-white stroke-white"
+						class="group-hover:fill-background-primary group-hover:stroke-background-primary hidden size-7 fill-white stroke-white group-data-paused:block"
 					/>
 					<MediaPauseIcon
-						class="group-hover:fill-background-primary group-hover:stroke-background-primary group-data-paused:hidden size-7 fill-white stroke-white stroke-2"
+						class="group-hover:fill-background-primary group-hover:stroke-background-primary size-7 fill-white stroke-white stroke-2 group-data-paused:hidden"
 					/>
 				</media-play-button>
 			</media-tooltip-trigger>

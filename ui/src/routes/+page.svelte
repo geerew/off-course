@@ -158,7 +158,7 @@
 
 		{#if courses.length === 0}
 			<div
-				class="border-background-alt-3 h-50 relative flex w-full flex-col items-center justify-center gap-2 rounded-md border border-dashed"
+				class="border-background-alt-3 relative flex h-50 w-full flex-col items-center justify-center gap-2 rounded-md border border-dashed"
 			>
 				<span class="text-foreground-alt-3 z-1 text-lg">No Courses</span>
 				<svg fill="none" class="stroke-background-alt-2 absolute h-full w-full">
@@ -189,7 +189,7 @@
 						<Button
 							href={`/course/${course.id}`}
 							variant="ghost"
-							class="border-background-alt-3 group flex h-full flex-col items-stretch gap-3 overflow-hidden whitespace-normal rounded-lg border p-0 pb-2 text-start"
+							class="border-background-alt-3 group flex h-full flex-col items-stretch gap-3 overflow-hidden rounded-lg border p-0 pb-2 text-start whitespace-normal"
 						>
 							<!-- Card -->
 							<div class="relative aspect-video max-h-40 w-full overflow-hidden">
@@ -219,7 +219,7 @@
 							<div class="flex min-w-0 flex-1 flex-col justify-between gap-4 px-2 pt-1.5">
 								<!-- Title -->
 								<span
-									class="group-hover:text-background-primary wrap-break-word line-clamp-2 min-w-0 transition-colors duration-150 md:line-clamp-none"
+									class="group-hover:text-background-primary line-clamp-2 min-w-0 wrap-break-word transition-colors duration-150 md:line-clamp-none"
 								>
 									{course.title}
 								</span>

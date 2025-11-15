@@ -15,7 +15,7 @@
 <div class={cn('flex w-full justify-center pt-20', containerClass)}>
 	<div
 		class={cn(
-			'border-background-alt-5 min-w-sm flex max-w-lg flex-col place-items-center gap-4 rounded-lg border p-5',
+			'border-background-alt-5 flex max-w-lg min-w-sm flex-col place-items-center gap-4 rounded-lg border p-5',
 			contentClass
 		)}
 	>

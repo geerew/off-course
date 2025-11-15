@@ -27,7 +27,7 @@
 	</Dropdown.Trigger>
 
 	<Dropdown.Content
-		class="text-foreground-alt-3 z-10 flex max-h-40 w-auto min-w-44 max-w-60 overflow-y-scroll px-1 py-2"
+		class="text-foreground-alt-3 z-10 flex max-h-40 w-auto max-w-60 min-w-44 overflow-y-scroll px-1 py-2"
 		align="start"
 		portalProps={{ disabled: true }}
 	>
@@ -43,7 +43,7 @@
 				>
 					<span class="grid w-full grid-cols-[auto_1fr_auto] items-start gap-1.5">
 						<span class="shrink-0">{index + 1}.</span>
-						<span class="wrap-break-word min-w-0 whitespace-normal text-left">
+						<span class="min-w-0 text-left wrap-break-word whitespace-normal">
 							{attachment.title}
 						</span>
 

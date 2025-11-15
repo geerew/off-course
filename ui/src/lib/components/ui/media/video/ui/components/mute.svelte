@@ -4,7 +4,7 @@
 
 <!-- Simple mute/unmute button for mobile -->
 <media-mute-button
-	class="hover:text-secondary data-focus:ring-4 group relative inline-flex cursor-pointer items-center justify-center rounded-md outline-none ring-inset ring-sky-400"
+	class="hover:text-secondary group relative inline-flex cursor-pointer items-center justify-center rounded-md ring-sky-400 outline-none ring-inset data-focus:ring-4"
 >
 	<MediaVolumeMuteIcon
 		class="group-hover:fill-background-primary group-hover:stroke-background-primary hidden size-5 fill-white stroke-white stroke-2 group-data-[state=muted]:block sm:size-6 md:size-7"

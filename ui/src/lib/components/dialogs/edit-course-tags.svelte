@@ -271,7 +271,7 @@
 		onclick={async () => {
 			await createTags();
 		}}
-		class="w-25 h-10 py-2"
+		class="h-10 w-25 py-2"
 	>
 		{#if isPosting}
 			<Spinner class="bg-background-alt-4 size-2" />
@@ -291,7 +291,7 @@
 		<ScanIcon class="text-foreground-alt-1 size-5" />
 	</Button>
 
-	<div class="absolute right-2 top-0 flex h-full items-center justify-center">
+	<div class="absolute top-0 right-2 flex h-full items-center justify-center">
 		{#if loadingAvailableTags}
 			<Spinner class="bg-foreground-alt-3 size-1.5" />
 		{/if}
@@ -302,7 +302,7 @@
 		oninput={(e) => (inputValue = e.currentTarget.value)}
 		onkeydown={handleInput}
 		disabled={isPosting}
-		class="bg-background-alt-2 focus:bg-background-alt-3 placeholder:text-foreground-alt-3 duration-250 h-full w-full rounded-none px-2.5 pe-12 ps-12 ring-0 ease-in-out placeholder:tracking-wide focus:outline-none"
+		class="bg-background-alt-2 focus:bg-background-alt-3 placeholder:text-foreground-alt-3 h-full w-full rounded-none px-2.5 ps-12 pe-12 ring-0 duration-250 ease-in-out placeholder:tracking-wide focus:outline-none"
 		placeholder="Add tag..."
 		aria-label="Add a tag"
 	/>
@@ -311,7 +311,7 @@
 		<!-- {#if filteredTags.length > 0} -->
 		<Combobox.Content
 			class={cn(
-				'bg-background border-background-alt-5 data-[side=bottom]:slide-in-from-top-2 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 z-60 outline-hidden w-[calc(var(--bits-combobox-anchor-width)-1rem)] select-none overflow-y-auto overflow-x-hidden rounded-lg py-3 data-[side=bottom]:translate-y-1',
+				'bg-background border-background-alt-5 data-[side=bottom]:slide-in-from-top-2 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 z-60 w-[calc(var(--bits-combobox-anchor-width)-1rem)] overflow-x-hidden overflow-y-auto rounded-lg py-3 outline-hidden select-none data-[side=bottom]:translate-y-1',
 				isDesktop ? 'max-h-50' : 'max-h-40'
 			)}
 			side="bottom"
@@ -319,7 +319,7 @@
 		>
 			{#each filteredTags as tag, i (i + tag)}
 				<Combobox.Item
-					class="rounded-button data-highlighted:bg-background-alt-2 outline-hidden flex h-10 w-full select-none items-center py-3 pr-1.5 ps-9 text-sm"
+					class="rounded-button data-highlighted:bg-background-alt-2 flex h-10 w-full items-center py-3 ps-9 pr-1.5 text-sm outline-hidden select-none"
 					value={tag}
 					label={tag}
 				>
@@ -336,7 +336,7 @@
 {#snippet contents()}
 	<main
 		bind:this={tagsEl}
-		class="flex max-h-60 min-h-40 w-full flex-1 shrink-0 flex-wrap place-content-start gap-2.5 overflow-y-auto overflow-x-hidden p-5"
+		class="flex max-h-60 min-h-40 w-full flex-1 shrink-0 flex-wrap place-content-start gap-2.5 overflow-x-hidden overflow-y-auto p-5"
 		data-vaul-no-drag=""
 	>
 		{#if !isArray}
@@ -348,7 +348,7 @@
 				{#each existingTags as tag}
 					<Badge
 						class={cn(
-							'bg-background-alt-3 text-foreground h-6 select-none overflow-hidden p-0 text-sm',
+							'bg-background-alt-3 text-foreground h-6 overflow-hidden p-0 text-sm select-none',
 							toDelete.find((t) => t === tag) && 'text-foreground-alt-3'
 						)}
 						data-tag={tag.tag}

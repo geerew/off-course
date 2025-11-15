@@ -13,7 +13,7 @@
 {#if isMobile}
 	<media-fullscreen-button
 		target="provider"
-		class="data-focus:ring-4 group relative inline-flex cursor-pointer items-center justify-center rounded-md outline-none ring-inset ring-sky-400"
+		class="group relative inline-flex cursor-pointer items-center justify-center rounded-md ring-sky-400 outline-none ring-inset data-focus:ring-4"
 	>
 		<MediaMaximizeIcon
 			class="not-media-fullscreen:block group-hover:stroke-background-primary hidden size-5 stroke-white stroke-2 sm:size-6 md:size-7"
@@ -23,7 +23,7 @@
 	<media-tooltip showDelay={300} class="contents">
 		<media-tooltip-trigger>
 			<media-fullscreen-button
-				class="data-focus:ring-4 group relative inline-flex cursor-pointer items-center justify-center rounded-md outline-none ring-inset ring-sky-400"
+				class="group relative inline-flex cursor-pointer items-center justify-center rounded-md ring-sky-400 outline-none ring-inset data-focus:ring-4"
 			>
 				<MediaMaximizeIcon
 					class="not-media-fullscreen:block  group-hover:stroke-background-primary hidden size-7 stroke-white stroke-2"

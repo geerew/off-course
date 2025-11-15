@@ -379,7 +379,7 @@
 										{#if scans[course.id] !== undefined}
 											<div
 												class={cn(
-													'absolute left-1 top-1/2 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
+													'absolute top-1/2 left-1 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
 													scans[course.id] === 'processing'
 														? 'bg-background-primary'
 														: 'bg-background-alt-4',
@@ -411,7 +411,7 @@
 										{#if scans[course.id] !== undefined}
 											<div
 												class={cn(
-													'absolute left-1 top-1/2 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
+													'absolute top-1/2 left-1 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
 													scans[course.id] === 'processing'
 														? 'bg-background-primary'
 														: 'bg-background-alt-4',
@@ -440,7 +440,7 @@
 											<span>{course.title}</span>
 											{#if course.path}
 												<span
-													class="text-foreground-alt-3 wrap-break-word text-xs"
+													class="text-foreground-alt-3 text-xs wrap-break-word"
 													title={course.path}
 												>
 													{course.path}
@@ -452,7 +452,7 @@
 									<!-- Duration (large screens) -->
 									<Table.Td
 										class={cn(
-											'group-hover:bg-background-alt-1 whitespace-nowrap px-4 text-right',
+											'group-hover:bg-background-alt-1 px-4 text-right whitespace-nowrap',
 											smallTable ? 'hidden' : 'visible'
 										)}
 									>
@@ -522,7 +522,7 @@
 									<!-- Added (large screens) -->
 									<Table.Td
 										class={cn(
-											'group-hover:bg-background-alt-1 whitespace-nowrap px-4',
+											'group-hover:bg-background-alt-1 px-4 whitespace-nowrap',
 											smallTable ? 'hidden' : 'visible'
 										)}
 									>
@@ -532,7 +532,7 @@
 									<!-- Updated (large screens) -->
 									<Table.Td
 										class={cn(
-											'group-hover:bg-background-alt-1 whitespace-nowrap px-4',
+											'group-hover:bg-background-alt-1 px-4 whitespace-nowrap',
 											smallTable ? 'hidden' : 'visible'
 										)}
 									>
@@ -560,7 +560,7 @@
 											inTransitionParams={{ duration: 200 }}
 											outTransition={slide}
 											outTransitionParams={{ duration: 150 }}
-											class="bg-background-alt-2/30 col-span-full justify-start pl-14 pr-4"
+											class="bg-background-alt-2/30 col-span-full justify-start pr-4 pl-14"
 										>
 											<div class="flex flex-col gap-2 py-3 text-sm">
 												{#if course.path}

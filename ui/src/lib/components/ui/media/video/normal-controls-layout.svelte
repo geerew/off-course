@@ -8,7 +8,7 @@
 </script>
 
 <media-controls
-	class="z-2 data-visible:opacity-100 data-visible:ease-in pointer-events-none absolute inset-0 box-border flex h-full w-full flex-col opacity-0 transition-opacity duration-200 ease-out group-data-[pointer=coarse]/player:hidden"
+	class="pointer-events-none absolute inset-0 z-2 box-border flex h-full w-full flex-col opacity-0 transition-opacity duration-200 ease-out group-data-[pointer=coarse]/player:hidden data-visible:opacity-100 data-visible:ease-in"
 >
 	<div class="flex-1"></div>
 
@@ -17,7 +17,7 @@
 	</media-controls-group>
 
 	<media-controls-group
-		class="pointer-events-auto relative flex w-full items-center gap-5 rounded-md px-4 pb-3 pt-1"
+		class="pointer-events-auto relative flex w-full items-center gap-5 rounded-md px-4 pt-1 pb-3"
 	>
 		<Play />
 		<Volume />

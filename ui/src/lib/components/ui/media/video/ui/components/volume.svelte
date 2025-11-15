@@ -24,7 +24,7 @@
 >
 	<!-- Volume/mute -->
 	<media-mute-button
-		class="hover:text-secondary data-focus:ring-4 group relative inline-flex cursor-pointer items-center justify-center rounded-md outline-none ring-inset ring-sky-400"
+		class="hover:text-secondary group relative inline-flex cursor-pointer items-center justify-center rounded-md ring-sky-400 outline-none ring-inset data-focus:ring-4"
 	>
 		<MediaVolumeMuteIcon
 			class="group-hover:fill-background-primary group-hover:stroke-background-primary hidden size-7 fill-white stroke-white stroke-2 group-data-[state=muted]:block"
@@ -39,28 +39,28 @@
 
 	<media-volume-slider
 		class={cn(
-			'group relative inline-flex w-0 cursor-pointer touch-none select-none items-center outline-none transition-all duration-200',
+			'group relative inline-flex w-0 cursor-pointer touch-none items-center transition-all duration-200 outline-none select-none',
 			show && 'ml-3.5 w-20'
 		)}
 		orientation="horizontal"
 	>
 		<!-- Track -->
 		<div
-			class="group-data-focus:ring-[3px] relative z-0 h-[5px] w-full rounded-sm bg-white/30 ring-sky-400"
+			class="relative z-0 h-[5px] w-full rounded-sm bg-white/30 ring-sky-400 group-data-focus:ring-[3px]"
 		>
 			<!-- Fill -->
 			<div
-				class="bg-background-primary w-(--slider-fill) absolute h-full rounded-sm will-change-[width]"
+				class="bg-background-primary absolute h-full w-(--slider-fill) rounded-sm will-change-[width]"
 			></div>
 		</div>
 
 		<!-- Thumb -->
 		<div
-			class="left-(--slider-fill) group-data-active:opacity-100 group-data-dragging:ring-4 absolute top-1/2 z-20 h-[15px] w-[15px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#cacaca] bg-white opacity-0 ring-white/40 transition-opacity will-change-[left]"
+			class="absolute top-1/2 left-(--slider-fill) z-20 h-[15px] w-[15px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#cacaca] bg-white opacity-0 ring-white/40 transition-opacity will-change-[left] group-data-active:opacity-100 group-data-dragging:ring-4"
 		></div>
 
 		<media-slider-preview
-			class="data-visible:opacity-100 pointer-events-none flex flex-col items-center opacity-0 transition-opacity duration-200"
+			class="pointer-events-none flex flex-col items-center opacity-0 transition-opacity duration-200 data-visible:opacity-100"
 			noClamp={false}
 		>
 			<media-slider-value class="rounded-sm bg-white px-2 py-px text-[13px] font-medium text-black"
