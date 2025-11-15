@@ -1,7 +1,6 @@
 <!-- TODO have a columns dropdown to hide show columns -->
 <!-- TODO store selection state in localstorage -->
 <script lang="ts">
-	import { subscribeToScans, type ScanUpdateEvent } from '$lib/api/scan-api';
 	import { Pagination } from '$lib/components';
 	import { RightChevronIcon, WarningIcon } from '$lib/components/icons';
 	import RowActionMenu from '$lib/components/pages/admin/scans/row-action-menu.svelte';
@@ -10,6 +9,7 @@
 	import { Badge, Button, Checkbox } from '$lib/components/ui';
 	import * as Table from '$lib/components/ui/table';
 	import type { ScanModel, ScansModel } from '$lib/models/scan-model';
+	import { scanStore } from '$lib/scanStore.svelte';
 	import { cn, remCalc } from '$lib/utils';
 	import { ElementSize } from 'runed';
 	import { toast } from 'svelte-sonner';
@@ -38,10 +38,10 @@
 	const mainSize = new ElementSize(() => mainEl);
 	let smallTable = $state(false);
 
-	let allScans: ScansModel = $state([]);
+	// Use scanStore for all scans
+	let allScans = $derived(scanStore.allScans);
 	let isLoading = $state(true);
 	let loadError = $state<Error | null>(null);
-	let sseClose: (() => void) | null = null;
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -68,8 +68,7 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	async function onRowDelete(numDeleted: number) {
-		// Scans will be updated via SSE, no need to refetch
+	async function onRowDelete() {
 		updatePagination();
 	}
 
@@ -121,51 +120,24 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	// Subscribe to scan updates via SSE
+	// Register with scanStore (ensures SSE connection is active)
 	$effect(() => {
-		isLoading = true;
-		loadError = null;
+		return scanStore.register();
+	});
 
-		sseClose = subscribeToScans({
-			onUpdate: (event: ScanUpdateEvent) => {
-				if (event.type === 'all_scans') {
-					// Initial load - populate all scans
-					const initialScans = event.data as ScanModel[];
-					allScans = initialScans;
-					updatePagination();
-					isLoading = false;
-				} else if (event.type === 'scan_update') {
-					const scan = event.data as ScanModel;
-					// Find and update existing scan, or add new one
-					const index = allScans.findIndex((s) => s.id === scan.id);
-					if (index !== -1) {
-						// Update existing scan
-						allScans[index] = scan;
-					} else {
-						// Add new scan
-						allScans = [...allScans, scan];
-					}
-					updatePagination();
-				} else if (event.type === 'scan_deleted') {
-					const deletedId = (event.data as { id: string }).id;
-					// Remove scan from array
-					allScans = allScans.filter((s) => s.id !== deletedId);
-					updatePagination();
-				}
-			},
-			onError: (error: Error) => {
-				loadError = error;
-				isLoading = false;
-			}
-		});
+	// Watch scanStore.allScans and update pagination
+	$effect(() => {
+		// Access allScans to track changes
+		const currentScans = allScans;
 
-		// Cleanup on unmount
-		return () => {
-			if (sseClose) {
-				sseClose();
-				sseClose = null;
-			}
-		};
+		// Update pagination when scans change
+		updatePagination();
+
+		// Set loading to false once we have data (initial load or updates)
+		if (isLoading) {
+			isLoading = false;
+			loadError = null;
+		}
 	});
 </script>
 
@@ -192,9 +164,8 @@
 					<TableActionMenu
 						bind:scans={selectedScans}
 						onDelete={() => {
-							const numDeleted = Object.keys(selectedScans).length;
 							selectedScans = {};
-							onRowDelete(numDeleted);
+							onRowDelete();
 						}}
 					/>
 				</div>
@@ -346,7 +317,7 @@
 										<RowActionMenu
 											{scan}
 											onDelete={async () => {
-												await onRowDelete(1);
+												await onRowDelete();
 												if (selectedScans[scan.id] !== undefined) {
 													delete selectedScans[scan.id];
 												}

@@ -1,7 +1,6 @@
 <!-- TODO have a columns dropdown to hide show columns -->
 <script lang="ts">
 	import { GetCourses, GetCourse } from '$lib/api/course-api';
-	import { subscribeToScans, type ScanUpdateEvent } from '$lib/api/scan-api';
 	import { FilterBar, NiceDate, Pagination, SortMenu } from '$lib/components';
 	import { AddCoursesDialog } from '$lib/components/dialogs';
 	import { RightChevronIcon, TickIcon, WarningIcon, XIcon } from '$lib/components/icons';
@@ -11,7 +10,7 @@
 	import { Button, Checkbox } from '$lib/components/ui';
 	import * as Table from '$lib/components/ui/table';
 	import type { CourseModel, CoursesModel } from '$lib/models/course-model';
-	import type { ScanModel, ScanStatus } from '$lib/models/scan-model';
+	import { scanStore } from '$lib/scanStore.svelte';
 	import type { SortColumns, SortDirection } from '$lib/types/sort';
 	import { cn, remCalc } from '$lib/utils';
 	import { ElementSize, PersistedState } from 'runed';
@@ -72,10 +71,11 @@
 
 	let loadPromise = $state(fetchCourses());
 
-	// Scan state - map courseId to scan status
-	let scans = $state<Record<string, ScanStatus>>({});
-	let scanIdToCourseId = $state<Map<string, string>>(new Map());
-	let sseClose: (() => void) | null = null;
+	// Use scanStore for scan status
+	let scans = $derived(scanStore.scans);
+
+	// Track which courses have active scans (as sorted array for comparison)
+	let previousCourseIdsStr = $state('');
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -161,57 +161,45 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	// Subscribe to scan updates via SSE
+	// Register with scanStore (ensures SSE connection is active)
 	$effect(() => {
-		sseClose = subscribeToScans({
-			onUpdate: (event: ScanUpdateEvent) => {
-				if (event.type === 'all_scans') {
-					// Initial load - update all scans
-					const initialScans = event.data as ScanModel[];
-					for (const scan of initialScans) {
-						scans[scan.courseId] = scan.status;
-						scanIdToCourseId.set(scan.id, scan.courseId);
-					}
-				} else if (event.type === 'scan_update') {
-					const scan = event.data as ScanModel;
-					scans[scan.courseId] = scan.status;
-					scanIdToCourseId.set(scan.id, scan.courseId);
-				} else if (event.type === 'scan_deleted') {
-					const deletedId = (event.data as { id: string }).id;
-					const courseId = scanIdToCourseId.get(deletedId);
-					if (courseId) {
-						// Remove scan status
-						delete scans[courseId];
-						scanIdToCourseId.delete(deletedId);
+		return scanStore.register();
+	});
 
-						// Refresh the course if it's in the current list
-						const courseIndex = courses.findIndex((c) => c.id === courseId);
-						if (courseIndex !== -1) {
-							GetCourse(courseId)
-								.then((updatedCourse) => {
-									courses[courseIndex] = updatedCourse;
-								})
-								.catch(() => {
-									// Silently fail - course will be refreshed on next page load
-								});
-						}
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Update courses when scans finish
+	$effect(() => {
+		// Watch scanStore.scans to detect when scans finish
+		const currentCourseIdsArray = Object.keys(scans).sort();
+		const currentCourseIdsStr = currentCourseIdsArray.join(',');
+		const previousCourseIdsArray = previousCourseIdsStr ? previousCourseIdsStr.split(',') : [];
+
+		// Only process if the set of course IDs actually changed
+		if (currentCourseIdsStr !== previousCourseIdsStr) {
+			const currentCourseIds = new Set(currentCourseIdsArray);
+			const previousCourseIds = new Set(previousCourseIdsArray);
+
+			// Find courses that had scans but no longer do (scan finished)
+			for (const courseId of previousCourseIds) {
+				if (!currentCourseIds.has(courseId)) {
+					// Scan finished for this course - refresh it
+					const courseIndex = courses.findIndex((c) => c.id === courseId);
+					if (courseIndex !== -1) {
+						GetCourse(courseId)
+							.then((updatedCourse) => {
+								courses[courseIndex] = updatedCourse;
+							})
+							.catch(() => {
+								// Silently fail - course will be refreshed on next page load
+							});
 					}
 				}
-			},
-			onError: () => {
-				// On error, clear scans - will be repopulated on reconnect
-				scans = {};
-				scanIdToCourseId.clear();
 			}
-		});
 
-		// Cleanup on unmount
-		return () => {
-			if (sseClose) {
-				sseClose();
-				sseClose = null;
-			}
-		};
+			// Update tracked courses string
+			previousCourseIdsStr = currentCourseIdsStr;
+		}
 	});
 </script>
 

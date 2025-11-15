@@ -27,8 +27,6 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 	// Set up intersection observer for infinite scrolling
 	function setupIntersectionObserver(node: HTMLElement) {
 		const observer = new IntersectionObserver(

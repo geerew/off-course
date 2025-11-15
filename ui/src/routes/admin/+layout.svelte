@@ -1,7 +1,5 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { subscribeToScans, type ScanUpdateEvent } from '$lib/api/scan-api';
-	import type { ScanModel } from '$lib/models/scan-model';
 	import {
 		BurgerMenuIcon,
 		CourseIcon,
@@ -11,6 +9,7 @@
 		UserIcon
 	} from '$lib/components/icons';
 	import { Badge, Button } from '$lib/components/ui';
+	import { scanStore } from '$lib/scanStore.svelte';
 	import { cn, remCalc } from '$lib/utils';
 	import { Dialog } from 'bits-ui';
 	import { innerWidth } from 'svelte/reactivity/window';
@@ -22,12 +21,11 @@
 
 	let menuPopupMode = $state(false);
 	let dialogOpen = $state(false);
-	let scanCount = $state(0);
 
 	let windowWidth = $derived(remCalc(innerWidth.current ?? 0));
 
-	let sseClose: (() => void) | null = null;
-	let seenScanIds = new Set<string>();
+	// Use scanStore for scan count
+	let scanCount = $derived(scanStore.scanCount);
 
 	const menu = [
 		{
@@ -64,48 +62,9 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+	// Register with scanStore
 	$effect(() => {
-		// Subscribe to scan updates
-		sseClose = subscribeToScans({
-			onUpdate: (event: ScanUpdateEvent) => {
-				if (event.type === 'all_scans') {
-					// Initial load - set count and populate seen scan IDs
-					const scans = event.data as ScanModel[];
-					scanCount = scans.length;
-					seenScanIds = new Set(scans.map((scan) => scan.id));
-				} else if (event.type === 'scan_update') {
-					const scan = event.data as ScanModel;
-					// Only increment if this is a new scan we haven't seen before
-					if (!seenScanIds.has(scan.id)) {
-						seenScanIds.add(scan.id);
-						scanCount++;
-					}
-					// If we've already seen it, it's just an update - no count change needed
-				} else if (event.type === 'scan_deleted') {
-					const deletedId = (event.data as { id: string }).id;
-					// Only decrement if we were tracking this scan
-					if (seenScanIds.has(deletedId)) {
-						seenScanIds.delete(deletedId);
-						scanCount = Math.max(0, scanCount - 1);
-					}
-				}
-			},
-			onError: () => {
-				// On error, reset count - will be repopulated on reconnect
-				scanCount = 0;
-				seenScanIds.clear();
-			}
-		});
-
-		// Cleanup on unmount
-		return () => {
-			if (sseClose) {
-				sseClose();
-				sseClose = null;
-			}
-		};
+		return scanStore.register();
 	});
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
