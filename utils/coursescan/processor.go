@@ -318,6 +318,21 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 
 	// Final summary log with timing and operation counts
 	duration := time.Since(startTime)
+
+	// Ensure minimum scan duration of 2 seconds to allow frontend monitoring time to see and update
+	const minScanDuration = 2 * time.Second
+	if duration < minScanDuration {
+		remaining := minScanDuration - duration
+		select {
+		case <-ctx.Done():
+			// If context is cancelled during the delay, return immediately
+			return ctx.Err()
+		case <-time.After(remaining):
+			// Wait for remaining time
+		}
+		duration = time.Since(startTime)
+	}
+
 	scanState.UpdateMessage("Scan complete")
 	s.logger.Info().
 		Str("course_id", courseID).
