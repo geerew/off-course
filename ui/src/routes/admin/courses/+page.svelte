@@ -7,13 +7,14 @@
 	import RowActionMenu from '$lib/components/pages/admin/courses/row-action-menu.svelte';
 	import TableActionMenu from '$lib/components/pages/admin/courses/table-action-menu.svelte';
 	import Spinner from '$lib/components/spinner.svelte';
-	import { Button, Checkbox } from '$lib/components/ui';
+	import { Badge, Button, Checkbox } from '$lib/components/ui';
 	import * as Table from '$lib/components/ui/table';
 	import type { CourseModel, CoursesModel } from '$lib/models/course-model';
 	import { scanStore } from '$lib/scanStore.svelte';
 	import type { SortColumns, SortDirection } from '$lib/types/sort';
 	import { cn, remCalc } from '$lib/utils';
 	import { ElementSize, PersistedState } from 'runed';
+	import prettyMs from 'pretty-ms';
 	import { tick } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { slide } from 'svelte/transition';
@@ -38,6 +39,7 @@
 		{ label: 'Title', column: 'courses.title', asc: 'Ascending', desc: 'Descending' },
 		{ label: 'Available', column: 'courses.available', asc: 'Ascending', desc: 'Descending' },
 		{ label: 'Card', column: 'courses.card_path', asc: 'Ascending', desc: 'Descending' },
+		{ label: 'Duration', column: 'courses.duration', asc: 'Shortest', desc: 'Longest' },
 		{ label: 'Added', column: 'courses.created_at', asc: 'Oldest', desc: 'Newest' },
 		{ label: 'Updated', column: 'courses.updated_at', asc: 'Oldest', desc: 'Newest' }
 	] as const satisfies SortColumns;
@@ -76,6 +78,14 @@
 
 	// Track which courses have active scans (as sorted array for comparison)
 	let previousCourseIdsStr = $state('');
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Format duration in seconds to readable format
+	function formatDuration(seconds: number): string {
+		if (!seconds || seconds === 0) return '-';
+		return prettyMs(seconds * 1000, { hideSeconds: true });
+	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -277,7 +287,7 @@
 					<Table.Root
 						class={smallTable
 							? 'grid-cols-[2.5rem_2.5rem_1fr_3.5rem]'
-							: 'grid-cols-[3.5rem_1fr_auto_auto_auto_auto_3.5rem]'}
+							: 'grid-cols-[3.5rem_1fr_auto_auto_auto_auto_auto_auto_3.5rem]'}
 					>
 						<Table.Thead>
 							<Table.Tr class="text-xs font-semibold uppercase">
@@ -297,11 +307,17 @@
 								<!-- Course -->
 								<Table.Th class="justify-start">Course</Table.Th>
 
+								<!-- Duration (large screens) -->
+								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Duration</Table.Th>
+
 								<!-- Available (large screens) -->
 								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Available</Table.Th>
 
 								<!-- Card (large screens) -->
 								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Card</Table.Th>
+
+								<!-- Initial Scan (large screens) -->
+								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Initial Scan</Table.Th>
 
 								<!-- Added (large screens) -->
 								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Added</Table.Th>
@@ -328,7 +344,31 @@
 							{/if}
 
 							{#each courses as course (course.id)}
-								<Table.Tr class="group">
+								<Table.Tr
+									class="group"
+									onclick={(e) => {
+										if (!smallTable) return;
+										const target = e.target as HTMLElement | null;
+										if (!target) return;
+										if (
+											target instanceof HTMLButtonElement ||
+											target instanceof HTMLInputElement ||
+											target.closest('button') ||
+											target.closest('input')
+										) {
+											return;
+										}
+										toggleRowExpansion(course.id);
+									}}
+									role={smallTable ? 'button' : undefined}
+									tabindex={smallTable ? 0 : undefined}
+									onkeydown={(e) => {
+										if (smallTable && (e.key === 'Enter' || e.key === ' ')) {
+											e.preventDefault();
+											toggleRowExpansion(course.id);
+										}
+									}}
+								>
 									<!-- Chevron (small screens) -->
 									<Table.Td
 										class={cn(
@@ -396,7 +436,27 @@
 
 									<!-- Course -->
 									<Table.Td class="group-hover:bg-background-alt-1 relative justify-start px-4">
-										<span>{course.title}</span>
+										<div class="flex w-full flex-col gap-2">
+											<span>{course.title}</span>
+											{#if course.path}
+												<span
+													class="text-foreground-alt-3 wrap-break-word text-xs"
+													title={course.path}
+												>
+													{course.path}
+												</span>
+											{/if}
+										</div>
+									</Table.Td>
+
+									<!-- Duration (large screens) -->
+									<Table.Td
+										class={cn(
+											'group-hover:bg-background-alt-1 whitespace-nowrap px-4 text-right',
+											smallTable ? 'hidden' : 'visible'
+										)}
+									>
+										<span class="text-foreground-alt-1">{formatDuration(course.duration)}</span>
 									</Table.Td>
 
 									<!-- Available (large screens) -->
@@ -434,6 +494,26 @@
 											{:else}
 												<div class="bg-background-error size-5 place-self-center rounded-md p-1">
 													<XIcon class="text-foreground size-3 stroke-2" />
+												</div>
+											{/if}
+										</div>
+									</Table.Td>
+
+									<!-- Initial Scan (large screens) -->
+									<Table.Td
+										class={cn(
+											'group-hover:bg-background-alt-1 px-4',
+											smallTable ? 'hidden' : 'visible'
+										)}
+									>
+										<div class="flex w-full place-content-center">
+											{#if course.initialScan === false}
+												<div class="bg-background-error size-5 place-self-center rounded-md p-1">
+													<XIcon class="text-foreground size-3 stroke-2" />
+												</div>
+											{:else}
+												<div class="bg-background-success size-5 place-self-center rounded-md p-1">
+													<TickIcon class="text-foreground size-3 stroke-2" />
 												</div>
 											{/if}
 										</div>
@@ -483,23 +563,65 @@
 											class="bg-background-alt-2/30 col-span-full justify-start pl-14 pr-4"
 										>
 											<div class="flex flex-col gap-2 py-3 text-sm">
+												{#if course.path}
+													<div class="grid grid-cols-[8rem_1fr]">
+														<span class="text-foreground-alt-3 font-medium">PATH</span>
+														<span class="text-foreground-alt-1 break-all">
+															{course.path}
+														</span>
+													</div>
+												{/if}
+
 												<div class="grid grid-cols-[8rem_1fr]">
-													<span class="text-foreground-alt-3 font-medium">STATUS</span>
-													<span
-														class={course.available
-															? 'text-background-success'
-															: 'text-foreground-error'}
-														>{course.available ? 'available' : 'unavailable'}</span
-													>
+													<span class="text-foreground-alt-3 font-medium">DURATION</span>
+													<span class="text-foreground-alt-1">
+														{formatDuration(course.duration)}
+													</span>
 												</div>
 
 												<div class="grid grid-cols-[8rem_1fr]">
-													<span class="text-foreground-alt-3 font-medium">HAS CARD</span>
-													<span
-														class={course.hasCard
-															? 'text-background-success'
-															: 'text-foreground-error'}>{course.hasCard ? 'yes' : 'no'}</span
-													>
+													<span class="text-foreground-alt-3 font-medium">AVAILABLE</span>
+													<span class="w-fit">
+														{#if course.available}
+															<Badge class="bg-background-success text-foreground text-xs"
+																>Yes</Badge
+															>
+														{:else}
+															<Badge class="bg-background-error text-foreground-alt-1 text-xs"
+																>No</Badge
+															>
+														{/if}
+													</span>
+												</div>
+
+												<div class="grid grid-cols-[8rem_1fr]">
+													<span class="text-foreground-alt-3 font-medium">CARD</span>
+													<span class="w-fit">
+														{#if course.hasCard}
+															<Badge class="bg-background-success text-foreground text-xs"
+																>Yes</Badge
+															>
+														{:else}
+															<Badge class="bg-background-error text-foreground-alt-1 text-xs"
+																>No</Badge
+															>
+														{/if}
+													</span>
+												</div>
+
+												<div class="grid grid-cols-[8rem_1fr]">
+													<span class="text-foreground-alt-3 font-medium">INITIAL SCAN</span>
+													<span class="w-fit">
+														{#if course.initialScan === false}
+															<Badge class="bg-background-error text-foreground-alt-1 text-xs"
+																>No</Badge
+															>
+														{:else}
+															<Badge class="bg-background-success text-foreground text-xs"
+																>Yes</Badge
+															>
+														{/if}
+													</span>
 												</div>
 
 												<div class="grid grid-cols-[8rem_1fr]">
