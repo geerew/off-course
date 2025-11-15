@@ -456,7 +456,7 @@
 						</div>
 
 						<!-- Card -->
-						<div class="h-50 relative order-1 flex w-full rounded-lg lg:order-2">
+						<div class="h-50 relative order-1 flex w-full justify-center rounded-lg lg:order-2">
 							{#if courseImageLoaded && courseImageUrl}
 								<div class="z-1 flex h-full w-full items-center justify-center rounded-lg">
 									<img
@@ -467,7 +467,7 @@
 								</div>
 							{:else}
 								<div
-									class="bg-background-alt-2 z-1 flex h-full w-full items-center justify-center rounded-lg"
+									class="bg-background-alt-2 z-1 flex aspect-video h-full max-w-full items-center justify-center rounded-lg lg:w-full"
 								>
 									<LogoIcon class="fill-background-alt-3 w-16 md:w-20" />
 								</div>

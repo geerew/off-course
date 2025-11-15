@@ -16,8 +16,6 @@
 	import { slide } from 'svelte/transition';
 	import theme from 'tailwindcss/defaultTheme';
 
-	let scans: ScansModel = $state([]);
-
 	let filterValue = $state('');
 	let filterAppliedValue = $state('');
 	let filterOptions = {};
@@ -29,10 +27,6 @@
 
 	let paginationPage = $state(1);
 	let paginationPerPage = $state(10);
-	let paginationTotal = $state(0);
-
-	let isIndeterminate = $derived(selectedScansCount > 0 && selectedScansCount < paginationTotal);
-	let isChecked = $derived(selectedScansCount !== 0 && selectedScansCount === paginationTotal);
 
 	let mainEl = $state() as HTMLElement;
 	const mainSize = new ElementSize(() => mainEl);
@@ -43,12 +37,21 @@
 	let isLoading = $state(true);
 	let loadError = $state<Error | null>(null);
 
+	// Derived values for pagination
+	let paginationTotal = $derived(allScans.length);
+	let scans = $derived.by(() => {
+		const start = (paginationPage - 1) * paginationPerPage;
+		const end = start + paginationPerPage;
+		return allScans.slice(start, end);
+	});
+
+	let isIndeterminate = $derived(selectedScansCount > 0 && selectedScansCount < paginationTotal);
+	let isChecked = $derived(selectedScansCount !== 0 && selectedScansCount === paginationTotal);
+
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	// Update pagination and current page based on total scans
-	function updatePagination() {
-		paginationTotal = allScans.length;
-
+	// Update pagination page when total changes
+	function updatePaginationPage() {
 		// Calculate total pages
 		const totalPages = Math.max(1, Math.ceil(paginationTotal / paginationPerPage));
 
@@ -58,18 +61,37 @@
 		} else if (paginationTotal === 0) {
 			paginationPage = 1;
 		}
-
-		// Apply pagination to current page
-		const start = (paginationPage - 1) * paginationPerPage;
-		const end = start + paginationPerPage;
-		scans = allScans.slice(start, end);
-		expandedScans = {};
 	}
+
+	// Track previous scan IDs to only preserve expanded state when the set of scans changes
+	let previousScanIds = $state<string>('');
+
+	// Preserve expanded state when the set of scans on the page changes
+	$effect(() => {
+		// Access scans to track changes
+		const currentScans = scans;
+		const currentScanIds = currentScans.map((s) => s.id).join(',');
+
+		// Only preserve expanded state when the set of scan IDs actually changes
+		if (currentScanIds !== previousScanIds) {
+			previousScanIds = currentScanIds;
+
+			// Preserve expanded state for scans that are still on the current page
+			const currentExpanded = { ...expandedScans };
+			const preservedExpanded: Record<string, boolean> = {};
+			for (const scan of currentScans) {
+				if (currentExpanded[scan.id]) {
+					preservedExpanded[scan.id] = true;
+				}
+			}
+			expandedScans = preservedExpanded;
+		}
+	});
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function onRowDelete() {
-		updatePagination();
+		updatePaginationPage();
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -125,13 +147,20 @@
 		return scanStore.register();
 	});
 
-	// Watch scanStore.allScans and update pagination
+	// Track previous total to only update pagination when total actually changes
+	let previousTotal = $state(0);
+
+	// Watch scanStore.allScans and update pagination page when needed
 	$effect(() => {
 		// Access allScans to track changes
 		const currentScans = allScans;
+		const currentTotal = currentScans.length;
 
-		// Update pagination when scans change
-		updatePagination();
+		// Only update pagination page when total actually changes
+		if (currentTotal !== previousTotal) {
+			previousTotal = currentTotal;
+			updatePaginationPage();
+		}
 
 		// Set loading to false once we have data (initial load or updates)
 		if (isLoading) {
@@ -229,7 +258,31 @@
 							{/if}
 
 							{#each scans as scan (scan.id)}
-								<Table.Tr class="group">
+								<Table.Tr
+									class="group"
+									onclick={(e) => {
+										if (!smallTable) return;
+										const target = e.target as HTMLElement | null;
+										if (!target) return;
+										if (
+											target instanceof HTMLButtonElement ||
+											target instanceof HTMLInputElement ||
+											target.closest('button') ||
+											target.closest('input')
+										) {
+											return;
+										}
+										toggleRowExpansion(scan.id);
+									}}
+									role={smallTable ? 'button' : undefined}
+									tabindex={smallTable ? 0 : undefined}
+									onkeydown={(e) => {
+										if (smallTable && (e.key === 'Enter' || e.key === ' ')) {
+											e.preventDefault();
+											toggleRowExpansion(scan.id);
+										}
+									}}
+								>
 									<!-- Chevron (small screens) -->
 									<Table.Td
 										class={cn(
@@ -385,10 +438,10 @@
 							bind:perPage={paginationPerPage}
 							bind:page={paginationPage}
 							onPageChange={() => {
-								updatePagination();
+								updatePaginationPage();
 							}}
 							onPerPageChange={() => {
-								updatePagination();
+								updatePaginationPage();
 							}}
 						/>
 					{/if}
