@@ -16,7 +16,7 @@
 
 	let { successFn }: Props = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let open = $state(false);
 
@@ -45,7 +45,7 @@
 
 	let isPosting = $state(false);
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	$effect(() => {
 		if (open) {
@@ -58,7 +58,7 @@
 		}
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Focus on the username input when the page loads
 	$effect(() => {
@@ -67,7 +67,7 @@
 		}
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function add(event: Event) {
 		event.preventDefault();
@@ -118,7 +118,7 @@
 
 {#snippet contents()}
 	<main
-		class="flex min-h-[5rem] w-full flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto py-5"
+		class="flex min-h-20 w-full flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto py-5"
 		data-vaul-no-drag=""
 	>
 		<!-- Username -->

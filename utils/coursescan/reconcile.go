@@ -281,25 +281,21 @@ func detectSwaps(
 			continue
 		}
 
-		// Check if this asset's path exists in scanned with different content
 		s1 := scannedPathMap[e1.Path]
 		if s1 == nil || s1.Hash == e1.Hash {
 			continue
 		}
 
-		// Find the asset that has the hash of what's now at e1's path
 		e2 := hashMap[s1.Hash]
 		if e2 == nil || e2.ID == e1.ID {
 			continue
 		}
 
-		// Check if e2's path now has e1's content (completing the swap)
 		s2 := scannedPathMap[e2.Path]
 		if s2 == nil || s2.Hash != e1.Hash {
 			continue
 		}
 
-		// Found a swap!
 		swapOps = append(swapOps, SwapAssetOp{
 			ExistingA: e1,
 			ExistingB: e2,
@@ -387,12 +383,8 @@ func reconcileAttachments(scanned []*models.Attachment, existing []*models.Attac
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// NoLessonOp represents the case where the lesson exists and has not changed. This
-// op can be used in the event that there are new assets/attachments being added to the lesson
-// and need to be given the lesson ID
+// NoLessonOp represents the case where the lesson exists and has not changed
 type NoLessonOp struct {
-	// The new lesson is the assets found on disk. This is can be used to ensure all
-	// assets and attachments have the correct lesson ID
 	New *models.Lesson
 
 	// The existing lesson that is already in the database

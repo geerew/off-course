@@ -23,7 +23,7 @@
 
 		<p class="text-foreground-alt-1 text-center text-lg">{message}</p>
 
-		<Separator.Root class="bg-background-alt-5 h-px w-[15rem] shrink-0" />
+		<Separator.Root class="bg-background-alt-5 h-px w-60 shrink-0" />
 
 		<div class="text-foreground-alt-3 flex justify-center gap-2.5">Please try again</div>
 	</div>

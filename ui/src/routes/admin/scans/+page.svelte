@@ -1,25 +1,20 @@
 <!-- TODO have a columns dropdown to hide show columns -->
 <!-- TODO store selection state in localstorage -->
 <script lang="ts">
-	import { GetScans } from '$lib/api/scan-api';
-	import { NiceDate, Pagination, SortMenu } from '$lib/components';
+	import { Pagination } from '$lib/components';
 	import { RightChevronIcon, WarningIcon } from '$lib/components/icons';
 	import RowActionMenu from '$lib/components/pages/admin/scans/row-action-menu.svelte';
 	import TableActionMenu from '$lib/components/pages/admin/scans/table-action-menu.svelte';
 	import Spinner from '$lib/components/spinner.svelte';
-	import { Button, Checkbox } from '$lib/components/ui';
+	import { Badge, Button, Checkbox } from '$lib/components/ui';
 	import * as Table from '$lib/components/ui/table';
 	import type { ScanModel, ScansModel } from '$lib/models/scan-model';
-	import { scanMonitor } from '$lib/scans.svelte';
-	import type { SortColumns, SortDirection } from '$lib/types/sort';
+	import { scanStore } from '$lib/scanStore.svelte';
 	import { cn, remCalc } from '$lib/utils';
-	import { ElementSize, PersistedState } from 'runed';
-	import { tick } from 'svelte';
+	import { ElementSize } from 'runed';
 	import { toast } from 'svelte-sonner';
 	import { slide } from 'svelte/transition';
 	import theme from 'tailwindcss/defaultTheme';
-
-	let scans: ScansModel = $state([]);
 
 	let filterValue = $state('');
 	let filterAppliedValue = $state('');
@@ -30,81 +25,76 @@
 	let selectedScans: Record<string, ScanModel> = $state({});
 	let selectedScansCount = $derived(Object.keys(selectedScans).length);
 
-	let sortColumns = [
-		{ label: 'Course Path', column: 'courses.path', asc: 'Ascending', desc: 'Descending' },
-		{ label: 'Status', column: 'scans.status', asc: 'Ascending', desc: 'Descending' },
-		{ label: 'Added', column: 'scans.created_at', asc: 'Oldest', desc: 'Newest' },
-		{ label: 'Updated', column: 'scans.updated_at', asc: 'Oldest', desc: 'Newest' }
-	] as const satisfies SortColumns;
-
-	type PersistedState = {
-		sort: {
-			column: (typeof sortColumns)[number]['column'];
-			direction: SortDirection;
-		};
-	};
-
-	const persistedState = new PersistedState<PersistedState>('admin_scans', {
-		sort: { column: 'scans.created_at', direction: 'desc' }
-	});
-
-	let selectedSortColumn = $state(persistedState.current.sort.column);
-	let selectedSortDirection = $state(persistedState.current.sort.direction);
-
 	let paginationPage = $state(1);
 	let paginationPerPage = $state(10);
-	let paginationTotal = $state(0);
-
-	let isIndeterminate = $derived(selectedScansCount > 0 && selectedScansCount < paginationTotal);
-	let isChecked = $derived(selectedScansCount !== 0 && selectedScansCount === paginationTotal);
 
 	let mainEl = $state() as HTMLElement;
 	const mainSize = new ElementSize(() => mainEl);
 	let smallTable = $state(false);
 
-	let loadPromise = $state(fetchScans());
+	// Use scanStore for all scans
+	let allScans = $derived(scanStore.allScans);
+	let isLoading = $state(true);
+	let loadError = $state<Error | null>(null);
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// Derived values for pagination
+	let paginationTotal = $derived(allScans.length);
+	let scans = $derived.by(() => {
+		const start = (paginationPage - 1) * paginationPerPage;
+		const end = start + paginationPerPage;
+		return allScans.slice(start, end);
+	});
 
-	// Fetch scans
-	async function fetchScans(): Promise<void> {
-		try {
-			scanMonitor.clearAll();
+	let isIndeterminate = $derived(selectedScansCount > 0 && selectedScansCount < paginationTotal);
+	let isChecked = $derived(selectedScansCount !== 0 && selectedScansCount === paginationTotal);
 
-			const sort = `sort:"${selectedSortColumn} ${selectedSortDirection}"`;
-			const q = filterValue ? `${filterValue} ${sort}` : sort;
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-			const data = await GetScans({
-				q,
-				page: paginationPage,
-				perPage: paginationPerPage
-			});
-			paginationTotal = data.totalItems;
-			scans = data.items;
-			expandedScans = {};
+	// Update pagination page when total changes
+	function updatePaginationPage() {
+		// Calculate total pages
+		const totalPages = Math.max(1, Math.ceil(paginationTotal / paginationPerPage));
 
-			scanMonitor.trackScansArray(scans);
-		} catch (error) {
-			throw error;
-		}
-	}
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	async function onRowDelete(numDeleted: number) {
-		const remainingTotal = paginationTotal - numDeleted;
-		const totalPages = Math.max(1, Math.ceil(remainingTotal / paginationPerPage));
-
+		// If current page is beyond available pages, move back
 		if (paginationPage > totalPages && totalPages > 0) {
 			paginationPage = totalPages;
-		} else if (remainingTotal === 0) {
+		} else if (paginationTotal === 0) {
 			paginationPage = 1;
 		}
-
-		loadPromise = fetchScans();
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// Track previous scan IDs to only preserve expanded state when the set of scans changes
+	let previousScanIds = $state<string>('');
+
+	// Preserve expanded state when the set of scans on the page changes
+	$effect(() => {
+		// Access scans to track changes
+		const currentScans = scans;
+		const currentScanIds = currentScans.map((s) => s.id).join(',');
+
+		// Only preserve expanded state when the set of scan IDs actually changes
+		if (currentScanIds !== previousScanIds) {
+			previousScanIds = currentScanIds;
+
+			// Preserve expanded state for scans that are still on the current page
+			const currentExpanded = { ...expandedScans };
+			const preservedExpanded: Record<string, boolean> = {};
+			for (const scan of currentScans) {
+				if (currentExpanded[scan.id]) {
+					preservedExpanded[scan.id] = true;
+				}
+			}
+			expandedScans = preservedExpanded;
+		}
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	async function onRowDelete() {
+		updatePaginationPage();
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	function onCheckboxClicked(e: MouseEvent) {
 		e.preventDefault();
@@ -126,13 +116,13 @@
 		toastCount();
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	function toggleRowExpansion(userId: string) {
 		expandedScans[userId] = !expandedScans[userId];
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	function toastCount() {
 		if (scans.length === 0) return;
@@ -144,27 +134,38 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Flip between table and card mode based on screen size
 	$effect(() => {
 		smallTable = remCalc(mainSize.width) <= +theme.columns['4xl'].replace('rem', '') ? true : false;
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	// Stop the scan monitor when the component is destroyed
+	// Register with scanStore (ensures SSE connection is active)
 	$effect(() => {
-		return () => scanMonitor.clearAll();
+		return scanStore.register();
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// Track previous total to only update pagination when total actually changes
+	let previousTotal = $state(0);
 
-	// Update the page when the scans array is empty and the current page is greater than 1.
-	// This is to prevent the user from being stuck on an empty page
+	// Watch scanStore.allScans and update pagination page when needed
 	$effect(() => {
-		if (scans.length === 0 && paginationPage > 1) {
-			paginationPage -= 1;
-			loadPromise = fetchScans();
+		// Access allScans to track changes
+		const currentScans = allScans;
+		const currentTotal = currentScans.length;
+
+		// Only update pagination page when total actually changes
+		if (currentTotal !== previousTotal) {
+			previousTotal = currentTotal;
+			updatePaginationPage();
+		}
+
+		// Set loading to false once we have data (initial load or updates)
+		if (isLoading) {
+			isLoading = false;
+			loadError = null;
 		}
 	});
 </script>
@@ -192,34 +193,8 @@
 					<TableActionMenu
 						bind:scans={selectedScans}
 						onDelete={() => {
-							Object.values(selectedScans).forEach((scan) => {
-								scanMonitor.untrackScan(scan.courseId);
-							});
-
-							const numDeleted = Object.keys(selectedScans).length;
 							selectedScans = {};
-							onRowDelete(numDeleted);
-						}}
-					/>
-				</div>
-
-				<div class="flex h-10 items-center gap-3 rounded-lg">
-					<SortMenu
-						columns={sortColumns}
-						bind:selectedColumn={selectedSortColumn}
-						bind:selectedDirection={selectedSortDirection}
-						onUpdate={async () => {
-							await tick();
-
-							persistedState.current = {
-								...persistedState.current,
-								sort: {
-									column: selectedSortColumn,
-									direction: selectedSortDirection
-								}
-							};
-
-							loadPromise = fetchScans();
+							onRowDelete();
 						}}
 					/>
 				</div>
@@ -227,16 +202,21 @@
 		</div>
 
 		<div class="flex w-full place-content-center">
-			{#await loadPromise}
+			{#if isLoading}
 				<div class="flex justify-center pt-10">
 					<Spinner class="bg-foreground-alt-3 size-4" />
 				</div>
-			{:then _}
+			{:else if loadError}
+				<div class="flex w-full flex-col items-center gap-2 pt-10">
+					<WarningIcon class="text-foreground-error size-10" />
+					<span class="text-lg">Failed to fetch scans: {loadError.message}</span>
+				</div>
+			{:else}
 				<div class="flex w-full flex-col gap-8">
 					<Table.Root
 						class={smallTable
 							? 'grid-cols-[2.5rem_2.5rem_1fr_3.5rem]'
-							: 'grid-cols-[3.5rem_1fr_auto_auto_auto_3.5rem]'}
+							: 'grid-cols-[3.5rem_1fr_22rem_3.5rem]'}
 					>
 						<Table.Thead>
 							<Table.Tr class="text-xs font-semibold uppercase">
@@ -253,17 +233,11 @@
 									/>
 								</Table.Th>
 
-								<!-- Course path -->
-								<Table.Th class="justify-start">Course Path</Table.Th>
+								<!-- Course -->
+								<Table.Th class="justify-start">Course</Table.Th>
 
-								<!-- Status (large screens) -->
-								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Status</Table.Th>
-
-								<!-- Added (large screens) -->
-								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Added</Table.Th>
-
-								<!-- Updated (large screens) -->
-								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Updated</Table.Th>
+								<!-- Message (large screens) -->
+								<Table.Th class={cn('w-88', smallTable ? 'hidden' : 'visible')}>Progress</Table.Th>
 
 								<!-- Row action menu -->
 								<Table.Th></Table.Th>
@@ -284,7 +258,31 @@
 							{/if}
 
 							{#each scans as scan (scan.id)}
-								<Table.Tr class="group">
+								<Table.Tr
+									class="group"
+									onclick={(e) => {
+										if (!smallTable) return;
+										const target = e.target as HTMLElement | null;
+										if (!target) return;
+										if (
+											target instanceof HTMLButtonElement ||
+											target instanceof HTMLInputElement ||
+											target.closest('button') ||
+											target.closest('input')
+										) {
+											return;
+										}
+										toggleRowExpansion(scan.id);
+									}}
+									role={smallTable ? 'button' : undefined}
+									tabindex={smallTable ? 0 : undefined}
+									onkeydown={(e) => {
+										if (smallTable && (e.key === 'Enter' || e.key === ' ')) {
+											e.preventDefault();
+											toggleRowExpansion(scan.id);
+										}
+									}}
+								>
 									<!-- Chevron (small screens) -->
 									<Table.Td
 										class={cn(
@@ -346,41 +344,25 @@
 										/>
 									</Table.Td>
 
-									<!-- Course path -->
+									<!-- Course -->
 									<Table.Td class="group-hover:bg-background-alt-1 relative justify-start px-4">
-										<span>{scan.coursePath}</span>
+										<span>{scan.courseTitle}</span>
 									</Table.Td>
 
-									<!-- Status (large screens) -->
+									<!-- Message (large screens) -->
 									<Table.Td
 										class={cn(
-											'group-hover:bg-background-alt-1 px-4',
+											'group-hover:bg-background-alt-1 w-88 min-w-0 px-4',
 											smallTable ? 'hidden' : 'visible'
 										)}
 									>
-										<div class="flex w-full place-content-center">
-											{scan.status}
+										<div class="flex w-full min-w-0 justify-center">
+											{#if scan.message}
+												<span class="text-foreground-alt-1 truncate">{scan.message}</span>
+											{:else}
+												<span class="text-foreground-alt-3">—</span>
+											{/if}
 										</div>
-									</Table.Td>
-
-									<!-- Added (large screens) -->
-									<Table.Td
-										class={cn(
-											'group-hover:bg-background-alt-1 px-4 whitespace-nowrap',
-											smallTable ? 'hidden' : 'visible'
-										)}
-									>
-										<NiceDate date={scan.createdAt} />
-									</Table.Td>
-
-									<!-- Updated (large screens) -->
-									<Table.Td
-										class={cn(
-											'group-hover:bg-background-alt-1 px-4 whitespace-nowrap',
-											smallTable ? 'hidden' : 'visible'
-										)}
-									>
-										<NiceDate date={scan.updatedAt} />
 									</Table.Td>
 
 									<!-- Row action menu -->
@@ -388,8 +370,7 @@
 										<RowActionMenu
 											{scan}
 											onDelete={async () => {
-												scanMonitor.untrackScan(scan.courseId);
-												await onRowDelete(1);
+												await onRowDelete();
 												if (selectedScans[scan.id] !== undefined) {
 													delete selectedScans[scan.id];
 												}
@@ -411,23 +392,24 @@
 												<div class="grid grid-cols-[8rem_1fr]">
 													<span class="text-foreground-alt-3 font-medium">STATUS</span>
 													<span class="text-foreground-alt-1">
-														{scan.status}
+														<Badge
+															class={scan.status === 'processing'
+																? 'bg-background-success text-foreground'
+																: 'bg-background-alt-4 text-foreground-alt-1'}
+														>
+															{scan.status}
+														</Badge>
 													</span>
 												</div>
 
-												<div class="grid grid-cols-[8rem_1fr]">
-													<span class="text-foreground-alt-3 font-medium">ADDED</span>
-													<span class="text-foreground-alt-1">
-														<NiceDate date={scan.createdAt} />
-													</span>
-												</div>
-
-												<div class="grid grid-cols-[8rem_1fr]">
-													<span class="text-foreground-alt-3 font-medium">UPDATED</span>
-													<span class="text-foreground-alt-1">
-														<NiceDate date={scan.updatedAt} />
-													</span>
-												</div>
+												{#if scan.message}
+													<div class="grid grid-cols-[8rem_1fr]">
+														<span class="text-foreground-alt-3 font-medium">PROGRESS</span>
+														<span class="text-foreground-alt-1">
+															{scan.message}
+														</span>
+													</div>
+												{/if}
 											</div>
 										</Table.Td>
 									</Table.Tr>
@@ -455,17 +437,16 @@
 							count={paginationTotal}
 							bind:perPage={paginationPerPage}
 							bind:page={paginationPage}
-							onPageChange={() => fetchScans()}
-							onPerPageChange={() => fetchScans()}
+							onPageChange={() => {
+								updatePaginationPage();
+							}}
+							onPerPageChange={() => {
+								updatePaginationPage();
+							}}
 						/>
 					{/if}
 				</div>
-			{:catch error}
-				<div class="flex w-full flex-col items-center gap-2 pt-10">
-					<WarningIcon class="text-foreground-error size-10" />
-					<span class="text-lg">Failed to fetch scans: {error.message}</span>
-				</div>
-			{/await}
+			{/if}
 		</div>
 	</div>
 </div>

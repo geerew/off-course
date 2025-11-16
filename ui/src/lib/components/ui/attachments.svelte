@@ -14,7 +14,7 @@
 
 <Dropdown.Root>
 	<Dropdown.Trigger
-		class="group text-foreground-alt-3 data-[state=open]:text-foreground-alt-1 hover:text-foreground-alt-1 h-auto w-auto rounded-lg border-none p-0"
+		class="text-foreground-alt-3 data-[state=open]:text-foreground-alt-1 hover:text-foreground-alt-1 group h-auto w-auto rounded-lg border-none p-0"
 		onclick={(e) => {
 			e.stopPropagation();
 		}}
@@ -27,7 +27,7 @@
 	</Dropdown.Trigger>
 
 	<Dropdown.Content
-		class="text-foreground-alt-3 z-10 flex max-h-[10rem] w-auto max-w-[15rem] min-w-[11rem] overflow-y-scroll px-1 py-2"
+		class="text-foreground-alt-3 z-10 flex max-h-40 w-auto max-w-60 min-w-44 overflow-y-scroll px-1 py-2"
 		align="start"
 		portalProps={{ disabled: true }}
 	>
@@ -43,7 +43,7 @@
 				>
 					<span class="grid w-full grid-cols-[auto_1fr_auto] items-start gap-1.5">
 						<span class="shrink-0">{index + 1}.</span>
-						<span class="min-w-0 text-left break-words whitespace-normal">
+						<span class="min-w-0 text-left wrap-break-word whitespace-normal">
 							{attachment.title}
 						</span>
 

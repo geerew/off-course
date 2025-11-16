@@ -2,6 +2,7 @@ package probe
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os/exec"
 	"strconv"
@@ -23,7 +24,7 @@ const (
 
 // ExtractKeyframes extracts keyframe timestamps from a video file using ffprobe
 // Uses packet inspection with keyframe flags to build a precise list
-func (mp MediaProbe) ExtractKeyframes(videoPath string, videoIdx int) ([]float64, error) {
+func (mp MediaProbe) ExtractKeyframes(ctx context.Context, videoPath string, videoIdx int) ([]float64, error) {
 	if mp.FFmpeg == nil {
 		return nil, utils.ErrFFProbeUnavailable
 	}
@@ -32,7 +33,7 @@ func (mp MediaProbe) ExtractKeyframes(videoPath string, videoIdx int) ([]float64
 
 	// Run ffprobe to get packet information with keyframe flags
 	// Get all packets and filter for keyframes
-	cmd := exec.Command(
+	cmd := exec.CommandContext(ctx,
 		ffprobePath,
 		"-loglevel", "error",
 		"-select_streams", fmt.Sprintf("V:%d", videoIdx),
@@ -58,6 +59,13 @@ func (mp MediaProbe) ExtractKeyframes(videoPath string, videoIdx int) ([]float64
 
 	// Process each packet line
 	for scanner.Scan() {
+		// Check for context cancellation
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("context cancelled: %w", ctx.Err())
+		default:
+		}
+
 		line := scanner.Text()
 		if line == "" {
 			continue
@@ -92,7 +100,7 @@ func (mp MediaProbe) ExtractKeyframes(videoPath string, videoIdx int) ([]float64
 
 	// Wait for command to complete
 	if err := cmd.Wait(); err != nil {
-		return nil, fmt.Errorf("ffprobe command failed: %w", err)
+		return nil, fmt.Errorf("failed to probe video: %w", err)
 	}
 
 	// Check for scanner errors
@@ -124,16 +132,9 @@ func (mp MediaProbe) ExtractKeyframes(videoPath string, videoIdx int) ([]float64
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // ExtractKeyframesForVideo extracts keyframes for the first video stream in a file
-// This is a convenience method that automatically finds the video stream index
-func (mp MediaProbe) ExtractKeyframesForVideo(videoPath string) ([]float64, error) {
-	// First, probe the video to get stream information
-	_, err := mp.ProbeVideo(videoPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to probe video: %w", err)
-	}
-
-	// Extract keyframes for the first (and typically only) video stream
-	return mp.ExtractKeyframes(videoPath, 0)
+// This is a convenience wrapper that always uses the first video stream (V:0)
+func (mp MediaProbe) ExtractKeyframesForVideo(ctx context.Context, videoPath string) ([]float64, error) {
+	return mp.ExtractKeyframes(ctx, videoPath, 0)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

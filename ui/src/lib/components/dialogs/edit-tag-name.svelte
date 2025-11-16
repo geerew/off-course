@@ -16,13 +16,13 @@
 
 	let { open = $bindable(false), value = $bindable(), trigger, successFn }: Props = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let inputEl = $state<HTMLInputElement>();
 	let newValue = $state<string>('');
 	let isPosting = $state(false);
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	$effect(() => {
 		if (open) {
@@ -31,7 +31,7 @@
 		}
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function doUpdate(e: Event) {
 		e.preventDefault();

@@ -24,7 +24,7 @@
 >
 	<!-- Volume/mute -->
 	<media-mute-button
-		class="group hover:text-secondary relative inline-flex cursor-pointer items-center justify-center rounded-md ring-sky-400 outline-none ring-inset data-[focus]:ring-4"
+		class="hover:text-secondary group relative inline-flex cursor-pointer items-center justify-center rounded-md ring-sky-400 outline-none ring-inset data-focus:ring-4"
 	>
 		<MediaVolumeMuteIcon
 			class="group-hover:fill-background-primary group-hover:stroke-background-primary hidden size-7 fill-white stroke-white stroke-2 group-data-[state=muted]:block"
@@ -46,21 +46,21 @@
 	>
 		<!-- Track -->
 		<div
-			class="relative z-0 h-[5px] w-full rounded-sm bg-white/30 ring-sky-400 group-data-[focus]:ring-[3px]"
+			class="relative z-0 h-[5px] w-full rounded-sm bg-white/30 ring-sky-400 group-data-focus:ring-[3px]"
 		>
 			<!-- Fill -->
 			<div
-				class="bg-background-primary absolute h-full w-[var(--slider-fill)] rounded-sm will-change-[width]"
+				class="bg-background-primary absolute h-full w-(--slider-fill) rounded-sm will-change-[width]"
 			></div>
 		</div>
 
 		<!-- Thumb -->
 		<div
-			class="absolute top-1/2 left-[var(--slider-fill)] z-20 h-[15px] w-[15px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#cacaca] bg-white opacity-0 ring-white/40 transition-opacity will-change-[left] group-data-[active]:opacity-100 group-data-[dragging]:ring-4"
+			class="absolute top-1/2 left-(--slider-fill) z-20 h-[15px] w-[15px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#cacaca] bg-white opacity-0 ring-white/40 transition-opacity will-change-[left] group-data-active:opacity-100 group-data-dragging:ring-4"
 		></div>
 
 		<media-slider-preview
-			class="pointer-events-none flex flex-col items-center opacity-0 transition-opacity duration-200 data-[visible]:opacity-100"
+			class="pointer-events-none flex flex-col items-center opacity-0 transition-opacity duration-200 data-visible:opacity-100"
 			noClamp={false}
 		>
 			<media-slider-value class="rounded-sm bg-white px-2 py-px text-[13px] font-medium text-black"

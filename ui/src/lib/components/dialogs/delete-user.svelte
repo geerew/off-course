@@ -22,7 +22,7 @@
 
 	let { open = $bindable(false), value, trigger, successFn }: Props = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let currentInputEl = $state<HTMLInputElement>();
 	let currentPassword = $state('');
@@ -34,7 +34,7 @@
 	const mdBreakpoint = +theme.screens.md.replace('rem', '');
 	let isDesktop = $derived(remCalc(innerWidth.current ?? 0) > mdBreakpoint);
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	$effect(() => {
 		if (open) {
@@ -43,7 +43,7 @@
 		}
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function doDelete(): Promise<void> {
 		isPosting = true;

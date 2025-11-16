@@ -57,7 +57,7 @@
 	let menuPopupMode = $state(false);
 	let dialogOpen = $state(false);
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Fetch the course, then the assets for the course
 	async function fetcher(): Promise<void> {
@@ -196,6 +196,8 @@
 		return (menuPopupMode && dialogOpen ? dialogMenuEl : staticMenuEl) ?? null;
 	}
 
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	function raf() {
 		return new Promise<void>((r) => requestAnimationFrame(() => r()));
 	}
@@ -291,7 +293,7 @@
 {#snippet menuContents()}
 	{#if course}
 		<div
-			class="bg-background border-background-alt-4 sticky top-0 z-[1] flex flex-row gap-3 border-b"
+			class="bg-background border-background-alt-4 sticky top-0 z-1 flex flex-row gap-3 border-b"
 		>
 			<div class="flex w-full items-center justify-between gap-4 py-4 pr-3">
 				<span class="container-pl font-semibold select-none">{course.title}</span>
@@ -417,7 +419,7 @@
 	{#if course && selectedLesson}
 		<div
 			class={cn(
-				'grid min-h-0 grid-rows-1 gap-6 pt-[calc(var(--header-height)+1))]',
+				'grid min-h-0 grid-rows-1 gap-6 pt-[calc(var(--header-height)+1)]',
 				menuPopupMode ? 'grid-cols-1' : 'grid-cols-[var(--course-menu-width)_1fr]'
 			)}
 		>
@@ -431,7 +433,7 @@
 
 						<Dialog.Content
 							bind:ref={dialogMenuEl}
-							class="border-background-alt-4 bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left fixed top-0 left-0 z-50 h-full w-[var(--course-menu-width)] border-r"
+							class="border-background-alt-4 bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left fixed top-0 left-0 z-50 h-full w-(--course-menu-width) border-r"
 						>
 							<nav class="flex h-full w-full flex-col gap-2 overflow-x-hidden overflow-y-auto pb-8">
 								{@render menuContents()}
@@ -537,7 +539,7 @@
 												);
 											}}
 										>
-											<TickIcon class="size-4 stroke-[3]" />
+											<TickIcon class="size-4 stroke-3" />
 										</Button>
 									{/snippet}
 
@@ -561,7 +563,6 @@
 								{/if}
 
 								{#if asset.type === 'video'}
-									<!-- srcType={'application/vnd.apple.mpegurl' as any} -->
 									<VideoPlayer
 										playerId={`${selectedLesson.id}-${asset.id}`}
 										src={`/api/hls/${asset.id}/master.m3u8`}

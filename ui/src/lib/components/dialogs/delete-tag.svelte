@@ -17,7 +17,7 @@
 
 	let { open = $bindable(false), value, successFn }: Props = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let isPosting = $state(false);
 	const isArray = Array.isArray(value);
@@ -25,14 +25,14 @@
 	const mdBreakpoint = +theme.screens.md.replace('rem', '');
 	let isDesktop = $derived(remCalc(innerWidth.current ?? 0) > mdBreakpoint);
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	$effect(() => {
 		if (open) {
 			isPosting = false;
 		}
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function doDelete(): Promise<void> {
 		isPosting = true;

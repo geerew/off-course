@@ -30,6 +30,8 @@
 	let selectedUsers: Record<string, UserModel> = $state({});
 	let selectedUsersCount = $derived(Object.keys(selectedUsers).length);
 
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	let sortColumns = [
 		{ label: 'Username', column: 'users.username', asc: 'Ascending', desc: 'Descending' },
 		{ label: 'Name', column: 'users.display_name', asc: 'Ascending', desc: 'Descending' },
@@ -51,9 +53,13 @@
 	let selectedSortColumn = $state(persistedState.current.sort.column);
 	let selectedSortDirection = $state(persistedState.current.sort.direction);
 
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	let paginationPage = $state(1);
 	let paginationPerPage = $state(10);
 	let paginationTotal = $state(0);
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let usersOnPageExcludingSelf = $derived(users.filter((u) => u.id !== auth.user?.id));
 	let countUsersOnPageExcludingSelf = $derived(usersOnPageExcludingSelf.length);
@@ -69,13 +75,15 @@
 			selectedUsersOnThisPageCount === countUsersOnPageExcludingSelf
 	);
 
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	let mainEl = $state() as HTMLElement;
 	const mainSize = new ElementSize(() => mainEl);
 	let smallTable = $state(false);
 
 	let loadPromise = $state(fetchUsers());
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function fetchUsers(): Promise<void> {
 		try {
@@ -95,13 +103,13 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function onRowUpdate() {
 		loadPromise = fetchUsers();
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function onRowDelete(numDeleted: number) {
 		const remainingTotal = paginationTotal - numDeleted;
@@ -116,7 +124,7 @@
 		loadPromise = fetchUsers();
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	function onCheckboxClicked(e: MouseEvent) {
 		e.preventDefault();
@@ -145,13 +153,13 @@
 		toastCount();
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	function toggleRowExpansion(userId: string) {
 		expandedUsers[userId] = !expandedUsers[userId];
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	function toastCount() {
 		if (selectedUsersCount === 0) {
@@ -161,7 +169,7 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Flip between table and card mode based on screen size
 	$effect(() => {

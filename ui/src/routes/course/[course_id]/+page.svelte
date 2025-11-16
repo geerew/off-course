@@ -27,6 +27,7 @@
 	import Button from '$lib/components/ui/button.svelte';
 	import type { CourseModel, CourseReqParams, CourseTagsModel } from '$lib/models/course-model';
 	import type { ModulesModel } from '$lib/models/module-model';
+	import { scanStore } from '$lib/scanStore.svelte';
 	import { cn } from '$lib/utils';
 	import { useId } from 'bits-ui';
 	import prettyMs from 'pretty-ms';
@@ -38,6 +39,17 @@
 	let courseImageLoaded = $state<boolean>(false);
 
 	let openCourseProgressDialog = $state(false);
+
+	// Track if this course has an active scan
+	let hasActiveScan = $state(false);
+
+	// Get scan status for this course
+	let scanStatus = $derived.by(() => {
+		if (!course) return undefined;
+		return scanStore.getScanStatus(course.id);
+	});
+
+	let isScanning = $derived(scanStatus === 'processing' || scanStatus === 'waiting');
 
 	const labelId = useId();
 
@@ -90,7 +102,7 @@
 
 	let loadPromise = $state(fetcher());
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Fetch the course, then the assets for the course, then build a chapter structure from the
 	// assets
@@ -113,7 +125,7 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Load the course image, if available
 	async function loadCourseImage(courseId: string): Promise<void> {
@@ -131,11 +143,62 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	const pad2 = (n: number) => String(n).padStart(2, '0');
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Register with scanStore
+	$effect(() => {
+		return scanStore.register();
+	});
+
+	// Watch for scan updates and refresh course when scan finishes
+	$effect(() => {
+		if (!course) return;
+
+		const currentlyHasScan = isScanning;
+
+		// If scan finished (had scan before, but no longer has one), refresh course
+		if (hasActiveScan && !currentlyHasScan) {
+			refreshCourse();
+		}
+
+		hasActiveScan = currentlyHasScan;
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Refresh course data
+	async function refreshCourse(): Promise<void> {
+		if (!course) return;
+
+		try {
+			const courseReqParams: CourseReqParams = { withUserProgress: true };
+			const refreshedCourse = await GetCourse(course.id, courseReqParams);
+			course = refreshedCourse;
+
+			// Also refresh modules if they exist
+			if (modules) {
+				const moduleReqParams: CourseReqParams = { withUserProgress: true };
+				modules = await GetCourseModules(course.id, moduleReqParams);
+			}
+
+			// Revoke old image URL before loading new one
+			if (courseImageUrl) {
+				URL.revokeObjectURL(courseImageUrl);
+				courseImageUrl = null;
+			}
+
+			// Reload course image in case it was generated during the scan
+			await loadCourseImage(course.id);
+		} catch (error) {
+			console.error('Failed to refresh course:', error);
+		}
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	$effect(() => {
 		return () => {
@@ -165,10 +228,18 @@
 								</div>
 
 								<!-- Status -->
-								{#if !course.available || course.maintenance || (course.initialScan !== undefined && !course.initialScan)}
+								{#if isScanning || !course.available || course.maintenance || (course.initialScan !== undefined && !course.initialScan)}
 									<div class="flex h-7 flex-col gap-x-3 gap-y-3 text-sm sm:flex-row">
 										<div class="flex flex-row items-center gap-2">
-											{#if !course.initialScan}
+											{#if isScanning && course.initialScan === false}
+												<Badge class="bg-background-warning text-foreground-alt-1"
+													>Initial Scan</Badge
+												>
+											{:else if isScanning}
+												<Badge class="bg-background-warning text-foreground-alt-1"
+													>Maintenance</Badge
+												>
+											{:else if !course.initialScan}
 												<Badge class="bg-background-warning text-foreground-alt-1"
 													>Initial Scan</Badge
 												>
@@ -310,9 +381,9 @@
 										href={`/course/${course.id}/${lessonToResume?.id}`}
 										variant="default"
 										class="w-auto px-4"
-										disabled={course.maintenance || !course.available}
+										disabled={isScanning || course.maintenance || !course.available}
 										onclick={(e) => {
-											if (course?.maintenance || !course?.available) {
+											if (isScanning || course?.maintenance || !course?.available) {
 												e.preventDefault();
 												e.stopPropagation();
 											}
@@ -385,7 +456,7 @@
 						</div>
 
 						<!-- Card -->
-						<div class="relative order-1 flex h-50 w-full rounded-lg lg:order-2">
+						<div class="relative order-1 flex h-50 w-full justify-center rounded-lg lg:order-2">
 							{#if courseImageLoaded && courseImageUrl}
 								<div class="z-1 flex h-full w-full items-center justify-center rounded-lg">
 									<img
@@ -396,7 +467,7 @@
 								</div>
 							{:else}
 								<div
-									class="bg-background-alt-2 z-1 flex h-full w-full items-center justify-center rounded-lg"
+									class="bg-background-alt-2 z-1 flex aspect-video h-full max-w-full items-center justify-center rounded-lg lg:w-full"
 								>
 									<LogoIcon class="fill-background-alt-3 w-16 md:w-20" />
 								</div>
@@ -442,9 +513,9 @@
 																href={`/course/${course.id}/${lesson.id}`}
 																variant="ghost"
 																class="hover:bg-background-alt-2 -mx-3 -my-2 flex h-auto justify-start gap-3 py-2 text-sm whitespace-normal"
-																disabled={course.maintenance || !course.available}
+																disabled={isScanning || course.maintenance || !course.available}
 																onclick={(e) => {
-																	if (course?.maintenance || !course?.available) {
+																	if (isScanning || course?.maintenance || !course?.available) {
 																		e.preventDefault();
 																		e.stopPropagation();
 																	}

@@ -1,12 +1,16 @@
 package api
 
 import (
-	"github.com/Masterminds/squirrel"
-	"github.com/geerew/off-course/dao"
-	"github.com/geerew/off-course/models"
+	"bufio"
+	"context"
+	"encoding/json"
+	"time"
+
 	"github.com/geerew/off-course/utils"
+	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
+	"github.com/valyala/fasthttp"
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -26,6 +30,7 @@ func (r *Router) initScanRoutes() {
 	g := r.apiGroup("scans")
 
 	g.Get("/", protectedRoute, scansAPI.getScans)
+	g.Get("/stream", protectedRoute, scansAPI.streamScans)
 	g.Get("/:courseId", protectedRoute, scansAPI.getScan)
 	g.Post("", protectedRoute, scansAPI.createScan)
 	g.Delete("/:id", protectedRoute, scansAPI.deleteScan)
@@ -34,32 +39,16 @@ func (r *Router) initScanRoutes() {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 func (api *scansAPI) getScans(c *fiber.Ctx) error {
-	principal, ctx, err := principalCtx(c)
+	principal, _, err := principalCtx(c)
 	if err != nil {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	builderOpts := builderOptions{
-		DefaultOrderBy: defaultScansOrderBy,
-		Paginate:       true,
-	}
+	// Get all scans from CMap (ephemeral, no pagination needed)
+	scanStates := api.r.app.CourseScan.GetAllScans()
+	responses := scanResponseHelper(scanStates, principal.Role == types.UserRoleAdmin)
 
-	dbOpts, err := optionsBuilder(c, builderOpts, principal.UserID)
-	if err != nil {
-		return errorResponse(c, fiber.StatusBadRequest, "Error parsing query", err)
-	}
-
-	scans, err := api.r.appDao.ListScans(ctx, dbOpts)
-	if err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up scan", err)
-	}
-
-	pResult, err := dbOpts.Pagination.BuildResult(scanResponseHelper(scans, principal.Role == types.UserRoleAdmin))
-	if err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error building pagination result", err)
-	}
-
-	return c.Status(fiber.StatusOK).JSON(pResult)
+	return c.Status(fiber.StatusOK).JSON(responses)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -67,22 +56,17 @@ func (api *scansAPI) getScans(c *fiber.Ctx) error {
 func (api *scansAPI) getScan(c *fiber.Ctx) error {
 	courseId := c.Params("courseId")
 
-	principal, ctx, err := principalCtx(c)
+	principal, _, err := principalCtx(c)
 	if err != nil {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_COURSE_ID: courseId})
-	scan, err := api.r.appDao.GetScan(ctx, dbOpts)
-	if err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up scan", err)
-	}
-
-	if scan == nil {
+	scanState := api.r.app.CourseScan.GetScanByCourseID(courseId)
+	if scanState == nil {
 		return errorResponse(c, fiber.StatusNotFound, "Scan not found", nil)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(scanResponseHelper([]*models.Scan{scan}, principal.Role == types.UserRoleAdmin)[0])
+	return c.Status(fiber.StatusOK).JSON(scanResponseHelper([]*coursescan.ScanState{scanState}, principal.Role == types.UserRoleAdmin)[0])
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -102,7 +86,7 @@ func (api *scansAPI) createScan(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	scan, err := api.r.app.CourseScan.Add(ctx, req.CourseID)
+	scanState, err := api.r.app.CourseScan.Add(ctx, req.CourseID)
 	if err != nil {
 		if err == utils.ErrCourseNotFound {
 			return errorResponse(c, fiber.StatusBadRequest, "Invalid course ID", nil)
@@ -110,7 +94,7 @@ func (api *scansAPI) createScan(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error creating scan job", err)
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(scanResponseHelper([]*models.Scan{scan}, principal.Role == types.UserRoleAdmin)[0])
+	return c.Status(fiber.StatusCreated).JSON(scanResponseHelper([]*coursescan.ScanState{scanState}, principal.Role == types.UserRoleAdmin)[0])
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -118,14 +102,131 @@ func (api *scansAPI) createScan(c *fiber.Ctx) error {
 func (api scansAPI) deleteScan(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	_, ctx, err := principalCtx(c)
+	_, _, err := principalCtx(c)
 	if err != nil {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_ID: id})
-	if err := api.r.appDao.DeleteScans(ctx, dbOpts); err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting scan", err)
+	// Cancel and remove scan from CMap
+	if !api.r.app.CourseScan.CancelAndRemoveScan(id) {
+		return errorResponse(c, fiber.StatusNotFound, "Scan not found", nil)
 	}
+
 	return c.Status(fiber.StatusNoContent).Send(nil)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// streamScans streams scan updates using Server-Sent Events (SSE)
+func (api *scansAPI) streamScans(c *fiber.Ctx) error {
+	principal, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	// Set SSE headers
+	c.Set("Content-Type", "text/event-stream")
+	c.Set("Cache-Control", "no-cache")
+	c.Set("Connection", "keep-alive")
+	c.Set("X-Accel-Buffering", "no") // Disable nginx buffering
+
+	// Track last seen scan data to detect changes
+	isAdmin := principal.Role == types.UserRoleAdmin
+	streamCtx, cancel := context.WithCancel(ctx)
+	lastSeen := make(map[string]*scanResponse)
+
+	c.Context().SetBodyStreamWriter(fasthttp.StreamWriter(func(w *bufio.Writer) {
+		defer cancel()
+
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+
+		writeEvent := func(payload interface{}) error {
+			eventBytes, err := json.Marshal(payload)
+			if err != nil {
+				return err
+			}
+			if _, err = w.WriteString("data: " + string(eventBytes) + "\n\n"); err != nil {
+				return err
+			}
+			return w.Flush()
+		}
+
+		writeComment := func(text string) error {
+			if _, err := w.WriteString(":" + text + "\n\n"); err != nil {
+				return err
+			}
+			return w.Flush()
+		}
+
+		// Initial comment to confirm connection
+		if err := writeComment(" connected"); err != nil {
+			return
+		}
+
+		// Send initial "all_scans" event with all current scans
+		scanStates := api.r.app.CourseScan.GetAllScans()
+		scanResponses := scanResponseHelper(scanStates, isAdmin)
+		if err := writeEvent(map[string]interface{}{
+			"type": "all_scans",
+			"data": scanResponses,
+		}); err != nil {
+			return
+		}
+		// Populate lastSeen with initial scans
+		for _, scanResp := range scanResponses {
+			lastSeen[scanResp.ID] = scanResp
+		}
+
+		for {
+			select {
+			case <-streamCtx.Done():
+				return
+			case <-ticker.C:
+				// Get all scans from CMap
+				scanStates := api.r.app.CourseScan.GetAllScans()
+				scanResponses := scanResponseHelper(scanStates, isAdmin)
+
+				updated := false
+				current := make(map[string]struct{})
+
+				for _, scanResp := range scanResponses {
+					current[scanResp.ID] = struct{}{}
+					last, exists := lastSeen[scanResp.ID]
+					if !exists || last == nil || last.Status != scanResp.Status || last.Message != scanResp.Message {
+						if err := writeEvent(map[string]interface{}{
+							"type": "scan_update",
+							"data": scanResp,
+						}); err != nil {
+							return
+						}
+						lastSeen[scanResp.ID] = scanResp
+						updated = true
+					}
+				}
+
+				for id := range lastSeen {
+					if _, exists := current[id]; !exists {
+						if err := writeEvent(map[string]interface{}{
+							"type": "scan_deleted",
+							"data": map[string]string{"id": id},
+						}); err != nil {
+							return
+						}
+						delete(lastSeen, id)
+						updated = true
+					}
+				}
+
+				// Send heartbeat to keep connection alive
+				if !updated {
+					if err := writeComment(" keep-alive"); err != nil {
+						return
+					}
+				}
+			}
+		}
+	}))
+
+	return nil
 }

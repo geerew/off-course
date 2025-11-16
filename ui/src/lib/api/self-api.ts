@@ -1,7 +1,7 @@
 import { type SelfDeleteModel, type SelfUpdateModel } from '$lib/models/user-model';
 import { apiFetch } from './fetch';
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Update self
 export async function UpdateSelf(data: SelfUpdateModel): Promise<void> {
@@ -19,7 +19,7 @@ export async function UpdateSelf(data: SelfUpdateModel): Promise<void> {
 	}
 }
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Delete self
 export async function DeleteSelf(data: SelfDeleteModel): Promise<void> {

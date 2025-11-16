@@ -8,12 +8,12 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"flag"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -24,7 +24,6 @@ import (
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
-	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/media/probe"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/spf13/afero"
@@ -39,24 +38,20 @@ type AttachmentsByChapterPrefix map[string]map[int][]*models.Attachment
 
 // Processor scans a course to identify assets and attachments
 //
-// # It can be passed to coursescan.Worker
-func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
-	if scan == nil {
+// It can be passed to coursescan.Worker
+func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
+	if scanState == nil {
 		return ErrNilScan
 	}
 
-	// Create a scoped map for extracted keyframes for this scan operation
-	// This prevents race conditions and ensures each scan has its own isolated state
 	extractedKeyframes := make(map[string][]float64)
 
 	startTime := time.Now()
-	courseID := scan.CourseID
+
+	courseID := scanState.CourseID
 	s.logger.Info().Str("course_id", courseID).Msg("Starting scan for course")
 
-	scan.Status = types.ScanStatusProcessing
-	if err := s.dao.UpdateScan(ctx, scan); err != nil {
-		return err
-	}
+	scanState.UpdateStatusAndMessage(types.ScanStatusProcessing, "Initializing scan")
 
 	course, err := fetchCourse(ctx, s, courseID)
 	if err != nil {
@@ -76,10 +71,9 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		Str("course_title", courseTitle).
 		Msg("Found course")
 
-	// Clear the maintenance mode at the end of the scan with retry logic
-	// This ensures the course is unlocked even if there are transient errors
 	defer func() {
-		if err := clearCourseMaintenanceWithRetry(ctx, s, courseID, coursePath); err != nil {
+		cleanupCtx := context.Background()
+		if err := clearCourseMaintenanceWithRetry(cleanupCtx, s, courseID, coursePath); err != nil {
 			s.logger.Error().
 				Err(err).
 				Str("course_id", courseID).
@@ -88,7 +82,6 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		}
 	}()
 
-	// Check if the course is available and set its status accordingly
 	available, err := checkAndSetCourseAvailability(ctx, s, course)
 	if err != nil {
 		s.logger.Error().
@@ -112,7 +105,6 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		return err
 	}
 
-	// Validate course path is accessible before scanning
 	if _, err := s.appFs.Fs.Stat(course.Path); err != nil {
 		if os.IsNotExist(err) {
 			s.logger.Warn().
@@ -121,6 +113,7 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 				Msg("Course path does not exist, skipping scan")
 			return nil
 		}
+
 		s.logger.Error().
 			Err(err).
 			Str("course_id", courseID).
@@ -129,8 +122,8 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		return fmt.Errorf("failed to access course path %s: %w", course.Path, err)
 	}
 
-	// Scan the course directory for files and populate assets and attachments. Also check if there is
-	// a course card
+	scanState.UpdateMessage("Scanning course directory")
+
 	scanned, err := scanFiles(s, course)
 	if err != nil {
 		s.logger.Error().
@@ -141,7 +134,6 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		return err
 	}
 
-	// Flatten the found lessons into attachments and assets
 	scannedAttachments, scannedAssets := flatAttachmentsAndAssets(scanned.lessons)
 
 	s.logger.Info().
@@ -168,11 +160,12 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		return err
 	}
 
-	// Flatten the existing lessons into attachments and assets
 	existingAttachments, existingAssets := flatAttachmentsAndAssets(existingGroups)
 
-	// Populate hashes of assets that have changed
-	if err := populateHashesIfChanged(ctx, s.appFs.Fs, scannedAssets, existingAssets, course, s.logger); err != nil {
+	if err := populateHashesIfChanged(ctx, s, scannedAssets, existingAssets, course, scanState); err != nil {
+		if err == context.Canceled || err == context.DeadlineExceeded {
+			return err
+		}
 		s.logger.Error().
 			Err(err).
 			Str("course_id", courseID).
@@ -181,7 +174,10 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		return err
 	}
 
-	// Reconcile what to do
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
 	s.logger.Info().
 		Str("course_id", courseID).
 		Str("course_path", coursePath).
@@ -203,20 +199,20 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		Int("attachment_ops", len(attachmentOps)).
 		Msg("Generated reconciliation operations")
 
-	// FFprobe only assets that need it
-	assetMetadataByPath := probeVideos(ctx, s, assetOps, course, extractedKeyframes)
+	assetMetadataByPath := probeVideos(ctx, s, assetOps, course, extractedKeyframes, scanState)
+
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 
 	updatedCourse := course.CardPath != scanned.cardPath
 	if updatedCourse {
 		course.CardPath = scanned.cardPath
 	}
 
-	// Note: extractedKeyframes is scoped to this function and will be garbage collected
-	// when the function returns. No explicit cleanup needed.
-
-	// Count operations before applying
 	opCounts := countOperations(groupOps, assetOps, attachmentOps)
 
+	scanState.UpdateMessage("Applying database changes")
 	s.logger.Info().
 		Str("course_id", courseID).
 		Str("course_path", coursePath).
@@ -248,8 +244,9 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		}
 
 		if updatedCourse {
-			// Recalculate course duration from scratch to ensure accuracy
-			// This prevents accumulation errors from incremental updates
+			// Recalculate course duration from scratch to ensure accuracy, preventing accumulation errors
+			// from incremental updates
+			scanState.UpdateMessage("Recalculating course duration")
 			recalculatedDuration, err := recalculateCourseDuration(txCtx, s, course.ID)
 			if err != nil {
 				s.logger.Warn().
@@ -257,12 +254,10 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 					Str("course_id", courseID).
 					Str("course_path", coursePath).
 					Msg("Failed to recalculate course duration, using existing value")
-				// Continue with existing duration if recalculation fails
 			} else {
 				course.Duration = recalculatedDuration
 			}
 
-			// Ensure duration doesn't go negative (safety check)
 			if course.Duration < 0 {
 				s.logger.Warn().
 					Str("course_id", courseID).
@@ -278,12 +273,17 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 				Str("course_path", coursePath).
 				Int("duration", course.Duration).
 				Msg("Updating course metadata")
+
 			return s.dao.UpdateCourse(txCtx, course)
 		}
 
 		return nil
 	})
+
 	if err != nil {
+		if err == context.Canceled || err == context.DeadlineExceeded || isCancellationError(err) {
+			return err
+		}
 		s.logger.Error().
 			Err(err).
 			Str("course_id", courseID).
@@ -292,8 +292,24 @@ func Processor(ctx context.Context, s *CourseScan, scan *models.Scan) error {
 		return err
 	}
 
-	// Final summary log with timing and operation counts
 	duration := time.Since(startTime)
+
+	// When not testing, ensure minimum scan duration of 2 seconds to allow frontend to see the changes
+	isTesting := flag.Lookup("test.v") != nil
+	if !isTesting {
+		const minScanDuration = 2 * time.Second
+		if duration < minScanDuration {
+			remaining := minScanDuration - duration
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(remaining):
+			}
+			duration = time.Since(startTime)
+		}
+	}
+
+	scanState.UpdateMessage("Scan complete")
 	s.logger.Info().
 		Str("course_id", courseID).
 		Str("course_path", coursePath).
@@ -349,7 +365,6 @@ func countOperations(groupOps, assetOps, attachmentOps []Op) operationCounts {
 		case UpdateAssetOp:
 			counts.AssetsUpdated++
 		case ReplaceAssetOp, SwapAssetOp, OverwriteAssetOp:
-			// These are counted as updates for the final asset, but involve deletions
 			counts.AssetsUpdated++
 		case DeleteAssetOp:
 			counts.AssetsDeleted++
@@ -442,33 +457,11 @@ func enableCourseMaintenance(ctx context.Context, s *CourseScan, course *models.
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// clearCourseMaintenance clears the course from maintenance mode if it is set
-func clearCourseMaintenance(ctx context.Context, s *CourseScan, course *models.Course) error {
-	if !course.Maintenance {
-		return nil
-	}
-
-	course.Maintenance = false
-	if err := s.dao.UpdateCourse(ctx, course); err != nil {
-		return err
-	}
-
-	s.logger.Debug().
-		Str("course_id", course.ID).
-		Str("course_path", course.Path).
-		Msg("Cleared course from maintenance mode")
-	return nil
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 // clearCourseMaintenanceWithRetry attempts to clear maintenance mode with retry logic
-// This ensures the course is unlocked even if there are transient database errors
 func clearCourseMaintenanceWithRetry(ctx context.Context, s *CourseScan, courseID, coursePath string) error {
 	const maxRetries = 3
 	const initialDelay = 100 * time.Millisecond
 
-	// Fetch fresh course state to ensure we have the latest maintenance status
 	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: courseID})
 	course, err := s.dao.GetCourse(ctx, dbOpts)
 	if err != nil {
@@ -476,20 +469,16 @@ func clearCourseMaintenanceWithRetry(ctx context.Context, s *CourseScan, courseI
 	}
 
 	if course == nil {
-		// Course no longer exists, nothing to clear
 		return nil
 	}
 
 	if !course.Maintenance {
-		// Already cleared, nothing to do
 		return nil
 	}
 
-	// Retry logic with exponential backoff
 	var lastErr error
 	delay := initialDelay
 	for attempt := 0; attempt < maxRetries; attempt++ {
-		// Fetch fresh course state before each attempt
 		course, err := s.dao.GetCourse(ctx, dbOpts)
 		if err != nil {
 			lastErr = fmt.Errorf("failed to fetch course (attempt %d/%d): %w", attempt+1, maxRetries, err)
@@ -501,7 +490,6 @@ func clearCourseMaintenanceWithRetry(ctx context.Context, s *CourseScan, courseI
 		}
 
 		if course == nil || !course.Maintenance {
-			// Course no longer exists or already cleared
 			return nil
 		}
 
@@ -515,7 +503,6 @@ func clearCourseMaintenanceWithRetry(ctx context.Context, s *CourseScan, courseI
 			continue
 		}
 
-		// Success
 		s.logger.Debug().
 			Str("course_id", courseID).
 			Str("course_path", coursePath).
@@ -559,7 +546,7 @@ func scanFiles(s *CourseScan, course *models.Course) (*scannedResults, error) {
 		return nil, err
 	}
 
-	// A bucket is the module => prefix => fileBucket
+	// A bucket is module => prefix => fileBucket
 	buckets := map[string]map[int]*lessonBucket{}
 	cardPath := ""
 
@@ -593,7 +580,6 @@ func scanFiles(s *CourseScan, course *models.Course) (*scannedResults, error) {
 
 		bucket := buckets[module][prefix]
 
-		// Build the buckets of lessons of assets, attachments, and descriptions
 		switch category {
 		case Card:
 			if inRoot && cardPath == "" {
@@ -640,13 +626,11 @@ func scanFiles(s *CourseScan, course *models.Course) (*scannedResults, error) {
 					lesson.Assets = append(lesson.Assets, asset)
 				}
 
-				// Demote solo assets to attachments
 				for _, parsedFile := range bucket.soloFiles {
 					lesson.Attachments = append(lesson.Attachments, parsedFile.toAttachment())
 				}
 			} else if len(bucket.soloFiles) > 0 {
 				if len(bucket.soloFiles) > 1 {
-					// Multiple solo files, pick the best
 					idx := pickBest(bucket.soloFiles)
 					pf := bucket.soloFiles[idx]
 
@@ -657,10 +641,8 @@ func scanFiles(s *CourseScan, course *models.Course) (*scannedResults, error) {
 					asset.LessonID = lesson.ID
 					lesson.Assets = append(lesson.Assets, asset)
 
-					// Set the lesson title from the selected solo file
 					lesson.Title = pf.Title
 
-					// Demote remaining solo files to attachments
 					for i, other := range bucket.soloFiles {
 						if i == idx {
 							continue
@@ -678,14 +660,12 @@ func scanFiles(s *CourseScan, course *models.Course) (*scannedResults, error) {
 					lesson.Title = bucket.soloFiles[0].Title
 				}
 
-				// Attachments
 				for _, parsedFile := range bucket.attachFiles {
 					lesson.Attachments = append(lesson.Attachments, parsedFile.toAttachment())
 				}
 
 			}
 
-			// Create the lesson if it has at least 1 asset
 			if len(lesson.Assets) > 0 {
 				lessons = append(lessons, lesson)
 			}
@@ -715,8 +695,7 @@ func flatAttachmentsAndAssets(lessons []*models.Lesson) ([]*models.Attachment, [
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // probeVideos probes videos assets that match the operations create, replace, swap, or overwrite
-// extractedKeyframes is a map scoped to the current scan operation to store extracted keyframes
-func probeVideos(ctx context.Context, s *CourseScan, ops []Op, course *models.Course, extractedKeyframes map[string][]float64) map[string]*models.AssetMetadata {
+func probeVideos(ctx context.Context, s *CourseScan, ops []Op, course *models.Course, extractedKeyframes map[string][]float64, scanState *ScanState) map[string]*models.AssetMetadata {
 	var targets []*models.Asset
 	for _, op := range ops {
 		switch v := op.(type) {
@@ -736,7 +715,6 @@ func probeVideos(ctx context.Context, s *CourseScan, ops []Op, course *models.Co
 				targets = append(targets, v.NewB)
 			}
 		case OverwriteAssetOp:
-			// Probe the renamed asset if it's a video (it takes the place of the deleted asset)
 			if v.Renamed.Type.IsVideo() {
 				targets = append(targets, v.Renamed)
 			}
@@ -753,150 +731,117 @@ func probeVideos(ctx context.Context, s *CourseScan, ops []Op, course *models.Co
 		Int("video_assets_count", len(targets)).
 		Msg("Starting video probing and keyframe extraction")
 
-	// Use parallel processing with worker pool
-	// Limit concurrency based on CPU cores, but cap at reasonable number for FFmpeg
-	numWorkers := runtime.NumCPU()
-	if numWorkers > 4 {
-		numWorkers = 4 // Cap at 4 to avoid overwhelming system with FFmpeg processes
+	scanState.UpdateMessage("Extracting video keyframes")
+	mediaProbe := probe.MediaProbe{FFmpeg: s.ffmpeg}
+	assetMetadataByPath := make(map[string]*models.AssetMetadata)
+	totalVideos := len(targets)
+
+	cancelled := false
+	for i, asset := range targets {
+		if ctx.Err() != nil {
+			s.logger.Info().
+				Str("course_id", course.ID).
+				Str("course_path", course.Path).
+				Msg("Video probing cancelled")
+			cancelled = true
+			break
+		}
+
+		scanState.UpdateMessage(fmt.Sprintf("Extracting video keyframes (%d/%d)", i+1, totalVideos))
+
+		info, _, err := mediaProbe.ProbeVideo(ctx, asset.Path)
+		if err != nil {
+			if ctx.Err() != nil || isCancellationError(err) {
+				cancelled = true
+				break
+			}
+			s.logger.Warn().
+				Err(err).
+				Str("course_id", course.ID).
+				Str("course_path", course.Path).
+				Str("video_path", asset.Path).
+				Msg("Failed to probe video file")
+			continue
+		}
+
+		var keyframes []float64
+		if kf, err := mediaProbe.ExtractKeyframesForVideo(ctx, asset.Path); err == nil {
+			keyframes = kf
+			s.logger.Debug().
+				Str("course_id", course.ID).
+				Str("course_path", course.Path).
+				Int("keyframes_count", len(keyframes)).
+				Str("video_path", asset.Path).
+				Msg("Extracted keyframes for video")
+		} else {
+			if ctx.Err() != nil || isCancellationError(err) {
+				cancelled = true
+				break
+			}
+			s.logger.Warn().
+				Err(err).
+				Str("course_id", course.ID).
+				Str("course_path", course.Path).
+				Str("video_path", asset.Path).
+				Msg("Failed to extract keyframes for video")
+		}
+
+		assetMetadataByPath[asset.Path] = &models.AssetMetadata{
+			VideoMetadata: &models.VideoMetadata{
+				DurationSec: info.DurationSec,
+				Container:   info.File.Container,
+				MIMEType:    info.File.MIMEType,
+				SizeBytes:   info.File.SizeBytes,
+				OverallBPS:  info.File.OverallBPS,
+				VideoCodec:  info.Video.Codec,
+				Width:       info.Video.Width,
+				Height:      info.Video.Height,
+				FPSNum:      info.Video.FPSNum,
+				FPSDen:      info.Video.FPSDen,
+			},
+			AudioMetadata: &models.AudioMetadata{
+				Language:      info.Audio.Language,
+				Codec:         info.Audio.Codec,
+				Profile:       info.Audio.Profile,
+				Channels:      info.Audio.Channels,
+				ChannelLayout: info.Audio.ChannelLayout,
+				SampleRate:    info.Audio.SampleRate,
+				BitRate:       info.Audio.BitRate,
+			},
+		}
+		if len(keyframes) > 0 {
+			extractedKeyframes[asset.Path] = keyframes
+		}
 	}
 
-	if numWorkers < 1 {
-		numWorkers = 1
+	if !cancelled {
+		s.logger.Info().
+			Str("course_id", course.ID).
+			Str("course_path", course.Path).
+			Int("videos_processed", len(assetMetadataByPath)).
+			Int("total_videos", totalVideos).
+			Msg("Completed video probing and keyframe extraction")
 	}
 
-	return probeVideosParallel(ctx, s, targets, course, extractedKeyframes, numWorkers)
+	return assetMetadataByPath
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// probeVideosParallel probes videos in parallel using a worker pool
-func probeVideosParallel(ctx context.Context, s *CourseScan, targets []*models.Asset, course *models.Course, extractedKeyframes map[string][]float64, numWorkers int) map[string]*models.AssetMetadata {
-	if len(targets) == 0 {
-		return map[string]*models.AssetMetadata{}
+// isCancellationError checks if an error is related to cancellation
+func isCancellationError(err error) bool {
+	if err == nil {
+		return false
 	}
 
-	// Create work channel
-	workChan := make(chan *models.Asset, len(targets))
-	for _, asset := range targets {
-		workChan <- asset
-	}
-	close(workChan)
-
-	// Track results and progress
-	var (
-		wg                  sync.WaitGroup
-		mu                  sync.Mutex
-		assetMetadataByPath = make(map[string]*models.AssetMetadata)
-		processedCount      int
-		totalVideos         = len(targets)
-		mediaProbe          = probe.MediaProbe{FFmpeg: s.ffmpeg}
-	)
-
-	// Start workers
-	for i := 0; i < numWorkers && i < totalVideos; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for asset := range workChan {
-				// Check for context cancellation
-				select {
-				case <-ctx.Done():
-					s.logger.Warn().
-						Err(ctx.Err()).
-						Str("course_id", course.ID).
-						Str("course_path", course.Path).
-						Msg("Video probing cancelled due to context cancellation")
-					return
-				default:
-				}
-
-				// Probe video
-				info, err := mediaProbe.ProbeVideo(asset.Path)
-				if err != nil {
-					// Log video probe failure but don't fail the scan
-					s.logger.Warn().
-						Err(err).
-						Str("course_id", course.ID).
-						Str("course_path", course.Path).
-						Str("video_path", asset.Path).
-						Msg("Failed to probe video file")
-				} else {
-					// Extract keyframes for HLS transcoding
-					var keyframes []float64
-					if kf, err := mediaProbe.ExtractKeyframesForVideo(asset.Path); err == nil {
-						keyframes = kf
-						s.logger.Debug().
-							Str("course_id", course.ID).
-							Str("course_path", course.Path).
-							Int("keyframes_count", len(keyframes)).
-							Str("video_path", asset.Path).
-							Msg("Extracted keyframes for video")
-					} else {
-						// Log keyframe extraction failure but don't fail the scan
-						s.logger.Warn().
-							Err(err).
-							Str("course_id", course.ID).
-							Str("course_path", course.Path).
-							Str("video_path", asset.Path).
-							Msg("Failed to extract keyframes for video")
-					}
-
-					// Store metadata and keyframes
-					mu.Lock()
-					assetMetadataByPath[asset.Path] = &models.AssetMetadata{
-						VideoMetadata: &models.VideoMetadata{
-							DurationSec: info.DurationSec,
-							Container:   info.File.Container,
-							MIMEType:    info.File.MIMEType,
-							SizeBytes:   info.File.SizeBytes,
-							OverallBPS:  info.File.OverallBPS,
-							VideoCodec:  info.Video.Codec,
-							Width:       info.Video.Width,
-							Height:      info.Video.Height,
-							FPSNum:      info.Video.FPSNum,
-							FPSDen:      info.Video.FPSDen,
-						},
-						AudioMetadata: &models.AudioMetadata{
-							Language:      info.Audio.Language,
-							Codec:         info.Audio.Codec,
-							Profile:       info.Audio.Profile,
-							Channels:      info.Audio.Channels,
-							ChannelLayout: info.Audio.ChannelLayout,
-							SampleRate:    info.Audio.SampleRate,
-							BitRate:       info.Audio.BitRate,
-						},
-					}
-					if len(keyframes) > 0 {
-						extractedKeyframes[asset.Path] = keyframes
-					}
-					processedCount++
-					current := processedCount
-					mu.Unlock()
-
-					// Log progress periodically
-					if current%5 == 0 || current == totalVideos {
-						s.logger.Info().
-							Str("course_id", course.ID).
-							Str("course_path", course.Path).
-							Str("progress", fmt.Sprintf("%d of %d", current, totalVideos)).
-							Msg("Video probing and keyframe extraction progress")
-					}
-				}
-			}
-		}()
+	if err == context.Canceled || err == context.DeadlineExceeded {
+		return true
 	}
 
-	// Wait for all workers to complete
-	wg.Wait()
-
-	s.logger.Info().
-		Str("course_id", course.ID).
-		Str("course_path", course.Path).
-		Int("videos_processed", processedCount).
-		Int("total_videos", totalVideos).
-		Msg("Completed video probing and keyframe extraction")
-
-	return assetMetadataByPath
+	errStr := err.Error()
+	return strings.Contains(errStr, "context canceled") ||
+		strings.Contains(errStr, "signal: killed") ||
+		strings.Contains(errStr, "context deadline exceeded")
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -915,7 +860,6 @@ func applyLessonCreateUpdateOps(
 	for _, op := range ops {
 		switch v := op.(type) {
 		case CreateLessonOp:
-			// Create a new lesson
 			if err := s.dao.CreateLesson(ctx, v.New); err != nil {
 				return false, err
 			}
@@ -1001,7 +945,6 @@ func applyLessonDeleteOps(
 
 // applyAssetOps applies the changes to the assets in the database by creating, renaming,
 // replacing, swapping, or deleting them as needed
-// extractedKeyframes is a map scoped to the current scan operation containing extracted keyframes
 func applyAssetOps(
 	ctx context.Context,
 	s *CourseScan,
@@ -1022,7 +965,6 @@ func applyAssetOps(
 				return false, err
 			}
 
-			// If the asset is a video, also create video metadata
 			if metadata := assetMetadataByPath[v.New.Path]; metadata != nil && v.New.Type.IsVideo() {
 				metadata.AssetID = v.New.ID
 
@@ -1030,9 +972,7 @@ func applyAssetOps(
 					return false, err
 				}
 
-				// Store keyframes if they were extracted
 				if keyframes, exists := extractedKeyframes[v.New.Path]; exists {
-					// Validate keyframes before storage
 					if len(keyframes) > 0 {
 						assetKeyframes := &models.AssetKeyframes{
 							AssetID:    v.New.ID,
@@ -1041,7 +981,6 @@ func applyAssetOps(
 						}
 
 						if err := s.dao.CreateAssetKeyframes(ctx, assetKeyframes); err != nil {
-							// Log error but don't fail the scan
 							s.logger.Error().
 								Err(err).
 								Str("course_id", course.ID).
@@ -1052,7 +991,6 @@ func applyAssetOps(
 						}
 					}
 
-					// Clean up the keyframes from memory after processing
 					delete(extractedKeyframes, v.New.Path)
 				}
 
@@ -1102,7 +1040,6 @@ func applyAssetOps(
 				return false, err
 			}
 
-			// If the asset is a video, also create video metadata
 			if metadata := assetMetadataByPath[v.New.Path]; metadata != nil && v.New.Type.IsVideo() {
 				metadata.AssetID = v.New.ID
 
@@ -1144,7 +1081,6 @@ func applyAssetOps(
 				return false, err
 			}
 
-			// If the renamed asset is a video, create/update video metadata
 			if metadata := assetMetadataByPath[v.Renamed.Path]; metadata != nil && v.Renamed.Type.IsVideo() {
 				metadata.AssetID = v.Renamed.ID
 
@@ -1152,7 +1088,6 @@ func applyAssetOps(
 					return false, err
 				}
 
-				// Store keyframes if they were extracted
 				if keyframes, exists := extractedKeyframes[v.Renamed.Path]; exists {
 					if len(keyframes) > 0 {
 						assetKeyframes := &models.AssetKeyframes{
@@ -1204,7 +1139,6 @@ func applyAssetOps(
 					return false, err
 				}
 
-				// If the asset is a video, also create video metadata
 				if metadata := assetMetadataByPath[newAsset.Path]; metadata != nil && newAsset.Type.IsVideo() {
 					metadata.AssetID = newAsset.ID
 
@@ -1235,9 +1169,7 @@ func applyAssetOps(
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // recalculateCourseDuration recalculates the course duration by summing all video asset durations
-// from the database. This ensures accuracy after all operations have been applied.
 func recalculateCourseDuration(ctx context.Context, s *CourseScan, courseID string) (int, error) {
-	// List all assets for this course with video metadata
 	dbOpts := dao.NewOptions().
 		WithWhere(squirrel.Eq{models.ASSET_COURSE_ID: courseID}).
 		WithAssetMetadata()
@@ -1380,8 +1312,8 @@ func isCard(filename string) bool {
 
 // populateHashesIfChanged populates the hashes of the scanned assets if they have changed
 // Uses parallel processing with a worker pool to improve performance
-func populateHashesIfChanged(ctx context.Context, fs afero.Fs, scanned []*models.Asset, existing []*models.Asset, course *models.Course, logger *logger.Logger) error {
-	logger.Info().
+func populateHashesIfChanged(ctx context.Context, s *CourseScan, scanned []*models.Asset, existing []*models.Asset, course *models.Course, scanState *ScanState) error {
+	s.logger.Info().
 		Str("course_id", course.ID).
 		Str("course_path", course.Path).
 		Int("assets_to_hash", len(scanned)).
@@ -1407,13 +1339,13 @@ func populateHashesIfChanged(ctx context.Context, fs afero.Fs, scanned []*models
 
 	// Use parallel hashing with worker pool
 	const numWorkers = 4 // Limit concurrency to avoid overwhelming I/O
-	return populateHashesParallel(ctx, fs, toHash, course, logger, numWorkers)
+	return populateHashesParallel(ctx, s, toHash, course, numWorkers, scanState)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // populateHashesParallel hashes assets in parallel using a worker pool
-func populateHashesParallel(ctx context.Context, fs afero.Fs, assets []*models.Asset, course *models.Course, logger *logger.Logger, numWorkers int) error {
+func populateHashesParallel(ctx context.Context, s *CourseScan, assets []*models.Asset, course *models.Course, numWorkers int, scanState *ScanState) error {
 	if len(assets) == 0 {
 		return nil
 	}
@@ -1441,25 +1373,23 @@ func populateHashesParallel(ctx context.Context, fs afero.Fs, assets []*models.A
 			defer wg.Done()
 			for asset := range workChan {
 				// Check for context cancellation
-				select {
-				case <-ctx.Done():
+				if ctx.Err() != nil {
 					mu.Lock()
 					if firstError == nil {
 						firstError = ctx.Err()
 					}
 					mu.Unlock()
 					return
-				default:
 				}
 
-				hash, err := hashFilePartial(fs, asset.Path, 1024*1024)
+				hash, err := hashFilePartial(s.appFs.Fs, asset.Path, 1024*1024)
 				if err != nil {
 					mu.Lock()
 					if firstError == nil {
 						firstError = err
 					}
 					mu.Unlock()
-					logger.Error().
+					s.logger.Error().
 						Err(err).
 						Str("course_id", course.ID).
 						Str("course_path", course.Path).
@@ -1474,14 +1404,8 @@ func populateHashesParallel(ctx context.Context, fs afero.Fs, assets []*models.A
 				current := hashedCount
 				mu.Unlock()
 
-				// Log progress periodically (every 10 files or at completion)
-				if current%10 == 0 || current == totalToHash {
-					logger.Debug().
-						Str("course_id", course.ID).
-						Str("course_path", course.Path).
-						Str("progress", fmt.Sprintf("%d of %d", current, totalToHash)).
-						Msg("Hashing assets progress")
-				}
+				// Update status directly (thread-safe via mutex in ScanState)
+				scanState.UpdateMessage(fmt.Sprintf("Calculating asset hashes (%d/%d)", current, totalToHash))
 			}
 		}()
 	}
@@ -1489,11 +1413,16 @@ func populateHashesParallel(ctx context.Context, fs afero.Fs, assets []*models.A
 	// Wait for all workers to complete
 	wg.Wait()
 
+	// Return first error encountered, if any
 	if firstError != nil {
+		// Check if this is a cancellation (not a real error)
+		if firstError == context.Canceled || firstError == context.DeadlineExceeded {
+			return firstError
+		}
 		return fmt.Errorf("failed to hash one or more assets: %w", firstError)
 	}
 
-	logger.Info().
+	s.logger.Info().
 		Str("course_id", course.ID).
 		Str("course_path", course.Path).
 		Int("hashed_count", hashedCount).

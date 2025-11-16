@@ -3,7 +3,7 @@
 	import { Button, Input } from '$lib/components/ui';
 	import { cn } from '$lib/utils';
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	type Props = {
 		value?: string;
@@ -13,7 +13,7 @@
 
 	let { value = $bindable(''), disabled = false, onApply }: Props = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Reference to the search input element
 	let searchCoursesEl = $state<HTMLInputElement>();

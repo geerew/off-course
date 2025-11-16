@@ -18,7 +18,7 @@
 
 	let { open = $bindable(false), value, trigger, successFn }: Props = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let inputEl = $state<HTMLInputElement>();
 	let newValue = $state<string>('');
@@ -26,7 +26,7 @@
 
 	const deletingSelf = value.id === auth?.user?.id;
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	$effect(() => {
 		if (open) {
@@ -35,7 +35,7 @@
 		}
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function doUpdate(e: Event) {
 		e.preventDefault();

@@ -31,13 +31,13 @@ func TestScanner_Processor(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, scanner.dao.CreateCourse(ctx, course))
 
-		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
-		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
-
-		_, err := scanner.db.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.COURSE_TABLE)
+		scanState, err := scanner.Add(ctx, course.ID)
 		require.NoError(t, err)
 
-		err = Processor(ctx, scanner, scan)
+		_, err = scanner.db.ExecContext(context.Background(), "DROP TABLE IF EXISTS "+models.COURSE_TABLE)
+		require.NoError(t, err)
+
+		err = Processor(ctx, scanner, scanState)
 		require.ErrorContains(t, err, fmt.Sprintf("no such table: %s", models.COURSE_TABLE))
 	})
 
@@ -47,10 +47,10 @@ func TestScanner_Processor(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: true}
 		require.NoError(t, scanner.dao.CreateCourse(ctx, course))
 
-		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
-		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
+		scanState, err := scanner.Add(ctx, course.ID)
+		require.NoError(t, err)
 
-		err := Processor(ctx, scanner, scan)
+		err = Processor(ctx, scanner, scanState)
 		require.NoError(t, err)
 
 		// Note: Log assertions removed as we no longer have access to log entries in the new logger system
@@ -62,12 +62,12 @@ func TestScanner_Processor(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1", Available: false}
 		require.NoError(t, scanner.dao.CreateCourse(ctx, course))
 
-		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
-		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
+		scanState, err := scanner.Add(ctx, course.ID)
+		require.NoError(t, err)
 
 		scanner.appFs.Fs.Mkdir(course.Path, os.ModePerm)
 
-		err := Processor(ctx, scanner, scan)
+		err = Processor(ctx, scanner, scanState)
 		require.NoError(t, err)
 
 		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
@@ -82,8 +82,8 @@ func TestScanner_Processor(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, scanner.dao.CreateCourse(ctx, course))
 
-		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
-		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
+		scanState, err := scanner.Add(ctx, course.ID)
+		require.NoError(t, err)
 
 		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
 
@@ -92,7 +92,7 @@ func TestScanner_Processor(t *testing.T) {
 			scanner.appFs.Fs.Mkdir(course.Path, os.ModePerm)
 			scanner.appFs.Fs.Create(filepath.Join(course.Path, "card.jpg"))
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			record, err := scanner.dao.GetCourse(ctx, dbOpts)
@@ -105,7 +105,7 @@ func TestScanner_Processor(t *testing.T) {
 			scanner.appFs.Fs.Remove(filepath.Join(course.Path, "card.jpg"))
 			scanner.appFs.Fs.Create(filepath.Join(course.Path, "01 Chapter 1", "card.jpg"))
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			record, err := scanner.dao.GetCourse(ctx, dbOpts)
@@ -118,7 +118,7 @@ func TestScanner_Processor(t *testing.T) {
 			scanner.appFs.Fs.Create(filepath.Join(course.Path, "card.jpg"))
 			scanner.appFs.Fs.Create(filepath.Join(course.Path, "card.png"))
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			record, err := scanner.dao.GetCourse(ctx, dbOpts)
@@ -133,8 +133,8 @@ func TestScanner_Processor(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, scanner.dao.CreateCourse(ctx, course))
 
-		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
-		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
+		scanState, err := scanner.Add(ctx, course.ID)
+		require.NoError(t, err)
 
 		scanner.appFs.Fs.Mkdir(course.Path, os.ModePerm)
 		scanner.appFs.Fs.Create(fmt.Sprintf("%s/file 1", course.Path))
@@ -149,7 +149,7 @@ func TestScanner_Processor(t *testing.T) {
 		scanner.appFs.Fs.Create(fmt.Sprintf("%s/2.3-file.avi", course.Path))
 		scanner.appFs.Fs.Create(fmt.Sprintf("%s/1file.avi", course.Path))
 
-		err := Processor(ctx, scanner, scan)
+		err = Processor(ctx, scanner, scanState)
 		require.NoError(t, err)
 
 		count, err := scanner.dao.CountAssets(ctx, nil)
@@ -163,8 +163,8 @@ func TestScanner_Processor(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, scanner.dao.CreateCourse(ctx, course))
 
-		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
-		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
+		scanState, err := scanner.Add(ctx, course.ID)
+		require.NoError(t, err)
 
 		dbOpts := dao.NewOptions().
 			WithWhere(squirrel.Eq{models.LESSON_TABLE_COURSE_ID: course.ID}).
@@ -178,7 +178,7 @@ func TestScanner_Processor(t *testing.T) {
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 file 1.mkv", course.Path), []byte("hash 1"), os.ModePerm)
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/02 file 2.pdf", course.Path), []byte("hash 2"), os.ModePerm)
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
@@ -206,7 +206,7 @@ func TestScanner_Processor(t *testing.T) {
 		{
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 Chapter 1/01 file 1.pdf", course.Path), []byte("hash 3"), os.ModePerm)
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
@@ -225,7 +225,7 @@ func TestScanner_Processor(t *testing.T) {
 		{
 			scanner.appFs.Fs.Remove(fmt.Sprintf("%s/01 Chapter 1/01 file 1.pdf", course.Path))
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
@@ -243,7 +243,7 @@ func TestScanner_Processor(t *testing.T) {
 			existingAssetID := lessons[1].Assets[0].ID
 			scanner.appFs.Fs.Rename(fmt.Sprintf("%s/02 file 2.pdf", course.Path), fmt.Sprintf("%s/03 file 3.pdf", course.Path))
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
@@ -262,7 +262,7 @@ func TestScanner_Processor(t *testing.T) {
 		{
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/03 file 3.pdf", course.Path), []byte("new hash 3"), os.ModePerm)
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
@@ -288,7 +288,7 @@ func TestScanner_Processor(t *testing.T) {
 			scanner.appFs.Fs.Rename(fmt.Sprintf("%s/03 file 3.pdf", course.Path), fmt.Sprintf("%s/01 file 1.mkv", course.Path))
 			scanner.appFs.Fs.Rename(fmt.Sprintf("%s/03 file 3.pdf.temp", course.Path), fmt.Sprintf("%s/03 file 3.pdf", course.Path))
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
@@ -313,7 +313,7 @@ func TestScanner_Processor(t *testing.T) {
 				fmt.Sprintf("%s/01 file 1.mkv", course.Path),
 			))
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
@@ -331,7 +331,7 @@ func TestScanner_Processor(t *testing.T) {
 			// Delete all files but keep the course directory
 			scanner.appFs.Fs.RemoveAll(fmt.Sprintf("%s/01 file 1.mkv", course.Path))
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
@@ -343,7 +343,7 @@ func TestScanner_Processor(t *testing.T) {
 		{
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 lesson 1 {01 video 1}.mkv", course.Path), []byte("hash 1"), os.ModePerm)
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
@@ -362,7 +362,7 @@ func TestScanner_Processor(t *testing.T) {
 		{
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 lesson 1 {02 video 2}.mkv", course.Path), []byte("hash 2"), os.ModePerm)
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err = scanner.dao.ListLessons(ctx, dbOpts)
@@ -390,8 +390,8 @@ func TestScanner_Processor(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, scanner.dao.CreateCourse(ctx, course))
 
-		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
-		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
+		scanState, err := scanner.Add(ctx, course.ID)
+		require.NoError(t, err)
 
 		dbOpts := dao.NewOptions().
 			WithOrderBy(models.LESSON_TABLE_MODULE+" asc", models.LESSON_TABLE_PREFIX+" asc").
@@ -402,7 +402,7 @@ func TestScanner_Processor(t *testing.T) {
 			scanner.appFs.Fs.Mkdir(course.Path, os.ModePerm)
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 file 1.mkv", course.Path), []byte("hash 1"), os.ModePerm)
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
@@ -422,7 +422,7 @@ func TestScanner_Processor(t *testing.T) {
 		{
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 attachment 1.url", course.Path), []byte("attachment 1"), os.ModePerm)
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
@@ -438,7 +438,7 @@ func TestScanner_Processor(t *testing.T) {
 		{
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 attachment 2.url", course.Path), []byte("attachment 2"), os.ModePerm)
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
@@ -457,7 +457,7 @@ func TestScanner_Processor(t *testing.T) {
 		{
 			scanner.appFs.Fs.Remove(fmt.Sprintf("%s/01 attachment 1.url", course.Path))
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
@@ -478,8 +478,8 @@ func TestScanner_Processor(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, scanner.dao.CreateCourse(ctx, course))
 
-		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
-		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
+		scanState, err := scanner.Add(ctx, course.ID)
+		require.NoError(t, err)
 
 		dbOpts := dao.NewOptions().
 			WithOrderBy(models.LESSON_TABLE_MODULE+" asc", models.LESSON_TABLE_PREFIX+" asc").
@@ -491,7 +491,7 @@ func TestScanner_Processor(t *testing.T) {
 		{
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 text 1.txt", course.Path), []byte("text 1"), os.ModePerm)
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
@@ -512,7 +512,7 @@ func TestScanner_Processor(t *testing.T) {
 		{
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 markdown 1.md", course.Path), []byte("markdown 1"), os.ModePerm)
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
@@ -535,7 +535,7 @@ func TestScanner_Processor(t *testing.T) {
 		{
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 pdf 1.pdf", course.Path), []byte("pdf 1"), os.ModePerm)
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
@@ -559,7 +559,7 @@ func TestScanner_Processor(t *testing.T) {
 		{
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 video.mp4", course.Path), []byte("video"), os.ModePerm)
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
@@ -584,7 +584,7 @@ func TestScanner_Processor(t *testing.T) {
 		{
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 pdf 2.pdf", course.Path), []byte("pdf 2"), os.ModePerm)
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
@@ -613,8 +613,8 @@ func TestScanner_Processor(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, scanner.dao.CreateCourse(ctx, course))
 
-		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
-		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
+		scanState, err := scanner.Add(ctx, course.ID)
+		require.NoError(t, err)
 
 		dbOpts := dao.NewOptions().
 			WithOrderBy(models.LESSON_TABLE_MODULE+" asc", models.LESSON_TABLE_PREFIX+" asc").
@@ -625,7 +625,7 @@ func TestScanner_Processor(t *testing.T) {
 			scanner.appFs.Fs.Mkdir(course.Path, os.ModePerm)
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 Group 1 {1 Video 1}.mp4", course.Path), []byte("video 1"), os.ModePerm)
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
@@ -649,7 +649,7 @@ func TestScanner_Processor(t *testing.T) {
 		{
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 Group 1 {2 Video 2}.mp4", course.Path), []byte("video 2"), os.ModePerm)
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
@@ -675,7 +675,7 @@ func TestScanner_Processor(t *testing.T) {
 		{
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 Group 1 {3}.mp4", course.Path), []byte("video 3"), os.ModePerm)
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
@@ -703,7 +703,7 @@ func TestScanner_Processor(t *testing.T) {
 		{
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 Group 1.mp4", course.Path), []byte("video 4"), os.ModePerm)
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
@@ -724,7 +724,7 @@ func TestScanner_Processor(t *testing.T) {
 		{
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 attachment 1.txt", course.Path), []byte("attachment 1"), os.ModePerm)
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)
@@ -748,8 +748,8 @@ func TestScanner_Processor(t *testing.T) {
 		course := &models.Course{Title: "Course 1", Path: "/course-1"}
 		require.NoError(t, scanner.dao.CreateCourse(ctx, course))
 
-		scan := &models.Scan{CourseID: course.ID, Status: types.NewScanStatusWaiting()}
-		require.NoError(t, scanner.dao.CreateScan(ctx, scan))
+		scanState, err := scanner.Add(ctx, course.ID)
+		require.NoError(t, err)
 
 		dbOpts := dao.NewOptions().
 			WithOrderBy(models.LESSON_TABLE_MODULE+" asc", models.LESSON_TABLE_PREFIX+" asc").
@@ -760,7 +760,7 @@ func TestScanner_Processor(t *testing.T) {
 			scanner.appFs.Fs.Mkdir(course.Path, os.ModePerm)
 			afero.WriteFile(scanner.appFs.Fs, fmt.Sprintf("%s/01 video 1.mp4", course.Path), []byte("video 1"), os.ModePerm)
 
-			err := Processor(ctx, scanner, scan)
+			err := Processor(ctx, scanner, scanState)
 			require.NoError(t, err)
 
 			lessons, err := scanner.dao.ListLessons(ctx, dbOpts)

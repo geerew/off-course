@@ -2,6 +2,9 @@ package coursescan
 
 import (
 	"context"
+	"sort"
+	"sync"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/dao"
@@ -17,19 +20,31 @@ import (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // CourseScanProcessorFn is a function that processes a course scan job
-type CourseScanProcessorFn func(context.Context, *CourseScan, *models.Scan) error
+type CourseScanProcessorFn func(context.Context, *CourseScan, *ScanState) error
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // CourseScan scans a course and finds assets and attachments
 type CourseScan struct {
-	appFs     *appfs.AppFs
-	db        database.Database
-	dao       *dao.DAO
-	logger    *logger.Logger
-	ffmpeg    *media.FFmpeg
-	jobSignal chan struct{}
+	appFs  *appfs.AppFs
+	db     database.Database
+	dao    *dao.DAO
+	logger *logger.Logger
+	ffmpeg *media.FFmpeg
+
+	// In-memory scan state storage
+	scans utils.CMap[string, *ScanState]
+
+	// addMutex protects the Add operation to prevent race conditions
+	addMutex sync.Mutex
 }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+const (
+	// scanPollInterval is how often the worker polls for waiting scans
+	scanPollInterval = 1 * time.Second
+)
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -46,20 +61,20 @@ type CourseScanConfig struct {
 // New creates a new CourseScan
 func New(config *CourseScanConfig) *CourseScan {
 	return &CourseScan{
-		appFs:     config.AppFs,
-		db:        config.Db,
-		dao:       dao.New(config.Db),
-		logger:    config.Logger,
-		ffmpeg:    config.FFmpeg,
-		jobSignal: make(chan struct{}, 1),
+		appFs:  config.AppFs,
+		db:     config.Db,
+		dao:    dao.New(config.Db),
+		logger: config.Logger,
+		ffmpeg: config.FFmpeg,
+		scans:  utils.NewCMap[string, *ScanState](),
 	}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Add inserts a course scan job into the db
-func (s *CourseScan) Add(ctx context.Context, courseId string) (*models.Scan, error) {
-	// Look up the course
+// Add creates a course scan job and adds it to the CMap
+func (s *CourseScan) Add(ctx context.Context, courseId string) (*ScanState, error) {
+	// Look up the course to get path and title
 	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: courseId})
 	course, err := s.dao.GetCourse(ctx, dbOpts)
 	if err != nil {
@@ -70,116 +85,242 @@ func (s *CourseScan) Add(ctx context.Context, courseId string) (*models.Scan, er
 		return nil, utils.ErrCourseNotFound
 	}
 
-	// Get the scan from the db and return that
-	dbOpts = dao.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_COURSE_ID: courseId})
-	scan, err := s.dao.GetScan(ctx, dbOpts)
-	if err != nil {
-		return nil, err
-	}
+	s.addMutex.Lock()
+	defer s.addMutex.Unlock()
 
-	if scan == nil {
-		// No scan job exists, create a new one
-		scan = &models.Scan{CourseID: course.ID}
-		if err := s.dao.CreateScan(ctx, scan); err != nil {
-			return nil, err
-		}
-	} else {
-		// Scan job already exists
+	// Check if the scan job already exists (atomic check within lock)
+	existingScan := s.GetScanByCourseID(courseId)
+	if existingScan != nil {
 		s.logger.Debug().
 			Str("course_id", courseId).
 			Str("course_path", course.Path).
-			Str("job", scan.ID).
+			Str("scan_id", existingScan.ID).
 			Msg("Scan job already exists")
 
-		return scan, nil
+		return existingScan, nil
 	}
 
-	// Signal the worker to process the job
-	select {
-	case s.jobSignal <- struct{}{}:
-	default:
-	}
+	// Create and add the new scan
+	scanState := NewScanState(courseId, course.Path, course.Title)
+	s.scans.Set(scanState.ID, scanState)
 
 	s.logger.Info().
 		Str("course_id", courseId).
 		Str("course_path", course.Path).
+		Str("scan_id", scanState.ID).
 		Msg("Added scan job")
 
-	return scan, nil
+	return scanState, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Worker processes jobs out of the DB sequentially
-//
-// TODO find a way to stop processing when the job is deleted
-func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessorFn, processingDone chan bool) {
+// GetScanByCourseID finds a scan by course ID
+func (s *CourseScan) GetScanByCourseID(courseID string) *ScanState {
+	var found *ScanState
+	s.scans.Range(func(scanID string, scanState *ScanState) bool {
+		if scanState.CourseID == courseID {
+			found = scanState
+			return false // Stop iteration
+		}
+		return true // Continue iteration
+	})
+	return found
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// GetAllScans returns all scans in the CMap, sorted by status (processing first) then by createdAt (oldest first)
+func (s *CourseScan) GetAllScans() []*ScanState {
+	var allScans []*ScanState
+	s.scans.Range(func(scanID string, scanState *ScanState) bool {
+		allScans = append(allScans, scanState)
+		return true // Continue iteration
+	})
+
+	sortScans(allScans)
+
+	return allScans
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// CancelAndRemoveScan cancels a scan (if running) and removes it from the CMap
+func (s *CourseScan) CancelAndRemoveScan(scanID string) bool {
+	scanState, exists := s.scans.Get(scanID)
+	if !exists {
+		return false
+	}
+
+	scanState.Cancel()
+
+	s.scans.Remove(scanID)
+	return true
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// CancelAndRemoveScansByCourseID cancels and removes all scans for a given course ID
+func (s *CourseScan) CancelAndRemoveScansByCourseID(courseID string) {
+	var scanIDsToRemove []string
+	s.scans.Range(func(scanID string, scanState *ScanState) bool {
+		if scanState.CourseID == courseID {
+			scanState.Cancel()
+			scanIDsToRemove = append(scanIDsToRemove, scanID)
+		}
+		return true
+	})
+
+	for _, scanID := range scanIDsToRemove {
+		s.scans.Remove(scanID)
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Worker polls the CMap for waiting scans and processes them sequentially
+func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessorFn) {
 	s.logger.Debug().Msg("Started course scanner worker")
 
-	// Create an admin principal context for the course scan worker
-	principal := types.Principal{
-		UserID: "course-scan-worker",
-		Role:   types.UserRoleAdmin,
-	}
-	ctx = context.WithValue(ctx, types.PrincipalContextKey, principal)
+	ticker := time.NewTicker(scanPollInterval)
+	defer ticker.Stop()
 
 	for {
-		<-s.jobSignal
-
-		// Keep process jobs from the scans table until there are no more jobs
-		for {
-			nextScan, err := s.dao.NextWaitingScan(ctx)
-			if err != nil {
-				s.logger.Error().
-					Err(err).
-					Msg("Failed to look up the next scan job")
-
-				break
-			}
-
-			// Nothing more to process
-			if nextScan == nil {
-				s.logger.Debug().Msg("Finished processing all scan jobs")
-				break
-			}
-
-			s.logger.Info().
-				Str("course_id", nextScan.CourseID).
-				Str("course_path", nextScan.CoursePath).
-				Str("job", nextScan.ID).
-				Msg("Processing scan job")
-
-			err = processorFn(ctx, s, nextScan)
-			if err != nil {
-				s.logger.Error().
-					Err(err).
-					Str("course_id", nextScan.CourseID).
-					Str("course_path", nextScan.CoursePath).
-					Str("job", nextScan.ID).
-					Msg("Failed to process scan job")
-			}
-
-			// Cleanup
-			dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.SCAN_TABLE_ID: nextScan.ID})
-			if err := s.dao.DeleteScans(ctx, dbOpts); err != nil {
-				s.logger.Error().
-					Err(err).
-					Str("job", nextScan.ID).
-					Msg("Failed to delete scan job")
-
-				break
-			}
-		}
-
-		// Signal that processing is done
-		if processingDone != nil {
-			processingDone <- true
-		}
-
-		// Clear any pending signal that were sent while processing
 		select {
-		case <-s.jobSignal:
-		default:
+		case <-ctx.Done():
+			s.logger.Debug().Msg("Course scanner worker stopped")
+			return
+		case <-ticker.C:
+			var waitingScans []*ScanState
+			s.scans.Range(func(scanID string, scanState *ScanState) bool {
+				if scanState.GetStatus() == types.ScanStatusWaiting {
+					waitingScans = append(waitingScans, scanState)
+				}
+
+				return true
+			})
+
+			sortScans(waitingScans)
+
+			for _, scanState := range waitingScans {
+				// Check if context is cancelled before processing each scan
+				select {
+				case <-ctx.Done():
+					s.logger.Debug().Msg("Course scanner worker stopped during scan processing")
+					return
+				default:
+				}
+
+				existingScan, exists := s.scans.Get(scanState.ID)
+				if !exists {
+					s.logger.Debug().
+						Str("course_id", scanState.CourseID).
+						Str("scan_id", scanState.ID).
+						Msg("Skipping scan that was removed")
+					continue
+				}
+
+				if existingScan.GetStatus() != types.ScanStatusWaiting {
+					s.logger.Debug().
+						Str("course_id", scanState.CourseID).
+						Str("scan_id", scanState.ID).
+						Str("status", string(existingScan.GetStatus())).
+						Msg("Skipping scan that is no longer waiting")
+					continue
+				}
+
+				if existingScan.IsCancelled() {
+					s.logger.Debug().
+						Str("course_id", scanState.CourseID).
+						Str("scan_id", scanState.ID).
+						Msg("Skipping cancelled scan")
+					s.scans.Remove(scanState.ID)
+					continue
+				}
+
+				scanCtx, cancel := context.WithCancel(ctx)
+				defer cancel()
+				existingScan.SetCancel(cancel)
+
+				if finalCheck, stillExists := s.scans.Get(scanState.ID); !stillExists {
+					cancel()
+
+					s.logger.Debug().
+						Str("course_id", scanState.CourseID).
+						Str("scan_id", scanState.ID).
+						Msg("Skipping scan that was removed")
+
+					continue
+				} else if finalCheck.IsCancelled() || finalCheck.GetStatus() != types.ScanStatusWaiting {
+					cancel()
+
+					s.logger.Debug().
+						Str("course_id", scanState.CourseID).
+						Str("scan_id", scanState.ID).
+						Msg("Skipping scan that is cancelled or no longer waiting")
+
+					s.scans.Remove(scanState.ID)
+					continue
+				}
+
+				s.logger.Info().
+					Str("course_id", scanState.CourseID).
+					Str("course_path", scanState.CoursePath).
+					Str("scan_id", scanState.ID).
+					Msg("Processing scan job")
+
+				err := processorFn(scanCtx, s, existingScan)
+				if err != nil {
+					if err == context.Canceled || err == context.DeadlineExceeded {
+						s.logger.Info().
+							Str("course_id", scanState.CourseID).
+							Str("course_path", scanState.CoursePath).
+							Str("scan_id", scanState.ID).
+							Msg("Scan job cancelled")
+					} else {
+						s.logger.Error().
+							Err(err).
+							Str("course_id", scanState.CourseID).
+							Str("course_path", scanState.CoursePath).
+							Str("scan_id", scanState.ID).
+							Msg("Failed to process scan job")
+					}
+				}
+
+				s.scans.Remove(scanState.ID)
+			}
 		}
 	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// sortScans sorts scans by status (processing first) then by createdAt (oldest first), then by ID
+func sortScans(scans []*ScanState) {
+	sort.Slice(scans, func(i, j int) bool {
+		iStatus := scans[i].GetStatus()
+		jStatus := scans[j].GetStatus()
+
+		// Processing scans come first
+		iProcessing := iStatus == types.ScanStatusProcessing
+		jProcessing := jStatus == types.ScanStatusProcessing
+
+		if iProcessing && !jProcessing {
+			return true // i comes first
+		}
+		if !iProcessing && jProcessing {
+			return false // j comes first
+		}
+
+		// Same status - sort by createdAt (oldest first)
+		if scans[i].CreatedAt.Before(scans[j].CreatedAt) {
+			return true
+		}
+		if scans[j].CreatedAt.Before(scans[i].CreatedAt) {
+			return false
+		}
+
+		// Same status and createdAt - use ID as tiebreaker for deterministic ordering
+		return scans[i].ID < scans[j].ID
+	})
 }

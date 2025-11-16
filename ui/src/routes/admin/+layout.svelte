@@ -8,7 +8,8 @@
 		TagIcon,
 		UserIcon
 	} from '$lib/components/icons';
-	import { Button } from '$lib/components/ui';
+	import { Badge, Button } from '$lib/components/ui';
+	import { scanStore } from '$lib/scanStore.svelte';
 	import { cn, remCalc } from '$lib/utils';
 	import { Dialog } from 'bits-ui';
 	import { innerWidth } from 'svelte/reactivity/window';
@@ -16,12 +17,15 @@
 
 	let { children } = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let menuPopupMode = $state(false);
 	let dialogOpen = $state(false);
 
 	let windowWidth = $derived(remCalc(innerWidth.current ?? 0));
+
+	// Use scanStore for scan count
+	let scanCount = $derived(scanStore.scanCount);
 
 	const menu = [
 		{
@@ -56,7 +60,14 @@
 		}
 	];
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Register with scanStore
+	$effect(() => {
+		return scanStore.register();
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Set the menu popup mode based on the screen size
 	$effect(() => {
@@ -84,13 +95,18 @@
 		>
 			<item.icon class="size-6 stroke-[1.5]" />
 			<span>{item.label}</span>
+			{#if item.label === 'Scans' && scanCount > 0}
+				<Badge class="bg-background-alt-4 text-foreground mr-2.5 ml-auto text-xs">
+					{scanCount}
+				</Badge>
+			{/if}
 		</Button>
 	{/each}
 {/snippet}
 
 <div
 	class={cn(
-		'grid grid-rows-1 gap-6 pt-[calc(var(--header-height)+1))]',
+		'grid grid-rows-1 gap-6 pt-[calc(var(--header-height)+1)]',
 		menuPopupMode ? 'grid-cols-1' : 'grid-cols-[var(--settings-menu-width)_1fr]'
 	)}
 >
@@ -102,7 +118,7 @@
 				/>
 
 				<Dialog.Content
-					class="border-foreground-alt-4 bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left fixed top-0 left-0 z-50 h-full w-[var(--settings-menu-width)] border-r pt-4 pl-4"
+					class="border-foreground-alt-4 bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left fixed top-0 left-0 z-50 h-full w-70 border-r pt-4 pl-4"
 				>
 					<nav class="flex h-full w-full flex-col gap-3 overflow-x-hidden overflow-y-auto pb-8">
 						{@render menuContents(true)}
@@ -114,7 +130,7 @@
 		<div class="relative row-span-full">
 			<div class="absolute inset-0">
 				<nav
-					class="container-pl border-foreground-alt-5 sticky top-[calc(var(--header-height)+1px)] left-0 flex h-[calc(100dvh-(var(--header-height)+1px))] w-[var(--settings-menu-width)] flex-col gap-4 border-r py-8"
+					class="container-pl border-foreground-alt-5 sticky top-[calc(var(--header-height)+1px)] left-0 flex h-[calc(100dvh-(var(--header-height)+1px))] w-[--settings-menu-width] flex-col gap-4 border-r py-8"
 				>
 					{@render menuContents(false)}
 				</nav>

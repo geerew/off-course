@@ -8,7 +8,7 @@ import { buildQueryString } from '$lib/utils';
 import { safeParse } from 'valibot';
 import { apiFetch } from './fetch';
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Get a paginated list of logs
 export async function GetLogs(params?: LogReqParams): Promise<LogPaginationModel> {

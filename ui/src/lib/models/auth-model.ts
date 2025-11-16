@@ -1,6 +1,6 @@
 import { boolean, object, string, type InferOutput } from 'valibot';
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Signup status schema
 export const SignupStatusSchema = object({
@@ -9,7 +9,7 @@ export const SignupStatusSchema = object({
 
 export type SignupStatusModel = InferOutput<typeof SignupStatusSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Auth register create schema
 export const AuthRegisterSchema = object({
@@ -19,7 +19,7 @@ export const AuthRegisterSchema = object({
 
 export type AuthRegisterModel = InferOutput<typeof AuthRegisterSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Auth login schema
 export const AuthLoginSchema = object({

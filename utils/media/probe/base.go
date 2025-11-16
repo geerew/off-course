@@ -1,6 +1,7 @@
 package probe
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -68,9 +69,10 @@ type MediaProbe struct {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // ProbeVideo uses ffprobe to extract metadata from a video file
-func (mp MediaProbe) ProbeVideo(path string) (*MediaInfo, error) {
+// Returns MediaInfo, video stream index, and error
+func (mp MediaProbe) ProbeVideo(ctx context.Context, path string) (*MediaInfo, int, error) {
 	if mp.FFmpeg == nil {
-		return nil, utils.ErrFFProbeUnavailable
+		return nil, -1, fmt.Errorf("ffprobe unavailable: %w", utils.ErrFFProbeUnavailable)
 	}
 
 	ffprobePath := mp.FFmpeg.GetFFProbePath()
@@ -89,7 +91,7 @@ func (mp MediaProbe) ProbeVideo(path string) (*MediaInfo, error) {
 		"stream=tags=language",
 	}
 
-	cmd := exec.Command(
+	cmd := exec.CommandContext(ctx,
 		ffprobePath,
 		"-v", "quiet",
 		"-print_format", "json",
@@ -101,25 +103,27 @@ func (mp MediaProbe) ProbeVideo(path string) (*MediaInfo, error) {
 
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("error running ffprobe: %w", err)
+		return nil, -1, fmt.Errorf("error running ffprobe: %w", err)
 	}
 
 	var p probeOutput
 	if err := json.Unmarshal(out, &p); err != nil {
-		return nil, fmt.Errorf("parse: %w", err)
+		return nil, -1, fmt.Errorf("parse: %w", err)
 	}
 
 	// pick first video stream with dimensions
 	var v *stream
+	var videoStreamIndex int = -1
 	for i := range p.Streams {
 		s := &p.Streams[i]
 		if s.CodecType == "video" && s.Width > 0 && s.Height > 0 {
 			v = s
+			videoStreamIndex = s.Index
 			break
 		}
 	}
 	if v == nil {
-		return nil, fmt.Errorf("no video stream")
+		return nil, -1, fmt.Errorf("no video stream")
 	}
 
 	// pick audio: default if present, else first audio
@@ -183,7 +187,7 @@ func (mp MediaProbe) ProbeVideo(path string) (*MediaInfo, error) {
 		}
 	}
 
-	return info, nil
+	return info, videoStreamIndex, nil
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

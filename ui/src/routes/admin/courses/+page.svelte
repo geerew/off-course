@@ -1,19 +1,20 @@
 <!-- TODO have a columns dropdown to hide show columns -->
 <script lang="ts">
-	import { GetCourses } from '$lib/api/course-api';
+	import { GetCourses, GetCourse } from '$lib/api/course-api';
 	import { FilterBar, NiceDate, Pagination, SortMenu } from '$lib/components';
 	import { AddCoursesDialog } from '$lib/components/dialogs';
 	import { RightChevronIcon, TickIcon, WarningIcon, XIcon } from '$lib/components/icons';
 	import RowActionMenu from '$lib/components/pages/admin/courses/row-action-menu.svelte';
 	import TableActionMenu from '$lib/components/pages/admin/courses/table-action-menu.svelte';
 	import Spinner from '$lib/components/spinner.svelte';
-	import { Button, Checkbox } from '$lib/components/ui';
+	import { Badge, Button, Checkbox } from '$lib/components/ui';
 	import * as Table from '$lib/components/ui/table';
 	import type { CourseModel, CoursesModel } from '$lib/models/course-model';
-	import { scanMonitor } from '$lib/scans.svelte';
+	import { scanStore } from '$lib/scanStore.svelte';
 	import type { SortColumns, SortDirection } from '$lib/types/sort';
 	import { cn, remCalc } from '$lib/utils';
 	import { ElementSize, PersistedState } from 'runed';
+	import prettyMs from 'pretty-ms';
 	import { tick } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import { slide } from 'svelte/transition';
@@ -38,6 +39,7 @@
 		{ label: 'Title', column: 'courses.title', asc: 'Ascending', desc: 'Descending' },
 		{ label: 'Available', column: 'courses.available', asc: 'Ascending', desc: 'Descending' },
 		{ label: 'Card', column: 'courses.card_path', asc: 'Ascending', desc: 'Descending' },
+		{ label: 'Duration', column: 'courses.duration', asc: 'Shortest', desc: 'Longest' },
 		{ label: 'Added', column: 'courses.created_at', asc: 'Oldest', desc: 'Newest' },
 		{ label: 'Updated', column: 'courses.updated_at', asc: 'Oldest', desc: 'Newest' }
 	] as const satisfies SortColumns;
@@ -71,13 +73,25 @@
 
 	let loadPromise = $state(fetchCourses());
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// Use scanStore for scan status
+	let scans = $derived(scanStore.scans);
+
+	// Track which courses have active scans (as sorted array for comparison)
+	let previousCourseIdsStr = $state('');
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Format duration in seconds to readable format
+	function formatDuration(seconds: number): string {
+		if (!seconds || seconds === 0) return '-';
+		return prettyMs(seconds * 1000, { hideSeconds: true });
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Fetch courses
 	async function fetchCourses(): Promise<void> {
 		try {
-			scanMonitor.clearAll();
-
 			const sort = `sort:"${selectedSortColumn} ${selectedSortDirection}"`;
 			const q = filterValue ? `${filterValue} ${sort}` : sort;
 
@@ -89,16 +103,12 @@
 			paginationTotal = data.totalItems;
 			courses = data.items;
 			expandedCourses = {};
-
-			const coursesToTrack = courses.filter((course) => course.maintenance);
-
-			scanMonitor.trackCourses(coursesToTrack);
 		} catch (error) {
 			throw error;
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function onRowDelete(numDeleted: number) {
 		const remainingTotal = paginationTotal - numDeleted;
@@ -113,7 +123,7 @@
 		loadPromise = fetchCourses();
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	function onCheckboxClicked(e: MouseEvent) {
 		e.preventDefault();
@@ -135,13 +145,13 @@
 		toastCount();
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	function toggleRowExpansion(userId: string) {
 		expandedCourses[userId] = !expandedCourses[userId];
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	function toastCount() {
 		if (courses.length === 0) return;
@@ -153,17 +163,53 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Flip between table and card mode based on screen size
 	$effect(() => {
 		smallTable = remCalc(mainSize.width) <= +theme.columns['5xl'].replace('rem', '') ? true : false;
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	// Stop the scan monitor when the component is destroyed
+	// Register with scanStore (ensures SSE connection is active)
 	$effect(() => {
-		return () => scanMonitor.clearAll();
+		return scanStore.register();
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Update courses when scans finish
+	$effect(() => {
+		// Watch scanStore.scans to detect when scans finish
+		const currentCourseIdsArray = Object.keys(scans).sort();
+		const currentCourseIdsStr = currentCourseIdsArray.join(',');
+		const previousCourseIdsArray = previousCourseIdsStr ? previousCourseIdsStr.split(',') : [];
+
+		// Only process if the set of course IDs actually changed
+		if (currentCourseIdsStr !== previousCourseIdsStr) {
+			const currentCourseIds = new Set(currentCourseIdsArray);
+			const previousCourseIds = new Set(previousCourseIdsArray);
+
+			// Find courses that had scans but no longer do (scan finished)
+			for (const courseId of previousCourseIds) {
+				if (!currentCourseIds.has(courseId)) {
+					// Scan finished for this course - refresh it
+					const courseIndex = courses.findIndex((c) => c.id === courseId);
+					if (courseIndex !== -1) {
+						GetCourse(courseId)
+							.then((updatedCourse) => {
+								courses[courseIndex] = updatedCourse;
+							})
+							.catch(() => {
+								// Silently fail - course will be refreshed on next page load
+							});
+					}
+				}
+			}
+
+			// Update tracked courses string
+			previousCourseIdsStr = currentCourseIdsStr;
+		}
 	});
 </script>
 
@@ -201,10 +247,6 @@
 							selectedCourses = {};
 						}}
 						onDelete={() => {
-							Object.values(selectedCourses).forEach((course) => {
-								scanMonitor.untrackCourse(course.id);
-							});
-
 							const numDeleted = Object.keys(selectedCourses).length;
 							selectedCourses = {};
 							onRowDelete(numDeleted);
@@ -245,7 +287,7 @@
 					<Table.Root
 						class={smallTable
 							? 'grid-cols-[2.5rem_2.5rem_1fr_3.5rem]'
-							: 'grid-cols-[3.5rem_1fr_auto_auto_auto_auto_3.5rem]'}
+							: 'grid-cols-[3.5rem_1fr_auto_auto_auto_auto_auto_auto_3.5rem]'}
 					>
 						<Table.Thead>
 							<Table.Tr class="text-xs font-semibold uppercase">
@@ -265,11 +307,17 @@
 								<!-- Course -->
 								<Table.Th class="justify-start">Course</Table.Th>
 
+								<!-- Duration (large screens) -->
+								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Duration</Table.Th>
+
 								<!-- Available (large screens) -->
 								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Available</Table.Th>
 
 								<!-- Card (large screens) -->
 								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Card</Table.Th>
+
+								<!-- Initial Scan (large screens) -->
+								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Initial Scan</Table.Th>
 
 								<!-- Added (large screens) -->
 								<Table.Th class={smallTable ? 'hidden' : 'visible'}>Added</Table.Th>
@@ -296,7 +344,31 @@
 							{/if}
 
 							{#each courses as course (course.id)}
-								<Table.Tr class="group">
+								<Table.Tr
+									class="group"
+									onclick={(e) => {
+										if (!smallTable) return;
+										const target = e.target as HTMLElement | null;
+										if (!target) return;
+										if (
+											target instanceof HTMLButtonElement ||
+											target instanceof HTMLInputElement ||
+											target.closest('button') ||
+											target.closest('input')
+										) {
+											return;
+										}
+										toggleRowExpansion(course.id);
+									}}
+									role={smallTable ? 'button' : undefined}
+									tabindex={smallTable ? 0 : undefined}
+									onkeydown={(e) => {
+										if (smallTable && (e.key === 'Enter' || e.key === ' ')) {
+											e.preventDefault();
+											toggleRowExpansion(course.id);
+										}
+									}}
+								>
 									<!-- Chevron (small screens) -->
 									<Table.Td
 										class={cn(
@@ -304,11 +376,11 @@
 											smallTable ? 'visible' : 'hidden'
 										)}
 									>
-										{#if scanMonitor.scans[course.id] !== undefined}
+										{#if scans[course.id] !== undefined}
 											<div
 												class={cn(
 													'absolute top-1/2 left-1 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
-													scanMonitor.scans[course.id] === 'processing'
+													scans[course.id] === 'processing'
 														? 'bg-background-primary'
 														: 'bg-background-alt-4',
 													smallTable ? 'visible' : 'hidden'
@@ -336,11 +408,11 @@
 
 									<!-- Checkbox -->
 									<Table.Td class="group-hover:bg-background-alt-1 relative">
-										{#if scanMonitor.scans[course.id] !== undefined}
+										{#if scans[course.id] !== undefined}
 											<div
 												class={cn(
 													'absolute top-1/2 left-1 inline-block h-[70%] w-1 -translate-y-1/2 opacity-60',
-													scanMonitor.scans[course.id] === 'processing'
+													scans[course.id] === 'processing'
 														? 'bg-background-primary'
 														: 'bg-background-alt-4',
 													smallTable ? 'hidden' : 'visible'
@@ -364,7 +436,27 @@
 
 									<!-- Course -->
 									<Table.Td class="group-hover:bg-background-alt-1 relative justify-start px-4">
-										<span>{course.title}</span>
+										<div class="flex w-full flex-col gap-2">
+											<span>{course.title}</span>
+											{#if course.path}
+												<span
+													class="text-foreground-alt-3 text-xs wrap-break-word"
+													title={course.path}
+												>
+													{course.path}
+												</span>
+											{/if}
+										</div>
+									</Table.Td>
+
+									<!-- Duration (large screens) -->
+									<Table.Td
+										class={cn(
+											'group-hover:bg-background-alt-1 px-4 text-right whitespace-nowrap',
+											smallTable ? 'hidden' : 'visible'
+										)}
+									>
+										<span class="text-foreground-alt-1">{formatDuration(course.duration)}</span>
 									</Table.Td>
 
 									<!-- Available (large screens) -->
@@ -407,6 +499,26 @@
 										</div>
 									</Table.Td>
 
+									<!-- Initial Scan (large screens) -->
+									<Table.Td
+										class={cn(
+											'group-hover:bg-background-alt-1 px-4',
+											smallTable ? 'hidden' : 'visible'
+										)}
+									>
+										<div class="flex w-full place-content-center">
+											{#if course.initialScan === false}
+												<div class="bg-background-error size-5 place-self-center rounded-md p-1">
+													<XIcon class="text-foreground size-3 stroke-2" />
+												</div>
+											{:else}
+												<div class="bg-background-success size-5 place-self-center rounded-md p-1">
+													<TickIcon class="text-foreground size-3 stroke-2" />
+												</div>
+											{/if}
+										</div>
+									</Table.Td>
+
 									<!-- Added (large screens) -->
 									<Table.Td
 										class={cn(
@@ -432,7 +544,6 @@
 										<RowActionMenu
 											{course}
 											onDelete={async () => {
-												scanMonitor.untrackCourse(course.id);
 												await onRowDelete(1);
 												if (selectedCourses[course.id] !== undefined) {
 													delete selectedCourses[course.id];
@@ -452,23 +563,65 @@
 											class="bg-background-alt-2/30 col-span-full justify-start pr-4 pl-14"
 										>
 											<div class="flex flex-col gap-2 py-3 text-sm">
+												{#if course.path}
+													<div class="grid grid-cols-[8rem_1fr]">
+														<span class="text-foreground-alt-3 font-medium">PATH</span>
+														<span class="text-foreground-alt-1 break-all">
+															{course.path}
+														</span>
+													</div>
+												{/if}
+
 												<div class="grid grid-cols-[8rem_1fr]">
-													<span class="text-foreground-alt-3 font-medium">STATUS</span>
-													<span
-														class={course.available
-															? 'text-background-success'
-															: 'text-foreground-error'}
-														>{course.available ? 'available' : 'unavailable'}</span
-													>
+													<span class="text-foreground-alt-3 font-medium">DURATION</span>
+													<span class="text-foreground-alt-1">
+														{formatDuration(course.duration)}
+													</span>
 												</div>
 
 												<div class="grid grid-cols-[8rem_1fr]">
-													<span class="text-foreground-alt-3 font-medium">HAS CARD</span>
-													<span
-														class={course.hasCard
-															? 'text-background-success'
-															: 'text-foreground-error'}>{course.hasCard ? 'yes' : 'no'}</span
-													>
+													<span class="text-foreground-alt-3 font-medium">AVAILABLE</span>
+													<span class="w-fit">
+														{#if course.available}
+															<Badge class="bg-background-success text-foreground text-xs"
+																>Yes</Badge
+															>
+														{:else}
+															<Badge class="bg-background-error text-foreground-alt-1 text-xs"
+																>No</Badge
+															>
+														{/if}
+													</span>
+												</div>
+
+												<div class="grid grid-cols-[8rem_1fr]">
+													<span class="text-foreground-alt-3 font-medium">CARD</span>
+													<span class="w-fit">
+														{#if course.hasCard}
+															<Badge class="bg-background-success text-foreground text-xs"
+																>Yes</Badge
+															>
+														{:else}
+															<Badge class="bg-background-error text-foreground-alt-1 text-xs"
+																>No</Badge
+															>
+														{/if}
+													</span>
+												</div>
+
+												<div class="grid grid-cols-[8rem_1fr]">
+													<span class="text-foreground-alt-3 font-medium">INITIAL SCAN</span>
+													<span class="w-fit">
+														{#if course.initialScan === false}
+															<Badge class="bg-background-error text-foreground-alt-1 text-xs"
+																>No</Badge
+															>
+														{:else}
+															<Badge class="bg-background-success text-foreground text-xs"
+																>Yes</Badge
+															>
+														{/if}
+													</span>
 												</div>
 
 												<div class="grid grid-cols-[8rem_1fr]">

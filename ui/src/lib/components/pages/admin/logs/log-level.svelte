@@ -3,7 +3,7 @@
 	import { Button, Dropdown } from '$lib/components/ui';
 	import { cn } from '$lib/utils';
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	type Props = {
 		selected?: string[];

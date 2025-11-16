@@ -15,7 +15,7 @@
 
 	let { value = $bindable(''), disabled = false, onApply, filterOptions = {} }: Props = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let containerEl = $state<HTMLDivElement>();
 	let textareaEl = $state<HTMLTextAreaElement>();
@@ -33,7 +33,7 @@
 
 	let tokens = $state<string[]>([]);
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Tokenize the input text with support for quoted strings
 	function tokenize(text: string): string[] {
@@ -111,7 +111,7 @@
 		return _tokens;
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Build the overlay text
 	function renderOverlay() {
@@ -149,7 +149,7 @@
 			.join('');
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// As the textarea gain/looses focus or as text is entered/deleted adjust the row count
 	function adjustHeight() {
@@ -179,7 +179,7 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Validate filter and collect all errors
 	function validateFilter(): string[] {
@@ -225,7 +225,7 @@
 		return errors;
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Check if quotes are balanced
 	function checkQuoteBalance(text: string): boolean {
@@ -236,7 +236,7 @@
 		return count % 2 === 0;
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Handle focus events
 	function onFocus() {
@@ -247,7 +247,7 @@
 		});
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Handle blur events
 	function onBlur() {
@@ -258,7 +258,7 @@
 		});
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Remove newlines from a paste string
 	function onPaste(event: ClipboardEvent) {
@@ -285,7 +285,7 @@
 		}, 0);
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Handle input events
 	function onInput() {
@@ -295,7 +295,7 @@
 		});
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Handle enter key
 	function onKeydown(e: KeyboardEvent) {
@@ -321,7 +321,7 @@
 		requestAnimationFrame(adjustHeight);
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Sync scroll between the textarea and overlay
 	function onScroll() {
@@ -330,7 +330,7 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Update height when value changes and clean newlines
 	$effect(() => {
@@ -345,7 +345,7 @@
 		});
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Initialize the dummy div element and several key styles like line height, padding, etc.
 	$effect(() => {
@@ -368,7 +368,7 @@
 		dummyDivEl.style.padding = style.padding;
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Initial render
 	$effect(() => {
@@ -432,7 +432,7 @@
 					onApply?.();
 				}}
 			>
-				<XIcon class="size-4 stroke-[3]" />
+				<XIcon class="size-4 stroke-3" />
 			</Button>
 		{/if}
 	</div>

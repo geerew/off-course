@@ -30,7 +30,7 @@
 
 	let { open = $bindable(false), value = $bindable(), trigger, successFn }: Props = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let comboboxOpen = $state(false);
 
@@ -57,7 +57,7 @@
 
 	let loadTagsPromise = $state<Promise<void>>();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// When the dialog is opened, clean state and load the existing/available tags
 	$effect(() => {
@@ -102,7 +102,7 @@
 		});
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Load all available tags. If this is a single course, load the existing tags for that course
 	// as well
@@ -118,7 +118,7 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Filter the tags from availableTags based on the input value
 	async function filterTags(filterOn: string): Promise<string[]> {
@@ -161,7 +161,7 @@
 		return selectedTags;
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Used to handle the keyboard input for the input element. If the input is empty, and
 	// there are tags to add, call createTags(). If the input is not empty, add the tag to
@@ -188,7 +188,7 @@
 		await addTag(inputValue);
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Add a tag to the toAdd list. If the tag is already in the list, shake the existing tag
 	async function addTag(tag: string): Promise<void> {
@@ -219,7 +219,7 @@
 		return;
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	// Add/remove tags to/from the course(s)
 	async function createTags(): Promise<void> {
@@ -308,10 +308,9 @@
 	/>
 
 	<Combobox.Portal>
-		<!-- {#if filteredTags.length > 0} -->
 		<Combobox.Content
 			class={cn(
-				'bg-background border-background-alt-5 data-[side=bottom]:slide-in-from-top-2 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 z-[60] w-[calc(var(--bits-combobox-anchor-width)-1rem)] overflow-x-hidden overflow-y-auto rounded-lg py-3 outline-hidden select-none data-[side=bottom]:translate-y-1',
+				'bg-background border-background-alt-5 data-[side=bottom]:slide-in-from-top-2 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 z-60 w-[calc(var(--bits-combobox-anchor-width)-1rem)] overflow-x-hidden overflow-y-auto rounded-lg py-3 outline-hidden select-none data-[side=bottom]:translate-y-1',
 				isDesktop ? 'max-h-50' : 'max-h-40'
 			)}
 			side="bottom"
@@ -329,7 +328,6 @@
 				</Combobox.Item>
 			{/each}
 		</Combobox.Content>
-		<!-- {/if} -->
 	</Combobox.Portal>
 {/snippet}
 

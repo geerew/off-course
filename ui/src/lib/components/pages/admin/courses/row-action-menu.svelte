@@ -7,7 +7,6 @@
 	import { Dropdown } from '$lib/components/ui';
 	import type { CourseModel } from '$lib/models/course-model';
 	import type { ScanCreateModel } from '$lib/models/scan-model';
-	import { scanMonitor } from '$lib/scans.svelte';
 	import { toast } from 'svelte-sonner';
 
 	type Props = {
@@ -18,17 +17,16 @@
 
 	let { course, onScan, onDelete }: Props = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let tagsDialogOpen = $state(false);
 	let deleteDialogOpen = $state(false);
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function doScan() {
 		try {
 			await StartScan({ courseId: course.id } satisfies ScanCreateModel);
-			scanMonitor.trackCourses(course);
 			onScan?.();
 		} catch (error) {
 			toast.error('Failed to start the scan ' + (error as APIError).message);

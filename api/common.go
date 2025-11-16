@@ -22,7 +22,6 @@ import (
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 var (
 	defaultCoursesOrderBy                 = []string{models.COURSE_TABLE_CREATED_AT + " desc"}
-	defaultScansOrderBy                   = []string{models.SCAN_TABLE_CREATED_AT + " desc"}
 	defaultCourseLessonsOrderBy           = []string{models.LESSON_TABLE_MODULE + " asc", models.LESSON_TABLE_PREFIX + " asc"}
 	defaultCourseLessonAttachmentsOrderBy = []string{models.ATTACHMENT_TABLE_TITLE + " asc"}
 	defaultTagsOrderBy                    = []string{models.TAG_TABLE_TAG + " asc"}

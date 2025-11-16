@@ -19,14 +19,14 @@
 
 	let { open = $bindable(false), course, trigger, successFn }: Props = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let isPosting = $state(false);
 
 	const mdBreakpoint = +theme.screens.md.replace('rem', '');
 	let isDesktop = $derived(remCalc(innerWidth.current ?? 0) > mdBreakpoint);
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	$effect(() => {
 		if (open) {
@@ -34,7 +34,7 @@
 		}
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function doDelete(): Promise<void> {
 		isPosting = true;

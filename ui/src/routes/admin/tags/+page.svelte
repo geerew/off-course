@@ -52,7 +52,7 @@
 
 	let loadPromise = $state(fetchTags());
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function fetchTags(): Promise<void> {
 		try {
@@ -71,7 +71,7 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function onRowDelete(numDeleted: number) {
 		const remainingTotal = paginationTotal - numDeleted;
@@ -84,7 +84,7 @@
 		loadPromise = fetchTags();
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	function onCheckboxClicked(e: MouseEvent) {
 		e.preventDefault();
@@ -106,7 +106,7 @@
 		toastCount();
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	function toastCount() {
 		if (tags.length === 0) return;

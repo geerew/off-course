@@ -14,7 +14,7 @@
 	import { cn } from '$lib/utils';
 	import { Accordion, Checkbox, Label, useId } from 'bits-ui';
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	type Props = {
 		type: 'dropdown' | 'accordion';
@@ -32,7 +32,7 @@
 		onApply
 	}: Props = $props();
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	let allTags = $state<string[]>([]);
 
@@ -47,7 +47,7 @@
 
 	let loadPromise = $state(fetcher());
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	$effect(() => {
 		if (!searchValue) {
@@ -59,15 +59,11 @@
 		tagsToRender = allTags.filter((tag) => tag.toLowerCase().includes(lowerSearch));
 	});
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function fetcher(): Promise<void> {
-		try {
-			allTags = await GetTagNames();
-			tagsToRender = allTags;
-		} catch (error) {
-			throw error;
-		}
+		allTags = await GetTagNames();
+		tagsToRender = allTags;
 	}
 </script>
 

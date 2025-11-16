@@ -29,7 +29,7 @@
 			{/if}
 		</span>
 
-		<div class="min-w-0 break-words">
+		<div class="min-w-0 wrap-break-word">
 			{@render childrenProp?.({ checked, indeterminate })}
 		</div>
 	{/snippet}

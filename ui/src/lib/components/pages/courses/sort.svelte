@@ -28,7 +28,7 @@
 	import { Accordion, Label, RadioGroup, Separator, useId } from 'bits-ui';
 	import { tick } from 'svelte';
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	type Props = {
 		type: 'dropdown' | 'accordion';
@@ -67,7 +67,7 @@
 		<Accordion.Header>
 			<Accordion.Trigger
 				class={cn(
-					'group data-[state=open]:border-b-background-primary-alt-1 data-[state=closed]:border-b-background-primary-alt-1 flex w-full flex-1 items-center justify-between border-b border-transparent px-2.5 py-5 font-medium transition-transform select-none hover:cursor-pointer data-[state=closed]:border-b-2'
+					'data-[state=open]:border-b-background-primary-alt-1 data-[state=closed]:border-b-background-primary-alt-1 group flex w-full flex-1 items-center justify-between border-b border-transparent px-2.5 py-5 font-medium transition-transform select-none hover:cursor-pointer data-[state=closed]:border-b-2'
 				)}
 			>
 				<div class="flex items-center gap-1.5">
@@ -94,7 +94,7 @@
 		</Accordion.Header>
 
 		<Accordion.Content
-			class="data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down flex  max-h-72 flex-col gap-2 overflow-hidden overflow-y-scroll px-2.5 py-3 text-sm tracking-[-0.01em]"
+			class="data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down flex max-h-72 flex-col gap-2 overflow-hidden overflow-y-scroll px-2.5 py-3 text-sm tracking-[-0.01em]"
 		>
 			<RadioGroup.Root
 				bind:value={selectedColumn}
@@ -134,7 +134,7 @@
 				{/each}
 			</RadioGroup.Root>
 
-			<Separator.Root class="bg-background-alt-5 h-px w-[15rem] shrink-0" />
+			<Separator.Root class="bg-background-alt-5 h-px w-60 shrink-0" />
 
 			<RadioGroup.Root
 				bind:value={selectedDirection}
@@ -143,7 +143,6 @@
 					onApply();
 				}}
 			>
-				<!-- Each 2 for asc and desc -->
 				{#each ['asc', 'desc'] as direction}
 					{@const id = useId()}
 					<div

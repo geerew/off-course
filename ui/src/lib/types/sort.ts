@@ -1,6 +1,6 @@
 import { array, object, string, type InferOutput } from 'valibot';
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Sort columns schema
 export const SortColumnsSchema = array(
@@ -14,6 +14,6 @@ export const SortColumnsSchema = array(
 
 export type SortColumns = InferOutput<typeof SortColumnsSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export type SortDirection = 'asc' | 'desc';

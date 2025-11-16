@@ -2,7 +2,7 @@ import { array, number, object, string, type InferOutput } from 'valibot';
 import { BaseSchema } from './base-model';
 import { BasePaginationSchema, type PaginationReqParams } from './pagination-model';
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Tag schema
 export const TagSchema = object({
@@ -14,7 +14,7 @@ export const TagSchema = object({
 export type TagModel = InferOutput<typeof TagSchema>;
 export type TagsModel = TagModel[];
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Tag create schema
 export const TagCreateSchema = object({
@@ -23,7 +23,7 @@ export const TagCreateSchema = object({
 
 export type TagCreateModel = InferOutput<typeof TagCreateSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // Update tag schema
 export const TagUpdateSchema = object({
@@ -32,7 +32,7 @@ export const TagUpdateSchema = object({
 
 export type TagUpdateModel = InferOutput<typeof TagUpdateSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export const TagPaginationSchema = object({
 	...BasePaginationSchema.entries,
@@ -41,7 +41,7 @@ export const TagPaginationSchema = object({
 
 export type TagPaginationModel = InferOutput<typeof TagPaginationSchema>;
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 export type TagReqParams = PaginationReqParams & {
 	q?: string;
