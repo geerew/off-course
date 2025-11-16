@@ -47,6 +47,7 @@ export const CourseSchema = object({
 	title: string(),
 	path: optional(string()),
 	hasCard: boolean(),
+	cardHash: optional(string()),
 	available: boolean(),
 	duration: number(),
 	initialScan: optional(boolean()),

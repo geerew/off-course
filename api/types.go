@@ -54,6 +54,7 @@ type courseResponse struct {
 	Title       string         `json:"title"`
 	Path        string         `json:"path,omitempty"`
 	HasCard     bool           `json:"hasCard"`
+	CardHash    string         `json:"cardHash,omitempty"`
 	Available   bool           `json:"available"`
 	Duration    int            `json:"duration"`
 	InitialScan *bool          `json:"initialScan,omitempty"`
@@ -85,10 +86,21 @@ func courseResponseHelper(courses []*models.Course, isAdmin bool) []*courseRespo
 			}
 		}
 
+		// Get first 12 chars. The frontend can use this to cache bust the card image
+		cardHash := ""
+		if course.CardPath == "" {
+			cardHash = "fallback"
+		} else if course.CardHash != "" && len(course.CardHash) >= 12 {
+			cardHash = course.CardHash[:12]
+		} else {
+			cardHash = "pending"
+		}
+
 		response := &courseResponse{
 			ID:          course.ID,
 			Title:       course.Title,
 			HasCard:     course.CardPath != "",
+			CardHash:    cardHash,
 			Available:   course.Available,
 			Duration:    course.Duration,
 			Maintenance: course.Maintenance,

@@ -8,7 +8,6 @@
 	import type { CourseReqParams, CoursesModel } from '$lib/models/course-model';
 	import { scanStore } from '$lib/scanStore.svelte';
 	import { cn, remCalc } from '$lib/utils';
-	import { Avatar } from 'bits-ui';
 	import { tick } from 'svelte';
 	import theme from 'tailwindcss/defaultTheme';
 
@@ -228,37 +227,23 @@
 									<Button
 										href={`/course/${course.id}`}
 										variant="ghost"
-										class="border-background-alt-3 group flex h-full flex-col items-stretch gap-3 overflow-hidden rounded-lg border p-0 pb-2 text-start whitespace-normal"
+										class="border-background-alt-3 group flex h-full flex-col items-stretch gap-3 overflow-hidden whitespace-normal rounded-lg border p-0 pb-2 text-start"
 									>
 										<!-- Card -->
 										<div class="relative aspect-video max-h-40 w-full overflow-hidden">
-											{#if course.hasCard}
-												<Avatar.Root class="h-full w-full">
-													<Avatar.Image
-														src={`/api/courses/${course.id}/card`}
-														class="h-full w-full object-cover"
-														data-card={course.hasCard}
-													/>
-													<Avatar.Fallback
-														class="bg-background-alt-2 flex h-full w-full items-center justify-center"
-													>
-														<LogoIcon class="fill-background-alt-3 size-15 md:size-20" />
-													</Avatar.Fallback>
-												</Avatar.Root>
-											{:else}
-												<div
-													class="bg-background-alt-2 z-1 flex h-full w-full items-center justify-center rounded-lg"
-												>
-													<LogoIcon class="fill-background-alt-3 size-15 md:size-20" />
-												</div>
-											{/if}
+											<img
+												src={`/api/courses/${course.id}/card?v=${course.cardHash || 'fallback'}`}
+												alt={course.title}
+												loading="lazy"
+												class="h-full w-full object-cover"
+											/>
 										</div>
 
 										<!-- Contents -->
 										<div class="flex min-w-0 flex-1 flex-col justify-between gap-4 px-2 pt-1.5">
 											<!-- Title -->
 											<span
-												class="group-hover:text-background-primary line-clamp-2 min-w-0 wrap-break-word transition-colors duration-150 md:line-clamp-none"
+												class="group-hover:text-background-primary wrap-break-word line-clamp-2 min-w-0 transition-colors duration-150 md:line-clamp-none"
 											>
 												{course.title}
 											</span>

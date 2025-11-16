@@ -7,6 +7,7 @@ import (
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/utils/appfs"
+	"github.com/geerew/off-course/utils/cardcache"
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/media"
@@ -77,14 +78,6 @@ func NewTestApp(t *testing.T) *App {
 		},
 	}
 
-	// Initialize CourseScan
-	app.CourseScan = coursescan.New(&coursescan.CourseScanConfig{
-		Db:     app.DbManager.DataDb,
-		AppFs:  app.AppFs,
-		Logger: app.Logger.WithCourseScan(),
-		FFmpeg: app.FFmpeg,
-	})
-
 	// Initialize Transcoder
 	transcoder, err := hls.NewTranscoder(&hls.TranscoderConfig{
 		CachePath: app.Config.DataDir,
@@ -95,6 +88,30 @@ func NewTestApp(t *testing.T) *App {
 	})
 	require.NoError(t, err)
 	app.Transcoder = transcoder
+
+	// Initialize CardCache
+	cardCache, err := cardcache.NewCardCache(&cardcache.CardCacheConfig{
+		CachePath: app.Config.DataDir,
+		AppFs:     app.AppFs,
+		Logger:    app.Logger.WithCardCache(),
+		FFmpeg:    app.FFmpeg,
+	})
+	require.NoError(t, err)
+	app.CardCache = cardCache
+
+	// Ensure fallback card exists (required for tests)
+	fallbackPath := cardCache.GetFallbackPath()
+	err = cardCache.EnsureFallbackCard(fallbackPath)
+	require.NoError(t, err)
+
+	// Initialize CourseScan
+	app.CourseScan = coursescan.New(&coursescan.CourseScanConfig{
+		Db:        app.DbManager.DataDb,
+		AppFs:     app.AppFs,
+		Logger:    app.Logger.WithCourseScan(),
+		FFmpeg:    app.FFmpeg,
+		CardCache: cardCache,
+	})
 
 	return app
 }

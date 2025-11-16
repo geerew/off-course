@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
@@ -265,32 +264,35 @@ func (api coursesAPI) deleteCourseProgress(c *fiber.Ctx) error {
 func (api coursesAPI) getCard(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	_, ctx, err := principalCtx(c)
+	_, _, err := principalCtx(c)
 	if err != nil {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
-	course, err := api.getCourseByID(ctx, id)
+	// Check if optimized card exists for this course
+	cardPath := api.r.app.CardCache.GetCardPath(id)
+	exists, err := api.r.app.CardCache.CardExists(cardPath)
 	if err != nil {
-		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up course", err)
+		return errorResponse(c, fiber.StatusInternalServerError, "Error checking card", err)
 	}
 
-	if course == nil {
-		return errorResponse(c, fiber.StatusNotFound, "Course not found", nil)
+	// If card doesn't exist, serve fallback
+	if !exists {
+		cardPath = api.r.app.CardCache.GetFallbackPath()
+		exists, err := api.r.app.CardCache.CardExists(cardPath)
+		if err != nil {
+			return errorResponse(c, fiber.StatusInternalServerError, "Error checking fallback card", err)
+		}
+		if !exists {
+			return errorResponse(c, fiber.StatusNotFound, "Fallback card not found", nil)
+		}
+	}
 
-	}
-	if course.CardPath == "" {
-		return errorResponse(c, fiber.StatusNotFound, "Course has no card", nil)
-	}
-
-	_, err = api.r.app.AppFs.Fs.Stat(course.CardPath)
-	if os.IsNotExist(err) {
-		return errorResponse(c, fiber.StatusNotFound, "Course card not found", nil)
-	}
+	c.Set(fiber.HeaderCacheControl, "public, no-cache")
 
 	// The fiber function sendFile(...) does not support using a custom FS. Therefore, use
-	// SendFile() from the filesystem middleware.
-	return filesystem.SendFile(c, afero.NewHttpFs(api.r.app.AppFs.Fs), course.CardPath)
+	// SendFile() from the filesystem middleware
+	return filesystem.SendFile(c, afero.NewHttpFs(api.r.app.AppFs.Fs), cardPath)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

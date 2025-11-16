@@ -7,6 +7,8 @@ CREATE TABLE courses (
 	title        TEXT NOT NULL,
 	path         TEXT UNIQUE NOT NULL,
 	card_path    TEXT,
+	card_hash    TEXT,
+	card_mod_time TEXT,
 	available    BOOLEAN NOT NULL DEFAULT FALSE,
 	duration     INTEGER NOT NULL DEFAULT 0,
 	initial_scan BOOLEAN NOT NULL DEFAULT FALSE,

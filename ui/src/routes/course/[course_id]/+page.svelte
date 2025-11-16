@@ -35,8 +35,6 @@
 	let course = $state<CourseModel>();
 	let modules = $state<ModulesModel>();
 	let tags = $state<CourseTagsModel>([]);
-	let courseImageUrl = $state<string | null>(null);
-	let courseImageLoaded = $state<boolean>(false);
 
 	let openCourseProgressDialog = $state(false);
 
@@ -117,29 +115,9 @@
 
 			const moduleReqParams: CourseReqParams = { withUserProgress: true };
 			modules = await GetCourseModules(course.id, moduleReqParams);
-
-			await loadCourseImage(course.id);
 		} catch (error) {
 			console.error('Error loading course page:', error);
 			throw error;
-		}
-	}
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	// Load the course image, if available
-	async function loadCourseImage(courseId: string): Promise<void> {
-		try {
-			const response = await fetch(`/api/courses/${courseId}/card`);
-			if (response.ok) {
-				const blob = await response.blob();
-				courseImageUrl = URL.createObjectURL(blob);
-				courseImageLoaded = true;
-			} else {
-				courseImageLoaded = false;
-			}
-		} catch (error) {
-			courseImageLoaded = false;
 		}
 	}
 
@@ -184,29 +162,12 @@
 				const moduleReqParams: CourseReqParams = { withUserProgress: true };
 				modules = await GetCourseModules(course.id, moduleReqParams);
 			}
-
-			// Revoke old image URL before loading new one
-			if (courseImageUrl) {
-				URL.revokeObjectURL(courseImageUrl);
-				courseImageUrl = null;
-			}
-
-			// Reload course image in case it was generated during the scan
-			await loadCourseImage(course.id);
 		} catch (error) {
 			console.error('Failed to refresh course:', error);
 		}
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	$effect(() => {
-		return () => {
-			if (courseImageUrl) {
-				URL.revokeObjectURL(courseImageUrl);
-			}
-		};
-	});
 </script>
 
 {#await loadPromise}
@@ -217,7 +178,7 @@
 	{#if course}
 		<div class="flex w-full flex-col">
 			<div class="flex w-full place-content-center">
-				<div class="container-px flex w-full max-w-7xl flex-col gap-6 pt-5 pb-10 lg:pt-10">
+				<div class="container-px flex w-full max-w-7xl flex-col gap-6 pb-10 pt-5 lg:pt-10">
 					<div class="grid w-full grid-cols-1 gap-6 lg:grid-cols-[1fr_minmax(0,23rem)] lg:gap-10">
 						<!-- Information -->
 						<div class="order-2 flex h-full w-full flex-col justify-between gap-5 lg:order-1">
@@ -366,7 +327,7 @@
 									{:else}
 										<div class="flex flex-wrap gap-2 px-2">
 											{#each tags as tag}
-												<Badge class="text-sm  select-none">
+												<Badge class="select-none  text-sm">
 													{tag.tag}
 												</Badge>
 											{/each}
@@ -456,22 +417,12 @@
 						</div>
 
 						<!-- Card -->
-						<div class="relative order-1 flex h-50 w-full justify-center rounded-lg lg:order-2">
-							{#if courseImageLoaded && courseImageUrl}
-								<div class="z-1 flex h-full w-full items-center justify-center rounded-lg">
-									<img
-										src={courseImageUrl}
-										alt={course?.title}
-										class="h-auto max-h-full w-auto max-w-full rounded-lg object-contain"
-									/>
-								</div>
-							{:else}
-								<div
-									class="bg-background-alt-2 z-1 flex aspect-video h-full max-w-full items-center justify-center rounded-lg lg:w-full"
-								>
-									<LogoIcon class="fill-background-alt-3 w-16 md:w-20" />
-								</div>
-							{/if}
+						<div class="h-50 relative order-1 flex w-full justify-center rounded-lg lg:order-2">
+							<img
+								src={`/api/courses/${course.id}/card?v=${course.cardHash || 'fallback'}`}
+								alt={course.title}
+								class="h-auto max-h-full w-auto max-w-full rounded-lg object-contain"
+							/>
 						</div>
 					</div>
 				</div>
@@ -496,7 +447,7 @@
 										<div class="max-w-2xl">
 											<!-- Module title -->
 											{#if m.module !== '(no chapter)'}
-												<div class="text-2xl font-medium text-pretty">
+												<div class="text-pretty text-2xl font-medium">
 													{m.module}
 												</div>
 											{/if}
@@ -512,7 +463,7 @@
 															<Button
 																href={`/course/${course.id}/${lesson.id}`}
 																variant="ghost"
-																class="hover:bg-background-alt-2 -mx-3 -my-2 flex h-auto justify-start gap-3 py-2 text-sm whitespace-normal"
+																class="hover:bg-background-alt-2 -mx-3 -my-2 flex h-auto justify-start gap-3 whitespace-normal py-2 text-sm"
 																disabled={isScanning || course.maintenance || !course.available}
 																onclick={(e) => {
 																	if (isScanning || course?.maintenance || !course?.available) {
@@ -544,7 +495,7 @@
 
 																	<!-- Lesson details -->
 																	<div
-																		class="relative flex w-full flex-col gap-0 text-sm select-none"
+																		class="relative flex w-full select-none flex-col gap-0 text-sm"
 																	>
 																		<div class="flex w-full flex-row flex-wrap items-center gap-2">
 																			<!-- Type -->

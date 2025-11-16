@@ -9,24 +9,28 @@ import (
 const (
 	COURSE_TABLE = "courses"
 
-	COURSE_TITLE        = "title"
-	COURSE_PATH         = "path"
-	COURSE_CARD_PATH    = "card_path"
-	COURSE_AVAILABLE    = "available"
-	COURSE_DURATION     = "duration"
-	COURSE_INITIAL_SCAN = "initial_scan"
-	COURSE_MAINTENANCE  = "maintenance"
+	COURSE_TITLE         = "title"
+	COURSE_PATH          = "path"
+	COURSE_CARD_PATH     = "card_path"
+	COURSE_CARD_HASH     = "card_hash"
+	COURSE_CARD_MOD_TIME = "card_mod_time"
+	COURSE_AVAILABLE     = "available"
+	COURSE_DURATION      = "duration"
+	COURSE_INITIAL_SCAN  = "initial_scan"
+	COURSE_MAINTENANCE   = "maintenance"
 
-	COURSE_TABLE_ID           = COURSE_TABLE + "." + BASE_ID
-	COURSE_TABLE_CREATED_AT   = COURSE_TABLE + "." + BASE_CREATED_AT
-	COURSE_TABLE_UPDATED_AT   = COURSE_TABLE + "." + BASE_UPDATED_AT
-	COURSE_TABLE_TITLE        = COURSE_TABLE + "." + COURSE_TITLE
-	COURSE_TABLE_PATH         = COURSE_TABLE + "." + COURSE_PATH
-	COURSE_TABLE_CARD_PATH    = COURSE_TABLE + "." + COURSE_CARD_PATH
-	COURSE_TABLE_AVAILABLE    = COURSE_TABLE + "." + COURSE_AVAILABLE
-	COURSE_TABLE_DURATION     = COURSE_TABLE + "." + COURSE_DURATION
-	COURSE_TABLE_INITIAL_SCAN = COURSE_TABLE + "." + COURSE_INITIAL_SCAN
-	COURSE_TABLE_MAINTENANCE  = COURSE_TABLE + "." + COURSE_MAINTENANCE
+	COURSE_TABLE_ID            = COURSE_TABLE + "." + BASE_ID
+	COURSE_TABLE_CREATED_AT    = COURSE_TABLE + "." + BASE_CREATED_AT
+	COURSE_TABLE_UPDATED_AT    = COURSE_TABLE + "." + BASE_UPDATED_AT
+	COURSE_TABLE_TITLE         = COURSE_TABLE + "." + COURSE_TITLE
+	COURSE_TABLE_PATH          = COURSE_TABLE + "." + COURSE_PATH
+	COURSE_TABLE_CARD_PATH     = COURSE_TABLE + "." + COURSE_CARD_PATH
+	COURSE_TABLE_CARD_HASH     = COURSE_TABLE + "." + COURSE_CARD_HASH
+	COURSE_TABLE_CARD_MOD_TIME = COURSE_TABLE + "." + COURSE_CARD_MOD_TIME
+	COURSE_TABLE_AVAILABLE     = COURSE_TABLE + "." + COURSE_AVAILABLE
+	COURSE_TABLE_DURATION      = COURSE_TABLE + "." + COURSE_DURATION
+	COURSE_TABLE_INITIAL_SCAN  = COURSE_TABLE + "." + COURSE_INITIAL_SCAN
+	COURSE_TABLE_MAINTENANCE   = COURSE_TABLE + "." + COURSE_MAINTENANCE
 )
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -34,13 +38,15 @@ const (
 // Course defines the model for a course
 type Course struct {
 	Base
-	Title       string `db:"title"`        // Mutable
-	Path        string `db:"path"`         // Mutable
-	CardPath    string `db:"card_path"`    // Mutable
-	Available   bool   `db:"available"`    // Mutable
-	Duration    int    `db:"duration"`     // Mutable
-	InitialScan bool   `db:"initial_scan"` // Mutable
-	Maintenance bool   `db:"maintenance"`  // Mutable
+	Title       string `db:"title"`         // Mutable
+	Path        string `db:"path"`          // Mutable
+	CardPath    string `db:"card_path"`     // Mutable
+	CardHash    string `db:"card_hash"`     // Mutable
+	CardModTime string `db:"card_mod_time"` // Mutable
+	Available   bool   `db:"available"`     // Mutable
+	Duration    int    `db:"duration"`      // Mutable
+	InitialScan bool   `db:"initial_scan"`  // Mutable
+	Maintenance bool   `db:"maintenance"`   // Mutable
 
 	// Relation
 	Progress *CourseProgress `db:"-"`
@@ -57,6 +63,8 @@ func CourseColumns() []string {
 		fmt.Sprintf("%s AS title", COURSE_TABLE_TITLE),
 		fmt.Sprintf("%s AS path", COURSE_TABLE_PATH),
 		fmt.Sprintf("%s AS card_path", COURSE_TABLE_CARD_PATH),
+		fmt.Sprintf("%s AS card_hash", COURSE_TABLE_CARD_HASH),
+		fmt.Sprintf("%s AS card_mod_time", COURSE_TABLE_CARD_MOD_TIME),
 		fmt.Sprintf("%s AS available", COURSE_TABLE_AVAILABLE),
 		fmt.Sprintf("%s AS duration", COURSE_TABLE_DURATION),
 		fmt.Sprintf("%s AS initial_scan", COURSE_TABLE_INITIAL_SCAN),
@@ -87,6 +95,8 @@ func (r *CourseRow) ToDomain() *Course {
 		Title:       r.Title,
 		Path:        r.Path,
 		CardPath:    r.CardPath,
+		CardHash:    r.CardHash,
+		CardModTime: r.CardModTime,
 		Available:   r.Available,
 		Duration:    r.Duration,
 		InitialScan: r.InitialScan,
