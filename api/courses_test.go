@@ -480,6 +480,42 @@ func TestCourses_DeleteCourse(t *testing.T) {
 		require.Nil(t, course)
 	})
 
+	t.Run("204 (deleted with card)", func(t *testing.T) {
+		router, ctx := setupAdmin(t)
+
+		course := &models.Course{
+			Title:    "course with card",
+			Path:     "/course with card",
+			CardPath: "/course with card/card.png",
+		}
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
+
+		// Create optimized card file
+		cardPath := router.app.CardCache.GetCardPath(course.ID)
+		require.NoError(t, afero.WriteFile(router.app.AppFs.Fs, cardPath, []byte("test card"), os.ModePerm))
+
+		// Verify card exists
+		exists, err := router.app.CardCache.CardExists(cardPath)
+		require.NoError(t, err)
+		require.True(t, exists, "Card should exist before deletion")
+
+		// Delete the course
+		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/courses/"+course.ID, nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNoContent, status)
+
+		// Verify course is deleted
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
+		deletedCourse, err := router.appDao.GetCourse(ctx, dbOpts)
+		require.NoError(t, err)
+		require.Nil(t, deletedCourse)
+
+		// Verify card file is deleted
+		exists, err = router.app.CardCache.CardExists(cardPath)
+		require.NoError(t, err)
+		require.False(t, exists, "Card should be deleted when course is deleted")
+	})
+
 	t.Run("204 (not found)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 

@@ -215,6 +215,17 @@ func (api coursesAPI) deleteCourse(c *fiber.Ctx) error {
 	// Cancel and remove any ongoing scans for this course
 	api.r.app.CourseScan.CancelAndRemoveScansByCourseID(id)
 
+	// Delete optimized card file if it exists
+	cardPath := api.r.app.CardCache.GetCardPath(id)
+	if err := api.r.app.CardCache.DeleteCard(cardPath); err != nil {
+		// Log warning but continue with course deletion
+		api.r.app.Logger.Warn().
+			Err(err).
+			Str("course_id", id).
+			Str("card_path", cardPath).
+			Msg("Failed to delete optimized card during course deletion")
+	}
+
 	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: id})
 	if err := api.r.appDao.DeleteCourses(ctx, dbOpts); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting course", err)
