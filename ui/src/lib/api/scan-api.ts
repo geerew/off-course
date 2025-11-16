@@ -50,7 +50,7 @@ export type ScanSubscriptionCallbacks = {
 
 // Subscribe to scan updates via Server-Sent Events
 export function subscribeToScans(callbacks: ScanSubscriptionCallbacks): () => void {
-	const eventSource = new EventSource('/api/scans/stream');
+	const eventSource = new EventSource('/api/scans/stream', { withCredentials: true });
 	let isClosed = false;
 
 	const close = () => {
