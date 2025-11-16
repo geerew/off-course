@@ -293,10 +293,10 @@
 {#snippet menuContents()}
 	{#if course}
 		<div
-			class="bg-background border-background-alt-4 z-1 sticky top-0 flex flex-row gap-3 border-b"
+			class="bg-background border-background-alt-4 sticky top-0 z-1 flex flex-row gap-3 border-b"
 		>
 			<div class="flex w-full items-center justify-between gap-4 py-4 pr-3">
-				<span class="container-pl select-none font-semibold">{course.title}</span>
+				<span class="container-pl font-semibold select-none">{course.title}</span>
 
 				<Dropdown.Root>
 					<Dropdown.Trigger
@@ -334,7 +334,7 @@
 						</span>
 					</div>
 
-					<div class="border-background-alt-4 ml-auto mt-2 flex flex-col gap-3 border-l">
+					<div class="border-background-alt-4 mt-2 ml-auto flex flex-col gap-3 border-l">
 						{#each m.lessons as lesson}
 							{@const isCollection = lesson.assets.length > 1}
 							{@const totalVideoDuration = lesson.totalVideoDuration}
@@ -344,9 +344,9 @@
 								data-lesson-id={lesson.id}
 								data-selected={selectedLesson && selectedLesson.id === lesson.id}
 								class={cn(
-									'hover:text-foreground-alt-1 relative h-auto w-full justify-start whitespace-normal rounded-none text-start before:absolute before:duration-200 hover:before:-left-px hover:before:top-0 hover:before:h-full hover:before:w-px',
+									'hover:text-foreground-alt-1 relative h-auto w-full justify-start rounded-none text-start whitespace-normal before:absolute before:duration-200 hover:before:top-0 hover:before:-left-px hover:before:h-full hover:before:w-px',
 									selectedLesson && selectedLesson.id === lesson.id
-										? 'text-foreground-alt-1 before:bg-foreground-alt-1 before:-left-px before:top-0 before:h-full before:w-px'
+										? 'text-foreground-alt-1 before:bg-foreground-alt-1 before:top-0 before:-left-px before:h-full before:w-px'
 										: 'text-foreground-alt-2 hover:before:bg-foreground-alt-3'
 								)}
 								onclick={async () => {
@@ -366,11 +366,11 @@
 									/>
 								{/if}
 
-								<div class="flex w-full flex-row gap-3 pl-2.5 pr-2.5">
+								<div class="flex w-full flex-row gap-3 pr-2.5 pl-2.5">
 									<div class="flex w-full flex-col gap-2 text-sm">
 										<span>{lesson.prefix}. {lesson.title}</span>
 
-										<div class="relative flex w-full select-none flex-col gap-0 text-sm">
+										<div class="relative flex w-full flex-col gap-0 text-sm select-none">
 											<div class="flex w-full flex-row flex-wrap items-center gap-2">
 												<!-- Type -->
 												<span class="text-foreground-alt-3 whitespace-nowrap">
@@ -433,9 +433,9 @@
 
 						<Dialog.Content
 							bind:ref={dialogMenuEl}
-							class="border-background-alt-4 bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left w-(--course-menu-width) fixed left-0 top-0 z-50 h-full border-r"
+							class="border-background-alt-4 bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left fixed top-0 left-0 z-50 h-full w-(--course-menu-width) border-r"
 						>
-							<nav class="flex h-full w-full flex-col gap-2 overflow-y-auto overflow-x-hidden pb-8">
+							<nav class="flex h-full w-full flex-col gap-2 overflow-x-hidden overflow-y-auto pb-8">
 								{@render menuContents()}
 							</nav>
 						</Dialog.Content>
@@ -445,7 +445,7 @@
 				<div class="relative row-span-full min-h-0">
 					<nav
 						bind:this={staticMenuEl}
-						class="border-background-alt-4 bg-background sticky top-[calc(var(--header-height)+1px)] h-[calc(100dvh-(var(--header-height)+1px))] w-[--course-menu-width] overflow-y-auto overflow-x-hidden overscroll-contain border-r pb-8"
+						class="border-background-alt-4 bg-background sticky top-[calc(var(--header-height)+1px)] h-[calc(100dvh-(var(--header-height)+1px))] w-[--course-menu-width] overflow-x-hidden overflow-y-auto overscroll-contain border-r pb-8"
 					>
 						{@render menuContents()}
 					</nav>
@@ -539,7 +539,7 @@
 												);
 											}}
 										>
-											<TickIcon class="stroke-3 size-4" />
+											<TickIcon class="size-4 stroke-3" />
 										</Button>
 									{/snippet}
 
@@ -675,14 +675,14 @@
 								{#if previousLesson}
 									<Button
 										variant="outline"
-										class="text-foreground-alt-2 hover:text-foreground hover:border-background-alt-6 flex h-auto w-full flex-row justify-start gap-4 whitespace-normal p-4 text-left hover:bg-transparent"
+										class="text-foreground-alt-2 hover:text-foreground hover:border-background-alt-6 flex h-auto w-full flex-row justify-start gap-4 p-4 text-left whitespace-normal hover:bg-transparent"
 										onclick={() => {
 											if (!course || !previousLesson) return;
 											goto(`/course/${course.id}/${previousLesson.id}`);
 										}}
 									>
 										<LeftChevronIcon class="size-5 stroke-[1.5]" />
-										<span class="text-base font-medium leading-tight">
+										<span class="text-base leading-tight font-medium">
 											{previousLesson.prefix}. {previousLesson.title}
 										</span>
 									</Button>
@@ -694,13 +694,13 @@
 								{#if nextLesson}
 									<Button
 										variant="outline"
-										class="text-foreground-alt-2 hover:text-foreground hover:border-background-alt-6 flex h-auto w-full flex-row justify-end gap-4 whitespace-normal p-4 text-left hover:bg-transparent"
+										class="text-foreground-alt-2 hover:text-foreground hover:border-background-alt-6 flex h-auto w-full flex-row justify-end gap-4 p-4 text-left whitespace-normal hover:bg-transparent"
 										onclick={() => {
 											if (!course || !nextLesson) return;
 											goto(`/course/${course.id}/${nextLesson.id}`);
 										}}
 									>
-										<span class="text-base font-medium leading-tight">
+										<span class="text-base leading-tight font-medium">
 											{nextLesson.prefix}.
 											{nextLesson.title}
 										</span>

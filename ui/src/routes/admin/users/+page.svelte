@@ -380,7 +380,7 @@
 											inTransitionParams={{ duration: 200 }}
 											outTransition={slide}
 											outTransitionParams={{ duration: 150 }}
-											class="bg-background-alt-2/30 col-span-full justify-start pl-14 pr-4"
+											class="bg-background-alt-2/30 col-span-full justify-start pr-4 pl-14"
 										>
 											<div class="flex flex-col gap-2 py-3 text-sm">
 												<div class="grid grid-cols-[8rem_1fr]">

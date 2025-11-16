@@ -25,12 +25,6 @@ class ScanStore {
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	constructor() {
-		this.#startSSE();
-	}
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 	// Start SSE connection
 	#startSSE(): void {
 		if (this.#sseClose) {
