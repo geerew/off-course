@@ -3,6 +3,7 @@ package coursescan
 import (
 	"context"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -33,6 +34,9 @@ type CourseScan struct {
 
 	// In-memory scan state storage
 	scans utils.CMap[string, *ScanState]
+
+	// addMutex protects the Add operation to prevent race conditions
+	addMutex sync.Mutex
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -81,6 +85,10 @@ func (s *CourseScan) Add(ctx context.Context, courseId string) (*ScanState, erro
 		return nil, utils.ErrCourseNotFound
 	}
 
+	s.addMutex.Lock()
+	defer s.addMutex.Unlock()
+
+	// Check if the scan job already exists (atomic check within lock)
 	existingScan := s.GetScanByCourseID(courseId)
 	if existingScan != nil {
 		s.logger.Debug().
@@ -92,8 +100,8 @@ func (s *CourseScan) Add(ctx context.Context, courseId string) (*ScanState, erro
 		return existingScan, nil
 	}
 
+	// Create and add the new scan
 	scanState := NewScanState(courseId, course.Path, course.Title)
-
 	s.scans.Set(scanState.ID, scanState)
 
 	s.logger.Info().
@@ -195,6 +203,14 @@ func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessor
 			sortScans(waitingScans)
 
 			for _, scanState := range waitingScans {
+				// Check if context is cancelled before processing each scan
+				select {
+				case <-ctx.Done():
+					s.logger.Debug().Msg("Course scanner worker stopped during scan processing")
+					return
+				default:
+				}
+
 				existingScan, exists := s.scans.Get(scanState.ID)
 				if !exists {
 					s.logger.Debug().
@@ -223,6 +239,7 @@ func (s *CourseScan) Worker(ctx context.Context, processorFn CourseScanProcessor
 				}
 
 				scanCtx, cancel := context.WithCancel(ctx)
+				defer cancel()
 				existingScan.SetCancel(cancel)
 
 				if finalCheck, stillExists := s.scans.Get(scanState.ID); !stillExists {

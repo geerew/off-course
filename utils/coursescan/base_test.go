@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -119,6 +120,45 @@ func TestScanner_Add(t *testing.T) {
 		scan, err := scanner.Add(ctx, "1234")
 		require.ErrorIs(t, err, utils.ErrCourseNotFound)
 		require.Nil(t, scan)
+	})
+
+	t.Run("concurrent add same course", func(t *testing.T) {
+		scanner, ctx := setup(t)
+
+		course := &models.Course{Title: "Course 1", Path: "/course-1"}
+		require.NoError(t, scanner.dao.CreateCourse(ctx, course))
+
+		// Add the same course concurrently from multiple goroutines
+		const numGoroutines = 10
+		results := make([]*ScanState, numGoroutines)
+		errors := make([]error, numGoroutines)
+
+		var wg sync.WaitGroup
+		for i := 0; i < numGoroutines; i++ {
+			wg.Add(1)
+			go func(idx int) {
+				defer wg.Done()
+				results[idx], errors[idx] = scanner.Add(ctx, course.ID)
+			}(i)
+		}
+		wg.Wait()
+
+		// All should succeed
+		for i := 0; i < numGoroutines; i++ {
+			require.NoError(t, errors[i], "goroutine %d should not error", i)
+			require.NotNil(t, results[i], "goroutine %d should return a scan", i)
+		}
+
+		// All should return the same scan ID (no duplicates created)
+		firstScanID := results[0].ID
+		for i := 1; i < numGoroutines; i++ {
+			require.Equal(t, firstScanID, results[i].ID, "all goroutines should return the same scan ID")
+		}
+
+		// Verify only one scan exists in the map
+		allScans := scanner.GetAllScans()
+		require.Len(t, allScans, 1, "only one scan should exist")
+		require.Equal(t, course.ID, allScans[0].CourseID)
 	})
 }
 
