@@ -1396,17 +1396,16 @@ func categorizeFile(p *parsedFile) FileCategory {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // isCard returns true when the filename is a card
-// TODO: make this a type
 func isCard(filename string) bool {
 	ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(filename), "."))
+	cardExt := types.CardExtension(ext)
 
-	switch ext {
-	case "jpg", "jpeg", "png", "webp", "tiff":
-		name := strings.TrimSuffix(filename, "."+ext)
-		return name == "card"
+	if !cardExt.IsValid() {
+		return false
 	}
 
-	return false
+	name := strings.TrimSuffix(filename, "."+ext)
+	return name == "card"
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
