@@ -8,7 +8,6 @@
 	import type { CourseReqParams, CoursesModel } from '$lib/models/course-model';
 	import { scanStore } from '$lib/scanStore.svelte';
 	import { cn, remCalc } from '$lib/utils';
-	import { Avatar } from 'bits-ui';
 	import theme from 'tailwindcss/defaultTheme';
 
 	type courseType = 'ongoing' | 'newest';
@@ -193,26 +192,12 @@
 						>
 							<!-- Card -->
 							<div class="relative aspect-video max-h-40 w-full overflow-hidden">
-								{#if course.hasCard}
-									<Avatar.Root class="h-full w-full">
-										<Avatar.Image
-											src={`/api/courses/${course.id}/card`}
-											class="h-full w-full object-cover"
-											data-card={course.hasCard}
-										/>
-										<Avatar.Fallback
-											class="bg-background-alt-2 flex h-full w-full items-center justify-center"
-										>
-											<LogoIcon class="fill-background-alt-3 size-15 md:size-20" />
-										</Avatar.Fallback>
-									</Avatar.Root>
-								{:else}
-									<div
-										class="bg-background-alt-2 z-1 flex h-full w-full items-center justify-center rounded-lg"
-									>
-										<LogoIcon class="fill-background-alt-3 size-15 md:size-20" />
-									</div>
-								{/if}
+								<img
+									src={`/api/courses/${course.id}/card?v=${course.cardHash || 'fallback'}`}
+									alt={course.title}
+									loading="lazy"
+									class="h-full w-full object-cover"
+								/>
 							</div>
 
 							<!-- Contents -->

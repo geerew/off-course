@@ -7,6 +7,7 @@ import (
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/utils/appfs"
+	"github.com/geerew/off-course/utils/cardcache"
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/media"
@@ -27,6 +28,7 @@ type App struct {
 	// Services
 	CourseScan *coursescan.CourseScan
 	Transcoder *hls.Transcoder
+	CardCache  *cardcache.CardCache
 
 	// Configuration
 	Config *Config
@@ -106,14 +108,6 @@ func New(ctx context.Context, config *Config) (*App, error) {
 		dbWriter:  dbWriter,
 	}
 
-	// Course scanner
-	app.CourseScan = coursescan.New(&coursescan.CourseScanConfig{
-		Db:     app.DbManager.DataDb,
-		AppFs:  app.AppFs,
-		Logger: app.Logger.WithCourseScan(),
-		FFmpeg: app.FFmpeg,
-	})
-
 	// HLS Transcoder
 	transcoder, err := hls.NewTranscoder(&hls.TranscoderConfig{
 		CachePath: app.Config.DataDir,
@@ -128,6 +122,38 @@ func New(ctx context.Context, config *Config) (*App, error) {
 	}
 
 	app.Transcoder = transcoder
+
+	// Card Cache
+	cardCache, err := cardcache.NewCardCache(&cardcache.CardCacheConfig{
+		CachePath: app.Config.DataDir,
+		AppFs:     app.AppFs,
+		Logger:    app.Logger.WithCardCache(),
+		FFmpeg:    app.FFmpeg,
+	})
+
+	if err != nil {
+		return nil, &InitializationError{Message: "Failed to create card cache", Err: err}
+	}
+
+	app.CardCache = cardCache
+
+	// Course scanner
+	app.CourseScan = coursescan.New(&coursescan.CourseScanConfig{
+		Db:        app.DbManager.DataDb,
+		AppFs:     app.AppFs,
+		Logger:    app.Logger.WithCourseScan(),
+		FFmpeg:    app.FFmpeg,
+		CardCache: cardCache,
+	})
+
+	// Ensure fallback card exists
+	fallbackPath := cardCache.GetFallbackPath()
+	if err := cardCache.EnsureFallbackCard(fallbackPath); err != nil {
+		return nil, &InitializationError{
+			Message: "Failed to ensure fallback card exists",
+			Err:     err,
+		}
+	}
 
 	return app, nil
 }

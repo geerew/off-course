@@ -138,6 +138,13 @@ func (l *Logger) WithCourseScan() *Logger {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// WithCardCache creates a logger for the card cache component
+func (l *Logger) WithCardCache() *Logger {
+	return l.withComponent("cardcache")
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // WithCron creates a logger for the cron jobs component
 func (l *Logger) WithCron() *Logger {
 	return l.withComponent("cron")

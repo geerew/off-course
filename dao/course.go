@@ -43,16 +43,18 @@ func (dao *DAO) CreateCourse(ctx context.Context, course *models.Course) error {
 	builderOpts := newBuilderOptions(models.COURSE_TABLE).
 		WithData(
 			map[string]interface{}{
-				models.BASE_ID:             course.ID,
-				models.COURSE_TITLE:        course.Title,
-				models.COURSE_PATH:         course.Path,
-				models.COURSE_CARD_PATH:    course.CardPath,
-				models.COURSE_AVAILABLE:    course.Available,
-				models.COURSE_DURATION:     course.Duration,
-				models.COURSE_INITIAL_SCAN: course.InitialScan,
-				models.COURSE_MAINTENANCE:  course.Maintenance,
-				models.BASE_CREATED_AT:     course.CreatedAt,
-				models.BASE_UPDATED_AT:     course.UpdatedAt,
+				models.BASE_ID:              course.ID,
+				models.COURSE_TITLE:         course.Title,
+				models.COURSE_PATH:          course.Path,
+				models.COURSE_CARD_PATH:     course.CardPath,
+				models.COURSE_CARD_HASH:     course.CardHash,
+				models.COURSE_CARD_MOD_TIME: course.CardModTime,
+				models.COURSE_AVAILABLE:     course.Available,
+				models.COURSE_DURATION:      course.Duration,
+				models.COURSE_INITIAL_SCAN:  course.InitialScan,
+				models.COURSE_MAINTENANCE:   course.Maintenance,
+				models.BASE_CREATED_AT:      course.CreatedAt,
+				models.BASE_UPDATED_AT:      course.UpdatedAt,
 			},
 		)
 
@@ -173,14 +175,16 @@ func (dao *DAO) UpdateCourse(ctx context.Context, course *models.Course) error {
 	builderOpts := newBuilderOptions(models.COURSE_TABLE).
 		WithData(
 			map[string]interface{}{
-				models.COURSE_TITLE:        course.Title,
-				models.COURSE_PATH:         course.Path,
-				models.COURSE_CARD_PATH:    course.CardPath,
-				models.COURSE_AVAILABLE:    course.Available,
-				models.COURSE_DURATION:     course.Duration,
-				models.COURSE_INITIAL_SCAN: course.InitialScan,
-				models.COURSE_MAINTENANCE:  course.Maintenance,
-				models.BASE_UPDATED_AT:     course.UpdatedAt,
+				models.COURSE_TITLE:         course.Title,
+				models.COURSE_PATH:          course.Path,
+				models.COURSE_CARD_PATH:     course.CardPath,
+				models.COURSE_CARD_HASH:     course.CardHash,
+				models.COURSE_CARD_MOD_TIME: course.CardModTime,
+				models.COURSE_AVAILABLE:     course.Available,
+				models.COURSE_DURATION:      course.Duration,
+				models.COURSE_INITIAL_SCAN:  course.InitialScan,
+				models.COURSE_MAINTENANCE:   course.Maintenance,
+				models.BASE_UPDATED_AT:      course.UpdatedAt,
 			},
 		).
 		SetDbOpts(dbOpts)

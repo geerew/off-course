@@ -46,6 +46,18 @@ The following 2 `*.db` will be created in the data directory
 
 The transcoded videos will be placed in the data directory under `hls`
 
+**Card Optimization**
+
+`offcourse` automatically optimizes course card images during course scanning
+
+Card images are converted to WebP format, scaled to 800px width (maintaining aspect ratio), and compressed with 85% quality for optimal web performance
+
+The optimized card images will be placed in the data directory under `cards`
+
+- Each course's optimized card is stored as `{course-id}.webp`
+- A fallback card (`fallback.webp`) is used when a course has no card image
+- Optimized cards are automatically deleted when a course is deleted
+
 ## Build and Run
 
 ### Manual
@@ -55,7 +67,7 @@ The transcoded videos will be placed in the data directory under `hls`
 - Node.js >= 22.12.0
 - pnpm >= 8
 - Go >= 1.22.4
-- FFmpeg and FFProbe (for video processing and HLS transcoding)
+- FFmpeg and FFProbe (for video processing, HLS transcoding, and card image optimization)
 
 #### Build
 

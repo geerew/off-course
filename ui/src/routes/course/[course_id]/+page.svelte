@@ -35,8 +35,6 @@
 	let course = $state<CourseModel>();
 	let modules = $state<ModulesModel>();
 	let tags = $state<CourseTagsModel>([]);
-	let courseImageUrl = $state<string | null>(null);
-	let courseImageLoaded = $state<boolean>(false);
 
 	let openCourseProgressDialog = $state(false);
 
@@ -117,29 +115,9 @@
 
 			const moduleReqParams: CourseReqParams = { withUserProgress: true };
 			modules = await GetCourseModules(course.id, moduleReqParams);
-
-			await loadCourseImage(course.id);
 		} catch (error) {
 			console.error('Error loading course page:', error);
 			throw error;
-		}
-	}
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	// Load the course image, if available
-	async function loadCourseImage(courseId: string): Promise<void> {
-		try {
-			const response = await fetch(`/api/courses/${courseId}/card`);
-			if (response.ok) {
-				const blob = await response.blob();
-				courseImageUrl = URL.createObjectURL(blob);
-				courseImageLoaded = true;
-			} else {
-				courseImageLoaded = false;
-			}
-		} catch (error) {
-			courseImageLoaded = false;
 		}
 	}
 
@@ -184,29 +162,12 @@
 				const moduleReqParams: CourseReqParams = { withUserProgress: true };
 				modules = await GetCourseModules(course.id, moduleReqParams);
 			}
-
-			// Revoke old image URL before loading new one
-			if (courseImageUrl) {
-				URL.revokeObjectURL(courseImageUrl);
-				courseImageUrl = null;
-			}
-
-			// Reload course image in case it was generated during the scan
-			await loadCourseImage(course.id);
 		} catch (error) {
 			console.error('Failed to refresh course:', error);
 		}
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	$effect(() => {
-		return () => {
-			if (courseImageUrl) {
-				URL.revokeObjectURL(courseImageUrl);
-			}
-		};
-	});
 </script>
 
 {#await loadPromise}
@@ -457,21 +418,11 @@
 
 						<!-- Card -->
 						<div class="relative order-1 flex h-50 w-full justify-center rounded-lg lg:order-2">
-							{#if courseImageLoaded && courseImageUrl}
-								<div class="z-1 flex h-full w-full items-center justify-center rounded-lg">
-									<img
-										src={courseImageUrl}
-										alt={course?.title}
-										class="h-auto max-h-full w-auto max-w-full rounded-lg object-contain"
-									/>
-								</div>
-							{:else}
-								<div
-									class="bg-background-alt-2 z-1 flex aspect-video h-full max-w-full items-center justify-center rounded-lg lg:w-full"
-								>
-									<LogoIcon class="fill-background-alt-3 w-16 md:w-20" />
-								</div>
-							{/if}
+							<img
+								src={`/api/courses/${course.id}/card?v=${course.cardHash || 'fallback'}`}
+								alt={course.title}
+								class="h-auto max-h-full w-auto max-w-full rounded-lg object-contain"
+							/>
 						</div>
 					</div>
 				</div>

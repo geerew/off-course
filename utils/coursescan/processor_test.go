@@ -980,3 +980,35 @@ func TestScanner_IsCard(t *testing.T) {
 		}
 	})
 }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestCardExtension_IsValid(t *testing.T) {
+	t.Run("valid extensions", func(t *testing.T) {
+		valid := []types.CardExtension{
+			types.CardExtensionJPG,
+			types.CardExtensionJPEG,
+			types.CardExtensionPNG,
+			types.CardExtensionWebP,
+			types.CardExtensionTIFF,
+		}
+
+		for _, ext := range valid {
+			require.True(t, ext.IsValid(), "extension %s should be valid", ext)
+		}
+	})
+
+	t.Run("invalid extensions", func(t *testing.T) {
+		invalid := []types.CardExtension{
+			types.CardExtension("gif"),
+			types.CardExtension("bmp"),
+			types.CardExtension("svg"),
+			types.CardExtension(""),
+			types.CardExtension("mp4"),
+		}
+
+		for _, ext := range invalid {
+			require.False(t, ext.IsValid(), "extension %s should be invalid", ext)
+		}
+	})
+}

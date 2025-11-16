@@ -12,6 +12,7 @@ import (
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/appfs"
+	"github.com/geerew/off-course/utils/cardcache"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/media"
 	"github.com/geerew/off-course/utils/types"
@@ -45,11 +46,21 @@ func setup(t *testing.T) (*CourseScan, context.Context) {
 		t.Skip("FFmpeg not available; skipping test")
 	}
 
+	// Create CardCache for testing
+	cardCache, err := cardcache.NewCardCache(&cardcache.CardCacheConfig{
+		CachePath: "./oc_data",
+		AppFs:     appFs,
+		Logger:    testLogger.WithCardCache(),
+		FFmpeg:    ffmpeg,
+	})
+	require.NoError(t, err)
+
 	courseScan := New(&CourseScanConfig{
-		Db:     dbManager.DataDb,
-		AppFs:  appFs,
-		Logger: testLogger.WithCourseScan(),
-		FFmpeg: ffmpeg,
+		Db:        dbManager.DataDb,
+		AppFs:     appFs,
+		Logger:    testLogger.WithCourseScan(),
+		FFmpeg:    ffmpeg,
+		CardCache: cardCache,
 	})
 
 	// Create a user for the context

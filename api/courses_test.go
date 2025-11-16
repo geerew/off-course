@@ -480,6 +480,42 @@ func TestCourses_DeleteCourse(t *testing.T) {
 		require.Nil(t, course)
 	})
 
+	t.Run("204 (deleted with card)", func(t *testing.T) {
+		router, ctx := setupAdmin(t)
+
+		course := &models.Course{
+			Title:    "course with card",
+			Path:     "/course with card",
+			CardPath: "/course with card/card.png",
+		}
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
+
+		// Create optimized card file
+		cardPath := router.app.CardCache.GetCardPath(course.ID)
+		require.NoError(t, afero.WriteFile(router.app.AppFs.Fs, cardPath, []byte("test card"), os.ModePerm))
+
+		// Verify card exists
+		exists, err := router.app.CardCache.CardExists(cardPath)
+		require.NoError(t, err)
+		require.True(t, exists, "Card should exist before deletion")
+
+		// Delete the course
+		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/courses/"+course.ID, nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNoContent, status)
+
+		// Verify course is deleted
+		dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: course.ID})
+		deletedCourse, err := router.appDao.GetCourse(ctx, dbOpts)
+		require.NoError(t, err)
+		require.Nil(t, deletedCourse)
+
+		// Verify card file is deleted
+		exists, err = router.app.CardCache.CardExists(cardPath)
+		require.NoError(t, err)
+		require.False(t, exists, "Card should be deleted when course is deleted")
+	})
+
 	t.Run("204 (not found)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
@@ -513,25 +549,26 @@ func TestCourses_GetCard(t *testing.T) {
 		}
 		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
-		router.app.AppFs.Fs.MkdirAll("/"+course.Path, os.ModePerm)
-		require.Nil(t, afero.WriteFile(router.app.AppFs.Fs, course.CardPath, []byte("test"), os.ModePerm))
+		// Create optimized card file in cards directory
+		cardPath := router.app.CardCache.GetCardPath(course.ID)
+		require.Nil(t, afero.WriteFile(router.app.AppFs.Fs, cardPath, []byte("test card"), os.ModePerm))
 
 		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/card", nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, status)
-		require.Equal(t, "test", string(body))
+		require.Equal(t, "test card", string(body))
 	})
 
-	t.Run("404 (invalid id)", func(t *testing.T) {
+	t.Run("200 (invalid id serves fallback)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/invalid/card", nil))
+		// Invalid course ID - should serve fallback (fallback is created during app initialization)
+		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/invalid/card", nil))
 		require.NoError(t, err)
-		require.Equal(t, http.StatusNotFound, status)
-		require.Contains(t, string(body), "Course not found")
+		require.Equal(t, http.StatusOK, status) // Fallback is served, not 404
 	})
 
-	t.Run("404 (no card)", func(t *testing.T) {
+	t.Run("200 (no card serves fallback)", func(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{
@@ -540,13 +577,13 @@ func TestCourses_GetCard(t *testing.T) {
 		}
 		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
-		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/card", nil))
+		// Course has no card - should serve fallback
+		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/card", nil))
 		require.NoError(t, err)
-		require.Equal(t, http.StatusNotFound, status)
-		require.Contains(t, string(body), "Course has no card")
+		require.Equal(t, http.StatusOK, status) // Fallback is served, not 404
 	})
 
-	t.Run("404 (card not found)", func(t *testing.T) {
+	t.Run("200 (card not found serves fallback)", func(t *testing.T) {
 		router, ctx := setupAdmin(t)
 
 		course := &models.Course{
@@ -556,21 +593,23 @@ func TestCourses_GetCard(t *testing.T) {
 		}
 		require.NoError(t, router.appDao.CreateCourse(ctx, course))
 
-		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/card", nil))
+		// Card path exists in DB but optimized card doesn't exist - should serve fallback
+		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/"+course.ID+"/card", nil))
 		require.NoError(t, err)
-		require.Equal(t, http.StatusNotFound, status)
-		require.Contains(t, string(body), "Course card not found")
+		require.Equal(t, http.StatusOK, status) // Fallback is served, not 404
 	})
 
-	t.Run("500 (internal error)", func(t *testing.T) {
+	t.Run("404 (fallback not found)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS "+models.COURSE_TABLE)
-		require.NoError(t, err)
+		// Delete fallback card to test error case
+		fallbackPath := router.app.CardCache.GetFallbackPath()
+		router.app.AppFs.Fs.Remove(fallbackPath)
 
-		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/invalid/card", nil))
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/invalid/card", nil))
 		require.NoError(t, err)
-		require.Equal(t, http.StatusInternalServerError, status)
+		require.Equal(t, http.StatusNotFound, status)
+		require.Contains(t, string(body), "Fallback card not found")
 	})
 }
 

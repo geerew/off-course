@@ -12,6 +12,7 @@ import (
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
 	"github.com/geerew/off-course/utils/appfs"
+	"github.com/geerew/off-course/utils/cardcache"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/media"
 	"github.com/geerew/off-course/utils/types"
@@ -26,11 +27,12 @@ type CourseScanProcessorFn func(context.Context, *CourseScan, *ScanState) error
 
 // CourseScan scans a course and finds assets and attachments
 type CourseScan struct {
-	appFs  *appfs.AppFs
-	db     database.Database
-	dao    *dao.DAO
-	logger *logger.Logger
-	ffmpeg *media.FFmpeg
+	appFs     *appfs.AppFs
+	db        database.Database
+	dao       *dao.DAO
+	logger    *logger.Logger
+	ffmpeg    *media.FFmpeg
+	cardCache cardcache.CardCacher
 
 	// In-memory scan state storage
 	scans utils.CMap[string, *ScanState]
@@ -50,10 +52,11 @@ const (
 
 // CourseScanConfig is the config for a CourseScan
 type CourseScanConfig struct {
-	Db     database.Database
-	AppFs  *appfs.AppFs
-	Logger *logger.Logger
-	FFmpeg *media.FFmpeg
+	Db        database.Database
+	AppFs     *appfs.AppFs
+	Logger    *logger.Logger
+	FFmpeg    *media.FFmpeg
+	CardCache cardcache.CardCacher
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -61,12 +64,13 @@ type CourseScanConfig struct {
 // New creates a new CourseScan
 func New(config *CourseScanConfig) *CourseScan {
 	return &CourseScan{
-		appFs:  config.AppFs,
-		db:     config.Db,
-		dao:    dao.New(config.Db),
-		logger: config.Logger,
-		ffmpeg: config.FFmpeg,
-		scans:  utils.NewCMap[string, *ScanState](),
+		appFs:     config.AppFs,
+		db:        config.Db,
+		dao:       dao.New(config.Db),
+		logger:    config.Logger,
+		ffmpeg:    config.FFmpeg,
+		cardCache: config.CardCache,
+		scans:     utils.NewCMap[string, *ScanState](),
 	}
 }
 
