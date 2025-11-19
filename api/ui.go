@@ -16,9 +16,17 @@ import (
 
 func (r *Router) bindUi() {
 	if !r.app.Config.IsDev {
-		r.fiberApp.Use(filesystem.New(filesystem.Config{
+		// Only apply filesystem middleware to non-API routes
+		fsMiddleware := filesystem.New(filesystem.Config{
 			Root: http.FS(ui.Assets()),
-		}))
+		})
+
+		r.fiberApp.Use(func(c *fiber.Ctx) error {
+			if strings.HasPrefix(c.OriginalURL(), "/api") {
+				return c.Next()
+			}
+			return fsMiddleware(c)
+		})
 
 		// Create a fallback for 'dynamic' pages
 		fallback := func(c *fiber.Ctx) error {
