@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import type { APIError } from '$lib/api-error.svelte';
 	import { GetCourse, GetCourseModules, GetCourseTags } from '$lib/api/course-api';
+	import { StartScan } from '$lib/api/scan-api';
 	import { auth } from '$lib/auth.svelte';
 	import { NiceDate, Spinner } from '$lib/components';
 	import { ClearCourseProgressDialog } from '$lib/components/dialogs';
@@ -17,6 +19,7 @@
 		ModulesIcon,
 		PathIcon,
 		PlayCircleIcon,
+		ScanIcon,
 		TagIcon,
 		TickCircleIcon,
 		UpdatedIcon,
@@ -27,10 +30,12 @@
 	import Button from '$lib/components/ui/button.svelte';
 	import type { CourseModel, CourseReqParams, CourseTagsModel } from '$lib/models/course-model';
 	import type { ModulesModel } from '$lib/models/module-model';
+	import type { ScanCreateModel } from '$lib/models/scan-model';
 	import { scanStore } from '$lib/scanStore.svelte';
 	import { cn } from '$lib/utils';
 	import { useId } from 'bits-ui';
 	import prettyMs from 'pretty-ms';
+	import { toast } from 'svelte-sonner';
 
 	let course = $state<CourseModel>();
 	let modules = $state<ModulesModel>();
@@ -168,6 +173,20 @@
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Start a scan for this course
+	async function doScan(): Promise<void> {
+		if (!course) return;
+
+		try {
+			await StartScan({ courseId: course.id } satisfies ScanCreateModel);
+			toast.success('Scan started');
+		} catch (error) {
+			toast.error('Failed to start the scan: ' + (error as APIError).message);
+		}
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 </script>
 
 {#await loadPromise}
@@ -178,7 +197,7 @@
 	{#if course}
 		<div class="flex w-full flex-col">
 			<div class="flex w-full place-content-center">
-				<div class="container-px flex w-full max-w-7xl flex-col gap-6 pt-5 pb-10 lg:pt-10">
+				<div class="container-px flex w-full max-w-7xl flex-col gap-6 pb-10 pt-5 lg:pt-10">
 					<div class="grid w-full grid-cols-1 gap-6 lg:grid-cols-[1fr_minmax(0,23rem)] lg:gap-10">
 						<!-- Information -->
 						<div class="order-2 flex h-full w-full flex-col justify-between gap-5 lg:order-1">
@@ -327,7 +346,7 @@
 									{:else}
 										<div class="flex flex-wrap gap-2 px-2">
 											{#each tags as tag}
-												<Badge class="text-sm  select-none">
+												<Badge class="select-none  text-sm">
 													{tag.tag}
 												</Badge>
 											{/each}
@@ -365,7 +384,23 @@
 										</Dropdown.Trigger>
 
 										<Dropdown.Content class="z-60 w-38" align="start">
-											<Dropdown.Item
+											{#if auth.user?.role === 'admin'}
+												<Dropdown.Item
+													class="data-disabled:pointer-events-none"
+													disabled={isScanning}
+													onclick={async () => {
+														if (isScanning) return;
+														doScan();
+													}}
+												>
+													<ScanIcon class="size-4 stroke-[1.5]" />
+													<span>Scan</span>
+												</Dropdown.Item>
+
+												<Dropdown.Separator />
+											{/if}
+
+											<Dropdown.CautionItem
 												class="data-disabled:pointer-events-none"
 												disabled={!course?.progress?.started}
 												onclick={async () => {
@@ -374,7 +409,7 @@
 											>
 												<ClearProgressIcon class="size-4 stroke-[1.5]" />
 												<span>Clear Progress</span>
-											</Dropdown.Item>
+											</Dropdown.CautionItem>
 										</Dropdown.Content>
 									</Dropdown.Root>
 
@@ -417,7 +452,7 @@
 						</div>
 
 						<!-- Card -->
-						<div class="relative order-1 flex h-50 w-full justify-center rounded-lg lg:order-2">
+						<div class="h-50 relative order-1 flex w-full justify-center rounded-lg lg:order-2">
 							<img
 								src={`/api/courses/${course.id}/card?v=${course.cardHash || 'fallback'}`}
 								alt={course.title}
@@ -447,7 +482,7 @@
 										<div class="max-w-2xl">
 											<!-- Module title -->
 											{#if m.module !== '(no chapter)'}
-												<div class="text-2xl font-medium text-pretty">
+												<div class="text-pretty text-2xl font-medium">
 													{m.module}
 												</div>
 											{/if}
@@ -463,7 +498,7 @@
 															<Button
 																href={`/course/${course.id}/${lesson.id}`}
 																variant="ghost"
-																class="hover:bg-background-alt-2 -mx-3 -my-2 flex h-auto justify-start gap-3 py-2 text-sm whitespace-normal"
+																class="hover:bg-background-alt-2 -mx-3 -my-2 flex h-auto justify-start gap-3 whitespace-normal py-2 text-sm"
 																disabled={isScanning || course.maintenance || !course.available}
 																onclick={(e) => {
 																	if (isScanning || course?.maintenance || !course?.available) {
@@ -495,7 +530,7 @@
 
 																	<!-- Lesson details -->
 																	<div
-																		class="relative flex w-full flex-col gap-0 text-sm select-none"
+																		class="relative flex w-full select-none flex-col gap-0 text-sm"
 																	>
 																		<div class="flex w-full flex-row flex-wrap items-center gap-2">
 																			<!-- Type -->
