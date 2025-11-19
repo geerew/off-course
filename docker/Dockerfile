@@ -35,10 +35,10 @@ COPY --from=ui /src/ui/embed.go ./ui/embed.go
 
 RUN go mod download
 RUN set -eux; \
-    VERSION="${VERSION:-$(git describe --tags --exact-match 2>/dev/null || echo dev)}"; \
-    COMMIT="${COMMIT:-$(git rev-parse --short HEAD 2>/dev/null || echo unknown)}"; \
-    echo "Building with VERSION=${VERSION}, COMMIT=${COMMIT}"; \
-    go build -ldflags "-X github.com/geerew/off-course/version.Version=${VERSION} -X github.com/geerew/off-course/version.Commit=${COMMIT}" -o offcourse .
+    SET_VERSION="${VERSION:-$(git describe --tags --exact-match 2>/dev/null || echo dev)}"; \
+    SET_COMMIT="${COMMIT:-$(git rev-parse --short HEAD 2>/dev/null || echo unknown)}"; \
+    echo "Building with VERSION=${SET_VERSION}, COMMIT=${SET_COMMIT}"; \
+    go build -ldflags "-X github.com/geerew/off-course/version.Version=${SET_VERSION} -X github.com/geerew/off-course/version.Commit=${SET_COMMIT}" -o offcourse .
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
