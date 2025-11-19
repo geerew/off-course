@@ -84,7 +84,7 @@
 			class={cn(
 				'text-foreground-alt-2 hover:text-foreground hover:bg-background-alt-1 relative h-auto justify-start gap-3 px-2.5 leading-6',
 				page.url.pathname.startsWith(item.matcher) &&
-					'bg-background-alt-1 after:bg-background-primary after:absolute after:right-0 after:top-0 after:h-full after:w-1',
+					'bg-background-alt-1 after:bg-background-primary after:absolute after:top-0 after:right-0 after:h-full after:w-1',
 				mobile ? 'py-6 text-base' : 'py-3'
 			)}
 			onclick={() => {
@@ -97,7 +97,7 @@
 			<item.icon class="size-6 stroke-[1.5]" />
 			<span>{item.label}</span>
 			{#if item.label === 'Scans' && scanCount > 0}
-				<Badge class="bg-background-alt-4 text-foreground ml-auto mr-2.5 text-xs">
+				<Badge class="bg-background-alt-4 text-foreground mr-2.5 ml-auto text-xs">
 					{scanCount}
 				</Badge>
 			{/if}
@@ -122,9 +122,9 @@
 					/>
 
 					<Dialog.Content
-						class="border-foreground-alt-4 bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left w-70 fixed left-0 top-0 z-50 h-full border-r pl-4 pt-4"
+						class="border-foreground-alt-4 bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left fixed top-0 left-0 z-50 h-full w-70 border-r pt-4 pl-4"
 					>
-						<nav class="flex h-full w-full flex-col gap-3 overflow-y-auto overflow-x-hidden">
+						<nav class="flex h-full w-full flex-col gap-3 overflow-x-hidden overflow-y-auto">
 							<div class="flex flex-1 flex-col gap-3">
 								{@render menuContents(true)}
 							</div>
@@ -137,7 +137,7 @@
 			<div class="relative row-span-full">
 				<div class="absolute inset-0">
 					<nav
-						class="container-pl border-foreground-alt-5 sticky left-0 top-[calc(var(--header-height)+1px)] flex h-[calc(100dvh-(var(--header-height)+1px))] w-[--settings-menu-width] flex-col gap-4 border-r pt-8"
+						class="container-pl border-foreground-alt-5 sticky top-[calc(var(--header-height)+1px)] left-0 flex h-[calc(100dvh-(var(--header-height)+1px))] w-[--settings-menu-width] flex-col gap-4 border-r pt-8"
 					>
 						<div class="flex flex-1 flex-col gap-4">
 							{@render menuContents(false)}
