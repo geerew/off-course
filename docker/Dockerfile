@@ -19,6 +19,7 @@ ARG COMMIT
 
 RUN apk add --no-cache \
     gcc \
+    git \
     musl-dev \
     sqlite-dev
 
@@ -33,13 +34,12 @@ COPY --from=ui /src/ui/build ./ui/build
 COPY --from=ui /src/ui/embed.go ./ui/embed.go
 
 RUN go mod download
-RUN if [ -z "$$VERSION" ]; then \
-        VERSION=$$(git describe --tags --exact-match 2>/dev/null || echo "dev"); \
-    fi && \
-    if [ -z "$$COMMIT" ]; then \
-        COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo "unknown"); \
-    fi && \
-    go build -ldflags "-X github.com/geerew/off-course/version.Version=$$VERSION -X github.com/geerew/off-course/version.Commit=$$COMMIT" -o offcourse .
+RUN set -eux; \
+    VERSION="${VERSION:-$(git describe --tags --exact-match 2>/dev/null || echo dev)}"; \
+    COMMIT="${COMMIT:-$(git rev-parse --short HEAD 2>/dev/null || echo unknown)}"; \
+    echo "Building with VERSION=${VERSION}, COMMIT=${COMMIT}"; \
+    go build -ldflags "-X github.com/geerew/off-course/version.Version=${VERSION} -X github.com/geerew/off-course/version.Commit=${COMMIT}" -o offcourse .
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
