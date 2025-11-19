@@ -1,11 +1,16 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import type { APIError } from '$lib/api-error.svelte';
-	import { GetCourse, GetCourseModules, GetCourseTags } from '$lib/api/course-api';
+	import {
+		GetCourse,
+		GetCourseModules,
+		GetCourseTags,
+		UpdateCourseAssetProgress
+	} from '$lib/api/course-api';
 	import { StartScan } from '$lib/api/scan-api';
 	import { auth } from '$lib/auth.svelte';
 	import { NiceDate, Spinner } from '$lib/components';
-	import { ClearCourseProgressDialog } from '$lib/components/dialogs';
+	import { ClearCourseProgressDialog, MarkCourseCompleteDialog } from '$lib/components/dialogs';
 	import {
 		AddedIcon,
 		ClearProgressIcon,
@@ -22,12 +27,14 @@
 		ScanIcon,
 		TagIcon,
 		TickCircleIcon,
+		TickIcon,
 		UpdatedIcon,
 		WarningIcon
 	} from '$lib/components/icons';
 	import { Badge, Dropdown } from '$lib/components/ui';
 	import Attachments from '$lib/components/ui/attachments.svelte';
 	import Button from '$lib/components/ui/button.svelte';
+	import type { AssetProgressUpdateModel } from '$lib/models/asset-model';
 	import type { CourseModel, CourseReqParams, CourseTagsModel } from '$lib/models/course-model';
 	import type { ModulesModel } from '$lib/models/module-model';
 	import type { ScanCreateModel } from '$lib/models/scan-model';
@@ -42,6 +49,7 @@
 	let tags = $state<CourseTagsModel>([]);
 
 	let openCourseProgressDialog = $state(false);
+	let openMarkCompleteDialog = $state(false);
 
 	// Track if this course has an active scan
 	let hasActiveScan = $state(false);
@@ -187,6 +195,101 @@
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Track if we're marking course complete to prevent progress bar flickering
+	let isMarkingComplete = $state(false);
+	// Store frozen progress value during mark complete operation
+	let frozenProgress = $state<number | null>(null);
+
+	// Mark course as complete by marking all assets as completed
+	async function markCourseComplete(): Promise<void> {
+		if (!course || !modules) return;
+
+		isMarkingComplete = true;
+		// Freeze the current progress value
+		frozenProgress = course.progress?.percent ?? 0;
+
+		try {
+			// Mark all assets as completed
+			const promises: Promise<void>[] = [];
+
+			for (const mod of modules.modules) {
+				for (const lesson of mod.lessons) {
+					for (const asset of lesson.assets) {
+						// Skip if already completed
+						if (asset.progress.completed) continue;
+
+						const progress: AssetProgressUpdateModel = {
+							completed: true
+						};
+
+						promises.push(UpdateCourseAssetProgress(course.id, lesson.id, asset.id, progress));
+
+						// Update local state
+						asset.progress.completed = true;
+						lesson.started = true;
+						lesson.completed = true;
+						lesson.assetsCompleted = lesson.assets.length;
+					}
+				}
+			}
+
+			await Promise.all(promises);
+
+			// Small delay to allow backend to recalculate progress
+			await new Promise((resolve) => setTimeout(resolve, 300));
+
+			// Refresh course data to get updated progress
+			await refreshCourse();
+
+			// Ensure progress shows 100% after refresh
+			if (course.progress) {
+				course.progress.percent = 100;
+			}
+
+			toast.success('Course marked as complete');
+		} catch (error) {
+			toast.error('Failed to mark course as complete: ' + (error as APIError).message);
+		} finally {
+			// Small delay before unfreezing to ensure smooth transition
+			await new Promise((resolve) => setTimeout(resolve, 50));
+			frozenProgress = null;
+			isMarkingComplete = false;
+		}
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Check if course is already complete
+	let isCourseComplete = $derived(course?.progress?.percent === 100);
+
+	// Check if course has any progress
+	let hasProgress = $derived(
+		(course?.progress?.started ?? false) || (course?.progress?.percent ?? 0) > 0
+	);
+
+	// Track previous progress to prevent backwards transitions
+	let previousProgress = $state(0);
+
+	// Update previous progress when course progress changes (but not during mark complete)
+	$effect(() => {
+		if (!isMarkingComplete) {
+			const currentProgress = course?.progress?.percent ?? 0;
+			previousProgress = currentProgress;
+		}
+	});
+
+	// Determine if we should animate the progress bar
+	let shouldAnimateProgress = $derived.by(() => {
+		// Don't animate during mark complete operation
+		if (isMarkingComplete) return false;
+
+		const currentProgress = course?.progress?.percent ?? 0;
+		// Only animate if progress is increasing or staying the same
+		return currentProgress >= previousProgress;
+	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 </script>
 
 {#await loadPromise}
@@ -273,6 +376,8 @@
 
 								<!-- Progress Bar -->
 								{#if course.progress?.started}
+									{@const displayProgress =
+										frozenProgress !== null ? frozenProgress : (course.progress?.percent ?? 0)}
 									<div class="flex h-7 flex-row items-center gap-2">
 										<LoaderCircleIcon class="text-foreground-alt-3 size-4.5" />
 
@@ -280,20 +385,25 @@
 											class="bg-background-alt-3 relative h-5 w-full max-w-56 overflow-hidden rounded-md"
 											aria-labelledby={labelId}
 											role="progressbar"
-											aria-valuenow={course.progress.percent}
+											aria-valuenow={displayProgress}
 											aria-valuemin="0"
 											aria-valuemax="100"
 										>
 											<div
-												class="bg-background-primary-alt-1/70 h-full transition-all duration-1000 ease-in-out"
-												style={`width: ${course.progress.percent}%`}
+												class={cn(
+													'bg-background-primary-alt-1/70 h-full',
+													shouldAnimateProgress && frozenProgress === null
+														? 'transition-all duration-1000 ease-in-out'
+														: ''
+												)}
+												style={`width: ${displayProgress}%`}
 											></div>
 
 											<div
 												id={labelId}
 												class="text-foreground-alt-1 absolute inset-0 flex items-center justify-center text-xs font-medium drop-shadow-sm"
 											>
-												{course.progress.percent}%
+												{displayProgress}%
 											</div>
 										</div>
 									</div>
@@ -400,6 +510,34 @@
 												<Dropdown.Separator />
 											{/if}
 
+											<Dropdown.Item
+												class="data-disabled:pointer-events-none"
+												disabled={isCourseComplete ||
+													isScanning ||
+													course?.maintenance ||
+													!course?.available}
+												onclick={async () => {
+													if (
+														isCourseComplete ||
+														isScanning ||
+														course?.maintenance ||
+														!course?.available
+													)
+														return;
+
+													// If course has no progress, mark complete directly
+													// Otherwise show confirmation dialog
+													if (!hasProgress) {
+														markCourseComplete();
+													} else {
+														openMarkCompleteDialog = true;
+													}
+												}}
+											>
+												<TickIcon class="size-4 stroke-[1.5]" />
+												<span>Mark Complete</span>
+											</Dropdown.Item>
+
 											<Dropdown.CautionItem
 												class="data-disabled:pointer-events-none"
 												disabled={!course?.progress?.started}
@@ -445,6 +583,14 @@
 													}
 												}
 											}
+										}}
+									/>
+
+									<MarkCourseCompleteDialog
+										bind:open={openMarkCompleteDialog}
+										{course}
+										successFn={() => {
+											markCourseComplete();
 										}}
 									/>
 								</div>
