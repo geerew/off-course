@@ -70,7 +70,9 @@ func (r *Router) Serve() error {
 		return err
 	}
 
-	r.logger.Info().Str("url", fmt.Sprintf("http://%s", r.app.Config.HttpAddr)).Msg("Server started")
+	r.logger.Info().
+		Str("url", fmt.Sprintf("http://%s", r.app.Config.HttpAddr)).
+		Msg("Server started")
 
 	return r.fiberApp.Listener(ln)
 }
@@ -105,6 +107,7 @@ func (r *Router) initRoutes() {
 	r.initLogRoutes()
 	r.initRecoveryRoutes()
 	r.initHlsRoutes()
+	r.initVersionRoutes()
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

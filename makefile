@@ -45,19 +45,18 @@ test/cover:
 	go tool cover -html=/tmp/coverage.out
 
 # ==================================================================================== #
-# BUILD & RELEASE
+# BUILD
 # ==================================================================================== #
-
-## local_build: build the application locally
-.PHONY: local_build
-local_build:
-	cd ui && pnpm install && pnpm run build
-	go install github.com/goreleaser/goreleaser/v2@latest
-	goreleaser build --snapshot --clean
 
 ## build: build the application
 .PHONY: build
 build:
-	cd ui && pnpm install && pnpm run build
-	go install github.com/goreleaser/goreleaser/v2@latest
-	goreleaser build --clean
+	@echo "Building frontend..."
+	(cd ui && pnpm install && pnpm run build)
+	@echo "Building backend..."
+	@VERSION=$$(git describe --tags --exact-match 2>/dev/null || echo "dev"); \
+	COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo "unknown"); \
+	echo "  Version: $$VERSION"; \
+	echo "  Commit: $$COMMIT"; \
+	go build -ldflags "-X github.com/geerew/off-course/version.Version=$$VERSION -X github.com/geerew/off-course/version.Commit=$$COMMIT" -o offcourse .
+	@echo "Build complete: offcourse"
