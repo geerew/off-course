@@ -19,6 +19,7 @@ import (
 // Transcoder manages all HLS transcoding operations for a given asset
 type Transcoder struct {
 	config    *TranscoderConfig
+	cachePath string
 	streams   utils.CMap[string, *StreamWrapper]
 	assetChan chan string
 	tracker   *Tracker
@@ -64,6 +65,7 @@ func NewTranscoder(config *TranscoderConfig) (*Transcoder, error) {
 
 	transcoder := &Transcoder{
 		config:    config,
+		cachePath: cachePath,
 		streams:   utils.NewCMap[string, *StreamWrapper](),
 		assetChan: make(chan string, 10),
 	}
@@ -80,7 +82,7 @@ func NewTranscoder(config *TranscoderConfig) (*Transcoder, error) {
 func (t *Transcoder) newStreamWrapper(ctx context.Context, path string, assetID string) *StreamWrapper {
 	streamWrapper := &StreamWrapper{
 		config:  t.config,
-		Out:     filepath.Join(t.config.CachePath, assetID),
+		Out:     filepath.Join(t.cachePath, assetID),
 		videos:  utils.NewCMap[VideoKey, *VideoStream](),
 		audios:  utils.NewCMap[uint32, *AudioStream](),
 		assetID: assetID,
