@@ -68,36 +68,28 @@ The optimized card images will be placed in the data directory under `cards`
 - pnpm >= 8
 - Go >= 1.22.4
 - FFmpeg and FFProbe (for video processing, HLS transcoding, and card image optimization)
+- Make
 
 #### Build
 
-The frontend must be built first as the contents of ui/build are embedded into the Go binary
+The `make build` command will build both the frontend and backend, automatically including version and commit information in the binary
 
-**Frontend**
+The output binary will be `offcourse` in the root directory
 
-The following will move into the `ui` directory, install the package dependencies and build the application
+Note: The frontend must be built first as the contents of `ui/build` are embedded into the Go binary
 
-The output will be in `ui/build`
+**Build Command**
 
 ```bash
-cd ui
-pnpm install
-pnpm run build
-cd ..
+make build
 ```
 
-**Go Binary**
+**Building for Different Platforms**
 
-The following will install the go dependencies, then build the binary, embedding the ui into the binary
-
-The output binary will be `offcourse`
-
-Note: To build for a particular distro/arch, use `GOOS` and `GOARCH`. For example, prefixing the command with
-`GOOS=linux GOARCH=amd64` will result in a linux amd64 variant of the application
+To build for a particular distro/arch, use `GOOS` and `GOARCH` environment variables:
 
 ```bash
-go mod download
-go build -o offcourse .
+GOOS=linux GOARCH=amd64 make build
 ```
 
 #### Run

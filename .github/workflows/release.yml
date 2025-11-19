@@ -31,6 +31,10 @@ jobs:
         id: tag
         run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
+      - name: Get commit hash
+        id: commit
+        run: echo "COMMIT=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -41,6 +45,9 @@ jobs:
           tags: |
             geerew/offcourse:${{ steps.tag.outputs.TAG }}
             geerew/offcourse:latest
+          build-args: |
+            VERSION=${{ steps.tag.outputs.TAG }}
+            COMMIT=${{ steps.commit.outputs.COMMIT }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

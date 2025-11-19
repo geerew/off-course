@@ -14,6 +14,7 @@ import (
 	"github.com/geerew/off-course/cron"
 	"github.com/geerew/off-course/utils/auth"
 	"github.com/geerew/off-course/utils/coursescan"
+	"github.com/geerew/off-course/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -47,6 +48,12 @@ var serveCmd = &cobra.Command{
 		}
 
 		appLogger := application.Logger.WithApp()
+
+		// Log version information
+		appLogger.Info().
+			Str("version", version.GetVersion()).
+			Str("commit", version.GetCommit()).
+			Msg("Starting OffCourse")
 
 		// Start the course scan worker
 		go application.CourseScan.Worker(ctx, coursescan.Processor)

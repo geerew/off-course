@@ -1,10 +1,18 @@
 package cron
 
 import (
+	"net/http"
+	"time"
+
 	"github.com/geerew/off-course/app"
 	"github.com/geerew/off-course/dao"
 	"github.com/robfig/cron/v3"
 )
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Global release checker instance (exported so API can access it)
+var ReleaseChecker *releaseChecker
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -25,6 +33,18 @@ func StartCron(app *app.App) {
 	go func() { ca.run() }()
 
 	c.AddFunc("@every 5m", func() { ca.run() })
+
+	// Release checker
+	ReleaseChecker = &releaseChecker{
+		logger:     app.Logger.WithCron(),
+		httpClient: &http.Client{Timeout: 10 * time.Second},
+	}
+
+	// Run release check immediately on startup
+	go func() { ReleaseChecker.run() }()
+
+	// Check for new releases every 5 minutes
+	c.AddFunc("@every 5m", func() { ReleaseChecker.run() })
 
 	c.Start()
 }

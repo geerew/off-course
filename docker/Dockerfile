@@ -14,6 +14,9 @@ RUN pnpm run build
 
 FROM golang:1.25-alpine AS backend
 
+ARG VERSION
+ARG COMMIT
+
 RUN apk add --no-cache \
     gcc \
     musl-dev \
@@ -30,7 +33,13 @@ COPY --from=ui /src/ui/build ./ui/build
 COPY --from=ui /src/ui/embed.go ./ui/embed.go
 
 RUN go mod download
-RUN go build -o offcourse .
+RUN if [ -z "$$VERSION" ]; then \
+        VERSION=$$(git describe --tags --exact-match 2>/dev/null || echo "dev"); \
+    fi && \
+    if [ -z "$$COMMIT" ]; then \
+        COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo "unknown"); \
+    fi && \
+    go build -ldflags "-X github.com/geerew/off-course/version.Version=$$VERSION -X github.com/geerew/off-course/version.Commit=$$COMMIT" -o offcourse .
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
