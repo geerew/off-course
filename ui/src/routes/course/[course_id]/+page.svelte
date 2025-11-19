@@ -20,7 +20,6 @@
 		EllipsisCircleIcon,
 		FilesIcon,
 		LoaderCircleIcon,
-		LogoIcon,
 		ModulesIcon,
 		PathIcon,
 		PlayCircleIcon,
@@ -31,9 +30,10 @@
 		UpdatedIcon,
 		WarningIcon
 	} from '$lib/components/icons';
-	import { Badge, Dropdown } from '$lib/components/ui';
+	import { Badge, Checkbox, Dropdown } from '$lib/components/ui';
 	import Attachments from '$lib/components/ui/attachments.svelte';
 	import Button from '$lib/components/ui/button.svelte';
+	import type { AssetModel } from '$lib/models/asset-model';
 	import type { AssetProgressUpdateModel } from '$lib/models/asset-model';
 	import type { CourseModel, CourseReqParams, CourseTagsModel } from '$lib/models/course-model';
 	import type { ModulesModel } from '$lib/models/module-model';
@@ -44,30 +44,49 @@
 	import prettyMs from 'pretty-ms';
 	import { toast } from 'svelte-sonner';
 
+	// Course data
 	let course = $state<CourseModel>();
 	let modules = $state<ModulesModel>();
 	let tags = $state<CourseTagsModel>([]);
+	let loadPromise = $state(fetcher());
 
+	// Dialog state
 	let openCourseProgressDialog = $state(false);
 	let openMarkCompleteDialog = $state(false);
+	let dropdownOpen = $state(false);
 
-	// Track if this course has an active scan
+	// Asset edit mode
+	let isAssetEditMode = $state(false);
+	let selectedAssets = $state<Record<string, AssetModel>>({});
+	let isPostingAssets = $state(false);
+
+	// Scan tracking
 	let hasActiveScan = $state(false);
-
-	// Get scan status for this course
 	let scanStatus = $derived.by(() => {
 		if (!course) return undefined;
 		return scanStore.getScanStatus(course.id);
 	});
-
 	let isScanning = $derived(scanStatus === 'processing' || scanStatus === 'waiting');
 
-	const labelId = useId();
+	// Progress tracking
+	let isMarkingComplete = $state(false);
+	let frozenProgress = $state<number | null>(null);
+	let previousProgress = $state(0);
+	let isCourseComplete = $derived(course?.progress?.percent === 100);
+	let hasProgress = $derived(
+		(course?.progress?.started ?? false) || (course?.progress?.percent ?? 0) > 0
+	);
+	let shouldAnimateProgress = $derived.by(() => {
+		// Don't animate during mark complete operation
+		if (isMarkingComplete) return false;
 
-	// The number of modules in this course
+		const currentProgress = course?.progress?.percent ?? 0;
+		// Only animate if progress is increasing or staying the same
+		return currentProgress >= previousProgress;
+	});
+
+	// Course statistics
 	let moduleCount = $derived(modules ? modules.modules.length : 0);
-
-	// The number of lessons in this course
 	let lessonCount = $derived.by(() => {
 		if (!modules) return 0;
 		let count = 0;
@@ -76,8 +95,6 @@
 		}
 		return count;
 	});
-
-	// The number of assets in this course (including groups with multiple assets)
 	let assetCount = $derived.by(() => {
 		if (!modules) return 0;
 		let count = 0;
@@ -88,8 +105,8 @@
 		}
 		return count;
 	});
-
-	// First lesson to resume (prefer started-but-incomplete; else first incomplete; else first lesson)
+	// First lesson to resume
+	// Order: started-but-incomplete; then first incomplete; then first lesson
 	let lessonToResume = $derived.by(() => {
 		if (!modules) return null;
 
@@ -111,12 +128,11 @@
 		return modules.modules[0]?.lessons[0] ?? null;
 	});
 
-	let loadPromise = $state(fetcher());
+	// Utilities
+	const labelId = useId();
+	const pad2 = (n: number) => String(n).padStart(2, '0');
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	// Fetch the course, then the assets for the course, then build a chapter structure from the
-	// assets
+	// Loads course data, tags, and modules
 	async function fetcher(): Promise<void> {
 		try {
 			if (!page.params.course_id) throw new Error('No course ID provided');
@@ -134,34 +150,7 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	const pad2 = (n: number) => String(n).padStart(2, '0');
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	// Register with scanStore
-	$effect(() => {
-		return scanStore.register();
-	});
-
-	// Watch for scan updates and refresh course when scan finishes
-	$effect(() => {
-		if (!course) return;
-
-		const currentlyHasScan = isScanning;
-
-		// If scan finished (had scan before, but no longer has one), refresh course
-		if (hasActiveScan && !currentlyHasScan) {
-			refreshCourse();
-		}
-
-		hasActiveScan = currentlyHasScan;
-	});
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	// Refresh course data
+	// Refreshes course and module data
 	async function refreshCourse(): Promise<void> {
 		if (!course) return;
 
@@ -180,9 +169,7 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	// Start a scan for this course
+	// Starts a scan for the course
 	async function doScan(): Promise<void> {
 		if (!course) return;
 
@@ -194,14 +181,7 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-	// Track if we're marking course complete to prevent progress bar flickering
-	let isMarkingComplete = $state(false);
-	// Store frozen progress value during mark complete operation
-	let frozenProgress = $state<number | null>(null);
-
-	// Mark course as complete by marking all assets as completed
+	// Marks all assets as complete
 	async function markCourseComplete(): Promise<void> {
 		if (!course || !modules) return;
 
@@ -258,18 +238,156 @@
 		}
 	}
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// Returns all assets in a module
+	function getAllAssetsInModule(modulePrefix: number): AssetModel[] {
+		if (!modules) return [];
+		const mod = modules.modules.find((m) => m.prefix === modulePrefix);
+		if (!mod) return [];
 
-	// Check if course is already complete
-	let isCourseComplete = $derived(course?.progress?.percent === 100);
+		const assets: AssetModel[] = [];
+		for (const lesson of mod.lessons) {
+			assets.push(...lesson.assets);
+		}
+		return assets;
+	}
 
-	// Check if course has any progress
-	let hasProgress = $derived(
-		(course?.progress?.started ?? false) || (course?.progress?.percent ?? 0) > 0
-	);
+	// Toggles selection of all assets in a module
+	function toggleModule(modulePrefix: number): void {
+		if (!modules) return;
 
-	// Track previous progress to prevent backwards transitions
-	let previousProgress = $state(0);
+		const moduleAssets = getAllAssetsInModule(modulePrefix);
+		const allSelected = moduleAssets.every((a) => selectedAssets[a.id]);
+
+		// Create a new object to ensure reactivity
+		const newSelectedAssets = { ...selectedAssets };
+
+		if (allSelected) {
+			// Deselect all assets in module
+			moduleAssets.forEach((asset) => {
+				delete newSelectedAssets[asset.id];
+			});
+		} else {
+			// Select all assets in module
+			moduleAssets.forEach((asset) => {
+				newSelectedAssets[asset.id] = asset;
+			});
+		}
+
+		selectedAssets = newSelectedAssets;
+	}
+
+	// Toggles selection of lesson assets
+	function toggleLessonAssets(lessonAssets: AssetModel[]): void {
+		const allSelected = lessonAssets.every((a) => selectedAssets[a.id]);
+		const newSelectedAssets = { ...selectedAssets };
+
+		lessonAssets.forEach((asset) => {
+			if (allSelected) {
+				delete newSelectedAssets[asset.id];
+			} else {
+				newSelectedAssets[asset.id] = asset;
+			}
+		});
+
+		selectedAssets = newSelectedAssets;
+	}
+
+	// Enters asset edit mode and pre-selects completed assets
+	function enterAssetEditMode(): void {
+		if (!modules) return;
+
+		isAssetEditMode = true;
+		selectedAssets = {};
+
+		// Pre-select completed assets
+		for (const mod of modules.modules) {
+			for (const lesson of mod.lessons) {
+				for (const asset of lesson.assets) {
+					if (asset.progress.completed) {
+						selectedAssets[asset.id] = asset;
+					}
+				}
+			}
+		}
+	}
+
+	// Cancels asset edit mode
+	function cancelAssetEditMode(): void {
+		isAssetEditMode = false;
+		selectedAssets = {};
+	}
+
+	// Saves asset completion changes
+	async function confirmAssetChanges(): Promise<void> {
+		if (!course || !modules) return;
+
+		isPostingAssets = true;
+
+		try {
+			const promises: Promise<void>[] = [];
+			const selectedAssetIds = new Set(Object.keys(selectedAssets));
+
+			// Update all assets based on selection
+			for (const mod of modules.modules) {
+				for (const lesson of mod.lessons) {
+					for (const asset of lesson.assets) {
+						const shouldBeCompleted = selectedAssetIds.has(asset.id);
+						const isCurrentlyCompleted = asset.progress.completed;
+
+						// Only update if state changed
+						if (shouldBeCompleted !== isCurrentlyCompleted) {
+							const progress: AssetProgressUpdateModel = {
+								completed: shouldBeCompleted
+							};
+
+							promises.push(UpdateCourseAssetProgress(course.id, lesson.id, asset.id, progress));
+
+							// Update local state
+							asset.progress.completed = shouldBeCompleted;
+						}
+					}
+
+					// Update lesson completion state
+					const completedAssets = lesson.assets.filter((a) => a.progress.completed).length;
+					lesson.assetsCompleted = completedAssets;
+					lesson.completed = completedAssets === lesson.assets.length;
+					lesson.started = completedAssets > 0;
+				}
+			}
+
+			await Promise.all(promises);
+
+			// Refresh course data to get updated progress
+			await refreshCourse();
+
+			toast.success('Asset status updated');
+			isAssetEditMode = false;
+			selectedAssets = {};
+		} catch (error) {
+			toast.error('Failed to update assets: ' + (error as APIError).message);
+		}
+
+		isPostingAssets = false;
+	}
+
+	// Register with scanStore
+	$effect(() => {
+		return scanStore.register();
+	});
+
+	// Watch for scan updates and refresh course when scan finishes
+	$effect(() => {
+		if (!course) return;
+
+		const currentlyHasScan = isScanning;
+
+		// If scan finished (had scan before, but no longer has one), refresh course
+		if (hasActiveScan && !currentlyHasScan) {
+			refreshCourse();
+		}
+
+		hasActiveScan = currentlyHasScan;
+	});
 
 	// Update previous progress when course progress changes (but not during mark complete)
 	$effect(() => {
@@ -278,18 +396,6 @@
 			previousProgress = currentProgress;
 		}
 	});
-
-	// Determine if we should animate the progress bar
-	let shouldAnimateProgress = $derived.by(() => {
-		// Don't animate during mark complete operation
-		if (isMarkingComplete) return false;
-
-		const currentProgress = course?.progress?.percent ?? 0;
-		// Only animate if progress is increasing or staying the same
-		return currentProgress >= previousProgress;
-	});
-
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 </script>
 
 {#await loadPromise}
@@ -471,9 +577,17 @@
 										href={`/course/${course.id}/${lessonToResume?.id}`}
 										variant="default"
 										class="w-auto px-4"
-										disabled={isScanning || course.maintenance || !course.available}
+										disabled={isScanning ||
+											course.maintenance ||
+											!course.available ||
+											isAssetEditMode}
 										onclick={(e) => {
-											if (isScanning || course?.maintenance || !course?.available) {
+											if (
+												isScanning ||
+												course?.maintenance ||
+												!course?.available ||
+												isAssetEditMode
+											) {
 												e.preventDefault();
 												e.stopPropagation();
 											}
@@ -486,14 +600,21 @@
 										{/if}
 									</Button>
 
-									<Dropdown.Root>
+									<Dropdown.Root bind:open={dropdownOpen}>
 										<Dropdown.Trigger
 											class="bg-background-alt-3 data-[state=open]:bg-background-alt-4 hover:bg-background-alt-4 w-auto rounded-lg border-none"
+											disabled={isAssetEditMode || isScanning}
+											onclick={(e: MouseEvent) => {
+												if (isAssetEditMode || isScanning) {
+													e.preventDefault();
+													e.stopPropagation();
+												}
+											}}
 										>
 											<DotsIcon class="size-5 stroke-[1.5]" />
 										</Dropdown.Trigger>
 
-										<Dropdown.Content class="z-60 w-38" align="start">
+										<Dropdown.Content class="z-60 w-52" align="start">
 											{#if auth.user?.role === 'admin'}
 												<Dropdown.Item
 													class="data-disabled:pointer-events-none"
@@ -509,6 +630,18 @@
 
 												<Dropdown.Separator />
 											{/if}
+
+											<Dropdown.Item
+												onclick={() => {
+													dropdownOpen = false;
+													enterAssetEditMode();
+												}}
+											>
+												<FilesIcon class="size-4 stroke-[1.5]" />
+												<span>Manage Assets</span>
+											</Dropdown.Item>
+
+											<Dropdown.Separator />
 
 											<Dropdown.Item
 												class="data-disabled:pointer-events-none"
@@ -535,7 +668,7 @@
 												}}
 											>
 												<TickIcon class="size-4 stroke-[1.5]" />
-												<span>Mark Complete</span>
+												<span>Mark Course Complete</span>
 											</Dropdown.Item>
 
 											<Dropdown.CautionItem
@@ -546,7 +679,7 @@
 												}}
 											>
 												<ClearProgressIcon class="size-4 stroke-[1.5]" />
-												<span>Clear Progress</span>
+												<span>Clear Course Progress</span>
 											</Dropdown.CautionItem>
 										</Dropdown.Content>
 									</Dropdown.Root>
@@ -611,15 +744,41 @@
 
 			<!-- Course Content -->
 			<div class="bg-background flex w-full place-content-center">
-				<div class="container-px flex w-full max-w-7xl flex-col pb-10">
+				<div
+					class="container-px flex w-full max-w-7xl flex-col"
+					class:pb-24={isAssetEditMode}
+					class:pb-10={!isAssetEditMode}
+				>
 					<div class="text-foreground-alt-1 flex flex-col gap-12 sm:gap-16">
 						{#if modules && modules.modules.length > 0}
 							{#each modules.modules as m}
 								<section class="border-background-alt-2 grid grid-cols-4 border-t">
 									<div class="col-span-full sm:col-span-1">
 										<div class="border-foreground-alt-2 -mt-px inline-flex border-t pt-px">
-											<div class="text-background-primary-alt-1 pt-6 font-semibold sm:pt-10">
-												Module {pad2(m.prefix)}
+											<div
+												class="text-background-primary-alt-1 flex items-center justify-between gap-4 pt-6 font-semibold sm:pt-10"
+											>
+												<span>Module {pad2(m.prefix)}</span>
+												{#if isAssetEditMode}
+													{@const moduleAssets = getAllAssetsInModule(m.prefix)}
+													{@const moduleSelectedCount = moduleAssets.filter(
+														(a) => selectedAssets[a.id]
+													).length}
+													{@const moduleAllSelected =
+														moduleSelectedCount === moduleAssets.length && moduleAssets.length > 0}
+													{@const moduleIndeterminate =
+														moduleSelectedCount > 0 && moduleSelectedCount < moduleAssets.length}
+													<div class="sm:hidden">
+														<Checkbox
+															checked={moduleAllSelected}
+															indeterminate={moduleIndeterminate}
+															onclick={(e: MouseEvent) => {
+																e.preventDefault();
+																toggleModule(m.prefix);
+															}}
+														/>
+													</div>
+												{/if}
 											</div>
 										</div>
 									</div>
@@ -628,8 +787,29 @@
 										<div class="max-w-2xl">
 											<!-- Module title -->
 											{#if m.module !== '(no chapter)'}
-												<div class="text-pretty text-2xl font-medium">
-													{m.module}
+												<div class="relative text-pretty text-2xl font-medium">
+													{#if isAssetEditMode}
+														{@const moduleAssets = getAllAssetsInModule(m.prefix)}
+														{@const moduleSelectedCount = moduleAssets.filter(
+															(a) => selectedAssets[a.id]
+														).length}
+														{@const moduleAllSelected =
+															moduleSelectedCount === moduleAssets.length &&
+															moduleAssets.length > 0}
+														{@const moduleIndeterminate =
+															moduleSelectedCount > 0 && moduleSelectedCount < moduleAssets.length}
+														<div class="absolute -left-8 -top-0.5 hidden sm:block">
+															<Checkbox
+																checked={moduleAllSelected}
+																indeterminate={moduleIndeterminate}
+																onclick={(e: MouseEvent) => {
+																	e.preventDefault();
+																	toggleModule(m.prefix);
+																}}
+															/>
+														</div>
+													{/if}
+													<span>{m.module}</span>
 												</div>
 											{/if}
 
@@ -641,74 +821,158 @@
 
 													<li>
 														<div class="flow-root">
-															<Button
-																href={`/course/${course.id}/${lesson.id}`}
-																variant="ghost"
-																class="hover:bg-background-alt-2 -mx-3 -my-2 flex h-auto justify-start gap-3 whitespace-normal py-2 text-sm"
-																disabled={isScanning || course.maintenance || !course.available}
-																onclick={(e) => {
-																	if (isScanning || course?.maintenance || !course?.available) {
-																		e.preventDefault();
-																		e.stopPropagation();
-																	}
-																}}
+															<div
+																class="hover:bg-background-alt-2 -mx-3 -my-2 flex h-auto gap-2 whitespace-normal px-3 py-2 text-sm"
+																class:items-center={!isAssetEditMode}
+																class:items-start={isAssetEditMode}
+																class:select-none={isAssetEditMode}
 															>
-																<!-- Lesson status -->
-																{#if lesson.completed}
+																<!-- Lesson status or checkbox -->
+																{#if isAssetEditMode}
+																	{@const allSelected = lesson.assets.every(
+																		(a) => selectedAssets[a.id]
+																	)}
+																	{@const someSelected = lesson.assets.some(
+																		(a) => selectedAssets[a.id]
+																	)}
+																	{@const isOngoing = lesson.started && !lesson.completed}
+																	{@const shouldBeIndeterminate =
+																		isOngoing || (someSelected && !allSelected)}
+																	<div class="mt-0.5 shrink-0">
+																		<Checkbox
+																			checked={allSelected && !isOngoing}
+																			indeterminate={shouldBeIndeterminate}
+																			onCheckedChange={() => {
+																				toggleLessonAssets(lesson.assets);
+																			}}
+																		/>
+																	</div>
+																{:else if lesson.completed}
 																	<TickCircleIcon
-																		class="stroke-background-success fill-background-success [&_path]:stroke-foreground size-5 place-self-start stroke-1 [&_path]:stroke-1"
+																		class="stroke-background-success fill-background-success [&_path]:stroke-foreground -mt-1.5 size-5 shrink-0 place-self-start stroke-1 [&_path]:stroke-1"
 																	/>
 																{:else if lesson.started}
 																	<EllipsisCircleIcon
-																		class="[&_path]:fill-foreground-alt-1 [&_path]:stroke-foreground size-5 place-self-start fill-amber-700 stroke-amber-700 stroke-1 [&_path]:stroke-2"
+																		class="[&_path]:fill-foreground-alt-1 [&_path]:stroke-foreground -mt-1.5 size-5 shrink-0 place-self-start fill-amber-700 stroke-amber-700 stroke-1 [&_path]:stroke-2"
 																	/>
 																{:else}
 																	<PlayCircleIcon
-																		class="stroke-foreground-alt-3 fill-background [&_polygon]:stroke-foreground-alt-2 [&_polygon]:fill-foreground-alt-2 size-5 place-self-start stroke-1"
+																		class="stroke-foreground-alt-3 fill-background [&_polygon]:stroke-foreground-alt-2 [&_polygon]:fill-foreground-alt-2 -mt-1.5 size-5 shrink-0 place-self-start stroke-1"
 																	/>
 																{/if}
 
-																<div class="flex w-full flex-col gap-1.5">
-																	<!-- Lesson title -->
-																	<span class="text-foreground-alt-2 w-full font-semibold">
-																		{lesson.prefix}. {lesson.title}
-																	</span>
-
-																	<!-- Lesson details -->
+																{#if isAssetEditMode}
 																	<div
-																		class="relative flex w-full select-none flex-col gap-0 text-sm"
+																		class="flex flex-1 cursor-pointer flex-col gap-1.5 text-left"
+																		role="button"
+																		tabindex="0"
+																		onclick={() => toggleLessonAssets(lesson.assets)}
+																		onkeydown={(e: KeyboardEvent) => {
+																			if (e.key === 'Enter' || e.key === ' ') {
+																				e.preventDefault();
+																				toggleLessonAssets(lesson.assets);
+																			}
+																		}}
 																	>
-																		<div class="flex w-full flex-row flex-wrap items-center gap-2">
-																			<!-- Type -->
-																			<span class="text-foreground-alt-3 whitespace-nowrap">
-																				{#if isCollection}
-																					collection
-																				{:else}
-																					{lesson.assets[0].type}
-																				{/if}
-																			</span>
+																		<!-- Lesson title -->
+																		<span class="text-foreground-alt-2 w-full font-semibold">
+																			{lesson.prefix}. {lesson.title}
+																		</span>
 
-																			<!-- Video duration -->
-																			{#if totalVideoDuration > 0}
-																				<DotIcon class="text-foreground-alt-3 text-xl" />
+																		<!-- Lesson details -->
+																		<div
+																			class="relative flex w-full select-none flex-col gap-0 text-sm"
+																		>
+																			<div
+																				class="flex w-full flex-row flex-wrap items-center gap-2"
+																			>
+																				<!-- Type -->
 																				<span class="text-foreground-alt-3 whitespace-nowrap">
-																					{prettyMs(totalVideoDuration * 1000)}
+																					{#if isCollection}
+																						collection
+																					{:else}
+																						{lesson.assets[0].type}
+																					{/if}
 																				</span>
-																			{/if}
 
-																			<!-- Attachments -->
-																			{#if lesson.attachments.length > 0}
-																				<DotIcon class="text-foreground-alt-3 text-xl" />
-																				<Attachments
-																					attachments={lesson.attachments}
-																					courseId={course?.id ?? ''}
-																					lessonId={lesson.id}
-																				/>
-																			{/if}
+																				<!-- Video duration -->
+																				{#if totalVideoDuration > 0}
+																					<DotIcon class="text-foreground-alt-3 text-xl" />
+																					<span class="text-foreground-alt-3 whitespace-nowrap">
+																						{prettyMs(totalVideoDuration * 1000)}
+																					</span>
+																				{/if}
+
+																				<!-- Attachments -->
+																				{#if lesson.attachments.length > 0 && !isAssetEditMode}
+																					<DotIcon class="text-foreground-alt-3 text-xl" />
+																					<Attachments
+																						attachments={lesson.attachments}
+																						courseId={course?.id ?? ''}
+																						lessonId={lesson.id}
+																					/>
+																				{/if}
+																			</div>
 																		</div>
 																	</div>
-																</div>
-															</Button>
+																{:else}
+																	<Button
+																		href={`/course/${course.id}/${lesson.id}`}
+																		variant="ghost"
+																		class="flex-1 hover:bg-transparent"
+																		disabled={isScanning || course.maintenance || !course.available}
+																		onclick={(e: MouseEvent) => {
+																			if (isScanning || course?.maintenance || !course?.available) {
+																				e.preventDefault();
+																				e.stopPropagation();
+																			}
+																		}}
+																	>
+																		<div class="flex w-full flex-col gap-1.5">
+																			<!-- Lesson title -->
+																			<span class="text-foreground-alt-2 w-full font-semibold">
+																				{lesson.prefix}. {lesson.title}
+																			</span>
+
+																			<!-- Lesson details -->
+																			<div
+																				class="relative flex w-full select-none flex-col gap-0 text-sm"
+																			>
+																				<div
+																					class="flex w-full flex-row flex-wrap items-center gap-2"
+																				>
+																					<!-- Type -->
+																					<span class="text-foreground-alt-3 whitespace-nowrap">
+																						{#if isCollection}
+																							collection
+																						{:else}
+																							{lesson.assets[0].type}
+																						{/if}
+																					</span>
+
+																					<!-- Video duration -->
+																					{#if totalVideoDuration > 0}
+																						<DotIcon class="text-foreground-alt-3 text-xl" />
+																						<span class="text-foreground-alt-3 whitespace-nowrap">
+																							{prettyMs(totalVideoDuration * 1000)}
+																						</span>
+																					{/if}
+
+																					<!-- Attachments -->
+																					{#if lesson.attachments.length > 0}
+																						<DotIcon class="text-foreground-alt-3 text-xl" />
+																						<Attachments
+																							attachments={lesson.attachments}
+																							courseId={course?.id ?? ''}
+																							lessonId={lesson.id}
+																						/>
+																					{/if}
+																				</div>
+																			</div>
+																		</div>
+																	</Button>
+																{/if}
+															</div>
 														</div>
 													</li>
 												{/each}
@@ -725,6 +989,35 @@
 				</div>
 			</div>
 		</div>
+
+		<!-- Bottom sheet for asset management -->
+		{#if isAssetEditMode}
+			<div
+				class="bg-background-alt-1 animate-in slide-in-from-bottom-4 border-background-alt-3 fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-6 rounded-md border px-4 py-2 shadow-lg duration-300"
+			>
+				<Button
+					variant="outline"
+					onclick={cancelAssetEditMode}
+					disabled={isPostingAssets}
+					class="h-auto px-6 py-1"
+				>
+					Cancel
+				</Button>
+
+				<Button
+					variant="default"
+					onclick={confirmAssetChanges}
+					disabled={isPostingAssets}
+					class="h-auto px-6 py-1"
+				>
+					{#if isPostingAssets}
+						<Spinner class="bg-foreground-alt-1 size-2" />
+					{:else}
+						Confirm
+					{/if}
+				</Button>
+			</div>
+		{/if}
 	{/if}
 {:catch error}
 	<div class="flex w-full flex-col items-center gap-2 pt-10">
