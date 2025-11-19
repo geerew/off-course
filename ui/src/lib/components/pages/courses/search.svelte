@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { SearchIcon, XIcon } from '$lib/components/icons';
 	import { Button, Input } from '$lib/components/ui';
 	import { cn } from '$lib/utils';
@@ -25,7 +26,7 @@
 <div class="group relative flex flex-1 sm:w-96 sm:flex-none">
 	<Button
 		variant="ghost"
-		class="text-foreground-alt-3 group-focus-within:text-foreground-alt-1 absolute top-1/2 left-2.5 -translate-y-1/2 transform cursor-text rounded-full p-0 hover:bg-transparent"
+		class="text-foreground-alt-3 group-focus-within:text-foreground-alt-1 absolute left-2.5 top-1/2 -translate-y-1/2 transform cursor-text rounded-full p-0 hover:bg-transparent"
 		{disabled}
 		onclick={() => {
 			if (!searchCoursesEl) return;
@@ -40,7 +41,7 @@
 		bind:value
 		placeholder="Search courses..."
 		class={cn(
-			'placeholder:text-foreground-alt-3 focus:bg-alt-3 h-10 border-b ps-10 pe-5 text-sm',
+			'placeholder:text-foreground-alt-3 focus:bg-alt-3 h-10 border-b pe-5 ps-10 text-sm',
 			appliedValue && 'border-b-background-primary-alt-1'
 		)}
 		{disabled}
@@ -60,11 +61,14 @@
 	{#if value}
 		<Button
 			variant="ghost"
-			class="hover:bg-background-alt-2 text-foreground-alt-2 hover:text-foreground absolute top-1/2 right-1 h-auto -translate-y-1/2 transform rounded-md p-1"
-			onclick={() => {
+			class="hover:bg-background-alt-2 text-foreground-alt-2 hover:text-foreground absolute right-1 top-1/2 h-auto -translate-y-1/2 transform rounded-md p-1"
+			onclick={async () => {
 				value = '';
-				if (appliedValue) onApply();
 				appliedValue = '';
+				// Wait for reactive updates to complete before applying filter
+				await tick();
+				// Always call onApply when clearing to ensure filter updates
+				onApply();
 			}}
 		>
 			<XIcon class="size-5" />
