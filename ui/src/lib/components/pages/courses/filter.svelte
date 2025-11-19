@@ -153,9 +153,9 @@
 				/> -->
 
 				<Dialog.Content
-					class="border-foreground-alt-4 bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left w-(--settings-menu-width) fixed left-0 top-0 z-50 h-full border-r px-4 pt-4"
+					class="border-foreground-alt-4 bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left fixed top-0 left-0 z-50 h-full w-(--settings-menu-width) border-r px-4 pt-4"
 				>
-					<div class="flex h-full w-full flex-col gap-3 overflow-y-auto overflow-x-hidden pb-8">
+					<div class="flex h-full w-full flex-col gap-3 overflow-x-hidden overflow-y-auto pb-8">
 						<!-- Title -->
 						<div class="flex flex-row items-center justify-between px-1.5">
 							<div
