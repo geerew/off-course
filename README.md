@@ -40,9 +40,9 @@ The following 2 `*.db` will be created in the data directory
 - `data.db` - Main application data (courses, users, progress)
 - `logs.db` - Application logs
 
-**HLS**
+**Video Transcoding**
 
-`offcourse` provides on-demand HLS transcoding and segmentation
+`offcourse` provides on-demand video transcoding for HLS streaming
 
 The transcoded videos will be placed in the data directory under `hls`
 
