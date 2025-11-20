@@ -1,6 +1,7 @@
 package models
 
 import (
+	"database/sql"
 	"fmt"
 )
 
@@ -49,7 +50,8 @@ type Course struct {
 	Maintenance bool   `db:"maintenance"`   // Mutable
 
 	// Relation
-	Progress *CourseProgress `db:"-"`
+	Progress   *CourseProgress `db:"-"`
+	Favourited bool            `db:"-"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -80,6 +82,9 @@ type CourseRow struct {
 
 	// Progress
 	CourseProgressRow
+
+	// Favourite (when included via LEFT JOIN)
+	FavouriteID sql.NullString `db:"favourite_id"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -104,6 +109,7 @@ func (r *CourseRow) ToDomain() *Course {
 	}
 
 	c.Progress = r.CourseProgressRow.ToDomain()
+	c.Favourited = r.FavouriteID.Valid
 
 	return c
 }

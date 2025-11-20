@@ -53,7 +53,8 @@ export const CourseSchema = object({
 	initialScan: optional(boolean()),
 	maintenance: boolean(),
 	scanStatus: optional(string()),
-	progress: optional(CourseProgressSchema)
+	progress: optional(CourseProgressSchema),
+	favourited: optional(boolean())
 });
 
 export type CourseModel = InferOutput<typeof CourseSchema>;

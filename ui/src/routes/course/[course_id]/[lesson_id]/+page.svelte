@@ -12,7 +12,7 @@
 		BurgerMenuIcon,
 		DotIcon,
 		DotsIcon,
-		EllipsisCircleIcon,
+		HalfCircleIcon,
 		LeftChevronIcon,
 		OverviewIcon,
 		RightChevronIcon,
@@ -361,8 +361,8 @@
 										class="stroke-background-success fill-background-success [&_path]:stroke-foreground absolute -left-2.5 size-5 place-self-start stroke-1 [&_path]:stroke-1"
 									/>
 								{:else if lesson.started}
-									<EllipsisCircleIcon
-										class="[&_path]:fill-foreground-alt-1 [&_path]:stroke-foreground-alt-1 absolute -left-2.5 size-5 place-self-start fill-amber-700 stroke-amber-700 stroke-1 [&_path]:stroke-2"
+									<HalfCircleIcon
+										class="absolute -left-2.5 size-5 place-self-start fill-amber-700 text-amber-700"
 									/>
 								{/if}
 

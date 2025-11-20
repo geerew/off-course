@@ -2,9 +2,11 @@
 	import { page } from '$app/state';
 	import type { APIError } from '$lib/api-error.svelte';
 	import {
+		FavouriteCourse,
 		GetCourse,
 		GetCourseModules,
 		GetCourseTags,
+		UnfavouriteCourse,
 		UpdateCourseAssetProgress
 	} from '$lib/api/course-api';
 	import { StartScan } from '$lib/api/scan-api';
@@ -17,7 +19,8 @@
 		DotIcon,
 		DotsIcon,
 		DurationIcon,
-		EllipsisCircleIcon,
+		FavouriteIcon,
+		HalfCircleIcon,
 		FilesIcon,
 		LoaderCircleIcon,
 		ModulesIcon,
@@ -178,6 +181,32 @@
 			toast.success('Scan started');
 		} catch (error) {
 			toast.error('Failed to start the scan: ' + (error as APIError).message);
+		}
+	}
+
+	// Toggles favourite status
+	async function toggleFavourite(): Promise<void> {
+		if (!course) return;
+
+		const wasFavourited = course.favourited ?? false;
+
+		// Optimistically update UI
+		course.favourited = !wasFavourited;
+
+		try {
+			if (wasFavourited) {
+				await UnfavouriteCourse(course.id);
+				toast.success('Course unfavourited');
+			} else {
+				await FavouriteCourse(course.id);
+				toast.success('Course favourited');
+			}
+		} catch (error) {
+			// Revert on error
+			course.favourited = wasFavourited;
+			toast.error(
+				`Failed to ${wasFavourited ? 'unfavourite' : 'favourite'} course: ${(error as APIError).message}`
+			);
 		}
 	}
 
@@ -600,6 +629,29 @@
 										{/if}
 									</Button>
 
+									<Button
+										variant="ghost"
+										class={cn(
+											'bg-background-alt-3 data-[state=open]:bg-background-alt-4 hover:bg-background-alt-4 w-auto rounded-lg border-none'
+										)}
+										disabled={isAssetEditMode || isScanning}
+										onclick={(e: MouseEvent) => {
+											if (isAssetEditMode || isScanning) {
+												e.preventDefault();
+												e.stopPropagation();
+												return;
+											}
+											toggleFavourite();
+										}}
+									>
+										<FavouriteIcon
+											class={cn(
+												'size-5 stroke-[1.5]',
+												course.favourited && 'fill-foreground-error text-foreground-error'
+											)}
+										/>
+									</Button>
+
 									<Dropdown.Root bind:open={dropdownOpen}>
 										<Dropdown.Trigger
 											class="bg-background-alt-3 data-[state=open]:bg-background-alt-4 hover:bg-background-alt-4 w-auto rounded-lg border-none"
@@ -852,8 +904,8 @@
 																		class="stroke-background-success fill-background-success [&_path]:stroke-foreground -mt-1.5 size-5 shrink-0 place-self-start stroke-1 [&_path]:stroke-1"
 																	/>
 																{:else if lesson.started}
-																	<EllipsisCircleIcon
-																		class="[&_path]:fill-foreground-alt-1 [&_path]:stroke-foreground -mt-1.5 size-5 shrink-0 place-self-start fill-amber-700 stroke-amber-700 stroke-1 [&_path]:stroke-2"
+																	<HalfCircleIcon
+																		class="-mt-1.5 size-5 shrink-0 place-self-start fill-amber-700 text-amber-700"
 																	/>
 																{:else}
 																	<PlayCircleIcon
