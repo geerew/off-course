@@ -17,7 +17,7 @@
 	import { cn, remCalc } from '$lib/utils';
 	import theme from 'tailwindcss/defaultTheme';
 
-	type courseType = 'ongoing' | 'newest' | 'favourite' | 'completed';
+	type courseType = 'ongoing' | 'newest' | 'favourited' | 'completed';
 
 	let ongoingCourses: CoursesModel = $state([]);
 	let newestCourses: CoursesModel = $state([]);
@@ -31,7 +31,7 @@
 	let courseLinks: Record<courseType, string> = {
 		ongoing: '/courses/?filter=started',
 		newest: '/courses/?filter=newest',
-		favourite: '/courses/?filter=favourite:true',
+		favourited: '/courses/?filter=favourite:true',
 		completed: '/courses/?filter=completed'
 	};
 
@@ -198,8 +198,8 @@
 						? 'Ongoing'
 						: type === 'newest'
 							? 'Newest'
-							: type === 'favourite'
-								? 'Favourite'
+							: type === 'favourited'
+								? 'Favourited'
 								: 'Completed'}{' '}
 					Courses
 				</span>
@@ -217,7 +217,7 @@
 						? 'Ongoing'
 						: type === 'newest'
 							? 'Newest'
-							: type === 'favourite'
+							: type === 'favourited'
 								? 'Favourite'
 								: 'Completed'}{' '}
 					Courses
@@ -362,7 +362,7 @@
 				{:then _}
 					{@render courses('ongoing', ongoingCourses)}
 					{@render courses('newest', newestCourses)}
-					{@render courses('favourite', favouriteCourses)}
+					{@render courses('favourited', favouriteCourses)}
 					{@render courses('completed', completedCourses)}
 				{:catch error}
 					<div class="flex w-full flex-col items-center gap-2 pt-10">
