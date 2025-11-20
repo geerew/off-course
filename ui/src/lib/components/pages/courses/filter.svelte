@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { page } from '$app/state';
 	import { FilterIcon } from '$lib/components/icons';
 	import { Button } from '$lib/components/ui';
@@ -47,6 +48,9 @@
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function applyFilter() {
+		// Wait for all reactive updates to complete before checking
+		await tick();
+
 		// Do nothing when the value hasn't changed
 		if (filter === appliedFilter) return;
 		appliedFilter = filter;

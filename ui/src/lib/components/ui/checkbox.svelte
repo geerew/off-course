@@ -26,9 +26,9 @@
 	{#snippet children({ checked, indeterminate })}
 		<div class="flex size-4 items-center justify-center text-current">
 			{#if indeterminate}
-				<MinusIcon class="size-3 stroke-3" />
+				<MinusIcon class="size-3 stroke-4" />
 			{:else}
-				<TickIcon class={cn('size-3 stroke-3', !checked && 'text-transparent')} />
+				<TickIcon class={cn('size-3 stroke-4', !checked && 'text-transparent')} />
 			{/if}
 		</div>
 	{/snippet}

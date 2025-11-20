@@ -23,6 +23,7 @@
 	let paginationPage = $state(1);
 	let paginationPerPage = $state<number>();
 	let paginationTotal = $state<number>();
+	let paginationTotalPages = $state<number>();
 
 	let loadingMore = $state(false);
 	let hasMoreCourses = $state(true);
@@ -87,7 +88,14 @@
 	function setupIntersectionObserver(node: HTMLElement) {
 		const observer = new IntersectionObserver(
 			(entries) => {
-				if (entries[0].isIntersecting && hasMoreCourses && !loadingMore) {
+				// Don't trigger if we haven't loaded the first page yet
+				if (
+					entries[0].isIntersecting &&
+					hasMoreCourses &&
+					!loadingMore &&
+					paginationTotalPages !== undefined &&
+					paginationTotalPages > 0
+				) {
 					loadMoreCourses();
 				}
 			},
@@ -128,6 +136,17 @@
 	async function loadMoreCourses(): Promise<void> {
 		if (loadingMore || !hasMoreCourses) return;
 
+		// Don't load if we haven't loaded the first page yet (paginationTotalPages is 0 or undefined)
+		if (paginationTotalPages === undefined || paginationTotalPages === 0) {
+			return;
+		}
+
+		// Don't load if we already know we're at the last page
+		if (paginationPage >= paginationTotalPages) {
+			hasMoreCourses = false;
+			return;
+		}
+
 		loadingMore = true;
 		paginationPage += 1;
 
@@ -165,6 +184,7 @@
 
 			const data = await GetCourses(courseReqParams);
 			paginationTotal = data.totalItems;
+			paginationTotalPages = data.totalPages;
 
 			if (append) {
 				courses.push(...data.items);
@@ -172,8 +192,8 @@
 				courses = data.items;
 			}
 
-			// Update hasMoreCourses based on whether we've loaded all courses
-			hasMoreCourses = courses.length < paginationTotal;
+			// Update hasMoreCourses based on whether there are more pages
+			hasMoreCourses = paginationPage < paginationTotalPages;
 		} catch (error) {
 			throw error;
 		}
@@ -189,9 +209,18 @@
 					onApply={async () => {
 						filterApplied = true;
 						paginationPage = 1;
-						hasMoreCourses = true;
+						paginationTotalPages = 0; // Reset to allow first page to load
+						hasMoreCourses = true; // Reset to allow first page to load
 						loadingError = null;
-						await fetcher(false);
+						loadingMore = true; // Prevent intersection observer from triggering
+						// Clear courses immediately to hide intersection observer element
+						courses = [];
+						try {
+							// hasMoreCourses will be set correctly by fetcher based on totalPages
+							await fetcher(false);
+						} finally {
+							loadingMore = false;
+						}
 					}}
 				/>
 

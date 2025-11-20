@@ -11,4 +11,5 @@ export { default as EditTagNameDialog } from './edit-tag-name.svelte';
 export { default as EditUserDisplayNameDialog } from './edit-user-display-name.svelte';
 export { default as EditUserPasswordDialog } from './edit-user-password.svelte';
 export { default as EditUserRoleDialog } from './edit-user-role.svelte';
+export { default as MarkCourseCompleteDialog } from './mark-course-complete.svelte';
 export { default as RevokeUserSessionsDialog } from './revoke-user-sessions.svelte';

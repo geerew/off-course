@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { tick } from 'svelte';
+	import { Debounced } from 'runed';
 	import { SearchIcon, XIcon } from '$lib/components/icons';
 	import { Button, Input } from '$lib/components/ui';
 	import { cn } from '$lib/utils';
@@ -20,6 +22,23 @@
 
 	// Internal state to track the last applied value
 	let appliedValue = $state('');
+
+	// Debounced value for automatic filter application
+	const valueDebounced = new Debounced(() => value, 250);
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Automatically apply filter when debounced value changes
+	$effect(() => {
+		const debouncedValue = valueDebounced.current;
+
+		// Skip if value hasn't actually changed
+		if (debouncedValue === appliedValue) return;
+
+		// Update applied value and trigger filter
+		appliedValue = debouncedValue;
+		onApply();
+	});
 </script>
 
 <div class="group relative flex flex-1 sm:w-96 sm:flex-none">
@@ -44,27 +63,20 @@
 			appliedValue && 'border-b-background-primary-alt-1'
 		)}
 		{disabled}
-		onkeydown={(e: KeyboardEvent) => {
-			if (e.key === 'Enter') {
-				e.preventDefault();
-
-				// Do nothing when the value hasn't changed
-				if (value == appliedValue) return;
-
-				appliedValue = value;
-				onApply();
-			}
-		}}
 	/>
 
 	{#if value}
 		<Button
 			variant="ghost"
 			class="hover:bg-background-alt-2 text-foreground-alt-2 hover:text-foreground absolute top-1/2 right-1 h-auto -translate-y-1/2 transform rounded-md p-1"
-			onclick={() => {
+			onclick={async () => {
 				value = '';
-				if (appliedValue) onApply();
 				appliedValue = '';
+				// Wait for reactive updates to complete before applying filter
+				await tick();
+
+				// Always call onApply when clearing to ensure filter updates
+				onApply();
 			}}
 		>
 			<XIcon class="size-5" />
