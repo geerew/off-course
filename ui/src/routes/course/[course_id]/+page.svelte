@@ -435,7 +435,7 @@
 	{#if course}
 		<div class="flex w-full flex-col">
 			<div class="flex w-full place-content-center">
-				<div class="container-px flex w-full max-w-7xl flex-col gap-6 pb-10 pt-5 lg:pt-10">
+				<div class="container-px flex w-full max-w-7xl flex-col gap-6 pt-5 pb-10 lg:pt-10">
 					<div class="grid w-full grid-cols-1 gap-6 lg:grid-cols-[1fr_minmax(0,23rem)] lg:gap-10">
 						<!-- Information -->
 						<div class="order-2 flex h-full w-full flex-col justify-between gap-5 lg:order-1">
@@ -591,7 +591,7 @@
 									{:else}
 										<div class="flex flex-wrap gap-2 px-2">
 											{#each tags as tag}
-												<Badge class="select-none  text-sm">
+												<Badge class="text-sm  select-none">
 													{tag.tag}
 												</Badge>
 											{/each}
@@ -783,7 +783,7 @@
 						</div>
 
 						<!-- Card -->
-						<div class="h-50 relative order-1 flex w-full justify-center rounded-lg lg:order-2">
+						<div class="relative order-1 flex h-50 w-full justify-center rounded-lg lg:order-2">
 							<img
 								src={`/api/courses/${course.id}/card?v=${course.cardHash || 'fallback'}`}
 								alt={course.title}
@@ -839,7 +839,7 @@
 										<div class="max-w-2xl">
 											<!-- Module title -->
 											{#if m.module !== '(no chapter)'}
-												<div class="relative text-pretty text-2xl font-medium">
+												<div class="relative text-2xl font-medium text-pretty">
 													{#if isAssetEditMode}
 														{@const moduleAssets = getAllAssetsInModule(m.prefix)}
 														{@const moduleSelectedCount = moduleAssets.filter(
@@ -850,7 +850,7 @@
 															moduleAssets.length > 0}
 														{@const moduleIndeterminate =
 															moduleSelectedCount > 0 && moduleSelectedCount < moduleAssets.length}
-														<div class="absolute -left-8 -top-0.5 hidden sm:block">
+														<div class="absolute -top-0.5 -left-8 hidden sm:block">
 															<Checkbox
 																checked={moduleAllSelected}
 																indeterminate={moduleIndeterminate}
@@ -874,7 +874,7 @@
 													<li>
 														<div class="flow-root">
 															<div
-																class="hover:bg-background-alt-2 -mx-3 -my-2 flex h-auto gap-2 whitespace-normal px-3 py-2 text-sm"
+																class="hover:bg-background-alt-2 -mx-3 -my-2 flex h-auto gap-2 px-3 py-2 text-sm whitespace-normal"
 																class:items-center={!isAssetEditMode}
 																class:items-start={isAssetEditMode}
 																class:select-none={isAssetEditMode}
@@ -933,7 +933,7 @@
 
 																		<!-- Lesson details -->
 																		<div
-																			class="relative flex w-full select-none flex-col gap-0 text-sm"
+																			class="relative flex w-full flex-col gap-0 text-sm select-none"
 																		>
 																			<div
 																				class="flex w-full flex-row flex-wrap items-center gap-2"
@@ -988,7 +988,7 @@
 
 																			<!-- Lesson details -->
 																			<div
-																				class="relative flex w-full select-none flex-col gap-0 text-sm"
+																				class="relative flex w-full flex-col gap-0 text-sm select-none"
 																			>
 																				<div
 																					class="flex w-full flex-row flex-wrap items-center gap-2"
