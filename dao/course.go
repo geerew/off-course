@@ -88,7 +88,9 @@ func (dao *DAO) GetCourse(ctx context.Context, dbOpts *Options) (*models.Course,
 
 	builderOpts = builderOpts.
 		WithColumns(models.CourseProgressRowColumns()...).
-		WithLeftJoin(models.COURSE_PROGRESS_TABLE, fmt.Sprintf("%s = %s AND %s = '%s'", models.COURSE_PROGRESS_TABLE_COURSE_ID, models.COURSE_TABLE_ID, models.COURSE_PROGRESS_TABLE_USER_ID, principal.UserID))
+		WithColumns(fmt.Sprintf("%s AS favourite_id", models.COURSE_FAVOURITE_TABLE_ID)).
+		WithLeftJoin(models.COURSE_PROGRESS_TABLE, fmt.Sprintf("%s = %s AND %s = '%s'", models.COURSE_PROGRESS_TABLE_COURSE_ID, models.COURSE_TABLE_ID, models.COURSE_PROGRESS_TABLE_USER_ID, principal.UserID)).
+		WithLeftJoin(models.COURSE_FAVOURITE_TABLE, fmt.Sprintf("%s = %s AND %s = '%s'", models.COURSE_FAVOURITE_TABLE_COURSE_ID, models.COURSE_TABLE_ID, models.COURSE_FAVOURITE_TABLE_USER_ID, principal.UserID))
 
 	row, err := getGeneric[models.CourseRow](ctx, dao, *builderOpts)
 	if err != nil {
@@ -128,7 +130,9 @@ func (dao *DAO) ListCourses(ctx context.Context, dbOpts *Options) ([]*models.Cou
 
 	builderOpts = builderOpts.
 		WithColumns(models.CourseProgressRowColumns()...).
-		WithLeftJoin(models.COURSE_PROGRESS_TABLE, fmt.Sprintf("%s = %s AND %s = '%s'", models.COURSE_PROGRESS_TABLE_COURSE_ID, models.COURSE_TABLE_ID, models.COURSE_PROGRESS_TABLE_USER_ID, principal.UserID))
+		WithColumns(fmt.Sprintf("%s AS favourite_id", models.COURSE_FAVOURITE_TABLE_ID)).
+		WithLeftJoin(models.COURSE_PROGRESS_TABLE, fmt.Sprintf("%s = %s AND %s = '%s'", models.COURSE_PROGRESS_TABLE_COURSE_ID, models.COURSE_TABLE_ID, models.COURSE_PROGRESS_TABLE_USER_ID, principal.UserID)).
+		WithLeftJoin(models.COURSE_FAVOURITE_TABLE, fmt.Sprintf("%s = %s AND %s = '%s'", models.COURSE_FAVOURITE_TABLE_COURSE_ID, models.COURSE_TABLE_ID, models.COURSE_FAVOURITE_TABLE_USER_ID, principal.UserID))
 
 	rows, err := listGeneric[models.CourseRow](ctx, dao, *builderOpts)
 	if err != nil {

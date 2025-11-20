@@ -67,6 +67,9 @@ type courseResponse struct {
 
 	// Progress
 	Progress *courseProgressResponse `json:"progress,omitempty"`
+
+	// Favourite
+	Favourited bool `json:"favourited,omitempty"`
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -109,6 +112,9 @@ func courseResponseHelper(courses []*models.Course, isAdmin bool) []*courseRespo
 
 			// Progress
 			Progress: progress,
+
+			// Favourite
+			Favourited: course.Favourited,
 		}
 
 		if isAdmin {

@@ -35,6 +35,20 @@ CREATE TABLE courses_progress (
 	UNIQUE(course_id, user_id)
 );
 
+-- Course favourites represents a user's favourite courses
+CREATE TABLE courses_favourites (
+	id         TEXT PRIMARY KEY NOT NULL,
+	course_id  TEXT NOT NULL,
+	user_id    TEXT NOT NULL,
+	created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+	updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+	--
+	FOREIGN KEY (course_id) REFERENCES courses (id) ON DELETE CASCADE,
+	FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+	--
+	UNIQUE(course_id, user_id)
+);
+
 -- Lessons are an ordered collection of assets and attachments within a course 
 -- that represents a single unit of learning. Lessons can be grouped into modules 
 -- (chapters), but this is optional and dependent on how the course is structured
@@ -225,32 +239,28 @@ CREATE TABLE sessions (
 --
 
 -- Lessons by course, then ordered by prefix+module
-CREATE INDEX idx_lessons_course_prefix_module
-  ON lessons(course_id, prefix, module);
+CREATE INDEX idx_lessons_course_prefix_module ON lessons(course_id, prefix, module);
 
 -- Assets: WHERE lesson_id = ? ORDER BY prefix, sub_prefix
-CREATE INDEX idx_lesson_prefix_sub
-  ON assets(lesson_id, prefix, sub_prefix);
+CREATE INDEX idx_lesson_prefix_sub ON assets(lesson_id, prefix, sub_prefix);
 
 -- Attachments: WHERE lesson_id = ? ORDER BY title
-CREATE INDEX idx_attachments_lesson_title
-  ON attachments(lesson_id, title);
+CREATE INDEX idx_attachments_lesson_title ON attachments(lesson_id, title);
 
 -- Filter assets by course quickly
-CREATE INDEX IF NOT EXISTS idx_assets_course ON assets(course_id);
+CREATE INDEX idx_assets_course ON assets(course_id);
 
 -- Probe progress rows by (asset_id, user_id)
-CREATE INDEX IF NOT EXISTS idx_asset_progress_asset_user 
-	ON assets_progress(asset_id, user_id);
+CREATE INDEX idx_asset_progress_asset_user ON assets_progress(asset_id, user_id);
 
 -- Sessions
 CREATE INDEX idx_sessions_expires ON sessions(expires);
 CREATE INDEX idx_sessions_user    ON sessions(user_id);
 
 -- Progress calculations
-CREATE INDEX IF NOT EXISTS idx_assets_course_id ON assets(course_id);
-CREATE INDEX IF NOT EXISTS idx_assets_progress_asset_user ON assets_progress(asset_id, user_id);
-CREATE INDEX IF NOT EXISTS idx_courses_progress_course_user ON courses_progress(course_id, user_id);
+CREATE INDEX idx_assets_course_id             ON assets(course_id);
+CREATE INDEX idx_assets_progress_asset_user   ON assets_progress(asset_id, user_id);
+CREATE INDEX idx_courses_progress_course_user ON courses_progress(course_id, user_id);
 
 -- Asset keyframes lookup by asset_id
-CREATE INDEX IF NOT EXISTS idx_asset_keyframes_asset_id ON asset_keyframes(asset_id);
+CREATE INDEX idx_asset_keyframes_asset_id ON asset_keyframes(asset_id);

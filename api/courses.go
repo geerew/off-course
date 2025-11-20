@@ -69,6 +69,10 @@ func (r *Router) initCourseRoutes() {
 	g.Get("/:id/tags", coursesAPI.getTags)
 	g.Post("/:id/tags", protectedRoute, coursesAPI.createTag)
 	g.Delete("/:id/tags/:tagId", protectedRoute, coursesAPI.deleteTag)
+
+	// Favourites
+	g.Post("/:id/favourite", protectedRoute, coursesAPI.favouriteCourse)
+	g.Delete("/:id/favourite", protectedRoute, coursesAPI.unfavouriteCourse)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -90,7 +94,7 @@ func (api coursesAPI) getCourses(c *fiber.Ctx) error {
 	}
 
 	if withUserProgress {
-		allowedQueryFilters = append(allowedQueryFilters, "progress")
+		allowedQueryFilters = append(allowedQueryFilters, "progress", "favourite")
 	}
 
 	builderOpts := builderOptions{
@@ -747,20 +751,71 @@ func (api coursesAPI) deleteTag(c *fiber.Ctx) error {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+func (api coursesAPI) favouriteCourse(c *fiber.Ctx) error {
+	courseId := c.Params("id")
+
+	principal, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	// Verify course exists
+	course, err := api.getCourseByID(ctx, courseId)
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up course", err)
+	}
+
+	if course == nil {
+		return errorResponse(c, fiber.StatusNotFound, "Course not found", fmt.Errorf("course not found"))
+	}
+
+	courseFavourite := &models.CourseFavourite{
+		CourseID: courseId,
+		UserID:   principal.UserID,
+	}
+
+	if err := api.r.appDao.CreateCourseFavourite(ctx, courseFavourite); err != nil {
+		if strings.HasPrefix(err.Error(), "UNIQUE constraint failed") {
+			return errorResponse(c, fiber.StatusBadRequest, "Course is already favourited", err)
+		}
+		return errorResponse(c, fiber.StatusInternalServerError, "Error favouriting course", err)
+	}
+
+	return c.Status(fiber.StatusCreated).Send(nil)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func (api coursesAPI) unfavouriteCourse(c *fiber.Ctx) error {
+	courseId := c.Params("id")
+
+	principal, ctx, err := principalCtx(c)
+	if err != nil {
+		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	dbOpts := dao.NewOptions().
+		WithWhere(squirrel.And{
+			squirrel.Eq{models.COURSE_FAVOURITE_TABLE_COURSE_ID: courseId},
+			squirrel.Eq{models.COURSE_FAVOURITE_TABLE_USER_ID: principal.UserID},
+		})
+
+	if err := api.r.appDao.DeleteCourseFavourites(ctx, dbOpts); err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error unfavouriting course", err)
+	}
+
+	return c.Status(fiber.StatusNoContent).Send(nil)
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // coursesAfterParseHook runs after parsing the query expression and is used to build the
 // WHERE/JOIN clauses
 func coursesAfterParseHook(parsed *queryparser.QueryResult, dbOpts *dao.Options, userID string) {
 	dbOpts.WithWhere(coursesWhereBuilder(parsed.Expr))
 
-	// if foundProgress, ok := parsed.FoundFilters["progress"]; ok && foundProgress {
-	// 	dbOpts.WithLeftJoin(models.COURSE_PROGRESS_TABLE,
-	// 		fmt.Sprintf("%s = %s AND %s = '%s'",
-	// 			models.COURSE_PROGRESS_TABLE_COURSE_ID,
-	// 			models.COURSE_TABLE_ID,
-	// 			models.COURSE_PROGRESS_TABLE_USER_ID,
-	// 			userID),
-	// 	)
-	// }
+	// Note: LEFT JOIN for favourites is already added in ListCourses/GetCourse when withUserProgress is true
+	// The favourite filter WHERE clause will work because the JOIN is already present
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -808,6 +863,17 @@ func coursesWhereBuilder(expr queryparser.QueryExpr) squirrel.Sqlizer {
 					// And must be 100% complete
 					squirrel.Eq{models.COURSE_PROGRESS_TABLE_PERCENT: 100},
 				}
+			default:
+				return nil
+			}
+		case "favourite":
+			switch strings.ToLower(node.Value) {
+			case "true":
+				// Must have a favourite record (IS NOT NULL after LEFT JOIN)
+				return squirrel.Expr(models.COURSE_FAVOURITE_TABLE_ID + " IS NOT NULL")
+			case "false":
+				// Must not have a favourite record (IS NULL after LEFT JOIN)
+				return squirrel.Expr(models.COURSE_FAVOURITE_TABLE_ID + " IS NULL")
 			default:
 				return nil
 			}

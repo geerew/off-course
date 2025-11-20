@@ -213,6 +213,12 @@ func TestCourses_GetCourses(t *testing.T) {
 		require.NoError(t, router.appDao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[3].ID, Tag: "tag3"}))
 		require.NoError(t, router.appDao.CreateCourseTag(ctx, &models.CourseTag{CourseID: courses[3].ID, Tag: "tag4"}))
 
+		// Set favourites (courses 0, 2, 4 are favourited)
+		principal := ctx.Value(types.PrincipalContextKey).(types.Principal)
+		require.NoError(t, router.appDao.CreateCourseFavourite(ctx, &models.CourseFavourite{CourseID: courses[0].ID, UserID: principal.UserID}))
+		require.NoError(t, router.appDao.CreateCourseFavourite(ctx, &models.CourseFavourite{CourseID: courses[2].ID, UserID: principal.UserID}))
+		require.NoError(t, router.appDao.CreateCourseFavourite(ctx, &models.CourseFavourite{CourseID: courses[4].ID, UserID: principal.UserID}))
+
 		// No filter
 		{
 			status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/", nil))
@@ -279,6 +285,42 @@ func TestCourses_GetCourses(t *testing.T) {
 			paginationResp, _ := unmarshalHelper[courseResponse](t, body)
 			require.Equal(t, 6, int(paginationResp.TotalItems))
 			require.Len(t, paginationResp.Items, 6)
+		}
+
+		// Favourite
+		{
+			q := `favourite:true` + defaultSort
+			status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?withUserProgress=true&q="+url.QueryEscape(q), nil))
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, status)
+
+			paginationResp, coursesResp := unmarshalHelper[courseResponse](t, body)
+			require.Equal(t, 3, int(paginationResp.TotalItems))
+			require.Len(t, coursesResp, 3)
+			require.True(t, coursesResp[0].Favourited)
+			require.True(t, coursesResp[1].Favourited)
+			require.True(t, coursesResp[2].Favourited)
+			require.Equal(t, courses[0].ID, coursesResp[0].ID)
+			require.Equal(t, courses[2].ID, coursesResp[1].ID)
+			require.Equal(t, courses[4].ID, coursesResp[2].ID)
+		}
+
+		// Unfavourite
+		{
+			q := `favourite:false` + defaultSort
+			status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?withUserProgress=true&q="+url.QueryEscape(q), nil))
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, status)
+
+			paginationResp, coursesResp := unmarshalHelper[courseResponse](t, body)
+			require.Equal(t, 3, int(paginationResp.TotalItems))
+			require.Len(t, coursesResp, 3)
+			require.False(t, coursesResp[0].Favourited)
+			require.False(t, coursesResp[1].Favourited)
+			require.False(t, coursesResp[2].Favourited)
+			require.Equal(t, courses[1].ID, coursesResp[0].ID)
+			require.Equal(t, courses[3].ID, coursesResp[1].ID)
+			require.Equal(t, courses[5].ID, coursesResp[2].ID)
 		}
 
 		// Complex filter
@@ -2503,5 +2545,243 @@ func TestCourses_DeleteTag(t *testing.T) {
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/courses/invalid/tags/invalid", nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusInternalServerError, status)
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestCourses_FavouriteCourse(t *testing.T) {
+	t.Run("201 (created)", func(t *testing.T) {
+		router, ctx := setupAdmin(t)
+
+		course := &models.Course{Title: "course 1", Path: "/course 1"}
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
+
+		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodPost, "/api/courses/"+course.ID+"/favourite", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, status)
+
+		// Verify it was created
+		principal := ctx.Value(types.PrincipalContextKey).(types.Principal)
+		dbOpts := dao.NewOptions().WithWhere(squirrel.And{
+			squirrel.Eq{models.COURSE_FAVOURITE_TABLE_COURSE_ID: course.ID},
+			squirrel.Eq{models.COURSE_FAVOURITE_TABLE_USER_ID: principal.UserID},
+		})
+		record, err := router.appDao.GetCourseFavourite(ctx, dbOpts)
+		require.NoError(t, err)
+		require.NotNil(t, record)
+		require.Equal(t, course.ID, record.CourseID)
+		require.Equal(t, principal.UserID, record.UserID)
+	})
+
+	t.Run("400 (already favourited)", func(t *testing.T) {
+		router, ctx := setupAdmin(t)
+
+		course := &models.Course{Title: "course 1", Path: "/course 1"}
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
+
+		principal := ctx.Value(types.PrincipalContextKey).(types.Principal)
+		courseFavourite := &models.CourseFavourite{CourseID: course.ID, UserID: principal.UserID}
+		require.NoError(t, router.appDao.CreateCourseFavourite(ctx, courseFavourite))
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodPost, "/api/courses/"+course.ID+"/favourite", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, status)
+		require.Contains(t, string(body), "Course is already favourited")
+	})
+
+	t.Run("401 (unauthorized)", func(t *testing.T) {
+		router, _ := setupNoAuth(t)
+
+		course := &models.Course{Title: "course 1", Path: "/course 1"}
+		require.NoError(t, router.appDao.CreateCourse(context.Background(), course))
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodPost, "/api/courses/"+course.ID+"/favourite", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusUnauthorized, status)
+		require.Contains(t, string(body), "Missing principal")
+	})
+
+	t.Run("404 (course not found)", func(t *testing.T) {
+		router, _ := setupAdmin(t)
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodPost, "/api/courses/invalid/favourite", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNotFound, status)
+		require.Contains(t, string(body), "Course not found")
+	})
+
+	t.Run("500 (internal error)", func(t *testing.T) {
+		router, ctx := setupAdmin(t)
+
+		course := &models.Course{Title: "course 1", Path: "/course 1"}
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
+
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS "+models.COURSE_FAVOURITE_TABLE)
+		require.NoError(t, err)
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodPost, "/api/courses/"+course.ID+"/favourite", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusInternalServerError, status)
+		require.Contains(t, string(body), "Error favouriting course")
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestCourses_UnfavouriteCourse(t *testing.T) {
+	t.Run("204 (deleted)", func(t *testing.T) {
+		router, ctx := setupAdmin(t)
+
+		course := &models.Course{Title: "course 1", Path: "/course 1"}
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
+
+		principal := ctx.Value(types.PrincipalContextKey).(types.Principal)
+		courseFavourite := &models.CourseFavourite{CourseID: course.ID, UserID: principal.UserID}
+		require.NoError(t, router.appDao.CreateCourseFavourite(ctx, courseFavourite))
+
+		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/courses/"+course.ID+"/favourite", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNoContent, status)
+
+		// Verify it was deleted
+		dbOpts := dao.NewOptions().WithWhere(squirrel.And{
+			squirrel.Eq{models.COURSE_FAVOURITE_TABLE_COURSE_ID: course.ID},
+			squirrel.Eq{models.COURSE_FAVOURITE_TABLE_USER_ID: principal.UserID},
+		})
+		record, err := router.appDao.GetCourseFavourite(ctx, dbOpts)
+		require.NoError(t, err)
+		require.Nil(t, record)
+	})
+
+	t.Run("204 (not found)", func(t *testing.T) {
+		router, _ := setupAdmin(t)
+
+		course := &models.Course{Title: "course 1", Path: "/course 1"}
+		require.NoError(t, router.appDao.CreateCourse(context.Background(), course))
+
+		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/courses/"+course.ID+"/favourite", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNoContent, status)
+	})
+
+	t.Run("401 (unauthorized)", func(t *testing.T) {
+		router, _ := setupNoAuth(t)
+
+		course := &models.Course{Title: "course 1", Path: "/course 1"}
+		require.NoError(t, router.appDao.CreateCourse(context.Background(), course))
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/courses/"+course.ID+"/favourite", nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusUnauthorized, status)
+		require.Contains(t, string(body), "Missing principal")
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestCourses_GetCourses_FavouriteFilter(t *testing.T) {
+	t.Run("200 (favourited)", func(t *testing.T) {
+		router, ctx := setupAdmin(t)
+
+		courses := []*models.Course{}
+		for i := range 3 {
+			course := &models.Course{Title: fmt.Sprintf("course %d", i), Path: fmt.Sprintf("/course %d", i)}
+			require.NoError(t, router.appDao.CreateCourse(ctx, course))
+			courses = append(courses, course)
+		}
+
+		principal := ctx.Value(types.PrincipalContextKey).(types.Principal)
+		// Favourite first two courses
+		courseFavourite1 := &models.CourseFavourite{CourseID: courses[0].ID, UserID: principal.UserID}
+		require.NoError(t, router.appDao.CreateCourseFavourite(ctx, courseFavourite1))
+		courseFavourite2 := &models.CourseFavourite{CourseID: courses[1].ID, UserID: principal.UserID}
+		require.NoError(t, router.appDao.CreateCourseFavourite(ctx, courseFavourite2))
+
+		query := url.Values{}
+		query.Set("q", `favourite:"true"`)
+		query.Set("withUserProgress", "true")
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?"+query.Encode(), nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, coursesResp := unmarshalHelper[courseResponse](t, body)
+		require.Equal(t, 2, int(paginationResp.TotalItems))
+		require.Len(t, coursesResp, 2)
+		require.True(t, coursesResp[0].Favourited)
+		require.True(t, coursesResp[1].Favourited)
+	})
+
+	t.Run("200 (unfavourited)", func(t *testing.T) {
+		router, ctx := setupAdmin(t)
+
+		courses := []*models.Course{}
+		for i := range 3 {
+			course := &models.Course{Title: fmt.Sprintf("course %d", i), Path: fmt.Sprintf("/course %d", i)}
+			require.NoError(t, router.appDao.CreateCourse(ctx, course))
+			courses = append(courses, course)
+		}
+
+		principal := ctx.Value(types.PrincipalContextKey).(types.Principal)
+		// Favourite first course only
+		courseFavourite := &models.CourseFavourite{CourseID: courses[0].ID, UserID: principal.UserID}
+		require.NoError(t, router.appDao.CreateCourseFavourite(ctx, courseFavourite))
+
+		query := url.Values{}
+		query.Set("q", `favourite:"false"`)
+		query.Set("withUserProgress", "true")
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?"+query.Encode(), nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, coursesResp := unmarshalHelper[courseResponse](t, body)
+		require.Equal(t, 2, int(paginationResp.TotalItems))
+		require.Len(t, coursesResp, 2)
+		require.False(t, coursesResp[0].Favourited)
+		require.False(t, coursesResp[1].Favourited)
+	})
+
+	t.Run("200 (favourited field included)", func(t *testing.T) {
+		router, ctx := setupAdmin(t)
+
+		course := &models.Course{Title: "course 1", Path: "/course 1"}
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
+
+		principal := ctx.Value(types.PrincipalContextKey).(types.Principal)
+		courseFavourite := &models.CourseFavourite{CourseID: course.ID, UserID: principal.UserID}
+		require.NoError(t, router.appDao.CreateCourseFavourite(ctx, courseFavourite))
+
+		query := url.Values{}
+		query.Set("withUserProgress", "true")
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?"+query.Encode(), nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, coursesResp := unmarshalHelper[courseResponse](t, body)
+		require.Equal(t, 1, int(paginationResp.TotalItems))
+		require.Len(t, coursesResp, 1)
+		require.True(t, coursesResp[0].Favourited)
+	})
+
+	t.Run("200 (favourited field false when not favourited)", func(t *testing.T) {
+		router, ctx := setupAdmin(t)
+
+		course := &models.Course{Title: "course 1", Path: "/course 1"}
+		require.NoError(t, router.appDao.CreateCourse(ctx, course))
+
+		query := url.Values{}
+		query.Set("withUserProgress", "true")
+
+		status, body, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/courses/?"+query.Encode(), nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, status)
+
+		paginationResp, coursesResp := unmarshalHelper[courseResponse](t, body)
+		require.Equal(t, 1, int(paginationResp.TotalItems))
+		require.Len(t, coursesResp, 1)
+		require.False(t, coursesResp[0].Favourited)
 	})
 }
