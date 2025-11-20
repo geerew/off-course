@@ -205,6 +205,40 @@ export async function ServeCourseAsset(
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// Favourite a course
+export async function FavouriteCourse(courseId: string): Promise<void> {
+	const response = await apiFetch(`/api/courses/${courseId}/favourite`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json'
+		}
+	});
+
+	if (!response.ok) {
+		const data = await response.json();
+		throw new APIError(response.status, data.message || 'Unknown error');
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// Unfavourite a course
+export async function UnfavouriteCourse(courseId: string): Promise<void> {
+	const response = await apiFetch(`/api/courses/${courseId}/favourite`, {
+		method: 'DELETE',
+		headers: {
+			'Content-Type': 'application/json'
+		}
+	});
+
+	if (!response.ok) {
+		const data = await response.json();
+		throw new APIError(response.status, data.message || 'Unknown error');
+	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // Get the structured modules (chapters/lessons) for a course
 export async function GetCourseModules(
 	courseId: string,

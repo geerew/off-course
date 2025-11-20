@@ -8,6 +8,7 @@
 	import { Accordion, Dialog } from 'bits-ui';
 	import { innerWidth } from 'svelte/reactivity/window';
 	import theme from 'tailwindcss/defaultTheme';
+	import Favourite, { type FavouriteState } from './favourite.svelte';
 	import Progress, { type ProgressState } from './progress.svelte';
 	import Search from './search.svelte';
 	import Sort, { type SortColumn } from './sort.svelte';
@@ -45,6 +46,9 @@
 	let progress = $state('');
 	let selectedProgress = $state<ProgressState[]>([]);
 
+	let favourite = $state('');
+	let selectedFavourite = $state<FavouriteState | null>(null);
+
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	async function applyFilter() {
@@ -65,6 +69,7 @@
 		if (searchCourses) tmpFilter += ` "${searchCourses}"`;
 		if (progress) tmpFilter += ` AND (${progress})`;
 		if (tags) tmpFilter += ` AND (${tags})`;
+		if (favourite) tmpFilter += ` AND (${favourite})`;
 		filter = tmpFilter;
 	});
 
@@ -95,6 +100,8 @@
 			selectedProgress = ['started'];
 			selectedSortColumn = 'courses_progress.updated_at';
 			selectedSortDirection = 'desc';
+		} else if (query === 'favourite:true') {
+			selectedFavourite = 'true';
 		}
 
 		initialized = true;
@@ -124,6 +131,13 @@
 	$effect(() => {
 		tags = selectedTags.length ? selectedTags.map((v) => `tag:"${v}"`).join(' OR ') : '';
 	});
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Build 'favourite' from selectedFavourite
+	$effect(() => {
+		favourite = selectedFavourite ? `favourite:"${selectedFavourite}"` : '';
+	});
 </script>
 
 <div class="flex w-full flex-1 justify-between">
@@ -134,7 +148,7 @@
 			<Button
 				class={cn(
 					'relative flex h-10 w-auto flex-row items-center gap-2 px-4 py-0',
-					(progress || tags) && 'border-b-background-primary-alt-1'
+					(progress || tags || favourite) && 'border-b-background-primary-alt-1'
 				)}
 				variant="outline"
 				{disabled}
@@ -153,9 +167,9 @@
 				/> -->
 
 				<Dialog.Content
-					class="border-foreground-alt-4 bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left fixed top-0 left-0 z-50 h-full w-(--settings-menu-width) border-r px-4 pt-4"
+					class="border-foreground-alt-4 bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left w-(--settings-menu-width) fixed left-0 top-0 z-50 h-full border-r px-4 pt-4"
 				>
-					<div class="flex h-full w-full flex-col gap-3 overflow-x-hidden overflow-y-auto pb-8">
+					<div class="flex h-full w-full flex-col gap-3 overflow-y-auto overflow-x-hidden pb-8">
 						<!-- Title -->
 						<div class="flex flex-row items-center justify-between px-1.5">
 							<div
@@ -169,13 +183,15 @@
 								variant="ghost"
 								class={cn(
 									'text-foreground-alt-3 hover:text-foreground-alt-2 p-0 text-sm hover:bg-transparent',
-									!tags && !progress && 'invisible'
+									!tags && !progress && !favourite && 'invisible'
 								)}
 								onclick={() => {
 									tags = '';
 									selectedTags = [];
 									progress = '';
 									selectedProgress = [];
+									favourite = '';
+									selectedFavourite = null;
 									onApply();
 								}}
 							>
@@ -194,6 +210,12 @@
 								type="accordion"
 								bind:value={progress}
 								bind:selected={selectedProgress}
+								onApply={applyFilter}
+							/>
+							<Favourite
+								type="accordion"
+								bind:value={favourite}
+								bind:selected={selectedFavourite}
 								onApply={applyFilter}
 							/>
 
@@ -224,6 +246,13 @@
 				type="dropdown"
 				bind:value={progress}
 				bind:selected={selectedProgress}
+				{disabled}
+				onApply={applyFilter}
+			/>
+			<Favourite
+				type="dropdown"
+				bind:value={favourite}
+				bind:selected={selectedFavourite}
 				{disabled}
 				onApply={applyFilter}
 			/>

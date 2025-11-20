@@ -17,6 +17,8 @@ export { default as FilesIcon } from './files.svelte';
 export { default as FilterIcon } from './filter.svelte';
 export { default as FlagIcon } from './flag.svelte';
 export { default as GithubIcon } from './github.svelte';
+export { default as FavouriteIcon } from './favourite.svelte';
+export { default as HalfCircleIcon } from './half-circle.svelte';
 export { default as HtmlIcon } from './html.svelte';
 export { default as LeftChevronIcon } from './left-chevron.svelte';
 export { default as LoaderCircleIcon } from './loader-circle.svelte';

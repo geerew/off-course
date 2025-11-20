@@ -1,7 +1,13 @@
 <script lang="ts">
 	import { GetCourses, GetCourse } from '$lib/api/course-api';
 	import { auth } from '$lib/auth.svelte';
-	import { LogoIcon, WarningIcon } from '$lib/components/icons';
+	import {
+		FavouriteIcon,
+		HalfCircleIcon,
+		LogoIcon,
+		TickIcon,
+		WarningIcon
+	} from '$lib/components/icons';
 	import Filter from '$lib/components/pages/courses/filter.svelte';
 	import Spinner from '$lib/components/spinner.svelte';
 	import { Badge, Button } from '$lib/components/ui';
@@ -213,11 +219,15 @@
 						hasMoreCourses = true; // Reset to allow first page to load
 						loadingError = null;
 						loadingMore = true; // Prevent intersection observer from triggering
-						// Clear courses immediately to hide intersection observer element
-						courses = [];
+						// Cache current courses to prevent flicker
+						const cachedCourses = courses;
 						try {
 							// hasMoreCourses will be set correctly by fetcher based on totalPages
 							await fetcher(false);
+						} catch (error) {
+							// Restore cached courses on error
+							courses = cachedCourses;
+							throw error;
 						} finally {
 							loadingMore = false;
 						}
@@ -256,7 +266,7 @@
 									<Button
 										href={`/course/${course.id}`}
 										variant="ghost"
-										class="border-background-alt-3 group flex h-full flex-col items-stretch gap-3 overflow-hidden rounded-lg border p-0 pb-2 text-start whitespace-normal"
+										class="border-background-alt-3 group flex h-full flex-col items-stretch gap-3 overflow-hidden whitespace-normal rounded-lg border p-0 pb-2 text-start"
 									>
 										<!-- Card -->
 										<div class="relative aspect-video max-h-40 w-full overflow-hidden">
@@ -266,13 +276,28 @@
 												loading="lazy"
 												class="h-full w-full object-cover"
 											/>
+											{#if course.favourited}
+												<div class="bg-background/80 absolute right-2 top-2 rounded-full p-1.5">
+													<FavouriteIcon
+														class="fill-foreground-error text-foreground-error size-4 stroke-2"
+													/>
+												</div>
+											{:else if course.progress?.percent === 100}
+												<div class="bg-background/80 absolute right-2 top-2 rounded-full p-1.5">
+													<TickIcon class="text-background-success stroke-3 size-4" />
+												</div>
+											{:else if course.progress?.started}
+												<div class="bg-background/80 absolute right-2 top-2 rounded-full p-1.5">
+													<HalfCircleIcon class="stroke-4 size-4 fill-amber-700 text-amber-700" />
+												</div>
+											{/if}
 										</div>
 
 										<!-- Contents -->
 										<div class="flex min-w-0 flex-1 flex-col justify-between gap-4 px-2 pt-1.5">
 											<!-- Title -->
 											<span
-												class="group-hover:text-background-primary line-clamp-2 min-w-0 wrap-break-word transition-colors duration-150 md:line-clamp-none"
+												class="group-hover:text-background-primary wrap-break-word line-clamp-2 min-w-0 transition-colors duration-150 md:line-clamp-none"
 											>
 												{course.title}
 											</span>
@@ -280,17 +305,9 @@
 											<!-- Footer -->
 											<div class="flex items-start justify-between">
 												<div class="flex gap-2">
-													{#if course.progress?.started}
-														<Badge
-															class={cn(
-																'text-foreground-alt-2',
-																course.progress.percent === 100 &&
-																	'bg-background-success text-foreground'
-															)}
-														>
-															{course.progress.percent === 100
-																? 'Completed'
-																: course.progress.percent + '%'}
+													{#if course.progress?.started && course.progress.percent !== 100}
+														<Badge class="text-foreground-alt-2">
+															{course.progress.percent + '%'}
 														</Badge>
 													{/if}
 												</div>

@@ -2,7 +2,14 @@
 	import { GetCourses, GetCourse } from '$lib/api/course-api';
 	import { auth } from '$lib/auth.svelte';
 	import { NiceDate } from '$lib/components';
-	import { LogoIcon, RightChevronIcon, WarningIcon } from '$lib/components/icons';
+	import {
+		FavouriteIcon,
+		HalfCircleIcon,
+		LogoIcon,
+		RightChevronIcon,
+		TickIcon,
+		WarningIcon
+	} from '$lib/components/icons';
 	import Spinner from '$lib/components/spinner.svelte';
 	import { Badge, Button } from '$lib/components/ui';
 	import type { CourseReqParams, CoursesModel } from '$lib/models/course-model';
@@ -10,10 +17,12 @@
 	import { cn, remCalc } from '$lib/utils';
 	import theme from 'tailwindcss/defaultTheme';
 
-	type courseType = 'ongoing' | 'newest';
+	type courseType = 'ongoing' | 'newest' | 'favourite' | 'completed';
 
 	let ongoingCourses: CoursesModel = $state([]);
 	let newestCourses: CoursesModel = $state([]);
+	let favouriteCourses: CoursesModel = $state([]);
+	let completedCourses: CoursesModel = $state([]);
 
 	// Track which courses have active scans
 	let coursesWithScans = $state<Set<string>>(new Set());
@@ -21,7 +30,9 @@
 
 	let courseLinks: Record<courseType, string> = {
 		ongoing: '/courses/?filter=started',
-		newest: '/courses/?filter=newest'
+		newest: '/courses/?filter=newest',
+		favourite: '/courses/?filter=favourite:true',
+		completed: '/courses/?filter=completed'
 	};
 
 	let paginationPerPage = $state<number>();
@@ -75,6 +86,18 @@
 			if (newestIndex !== -1) {
 				newestCourses[newestIndex] = course;
 			}
+
+			// Update in favouriteCourses
+			const favouriteIndex = favouriteCourses.findIndex((c) => c.id === courseId);
+			if (favouriteIndex !== -1) {
+				favouriteCourses[favouriteIndex] = course;
+			}
+
+			// Update in completedCourses
+			const completedIndex = completedCourses.findIndex((c) => c.id === courseId);
+			if (completedIndex !== -1) {
+				completedCourses[completedIndex] = course;
+			}
 		} catch (error) {
 			console.error('Failed to refresh course:', error);
 		}
@@ -127,11 +150,34 @@
 				q: `sort:"created_at desc" available:true`,
 				withUserProgress: true,
 				page: 1,
-				perPage: paginationPerPage
+				perPage: (paginationPerPage ?? 6) * 2 // Fetch more to account for filtering
 			};
 
 			const newestData = await GetCourses(newestCourseReqParams);
-			newestCourses = newestData.items;
+			// Filter out favourited and ongoing courses
+			newestCourses = newestData.items
+				.filter((course) => !course.favourited && !course.progress?.started)
+				.slice(0, paginationPerPage ?? 6);
+
+			const favouriteCourseReqParams: CourseReqParams = {
+				q: 'favourite:true',
+				withUserProgress: true,
+				page: 1,
+				perPage: paginationPerPage
+			};
+
+			const favouriteData = await GetCourses(favouriteCourseReqParams);
+			favouriteCourses = favouriteData.items;
+
+			const completedCourseReqParams: CourseReqParams = {
+				q: 'progress:completed',
+				withUserProgress: true,
+				page: 1,
+				perPage: paginationPerPage
+			};
+
+			const completedData = await GetCourses(completedCourseReqParams);
+			completedCourses = completedData.items;
 		} catch (error) {
 			throw error;
 		}
@@ -148,7 +194,14 @@
 				data-sveltekit-reload
 			>
 				<span class="text-lg font-semibold">
-					{type === 'ongoing' ? 'Ongoing' : 'Newest'} Courses
+					{type === 'ongoing'
+						? 'Ongoing'
+						: type === 'newest'
+							? 'Newest'
+							: type === 'favourite'
+								? 'Favourite'
+								: 'Completed'}{' '}
+					Courses
 				</span>
 
 				<RightChevronIcon class="size-4.5 stroke-2" />
@@ -157,9 +210,18 @@
 
 		{#if courses.length === 0}
 			<div
-				class="border-background-alt-3 relative flex h-50 w-full flex-col items-center justify-center gap-2 rounded-md border border-dashed"
+				class="border-background-alt-3 relative flex h-24 w-full flex-col items-center justify-center gap-2 rounded-md border border-dashed"
 			>
-				<span class="text-foreground-alt-3 z-1 text-lg">No Courses</span>
+				<span class="text-foreground-alt-3 z-1 text-sm">
+					No {type === 'ongoing'
+						? 'Ongoing'
+						: type === 'newest'
+							? 'Newest'
+							: type === 'favourite'
+								? 'Favourite'
+								: 'Completed'}{' '}
+					Courses
+				</span>
 				<svg fill="none" class="stroke-background-alt-2 absolute h-full w-full">
 					<defs>
 						<pattern
@@ -188,7 +250,7 @@
 						<Button
 							href={`/course/${course.id}`}
 							variant="ghost"
-							class="border-background-alt-3 group flex h-full flex-col items-stretch gap-3 overflow-hidden rounded-lg border p-0 pb-2 text-start whitespace-normal"
+							class="border-background-alt-3 group flex h-full flex-col items-stretch gap-3 overflow-hidden whitespace-normal rounded-lg border p-0 pb-2 text-start"
 						>
 							<!-- Card -->
 							<div class="relative aspect-video max-h-40 w-full overflow-hidden">
@@ -198,13 +260,28 @@
 									loading="lazy"
 									class="h-full w-full object-cover"
 								/>
+								{#if course.favourited}
+									<div class="bg-background/80 absolute right-2 top-2 rounded-full p-1.5">
+										<FavouriteIcon
+											class="fill-foreground-error text-foreground-error size-4 stroke-2"
+										/>
+									</div>
+								{:else if type === 'completed' && course.progress?.percent === 100}
+									<div class="bg-background/80 absolute right-2 top-2 rounded-full p-1.5">
+										<TickIcon class="text-background-success stroke-4 size-4" />
+									</div>
+								{:else if type === 'ongoing' && course.progress?.started}
+									<div class="bg-background/80 absolute right-2 top-2 rounded-full p-1.5">
+										<HalfCircleIcon class="stroke-4 size-4 fill-amber-700 text-amber-700" />
+									</div>
+								{/if}
 							</div>
 
 							<!-- Contents -->
 							<div class="flex min-w-0 flex-1 flex-col justify-between gap-4 px-2 pt-1.5">
 								<!-- Title -->
 								<span
-									class="group-hover:text-background-primary line-clamp-2 min-w-0 wrap-break-word transition-colors duration-150 md:line-clamp-none"
+									class="group-hover:text-background-primary wrap-break-word line-clamp-2 min-w-0 transition-colors duration-150 md:line-clamp-none"
 								>
 									{course.title}
 								</span>
@@ -218,16 +295,9 @@
 											>
 										{/if}
 
-										{#if course.progress?.started}
-											<Badge
-												class={cn(
-													'text-foreground-alt-2',
-													course.progress.percent === 100 && 'bg-background-success text-foreground'
-												)}
-											>
-												{course.progress.percent === 100
-													? 'Completed'
-													: course.progress.percent + '%'}
+										{#if course.progress?.started && course.progress.percent !== 100}
+											<Badge class="text-foreground-alt-2">
+												{course.progress.percent + '%'}
 											</Badge>
 										{/if}
 									</div>
@@ -292,6 +362,8 @@
 				{:then _}
 					{@render courses('ongoing', ongoingCourses)}
 					{@render courses('newest', newestCourses)}
+					{@render courses('favourite', favouriteCourses)}
+					{@render courses('completed', completedCourses)}
 				{:catch error}
 					<div class="flex w-full flex-col items-center gap-2 pt-10">
 						<WarningIcon class="text-foreground-error size-10" />
