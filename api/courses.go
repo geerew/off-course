@@ -11,6 +11,7 @@ import (
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
+	"github.com/geerew/off-course/utils/coursemetadata"
 	"github.com/geerew/off-course/utils/queryparser"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/gofiber/fiber/v2"
@@ -704,23 +705,68 @@ func (api coursesAPI) createTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusBadRequest, "A tag is required", nil)
 	}
 
-	courseTag := &models.CourseTag{
-		CourseID: courseId,
-		Tag:      tagRequest.Tag,
-	}
-
 	_, ctx, err := principalCtx(c)
 	if err != nil {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
+	}
+
+	// Check if scan is in progress
+	if api.r.app.CourseScan.IsScanning(courseId) {
+		return errorResponse(c, fiber.StatusConflict, "Cannot modify tags while course scan is in progress", nil)
+	}
+
+	// Get course to access its path
+	course, err := api.getCourseByID(ctx, courseId)
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up course", err)
+	}
+
+	if course == nil {
+		return errorResponse(c, fiber.StatusNotFound, "Course not found", nil)
+	}
+
+	// DB-FIRST APPROACH: Read current tags from DB (source of truth)
+	dbOpts := dao.NewOptions().
+		WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courseId})
+	existingCourseTags, err := api.r.appDao.ListCourseTags(ctx, dbOpts)
+	if err != nil {
+		// If reading fails, use empty list - the DB create will handle the error
+		existingCourseTags = []*models.CourseTag{}
+	}
+
+	// Check if tag already exists (case-insensitive)
+	newTagLower := strings.ToLower(tagRequest.Tag)
+	for _, ct := range existingCourseTags {
+		if strings.ToLower(ct.Tag) == newTagLower {
+			return errorResponse(c, fiber.StatusBadRequest, "A tag for this course already exists", nil)
+		}
+	}
+
+	// Create tag in DB first (synchronous)
+	courseTag := &models.CourseTag{
+		CourseID: courseId,
+		Tag:      tagRequest.Tag,
 	}
 
 	if err := api.r.appDao.CreateCourseTag(ctx, courseTag); err != nil {
 		if strings.HasPrefix(err.Error(), "UNIQUE constraint failed") {
 			return errorResponse(c, fiber.StatusBadRequest, "A tag for this course already exists", err)
 		}
-
 		return errorResponse(c, fiber.StatusInternalServerError, "Error creating course tag", err)
 	}
+
+	// Build updated metadata from DB state (now includes new tag)
+	allTags := make([]string, 0, len(existingCourseTags)+1)
+	for _, ct := range existingCourseTags {
+		allTags = append(allTags, ct.Tag)
+	}
+	allTags = append(allTags, tagRequest.Tag)
+
+	// Queue async file write (fire and forget)
+	metadata := &coursemetadata.CourseMetadata{
+		Tags: allTags,
+	}
+	api.r.app.MetadataWriter.WriteMetadataAsync(courseId, course.Path, metadata)
 
 	return c.Status(fiber.StatusCreated).JSON(courseTagResponseHelper([]*models.CourseTag{courseTag})[0])
 }
@@ -736,7 +782,59 @@ func (api coursesAPI) deleteTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
+	// Check if scan is in progress
+	if api.r.app.CourseScan.IsScanning(courseId) {
+		return errorResponse(c, fiber.StatusConflict, "Cannot modify tags while course scan is in progress", nil)
+	}
+
+	// Get the course tag to find the tag name
 	dbOpts := dao.NewOptions().
+		WithWhere(squirrel.And{
+			squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courseId},
+			squirrel.Eq{models.COURSE_TAG_TABLE_ID: tagId},
+		})
+	courseTag, err := api.r.appDao.GetCourseTag(ctx, dbOpts)
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up course tag", err)
+	}
+
+	// If tag doesn't exist, return 204 (idempotent delete)
+	if courseTag == nil {
+		return c.Status(fiber.StatusNoContent).Send(nil)
+	}
+
+	// Get course to access its path
+	course, err := api.getCourseByID(ctx, courseId)
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up course", err)
+	}
+
+	if course == nil {
+		// Course doesn't exist, but tag lookup succeeded - this shouldn't happen
+		// But for idempotency, return 204
+		return c.Status(fiber.StatusNoContent).Send(nil)
+	}
+
+	// DB-FIRST APPROACH: Read current tags from DB (source of truth)
+	dbOpts = dao.NewOptions().
+		WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courseId})
+	existingCourseTags, err := api.r.appDao.ListCourseTags(ctx, dbOpts)
+	if err != nil {
+		// If reading fails, use empty list - the DB delete will still work
+		existingCourseTags = []*models.CourseTag{}
+	}
+
+	// Remove tag from list (case-insensitive)
+	tagToRemoveLower := strings.ToLower(courseTag.Tag)
+	updatedTags := make([]string, 0, len(existingCourseTags))
+	for _, ct := range existingCourseTags {
+		if strings.ToLower(ct.Tag) != tagToRemoveLower {
+			updatedTags = append(updatedTags, ct.Tag)
+		}
+	}
+
+	// Delete tag from DB first (synchronous)
+	dbOpts = dao.NewOptions().
 		WithWhere(squirrel.And{
 			squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courseId},
 			squirrel.Eq{models.COURSE_TAG_TABLE_ID: tagId},
@@ -745,6 +843,12 @@ func (api coursesAPI) deleteTag(c *fiber.Ctx) error {
 	if err := api.r.appDao.DeleteCourseTags(ctx, dbOpts); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting course tag", err)
 	}
+
+	// Queue async file write (fire and forget)
+	metadata := &coursemetadata.CourseMetadata{
+		Tags: updatedTags,
+	}
+	api.r.app.MetadataWriter.WriteMetadataAsync(courseId, course.Path, metadata)
 
 	return c.Status(fiber.StatusNoContent).Send(nil)
 }

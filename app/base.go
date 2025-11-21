@@ -8,6 +8,7 @@ import (
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/cardcache"
+	"github.com/geerew/off-course/utils/coursemetadata"
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/media"
@@ -26,9 +27,10 @@ type App struct {
 	DbManager *database.DatabaseManager
 
 	// Services
-	CourseScan *coursescan.CourseScan
-	Transcoder *hls.Transcoder
-	CardCache  *cardcache.CardCache
+	CourseScan     *coursescan.CourseScan
+	Transcoder     *hls.Transcoder
+	CardCache      *cardcache.CardCache
+	MetadataWriter *coursemetadata.MetadataWriter
 
 	// Configuration
 	Config *Config
@@ -145,6 +147,9 @@ func New(ctx context.Context, config *Config) (*App, error) {
 		FFmpeg:    app.FFmpeg,
 		CardCache: cardCache,
 	})
+
+	// Metadata writer for course.json files
+	app.MetadataWriter = coursemetadata.NewMetadataWriter(app.AppFs.Fs, app.Logger)
 
 	// Ensure fallback card exists
 	fallbackPath := cardCache.GetFallbackPath()

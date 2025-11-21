@@ -24,6 +24,7 @@ import (
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/models"
 	"github.com/geerew/off-course/utils"
+	"github.com/geerew/off-course/utils/coursemetadata"
 	"github.com/geerew/off-course/utils/media/probe"
 	"github.com/geerew/off-course/utils/types"
 	"github.com/spf13/afero"
@@ -120,6 +121,18 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 			Str("course_path", coursePath).
 			Msg("Failed to access course path")
 		return fmt.Errorf("failed to access course path %s: %w", course.Path, err)
+	}
+
+	// Read course metadata (course.json) if it exists
+	scanState.UpdateMessage("Reading course metadata")
+	metadata, err := coursemetadata.ReadMetadata(s.appFs.Fs, course.Path)
+	if err != nil {
+		s.logger.Warn().
+			Err(err).
+			Str("course_id", courseID).
+			Str("course_path", coursePath).
+			Msg("Failed to read course.json, continuing without metadata")
+		metadata = nil
 	}
 
 	scanState.UpdateMessage("Scanning course directory")
@@ -244,6 +257,27 @@ func Processor(ctx context.Context, s *CourseScan, scanState *ScanState) error {
 			return err
 		} else if updated {
 			updatedCourse = true
+		}
+
+		// Apply tags from course.json if metadata exists
+		if metadata != nil && len(metadata.Tags) > 0 {
+			if err := applyTagsFromMetadata(txCtx, s, course.ID, metadata.Tags); err != nil {
+				s.logger.Warn().
+					Err(err).
+					Str("course_id", courseID).
+					Str("course_path", coursePath).
+					Msg("Failed to apply tags from course.json")
+				// Don't fail the scan if tag application fails
+			}
+		} else if metadata != nil {
+			// Metadata exists but has no tags, remove all tags for this course
+			if err := removeAllCourseTags(txCtx, s, course.ID); err != nil {
+				s.logger.Warn().
+					Err(err).
+					Str("course_id", courseID).
+					Str("course_path", coursePath).
+					Msg("Failed to remove tags from course")
+			}
 		}
 
 		if updatedCourse {
@@ -1768,4 +1802,68 @@ func (p *parsedFile) toAttachment() *models.Attachment {
 		Title: p.Title + filepath.Ext(p.Original),
 		Path:  p.NormalizedPath,
 	}
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// applyTagsFromMetadata applies tags from course.json to the database.
+// Creates tags that don't exist and associates them with the course.
+// Removes tags from the course that are not in the metadata.
+func applyTagsFromMetadata(ctx context.Context, s *CourseScan, courseID string, tags []string) error {
+	// Get existing course tags
+	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courseID})
+	existingCourseTags, err := s.dao.ListCourseTags(ctx, dbOpts)
+	if err != nil {
+		return fmt.Errorf("failed to list existing course tags: %w", err)
+	}
+
+	// Create a map of existing tag names (lowercase for case-insensitive comparison)
+	existingTagMap := make(map[string]*models.CourseTag)
+	for _, ct := range existingCourseTags {
+		existingTagMap[strings.ToLower(ct.Tag)] = ct
+	}
+
+	// Create a map of desired tag names (lowercase)
+	desiredTagMap := make(map[string]string)
+	for _, tag := range tags {
+		if tag != "" {
+			desiredTagMap[strings.ToLower(tag)] = tag
+		}
+	}
+
+	// Remove tags that are not in the desired list
+	for lowerTag, courseTag := range existingTagMap {
+		if _, exists := desiredTagMap[lowerTag]; !exists {
+			deleteOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_ID: courseTag.ID})
+			if err := s.dao.DeleteCourseTags(ctx, deleteOpts); err != nil {
+				return fmt.Errorf("failed to delete course tag: %w", err)
+			}
+		}
+	}
+
+	// Add tags that are in the desired list but not in existing list
+	for lowerTag, tagName := range desiredTagMap {
+		if _, exists := existingTagMap[lowerTag]; !exists {
+			courseTag := &models.CourseTag{
+				CourseID: courseID,
+				Tag:      tagName,
+			}
+			if err := s.dao.CreateCourseTag(ctx, courseTag); err != nil {
+				// Ignore duplicate tag errors (could happen in race conditions)
+				if !strings.Contains(err.Error(), "UNIQUE constraint failed") {
+					return fmt.Errorf("failed to create course tag: %w", err)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// removeAllCourseTags removes all tags associated with a course
+func removeAllCourseTags(ctx context.Context, s *CourseScan, courseID string) error {
+	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courseID})
+	return s.dao.DeleteCourseTags(ctx, dbOpts)
 }
