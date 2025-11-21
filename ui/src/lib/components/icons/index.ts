@@ -25,6 +25,7 @@ export { default as LoaderCircleIcon } from './loader-circle.svelte';
 export { default as LockIcon } from './lock.svelte';
 export { default as LogoIcon } from './logo.svelte';
 export { default as LogoutIcon } from './logout.svelte';
+export { default as MoreInformationIcon } from './more-information.svelte';
 export { default as MediaMaximizeIcon } from './media-maximize.svelte';
 export { default as MediaMinimizeIcon } from './media-minimize.svelte';
 export { default as MediaPauseIcon } from './media-pause.svelte';

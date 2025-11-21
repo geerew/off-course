@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { GetLogs } from '$lib/api/log-api';
 	import { Spinner } from '$lib/components';
-	import { ArrowDownToLineIcon, WarningIcon } from '$lib/components/icons';
+	import { ArrowDownToLineIcon, MoreInformationIcon, WarningIcon } from '$lib/components/icons';
 	import LogLevelFilter from '$lib/components/pages/admin/logs/log-level.svelte';
 	import LogTypeFilter from '$lib/components/pages/admin/logs/log-component.svelte';
-	import { Badge, Button } from '$lib/components/ui';
+	import { Badge, Button, Dialog } from '$lib/components/ui';
 	import type { LogModel } from '$lib/models/log-model';
 	import { cn } from '$lib/utils';
 	import { Separator } from 'bits-ui';
@@ -19,6 +19,8 @@
 	let showScrollToBottom = $state(false);
 	let showScrollToTop = $state(false);
 	let filtersInitialized = $state(false);
+	let selectedLog: LogModel | null = $state(null);
+	let dialogOpen = $state(false);
 
 	const perPage = 50;
 
@@ -195,6 +197,28 @@
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+	// Format log data as JSON
+	function formatLogData(log: LogModel): string {
+		const logData = {
+			id: log.id,
+			createdAt: log.createdAt,
+			level: log.level,
+			message: log.message,
+			data: log.data
+		};
+		return JSON.stringify(logData, null, 2);
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// Open dialog for a specific log
+	function openLogDialog(log: LogModel): void {
+		selectedLog = log;
+		dialogOpen = true;
+	}
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 	// Check scroll position to show/hide scroll to bottom button
 	function checkScrollPosition(): void {
 		const scrollTop = window.scrollY || document.documentElement.scrollTop;
@@ -277,26 +301,29 @@
 							<div
 								class="border-background-alt-3 flex flex-col gap-4 border-b pb-3 last:border-b-0"
 							>
-								<!-- First line: Timestamp, Message, and Level Badge -->
+								<!-- First line: Timestamp, Message, Level Badge, and More Info Button -->
 								<div class="flex flex-row items-start gap-3">
 									<!-- Timestamp -->
 									<div
-										class="text-foreground-alt-3 mt-[3px] shrink-0 font-mono text-xs whitespace-nowrap"
+										class="text-foreground-alt-3 mt-[3px] shrink-0 whitespace-nowrap font-mono text-xs"
 										title={log.createdAt}
 									>
 										{formatTimestamp(log.createdAt)}
 									</div>
 
 									<!-- Message -->
-									<div class="text-foreground-alt-1 min-w-0 flex-1 text-sm wrap-break-word">
+									<div class="text-foreground-alt-1 wrap-break-word min-w-0 flex-1 text-sm">
 										{log.message}
 									</div>
 
-									<!-- Level Badge Column (fixed width container) -->
-									<div class="flex w-14 shrink-0 items-start justify-end">
+									<!-- Level Badge and More Info Button -->
+									<div class="flex shrink-0 items-center justify-end gap-2">
 										<Badge class={cn('text-xs font-medium lowercase', levelInfo.color)}>
 											{levelInfo.label}
 										</Badge>
+										<Button variant="ghost" class="h-6 w-6 p-0" onclick={() => openLogDialog(log)}>
+											<MoreInformationIcon class="text-foreground-alt-3 size-4" />
+										</Button>
 									</div>
 								</div>
 
@@ -305,7 +332,7 @@
 									<!-- Component Badge -->
 									{#if component}
 										<Badge
-											class="bg-background-alt-3 text-foreground-alt-2 shrink-0 text-xs font-medium lowercase select-none"
+											class="bg-background-alt-3 text-foreground-alt-2 shrink-0 select-none text-xs font-medium lowercase"
 										>
 											{component}
 										</Badge>
@@ -324,13 +351,14 @@
 										{#each extraData as { key, value, isError }}
 											<Badge
 												class={cn(
-													'text-xs font-medium select-none',
+													'min-w-0 max-w-xs select-none overflow-hidden whitespace-normal text-xs font-medium',
 													isError
 														? 'bg-background-error text-foreground-alt-2'
 														: 'bg-background-alt-2 text-foreground-alt-3'
 												)}
+												title={`${key}: ${value}`}
 											>
-												{key}: {value}
+												<span class="inline-block min-w-0 max-w-full truncate">{key}: {value}</span>
 											</Badge>
 										{/each}
 									{/if}
@@ -344,7 +372,7 @@
 				{#if showScrollToTop}
 					<Button
 						variant="default"
-						class="bg-background-primary-alt-2 fixed bottom-20 left-[calc(var(--settings-menu-width)+1rem)] z-100 size-7 rounded-md shadow-lg"
+						class="bg-background-primary-alt-2 z-100 fixed bottom-20 left-[calc(var(--settings-menu-width)+1rem)] size-7 rounded-md shadow-lg"
 						onclick={scrollToTop}
 					>
 						<ArrowDownToLineIcon class="stroke-foreground-alt-6 size-4 rotate-180 duration-200" />
@@ -355,7 +383,7 @@
 				{#if showScrollToBottom}
 					<Button
 						variant="default"
-						class="bg-background-primary-alt-2 fixed bottom-10 left-[calc(var(--settings-menu-width)+1rem)] z-100 size-7 rounded-md shadow-lg"
+						class="bg-background-primary-alt-2 z-100 fixed bottom-10 left-[calc(var(--settings-menu-width)+1rem)] size-7 rounded-md shadow-lg"
 						onclick={scrollToBottom}
 					>
 						<ArrowDownToLineIcon class="stroke-foreground-alt-6 size-4 duration-200" />
@@ -370,3 +398,25 @@
 		</div>
 	</div>
 </div>
+
+<!-- Log Details Dialog -->
+{#if selectedLog}
+	<Dialog.Root bind:open={dialogOpen}>
+		<Dialog.Content class="max-w-3xl">
+			<Dialog.Header>
+				<span>Log Details</span>
+			</Dialog.Header>
+
+			<div class="bg-background-alt-2 overflow-auto rounded-md p-4">
+				<pre
+					class="text-foreground-alt-1 wrap-break-word whitespace-pre-wrap font-mono text-xs">{formatLogData(
+						selectedLog
+					)}</pre>
+			</div>
+
+			<Dialog.Footer>
+				<Dialog.CloseButton>Close</Dialog.CloseButton>
+			</Dialog.Footer>
+		</Dialog.Content>
+	</Dialog.Root>
+{/if}
