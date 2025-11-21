@@ -305,14 +305,14 @@
 								<div class="flex flex-row items-start gap-3">
 									<!-- Timestamp -->
 									<div
-										class="text-foreground-alt-3 mt-[3px] shrink-0 whitespace-nowrap font-mono text-xs"
+										class="text-foreground-alt-3 mt-[3px] shrink-0 font-mono text-xs whitespace-nowrap"
 										title={log.createdAt}
 									>
 										{formatTimestamp(log.createdAt)}
 									</div>
 
 									<!-- Message -->
-									<div class="text-foreground-alt-1 wrap-break-word min-w-0 flex-1 text-sm">
+									<div class="text-foreground-alt-1 min-w-0 flex-1 text-sm wrap-break-word">
 										{log.message}
 									</div>
 
@@ -332,7 +332,7 @@
 									<!-- Component Badge -->
 									{#if component}
 										<Badge
-											class="bg-background-alt-3 text-foreground-alt-2 shrink-0 select-none text-xs font-medium lowercase"
+											class="bg-background-alt-3 text-foreground-alt-2 shrink-0 text-xs font-medium lowercase select-none"
 										>
 											{component}
 										</Badge>
@@ -351,14 +351,14 @@
 										{#each extraData as { key, value, isError }}
 											<Badge
 												class={cn(
-													'min-w-0 max-w-xs select-none overflow-hidden whitespace-normal text-xs font-medium',
+													'max-w-xs min-w-0 overflow-hidden text-xs font-medium whitespace-normal select-none',
 													isError
 														? 'bg-background-error text-foreground-alt-2'
 														: 'bg-background-alt-2 text-foreground-alt-3'
 												)}
 												title={`${key}: ${value}`}
 											>
-												<span class="inline-block min-w-0 max-w-full truncate">{key}: {value}</span>
+												<span class="inline-block max-w-full min-w-0 truncate">{key}: {value}</span>
 											</Badge>
 										{/each}
 									{/if}
@@ -372,7 +372,7 @@
 				{#if showScrollToTop}
 					<Button
 						variant="default"
-						class="bg-background-primary-alt-2 z-100 fixed bottom-20 left-[calc(var(--settings-menu-width)+1rem)] size-7 rounded-md shadow-lg"
+						class="bg-background-primary-alt-2 fixed bottom-20 left-[calc(var(--settings-menu-width)+1rem)] z-100 size-7 rounded-md shadow-lg"
 						onclick={scrollToTop}
 					>
 						<ArrowDownToLineIcon class="stroke-foreground-alt-6 size-4 rotate-180 duration-200" />
@@ -383,7 +383,7 @@
 				{#if showScrollToBottom}
 					<Button
 						variant="default"
-						class="bg-background-primary-alt-2 z-100 fixed bottom-10 left-[calc(var(--settings-menu-width)+1rem)] size-7 rounded-md shadow-lg"
+						class="bg-background-primary-alt-2 fixed bottom-10 left-[calc(var(--settings-menu-width)+1rem)] z-100 size-7 rounded-md shadow-lg"
 						onclick={scrollToBottom}
 					>
 						<ArrowDownToLineIcon class="stroke-foreground-alt-6 size-4 duration-200" />
@@ -409,7 +409,7 @@
 
 			<div class="bg-background-alt-2 overflow-auto rounded-md p-4">
 				<pre
-					class="text-foreground-alt-1 wrap-break-word whitespace-pre-wrap font-mono text-xs">{formatLogData(
+					class="text-foreground-alt-1 font-mono text-xs wrap-break-word whitespace-pre-wrap">{formatLogData(
 						selectedLog
 					)}</pre>
 			</div>
