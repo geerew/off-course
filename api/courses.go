@@ -725,7 +725,7 @@ func (api coursesAPI) createTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusNotFound, "Course not found", nil)
 	}
 
-	// DB-FIRST APPROACH: Read current tags from DB (source of truth)
+	// Check if tag already exists (case-insensitive) before creating
 	dbOpts := dao.NewOptions().
 		WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courseId})
 	existingCourseTags, err := api.r.appDao.ListCourseTags(ctx, dbOpts)
@@ -755,18 +755,35 @@ func (api coursesAPI) createTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error creating course tag", err)
 	}
 
-	// Build updated metadata from DB state (now includes new tag)
-	allTags := make([]string, 0, len(existingCourseTags)+1)
-	for _, ct := range existingCourseTags {
-		allTags = append(allTags, ct.Tag)
-	}
-	allTags = append(allTags, tagRequest.Tag)
+	// Read actual tags from DB AFTER creation to avoid race conditions with concurrent additions
+	// This ensures we get the correct state even if other tags were added concurrently
+	dbOpts = dao.NewOptions().
+		WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courseId})
+	allCourseTags, err := api.r.appDao.ListCourseTags(ctx, dbOpts)
+	if err != nil {
+		// If reading fails, fall back to building from existing + new tag
+		allTags := make([]string, 0, len(existingCourseTags)+1)
+		for _, ct := range existingCourseTags {
+			allTags = append(allTags, ct.Tag)
+		}
+		allTags = append(allTags, tagRequest.Tag)
+		metadata := &coursemetadata.CourseMetadata{
+			Tags: allTags,
+		}
+		api.r.app.MetadataWriter.WriteMetadataAsync(courseId, course.Path, metadata)
+	} else {
+		// Build list from actual DB state
+		allTags := make([]string, 0, len(allCourseTags))
+		for _, ct := range allCourseTags {
+			allTags = append(allTags, ct.Tag)
+		}
 
-	// Queue async file write (fire and forget)
-	metadata := &coursemetadata.CourseMetadata{
-		Tags: allTags,
+		// Queue async file write (fire and forget)
+		metadata := &coursemetadata.CourseMetadata{
+			Tags: allTags,
+		}
+		api.r.app.MetadataWriter.WriteMetadataAsync(courseId, course.Path, metadata)
 	}
-	api.r.app.MetadataWriter.WriteMetadataAsync(courseId, course.Path, metadata)
 
 	return c.Status(fiber.StatusCreated).JSON(courseTagResponseHelper([]*models.CourseTag{courseTag})[0])
 }

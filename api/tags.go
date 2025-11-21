@@ -8,6 +8,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/geerew/off-course/dao"
 	"github.com/geerew/off-course/models"
+	"github.com/geerew/off-course/utils/coursemetadata"
 	"github.com/geerew/off-course/utils/queryparser"
 	"github.com/gofiber/fiber/v2"
 )
@@ -201,10 +202,68 @@ func (api *tagsAPI) deleteTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusUnauthorized, "Missing principal", nil)
 	}
 
+	// Get the tag before deleting it to know which courses are affected
 	dbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: id})
+	tag, err := api.r.appDao.GetTag(ctx, dbOpts)
+	if err != nil {
+		return errorResponse(c, fiber.StatusInternalServerError, "Error looking up tag", err)
+	}
+
+	// If tag doesn't exist, return 204 (idempotent delete)
+	if tag == nil {
+		return c.Status(fiber.StatusNoContent).Send(nil)
+	}
+
+	// Find all courses that have this tag (before deletion)
+	dbOpts = dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_TAG_ID: id})
+	courseTags, err := api.r.appDao.ListCourseTags(ctx, dbOpts)
+	if err != nil {
+		// If reading fails, still proceed with deletion but skip file updates
+		courseTags = []*models.CourseTag{}
+	}
+
+	// Collect unique course IDs and get their paths
+	courseMap := make(map[string]string) // courseID -> path
+	for _, ct := range courseTags {
+		if _, exists := courseMap[ct.CourseID]; !exists {
+			// Get course to access its path
+			course, err := api.r.appDao.GetCourse(ctx, dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TABLE_ID: ct.CourseID}))
+			if err != nil || course == nil {
+				continue // Skip if course not found
+			}
+			courseMap[ct.CourseID] = course.Path
+		}
+	}
+
+	// Delete the tag (this will cascade delete course_tags)
+	dbOpts = dao.NewOptions().WithWhere(squirrel.Eq{models.TAG_TABLE_ID: id})
 	if err = api.r.appDao.DeleteTags(ctx, dbOpts); err != nil {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting tag", err)
 	}
+
+	// Now read the actual remaining tags AFTER deletion to avoid race conditions
+	// This ensures we get the correct state even if other tags were deleted concurrently
+	for courseID, coursePath := range courseMap {
+		// Get all remaining tags for this course (after deletion)
+		courseDbOpts := dao.NewOptions().WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courseID})
+		remainingCourseTags, err := api.r.appDao.ListCourseTags(ctx, courseDbOpts)
+		if err != nil {
+			continue // Skip if can't get tags
+		}
+
+		// Build list of remaining tag names
+		remainingTags := make([]string, 0, len(remainingCourseTags))
+		for _, t := range remainingCourseTags {
+			remainingTags = append(remainingTags, t.Tag)
+		}
+
+		// Update course.json file with actual remaining tags
+		metadata := &coursemetadata.CourseMetadata{
+			Tags: remainingTags,
+		}
+		api.r.app.MetadataWriter.WriteMetadataAsync(courseID, coursePath, metadata)
+	}
+
 	return c.Status(fiber.StatusNoContent).Send(nil)
 }
 

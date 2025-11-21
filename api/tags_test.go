@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/geerew/off-course/models"
+	"github.com/geerew/off-course/utils/coursemetadata"
 	"github.com/geerew/off-course/utils/pagination"
 	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/require"
@@ -226,7 +227,7 @@ func TestTags_GetTags(t *testing.T) {
 		router, _ := setupAdmin(t)
 
 		// Drop the courses table
-		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS "+models.TAG_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/", nil))
@@ -380,7 +381,7 @@ func TestTags_GetTagNames(t *testing.T) {
 		router, _ := setupAdmin(t)
 
 		// Drop the courses table
-		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS "+models.TAG_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/names", nil))
@@ -450,7 +451,7 @@ func TestTags_GetTag(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS "+models.TAG_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodGet, "/api/tags/test", nil))
@@ -523,7 +524,7 @@ func TestTags_CreateTag(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS "+models.TAG_TABLE)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodPost, "/api/tags/", strings.NewReader(`{"tag": "test"}`))
@@ -629,7 +630,7 @@ func TestTags_UpdateTag(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS "+models.TAG_TABLE)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodPut, "/api/tags/test", strings.NewReader(`{"id": "1234567"}`))
@@ -674,11 +675,73 @@ func TestTags_DeleteTag(t *testing.T) {
 	t.Run("500 (internal error)", func(t *testing.T) {
 		router, _ := setupAdmin(t)
 
-		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS " + models.TAG_TABLE)
+		_, err := router.app.DbManager.DataDb.ExecContext(context.Background(), "DROP TABLE IF EXISTS "+models.TAG_TABLE)
 		require.NoError(t, err)
 
 		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/tags/test", nil))
 		require.NoError(t, err)
 		require.Equal(t, http.StatusInternalServerError, status)
+	})
+
+	t.Run("204 (deleted with course.json update)", func(t *testing.T) {
+		router, ctx := setupAdmin(t)
+
+		// Create courses
+		course1 := &models.Course{Title: "Course 1", Path: "/course-1"}
+		require.NoError(t, router.appDao.CreateCourse(ctx, course1))
+		require.NoError(t, router.app.AppFs.Fs.MkdirAll(course1.Path, 0755))
+
+		course2 := &models.Course{Title: "Course 2", Path: "/course-2"}
+		require.NoError(t, router.appDao.CreateCourse(ctx, course2))
+		require.NoError(t, router.app.AppFs.Fs.MkdirAll(course2.Path, 0755))
+
+		// Create tags
+		tag1 := &models.Tag{Tag: "Go"}
+		require.NoError(t, router.appDao.CreateTag(ctx, tag1))
+
+		tag2 := &models.Tag{Tag: "PHP"}
+		require.NoError(t, router.appDao.CreateTag(ctx, tag2))
+
+		tag3 := &models.Tag{Tag: "Python"}
+		require.NoError(t, router.appDao.CreateTag(ctx, tag3))
+
+		// Add tags to courses
+		// Course 1: Go, PHP
+		course1Tag1 := &models.CourseTag{CourseID: course1.ID, TagID: tag1.ID}
+		require.NoError(t, router.appDao.CreateCourseTag(ctx, course1Tag1))
+		course1Tag2 := &models.CourseTag{CourseID: course1.ID, TagID: tag2.ID}
+		require.NoError(t, router.appDao.CreateCourseTag(ctx, course1Tag2))
+
+		// Course 2: Go, Python
+		course2Tag1 := &models.CourseTag{CourseID: course2.ID, TagID: tag1.ID}
+		require.NoError(t, router.appDao.CreateCourseTag(ctx, course2Tag1))
+		course2Tag3 := &models.CourseTag{CourseID: course2.ID, TagID: tag3.ID}
+		require.NoError(t, router.appDao.CreateCourseTag(ctx, course2Tag3))
+
+		// Delete tag "Go" (tag1)
+		status, _, err := requestHelper(t, router, httptest.NewRequest(http.MethodDelete, "/api/tags/"+tag1.ID, nil))
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNoContent, status)
+
+		// Wait for async file writes to complete
+		time.Sleep(200 * time.Millisecond)
+
+		// Verify course.json files were updated
+		// Course 1 should only have PHP now
+		metadata1, err := coursemetadata.ReadMetadata(router.app.AppFs.Fs, course1.Path)
+		require.NoError(t, err)
+		require.NotNil(t, metadata1)
+		require.Equal(t, []string{"PHP"}, metadata1.Tags)
+
+		// Course 2 should only have Python now
+		metadata2, err := coursemetadata.ReadMetadata(router.app.AppFs.Fs, course2.Path)
+		require.NoError(t, err)
+		require.NotNil(t, metadata2)
+		require.Equal(t, []string{"Python"}, metadata2.Tags)
+
+		// Verify tag was deleted from DB
+		count, err := router.appDao.CountTags(ctx, nil)
+		require.NoError(t, err)
+		require.Equal(t, 2, count) // Only PHP and Python remain
 	})
 }
