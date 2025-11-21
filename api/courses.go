@@ -832,24 +832,6 @@ func (api coursesAPI) deleteTag(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNoContent).Send(nil)
 	}
 
-	// DB-FIRST APPROACH: Read current tags from DB (source of truth)
-	dbOpts = dao.NewOptions().
-		WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courseId})
-	existingCourseTags, err := api.r.appDao.ListCourseTags(ctx, dbOpts)
-	if err != nil {
-		// If reading fails, use empty list - the DB delete will still work
-		existingCourseTags = []*models.CourseTag{}
-	}
-
-	// Remove tag from list (case-insensitive)
-	tagToRemoveLower := strings.ToLower(courseTag.Tag)
-	updatedTags := make([]string, 0, len(existingCourseTags))
-	for _, ct := range existingCourseTags {
-		if strings.ToLower(ct.Tag) != tagToRemoveLower {
-			updatedTags = append(updatedTags, ct.Tag)
-		}
-	}
-
 	// Delete tag from DB first (synchronous)
 	dbOpts = dao.NewOptions().
 		WithWhere(squirrel.And{
@@ -861,9 +843,25 @@ func (api coursesAPI) deleteTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting course tag", err)
 	}
 
+	// Read actual remaining tags from DB AFTER deletion to avoid race conditions
+	// This ensures we get the correct state even if other tags were deleted concurrently
+	dbOpts = dao.NewOptions().
+		WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courseId})
+	remainingCourseTags, err := api.r.appDao.ListCourseTags(ctx, dbOpts)
+	if err != nil {
+		// If reading fails, skip file update - DB delete succeeded
+		return c.Status(fiber.StatusNoContent).Send(nil)
+	}
+
+	// Build list of remaining tag names
+	remainingTags := make([]string, 0, len(remainingCourseTags))
+	for _, ct := range remainingCourseTags {
+		remainingTags = append(remainingTags, ct.Tag)
+	}
+
 	// Queue async file write (fire and forget)
 	metadata := &coursemetadata.CourseMetadata{
-		Tags: updatedTags,
+		Tags: remainingTags,
 	}
 	api.r.app.MetadataWriter.WriteMetadataAsync(courseId, course.Path, metadata)
 
