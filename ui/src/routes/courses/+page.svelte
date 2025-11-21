@@ -266,7 +266,7 @@
 									<Button
 										href={`/course/${course.id}`}
 										variant="ghost"
-										class="border-background-alt-3 group flex h-full flex-col items-stretch gap-3 overflow-hidden rounded-lg border p-0 pb-2 text-start whitespace-normal"
+										class="border-background-alt-3 group flex h-full flex-col items-stretch gap-3 overflow-hidden whitespace-normal rounded-lg border p-0 pb-2 text-start"
 									>
 										<!-- Card -->
 										<div class="relative aspect-video max-h-40 w-full overflow-hidden">
@@ -276,28 +276,31 @@
 												loading="lazy"
 												class="h-full w-full object-cover"
 											/>
-											{#if course.favourited}
-												<div class="bg-background/80 absolute top-2 right-2 rounded-full p-1.5">
-													<FavouriteIcon
-														class="fill-foreground-error text-foreground-error size-4 stroke-2"
-													/>
-												</div>
-											{:else if course.progress?.percent === 100}
-												<div class="bg-background/80 absolute top-2 right-2 rounded-full p-1.5">
-													<TickIcon class="text-background-success size-4 stroke-3" />
-												</div>
-											{:else if course.progress?.started}
-												<div class="bg-background/80 absolute top-2 right-2 rounded-full p-1.5">
-													<HalfCircleIcon class="size-4 fill-amber-700 stroke-4 text-amber-700" />
-												</div>
-											{/if}
+											<div class="absolute right-2 top-2 flex flex-row gap-1.5">
+												{#if course.progress?.percent === 100}
+													<div class="bg-background rounded-full p-1.5">
+														<TickIcon class="text-background-success stroke-4 size-4" />
+													</div>
+												{:else if course.progress?.started && course.progress?.percent !== 100}
+													<div class="bg-background rounded-full p-1.5">
+														<HalfCircleIcon class="stroke-4 size-4 fill-amber-700 text-amber-700" />
+													</div>
+												{/if}
+												{#if course.favourited}
+													<div class="bg-background rounded-full p-1.5">
+														<FavouriteIcon
+															class="fill-foreground-error text-foreground-error size-4 stroke-2"
+														/>
+													</div>
+												{/if}
+											</div>
 										</div>
 
 										<!-- Contents -->
 										<div class="flex min-w-0 flex-1 flex-col justify-between gap-4 px-2 pt-1.5">
 											<!-- Title -->
 											<span
-												class="group-hover:text-background-primary line-clamp-2 min-w-0 wrap-break-word transition-colors duration-150 md:line-clamp-none"
+												class="group-hover:text-background-primary wrap-break-word line-clamp-2 min-w-0 transition-colors duration-150 md:line-clamp-none"
 											>
 												{course.title}
 											</span>
