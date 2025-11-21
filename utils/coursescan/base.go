@@ -134,6 +134,20 @@ func (s *CourseScan) GetScanByCourseID(courseID string) *ScanState {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// IsScanning checks if a scan is currently in progress for the given course ID.
+// Returns true if a scan exists and its status is waiting or processing.
+func (s *CourseScan) IsScanning(courseID string) bool {
+	scanState := s.GetScanByCourseID(courseID)
+	if scanState == nil {
+		return false
+	}
+
+	status := scanState.GetStatus()
+	return status.IsWaiting() || status.IsProcessing()
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // GetAllScans returns all scans in the CMap, sorted by status (processing first) then by createdAt (oldest first)
 func (s *CourseScan) GetAllScans() []*ScanState {
 	var allScans []*ScanState

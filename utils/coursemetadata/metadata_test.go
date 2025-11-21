@@ -1,0 +1,202 @@
+package coursemetadata
+
+import (
+	"path/filepath"
+	"testing"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/require"
+)
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestReadMetadata(t *testing.T) {
+	t.Run("file exists with valid JSON", func(t *testing.T) {
+		fs := afero.NewMemMapFs()
+		coursePath := "/test-course"
+
+		// Create course directory
+		require.NoError(t, fs.MkdirAll(coursePath, 0755))
+
+		// Write metadata file
+		metadataPath := filepath.Join(coursePath, MetadataFileName)
+		data := `{
+  "tags": ["go", "programming"]
+}`
+		require.NoError(t, afero.WriteFile(fs, metadataPath, []byte(data), 0644))
+
+		// Read metadata
+		metadata, err := ReadMetadata(fs, coursePath)
+		require.NoError(t, err)
+		require.NotNil(t, metadata)
+		require.Equal(t, []string{"go", "programming"}, metadata.Tags)
+	})
+
+	t.Run("file exists with empty tags", func(t *testing.T) {
+		fs := afero.NewMemMapFs()
+		coursePath := "/test-course"
+
+		require.NoError(t, fs.MkdirAll(coursePath, 0755))
+
+		metadataPath := filepath.Join(coursePath, MetadataFileName)
+		data := `{
+  "tags": []
+}`
+		require.NoError(t, afero.WriteFile(fs, metadataPath, []byte(data), 0644))
+
+		metadata, err := ReadMetadata(fs, coursePath)
+		require.NoError(t, err)
+		require.NotNil(t, metadata)
+		require.Empty(t, metadata.Tags)
+	})
+
+	t.Run("file doesn't exist", func(t *testing.T) {
+		fs := afero.NewMemMapFs()
+		coursePath := "/test-course"
+
+		require.NoError(t, fs.MkdirAll(coursePath, 0755))
+
+		metadata, err := ReadMetadata(fs, coursePath)
+		require.NoError(t, err)
+		require.Nil(t, metadata)
+	})
+
+	t.Run("invalid JSON", func(t *testing.T) {
+		fs := afero.NewMemMapFs()
+		coursePath := "/test-course"
+
+		require.NoError(t, fs.MkdirAll(coursePath, 0755))
+
+		metadataPath := filepath.Join(coursePath, MetadataFileName)
+		require.NoError(t, afero.WriteFile(fs, metadataPath, []byte("invalid json"), 0644))
+
+		metadata, err := ReadMetadata(fs, coursePath)
+		require.Error(t, err)
+		require.Nil(t, metadata)
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestWriteMetadata(t *testing.T) {
+	t.Run("write new file", func(t *testing.T) {
+		fs := afero.NewMemMapFs()
+		coursePath := "/test-course"
+
+		require.NoError(t, fs.MkdirAll(coursePath, 0755))
+
+		metadata := &CourseMetadata{
+			Tags: []string{"go", "programming"},
+		}
+
+		err := WriteMetadata(fs, coursePath, metadata)
+		require.NoError(t, err)
+
+		// Verify file was created
+		metadataPath := filepath.Join(coursePath, MetadataFileName)
+		exists, err := afero.Exists(fs, metadataPath)
+		require.NoError(t, err)
+		require.True(t, exists)
+
+		// Read back and verify
+		readMetadata, err := ReadMetadata(fs, coursePath)
+		require.NoError(t, err)
+		require.NotNil(t, readMetadata)
+		require.Equal(t, metadata.Tags, readMetadata.Tags)
+	})
+
+	t.Run("overwrite existing file", func(t *testing.T) {
+		fs := afero.NewMemMapFs()
+		coursePath := "/test-course"
+
+		require.NoError(t, fs.MkdirAll(coursePath, 0755))
+
+		// Write initial metadata
+		initialMetadata := &CourseMetadata{
+			Tags: []string{"old"},
+		}
+		require.NoError(t, WriteMetadata(fs, coursePath, initialMetadata))
+
+		// Overwrite with new metadata
+		newMetadata := &CourseMetadata{
+			Tags: []string{"new", "tags"},
+		}
+		require.NoError(t, WriteMetadata(fs, coursePath, newMetadata))
+
+		// Verify
+		readMetadata, err := ReadMetadata(fs, coursePath)
+		require.NoError(t, err)
+		require.NotNil(t, readMetadata)
+		require.Equal(t, []string{"new", "tags"}, readMetadata.Tags)
+	})
+
+	t.Run("write empty tags", func(t *testing.T) {
+		fs := afero.NewMemMapFs()
+		coursePath := "/test-course"
+
+		require.NoError(t, fs.MkdirAll(coursePath, 0755))
+
+		metadata := &CourseMetadata{
+			Tags: []string{},
+		}
+
+		err := WriteMetadata(fs, coursePath, metadata)
+		require.NoError(t, err)
+
+		readMetadata, err := ReadMetadata(fs, coursePath)
+		require.NoError(t, err)
+		require.NotNil(t, readMetadata)
+		require.Empty(t, readMetadata.Tags)
+	})
+
+	t.Run("nil metadata", func(t *testing.T) {
+		fs := afero.NewMemMapFs()
+		coursePath := "/test-course"
+
+		require.NoError(t, fs.MkdirAll(coursePath, 0755))
+
+		err := WriteMetadata(fs, coursePath, nil)
+		require.NoError(t, err)
+	})
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+func TestDeleteMetadata(t *testing.T) {
+	t.Run("delete existing file", func(t *testing.T) {
+		fs := afero.NewMemMapFs()
+		coursePath := "/test-course"
+
+		require.NoError(t, fs.MkdirAll(coursePath, 0755))
+
+		metadata := &CourseMetadata{
+			Tags: []string{"go"},
+		}
+		require.NoError(t, WriteMetadata(fs, coursePath, metadata))
+
+		// Verify file exists
+		metadataPath := filepath.Join(coursePath, MetadataFileName)
+		exists, err := afero.Exists(fs, metadataPath)
+		require.NoError(t, err)
+		require.True(t, exists)
+
+		// Delete
+		err = DeleteMetadata(fs, coursePath)
+		require.NoError(t, err)
+
+		// Verify file is gone
+		exists, err = afero.Exists(fs, metadataPath)
+		require.NoError(t, err)
+		require.False(t, exists)
+	})
+
+	t.Run("delete non-existent file", func(t *testing.T) {
+		fs := afero.NewMemMapFs()
+		coursePath := "/test-course"
+
+		require.NoError(t, fs.MkdirAll(coursePath, 0755))
+
+		err := DeleteMetadata(fs, coursePath)
+		require.NoError(t, err)
+	})
+}

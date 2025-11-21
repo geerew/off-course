@@ -8,6 +8,7 @@ import (
 	"github.com/geerew/off-course/database"
 	"github.com/geerew/off-course/utils/appfs"
 	"github.com/geerew/off-course/utils/cardcache"
+	"github.com/geerew/off-course/utils/coursemetadata"
 	"github.com/geerew/off-course/utils/coursescan"
 	"github.com/geerew/off-course/utils/logger"
 	"github.com/geerew/off-course/utils/media"
@@ -112,6 +113,9 @@ func NewTestApp(t *testing.T) *App {
 		FFmpeg:    app.FFmpeg,
 		CardCache: cardCache,
 	})
+
+	// Initialize MetadataWriter
+	app.MetadataWriter = coursemetadata.NewMetadataWriter(app.AppFs.Fs, app.Logger)
 
 	return app
 }
