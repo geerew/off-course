@@ -24,6 +24,11 @@
 	let favouriteCourses: CoursesModel = $state([]);
 	let completedCourses: CoursesModel = $state([]);
 
+	let ongoingTotal = $state(0);
+	let newestTotal = $state(0);
+	let favouriteTotal = $state(0);
+	let completedTotal = $state(0);
+
 	// Track which courses have active scans
 	let coursesWithScans = $state<Set<string>>(new Set());
 	let previousCourseIdsStr = $state('');
@@ -119,12 +124,21 @@
 
 	// Set the pagination perPage size based on the screen size
 	function setPaginationPerPage(windowWidth: number) {
+		const xlBreakpoint = +theme.screens.xl.replace('rem', '');
+		const lgBreakpoint = +theme.screens.lg.replace('rem', '');
+		const mdBreakpoint = +theme.screens.md.replace('rem', '');
+		const smBreakpoint = +theme.screens.sm.replace('rem', '');
+
 		paginationPerPage =
-			windowWidth >= +theme.screens.lg.replace('rem', '')
-				? 6
-				: windowWidth >= +theme.screens.md.replace('rem', '')
-					? 6
-					: 4;
+			windowWidth >= xlBreakpoint
+				? 5 // 5 per row × 1 row
+				: windowWidth >= lgBreakpoint
+					? 4 // 4 per row × 1 row
+					: windowWidth >= mdBreakpoint
+						? 3 // 3 per row × 1 row
+						: windowWidth >= smBreakpoint
+							? 4 // 2 per row × 2 rows
+							: 2; // 1 per row × 2 rows
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -145,19 +159,18 @@
 
 			const ongoingData = await GetCourses(courseReqParams);
 			ongoingCourses = ongoingData.items;
+			ongoingTotal = ongoingData.totalItems;
 
 			const newestCourseReqParams: CourseReqParams = {
-				q: `sort:"created_at desc" available:true`,
+				q: `sort:"created_at desc" available:true favourite:false progress:"not started"`,
 				withUserProgress: true,
 				page: 1,
-				perPage: (paginationPerPage ?? 6) * 2 // Fetch more to account for filtering
+				perPage: paginationPerPage
 			};
 
 			const newestData = await GetCourses(newestCourseReqParams);
-			// Filter out favourited and ongoing courses
-			newestCourses = newestData.items
-				.filter((course) => !course.favourited && !course.progress?.started)
-				.slice(0, paginationPerPage ?? 6);
+			newestCourses = newestData.items;
+			newestTotal = newestData.totalItems;
 
 			const favouriteCourseReqParams: CourseReqParams = {
 				q: 'favourite:true',
@@ -168,6 +181,7 @@
 
 			const favouriteData = await GetCourses(favouriteCourseReqParams);
 			favouriteCourses = favouriteData.items;
+			favouriteTotal = favouriteData.totalItems;
 
 			const completedCourseReqParams: CourseReqParams = {
 				q: 'progress:completed',
@@ -178,15 +192,16 @@
 
 			const completedData = await GetCourses(completedCourseReqParams);
 			completedCourses = completedData.items;
+			completedTotal = completedData.totalItems;
 		} catch (error) {
 			throw error;
 		}
 	}
 </script>
 
-{#snippet courses(type: courseType, courses: CoursesModel)}
+{#snippet courses(type: courseType, courses: CoursesModel, total: number)}
 	<div class="flex w-full flex-col gap-4">
-		<div>
+		<div class="flex items-center justify-between">
 			<Button
 				variant="ghost"
 				class="hover:text-background-primary-alt-1 gap-3.5"
@@ -204,8 +219,13 @@
 					Courses
 				</span>
 
-				<RightChevronIcon class="size-4.5 stroke-2" />
+				<RightChevronIcon class="size-4 stroke-2" />
 			</Button>
+			{#if courses.length > 0}
+				<Badge class="bg-background-alt-4 text-foreground-alt-1">
+					{courses.length} / {total}
+				</Badge>
+			{/if}
 		</div>
 
 		{#if courses.length === 0}
@@ -245,7 +265,9 @@
 			</div>
 		{:else}
 			<div class="flex flex-col gap-5">
-				<div class="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 lg:grid-cols-3">
+				<div
+					class="grid grid-cols-1 items-stretch gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+				>
 					{#each courses as course}
 						<Button
 							href={`/course/${course.id}`}
@@ -260,21 +282,24 @@
 									loading="lazy"
 									class="h-full w-full object-cover"
 								/>
-								{#if course.favourited}
-									<div class="bg-background/80 absolute top-2 right-2 rounded-full p-1.5">
-										<FavouriteIcon
-											class="fill-foreground-error text-foreground-error size-4 stroke-2"
-										/>
-									</div>
-								{:else if type === 'completed' && course.progress?.percent === 100}
-									<div class="bg-background/80 absolute top-2 right-2 rounded-full p-1.5">
-										<TickIcon class="text-background-success size-4 stroke-4" />
-									</div>
-								{:else if type === 'ongoing' && course.progress?.started}
-									<div class="bg-background/80 absolute top-2 right-2 rounded-full p-1.5">
-										<HalfCircleIcon class="size-4 fill-amber-700 stroke-4 text-amber-700" />
-									</div>
-								{/if}
+								<div class="absolute top-2 right-2 flex flex-row gap-1.5">
+									{#if course.progress?.percent === 100}
+										<div class="bg-background rounded-full p-1.5">
+											<TickIcon class="text-background-success size-4 stroke-4" />
+										</div>
+									{:else if course.progress?.started && course.progress.percent !== 100}
+										<div class="bg-background rounded-full p-1.5">
+											<HalfCircleIcon class="size-4 fill-amber-700 stroke-4 text-amber-700" />
+										</div>
+									{/if}
+									{#if course.favourited}
+										<div class="bg-background rounded-full p-1.5">
+											<FavouriteIcon
+												class="fill-foreground-error text-foreground-error size-4 stroke-2"
+											/>
+										</div>
+									{/if}
+								</div>
 							</div>
 
 							<!-- Contents -->
@@ -360,10 +385,10 @@
 						<Spinner class="bg-foreground-alt-3 size-4" />
 					</div>
 				{:then _}
-					{@render courses('ongoing', ongoingCourses)}
-					{@render courses('newest', newestCourses)}
-					{@render courses('favourited', favouriteCourses)}
-					{@render courses('completed', completedCourses)}
+					{@render courses('ongoing', ongoingCourses, ongoingTotal)}
+					{@render courses('newest', newestCourses, newestTotal)}
+					{@render courses('favourited', favouriteCourses, favouriteTotal)}
+					{@render courses('completed', completedCourses, completedTotal)}
 				{:catch error}
 					<div class="flex w-full flex-col items-center gap-2 pt-10">
 						<WarningIcon class="text-foreground-error size-10" />

@@ -115,7 +115,7 @@ func NewTestApp(t *testing.T) *App {
 	})
 
 	// Initialize MetadataWriter
-	app.MetadataWriter = coursemetadata.NewMetadataWriter(app.AppFs.Fs, app.Logger)
+	app.MetadataWriter = coursemetadata.NewMetadataWriter(app.AppFs.Fs, app.Logger.WithCourseMetadata())
 
 	return app
 }

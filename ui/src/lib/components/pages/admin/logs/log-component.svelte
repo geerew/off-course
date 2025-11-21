@@ -14,7 +14,9 @@
 	const logTypes = [
 		{ value: 'api', label: 'API' },
 		{ value: 'app', label: 'App' },
+		{ value: 'cardcache', label: 'Card Cache' },
 		{ value: 'coursescan', label: 'Course Scanner' },
+		{ value: 'coursemetadata', label: 'Course Metadata' },
 		{ value: 'cron', label: 'Cron' },
 		{ value: 'hls', label: 'HLS' }
 	];

@@ -145,6 +145,13 @@ func (l *Logger) WithCardCache() *Logger {
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// WithCourseMetadata creates a logger for the course metadata component
+func (l *Logger) WithCourseMetadata() *Logger {
+	return l.withComponent("coursemetadata")
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // WithCron creates a logger for the cron jobs component
 func (l *Logger) WithCron() *Logger {
 	return l.withComponent("cron")

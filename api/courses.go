@@ -725,7 +725,7 @@ func (api coursesAPI) createTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusNotFound, "Course not found", nil)
 	}
 
-	// DB-FIRST APPROACH: Read current tags from DB (source of truth)
+	// Check if tag already exists (case-insensitive) before creating
 	dbOpts := dao.NewOptions().
 		WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courseId})
 	existingCourseTags, err := api.r.appDao.ListCourseTags(ctx, dbOpts)
@@ -755,18 +755,35 @@ func (api coursesAPI) createTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error creating course tag", err)
 	}
 
-	// Build updated metadata from DB state (now includes new tag)
-	allTags := make([]string, 0, len(existingCourseTags)+1)
-	for _, ct := range existingCourseTags {
-		allTags = append(allTags, ct.Tag)
-	}
-	allTags = append(allTags, tagRequest.Tag)
+	// Read actual tags from DB AFTER creation to avoid race conditions with concurrent additions
+	// This ensures we get the correct state even if other tags were added concurrently
+	dbOpts = dao.NewOptions().
+		WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courseId})
+	allCourseTags, err := api.r.appDao.ListCourseTags(ctx, dbOpts)
+	if err != nil {
+		// If reading fails, fall back to building from existing + new tag
+		allTags := make([]string, 0, len(existingCourseTags)+1)
+		for _, ct := range existingCourseTags {
+			allTags = append(allTags, ct.Tag)
+		}
+		allTags = append(allTags, tagRequest.Tag)
+		metadata := &coursemetadata.CourseMetadata{
+			Tags: allTags,
+		}
+		api.r.app.MetadataWriter.WriteMetadataAsync(courseId, course.Path, metadata)
+	} else {
+		// Build list from actual DB state
+		allTags := make([]string, 0, len(allCourseTags))
+		for _, ct := range allCourseTags {
+			allTags = append(allTags, ct.Tag)
+		}
 
-	// Queue async file write (fire and forget)
-	metadata := &coursemetadata.CourseMetadata{
-		Tags: allTags,
+		// Queue async file write (fire and forget)
+		metadata := &coursemetadata.CourseMetadata{
+			Tags: allTags,
+		}
+		api.r.app.MetadataWriter.WriteMetadataAsync(courseId, course.Path, metadata)
 	}
-	api.r.app.MetadataWriter.WriteMetadataAsync(courseId, course.Path, metadata)
 
 	return c.Status(fiber.StatusCreated).JSON(courseTagResponseHelper([]*models.CourseTag{courseTag})[0])
 }
@@ -815,24 +832,6 @@ func (api coursesAPI) deleteTag(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNoContent).Send(nil)
 	}
 
-	// DB-FIRST APPROACH: Read current tags from DB (source of truth)
-	dbOpts = dao.NewOptions().
-		WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courseId})
-	existingCourseTags, err := api.r.appDao.ListCourseTags(ctx, dbOpts)
-	if err != nil {
-		// If reading fails, use empty list - the DB delete will still work
-		existingCourseTags = []*models.CourseTag{}
-	}
-
-	// Remove tag from list (case-insensitive)
-	tagToRemoveLower := strings.ToLower(courseTag.Tag)
-	updatedTags := make([]string, 0, len(existingCourseTags))
-	for _, ct := range existingCourseTags {
-		if strings.ToLower(ct.Tag) != tagToRemoveLower {
-			updatedTags = append(updatedTags, ct.Tag)
-		}
-	}
-
 	// Delete tag from DB first (synchronous)
 	dbOpts = dao.NewOptions().
 		WithWhere(squirrel.And{
@@ -844,9 +843,25 @@ func (api coursesAPI) deleteTag(c *fiber.Ctx) error {
 		return errorResponse(c, fiber.StatusInternalServerError, "Error deleting course tag", err)
 	}
 
+	// Read actual remaining tags from DB AFTER deletion to avoid race conditions
+	// This ensures we get the correct state even if other tags were deleted concurrently
+	dbOpts = dao.NewOptions().
+		WithWhere(squirrel.Eq{models.COURSE_TAG_TABLE_COURSE_ID: courseId})
+	remainingCourseTags, err := api.r.appDao.ListCourseTags(ctx, dbOpts)
+	if err != nil {
+		// If reading fails, skip file update - DB delete succeeded
+		return c.Status(fiber.StatusNoContent).Send(nil)
+	}
+
+	// Build list of remaining tag names
+	remainingTags := make([]string, 0, len(remainingCourseTags))
+	for _, ct := range remainingCourseTags {
+		remainingTags = append(remainingTags, ct.Tag)
+	}
+
 	// Queue async file write (fire and forget)
 	metadata := &coursemetadata.CourseMetadata{
-		Tags: updatedTags,
+		Tags: remainingTags,
 	}
 	api.r.app.MetadataWriter.WriteMetadataAsync(courseId, course.Path, metadata)
 
