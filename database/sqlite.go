@@ -389,40 +389,81 @@ func (db *sqliteDb) SelectContext(ctx context.Context, dest any, query string, a
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// RunInTransaction runs a function in a transaction
+// RunInTransaction runs a function in a transaction with automatic retry logic
+// for SQLite lock errors. If BeginTxx or operations inside the transaction return
+// a "database is locked" or "table is locked" error, it will wait for an exponentially
+// increasing backoff interval (up to defaultMaxLockRetries times) before retrying.
+// Non-lock errors are returned immediately. If all retries fail, the final error is returned.
+// The retry logic respects context cancellation.
 //
 // It implements the Database interface
-func (db *sqliteDb) RunInTransaction(ctx context.Context, fn func(context.Context) error) (err error) {
+func (db *sqliteDb) RunInTransaction(ctx context.Context, fn func(context.Context) error) error {
 	// Check if there's an existing transaction in the context
 	if tx, ok := QuerierFromContext(ctx, nil).(*sqliteTx); ok && tx != nil {
 		return fn(ctx)
 	}
 
-	sqlxTx, err := db.sqlx.BeginTxx(ctx, nil)
-	if err != nil {
-		return err
-	}
+	var lastErr error
 
-	wrapped := &sqliteTx{
-		tx: sqlxTx,
-		db: db,
-	}
-
-	// Set the querier in the context to use the transaction
-	txCtx := WithQuerier(ctx, wrapped)
-
-	defer func() {
-		if p := recover(); p != nil {
-			sqlxTx.Rollback()
-			panic(p)
-		} else if err != nil {
-			sqlxTx.Rollback()
-		} else {
-			err = sqlxTx.Commit()
+	for attempt := 0; attempt <= defaultMaxLockRetries; attempt++ {
+		// Check if context is cancelled
+		if ctx.Err() != nil {
+			return ctx.Err()
 		}
-	}()
 
-	return fn(txCtx)
+		// Begin transaction
+		sqlxTx, err := db.sqlx.BeginTxx(ctx, nil)
+		if err != nil {
+			if !isLockError(err) {
+				return err
+			}
+			lastErr = err
+			if attempt < defaultMaxLockRetries {
+				if err := sleepWithContext(ctx, getRetryInterval(attempt)); err != nil {
+					return err
+				}
+				continue
+			}
+			break
+		}
+
+		// Execute function within transaction
+		wrapped := &sqliteTx{tx: sqlxTx, db: db}
+		txCtx := WithQuerier(ctx, wrapped)
+		err = fn(txCtx)
+
+		// Handle function result
+		if err == nil {
+			// Function succeeded - commit
+			if commitErr := sqlxTx.Commit(); commitErr != nil {
+				sqlxTx.Rollback()
+				if isLockError(commitErr) && attempt < defaultMaxLockRetries {
+					lastErr = commitErr
+					if err := sleepWithContext(ctx, getRetryInterval(attempt)); err != nil {
+						return err
+					}
+					continue
+				}
+				return commitErr
+			}
+			return nil
+		}
+
+		// Function failed - rollback
+		sqlxTx.Rollback()
+		lastErr = err
+
+		// Retry if lock error, otherwise return immediately
+		if !isLockError(err) || attempt >= defaultMaxLockRetries {
+			return err
+		}
+
+		if err := sleepWithContext(ctx, getRetryInterval(attempt)); err != nil {
+			return err
+		}
+	}
+
+	return fmt.Errorf("%w after %d retries", lastErr, defaultMaxLockRetries)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -525,6 +566,18 @@ func isLockError(err error) bool {
 	s := err.Error()
 	return strings.Contains(s, "database is locked") ||
 		strings.Contains(s, "table is locked")
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// sleepWithContext sleeps for the given duration, respecting context cancellation
+func sleepWithContext(ctx context.Context, duration time.Duration) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(duration):
+		return nil
+	}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
