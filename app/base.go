@@ -149,7 +149,7 @@ func New(ctx context.Context, config *Config) (*App, error) {
 	})
 
 	// Metadata writer for course.json files
-	app.MetadataWriter = coursemetadata.NewMetadataWriter(app.AppFs.Fs, app.Logger)
+	app.MetadataWriter = coursemetadata.NewMetadataWriter(app.AppFs.Fs, app.Logger.WithCourseMetadata())
 
 	// Ensure fallback card exists
 	fallbackPath := cardCache.GetFallbackPath()
